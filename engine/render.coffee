@@ -9,150 +9,7 @@ MIRROR_MASK_Z = 8|32|64|128 #232
 VECTOR_MINUS_Z = new Float32Array([0,0,-1])
 
 filters = require('./filters')
-
-class Framebuffer
-
-    constructor: (render_manager, size_x, size_y, tex_type, tex_format) ->
-
-        @render_manager = render_manager
-        @context = render_manager.context
-        gl = render_manager.gl
-        @size_x = size_x
-        @size_y = size_y
-        @texture = tex = gl.createTexture()
-        gl.bindTexture gl.TEXTURE_2D, tex
-        gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR
-        gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR
-        gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE
-        gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE
-        @tex_type = tex_type
-        internal_format = @tex_format = tex_format
-
-        if not tex_type?
-            tex_type = render_manager.gl.FLOAT
-        if not tex_format?
-            tex_format = render_manager.gl.RGBA
-
-        if tex_type == render_manager.gl.FLOAT
-            if not render_manager.extensions['texture_float']
-                tex_type == render_manager.gl.UNSIGNED_BYTE
-            else if @context.MYOU_PARAMS.nodejs
-                # TODO: improve node-webgl to do this
-                internal_format = 0x8814 # RGBA32F_ARB
-        gl.texImage2D gl.TEXTURE_2D, 0, internal_format, size_x, size_y, 0, tex_format, tex_type, null
-
-        @render_buffer= rb = gl.createRenderbuffer()
-        gl.bindRenderbuffer gl.RENDERBUFFER, rb
-        gl.renderbufferStorage gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, size_x, size_y
-
-        @framebuffer = fb = gl.createFramebuffer()
-        gl.bindFramebuffer gl.FRAMEBUFFER, fb
-        gl.framebufferTexture2D gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0
-        gl.framebufferRenderbuffer gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb
-
-        gl.bindTexture gl.TEXTURE_2D, null
-        gl.bindRenderbuffer gl.RENDERBUFFER, null
-        gl.bindFramebuffer gl.FRAMEBUFFER, null
-
-    recreate: ()->
-        if @framebuffer
-            @constructor @size_x, @size_y, @tex_type, @tex_format
-
-    enable: (rect=null)->
-        if not rect?
-            left = top = 0
-            size_x = @size_x
-            size_y = @size_y
-        else
-            left = rect[0]
-            top = rect[1]
-            size_x = rect[2]
-            size_y = rect[3]
-        @current_size_x = size_x
-        @current_size_y = size_y
-        @render_manager.gl.bindFramebuffer @render_manager.gl.FRAMEBUFFER, @framebuffer
-        @render_manager.gl.viewport left, top, size_x, size_y
-        ## doesn't work for limiting color clearing
-        ## unless we enable preserveDrawingBuffer but may be inefficient
-        #render_manager.gl.scissor(left, top, size_x, size_y)
-        Framebuffer.active_rect = [left, top, size_x, size_y]
-
-    disable: ()->
-        @render_manager.gl.bindFramebuffer render_manager.gl.FRAMEBUFFER, null
-
-    draw_with_filter: (filter, src_rect)->
-        prog = filter.use()
-        gl = render_manager.gl
-        gl.uniform2f gl.getUniformLocation(prog, 'src_size'), @size_x, @size_y
-        l = gl.getUniformLocation(prog, 'src_rect')
-        if l and l._!=-1
-            gl.uniform4f(l, src_rect[0], src_rect[1], src_rect[2], src_rect[3])
-        l = gl.getUniformLocation(prog, 'dst_rect')
-        if l and l._!=-1
-            gl.uniform4fv l, Framebuffer.active_rect
-        #gl.uniform2fv(gl.getUniformLocation(prog, 'pixel_ratio'), @pixel_ratio)
-        gl.bindBuffer gl.ARRAY_BUFFER, Filter.quad
-        gl.activeTexture gl.TEXTURE0
-        gl.bindTexture gl.TEXTURE_2D, @texture
-        render_manager.change_enabled_attributes(1<<filter.a_vertex)
-        gl.vertexAttribPointer(filter.a_vertex, 3.0, gl.FLOAT, false, 0, 0)
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
-
-    destroy: ()->
-        render_manager.gl.deleteRenderbuffer(@render_buffer)
-        render_manager.gl.deleteFramebuffer(@framebuffer)
-
-
-
-
-class MainFramebuffer extends Framebuffer
-
-    constructor: (render_manager)->
-        # sizes set in render_manager.resize()
-        @render_manager = render_manager
-        @framebuffer = null
-
-
-
-class Viewport
-
-    constructor: (render_manager, camera, rect=[0,0,1,1], custom_size=[0, 0], dest_buffer)->
-        @render_manager = render_manager
-        if not dest_buffer?
-            dest_buffer = render_manager.main_fb
-        @rect = rect
-        @rect_pix = rect
-        @dest_buffer = dest_buffer
-        @camera = camera
-        @post_processing_enabled = false
-        @post_processing_filters = [render_manager.dummy_filter]
-        @custom_size = custom_size
-        @eye_shift = vec3.create()
-        @debug_camera = null
-        @set_clear(true, true)
-        render_manager.viewports.append()
-        @recalc_aspect()
-        render_manager.recalculate_fb_size()
-
-    recalc_aspect: ()->
-        r = @rect
-        w = @dest_buffer.size_x
-        h = @dest_buffer.size_y
-        @camera.aspect_ratio = (r[2]*@render_manager.width)/(r[3]*@render_manager.height)
-        @camera.recalculate_projection()
-        cs = @custom_size
-        if cs[0] == 0 and cs[1] == 0
-            @rect_pix = [r[0]*w, r[1]*h, r[2]*w, r[3]*h]
-        else
-            @rect_pix = [r[0]*w, r[1]*h, cs[0], cs[1]]
-        @dest_rect_pix = [r[0]*w, r[1]*h, r[2]*w, r[3]*h]
-
-    set_clear: (color, depth)->
-        c = if color then 16384 else 0 # GL_COLOR_BUFFER_BIT
-        c |= if depth then 256 else 0 # GL_DEPTH_BUFFER_BIT
-        @clear_bits = c
-
-
+{Framebuffer, MainFramebuffer} = require('./framebuffer')
 
 class RenderManager
     initialize: ()->
@@ -293,8 +150,8 @@ class RenderManager
         @pixel_ratio_x = pixel_ratio_x
         @pixel_ratio_y = pixel_ratio_y
         @screen_size = [width, height]
-        @largest_side = max(width, height)
-        @smallest_side = min(width, height)
+        @largest_side = Math.max(width, height)
+        @smallest_side = Math.min(width, height)
         @diagonal = Math.sqrt(width*width + height*height)
         filter_fb_needed = false
         for v in @viewports
@@ -321,21 +178,21 @@ class RenderManager
 
     recalculate_fb_size: ()->
         next_POT = (x)->
-            x = max(0, x-1)
+            x = Math.max(0, x-1)
             return Math.pow(2, Math.floor(Math.log(x)/Math.log(2))+1)
         # For nearest POT: pow(2, round(log(x)/log(2)))
 
         minx = miny = 0
         for v in @viewports
-            minx = max(minx, v.rect_pix[2])
-            miny = max(miny, v.rect_pix[3])
+            minx = Math.max(minx, v.rect_pix[2])
+            miny = Math.max(miny, v.rect_pix[3])
         minx = next_POT(minx)
         miny = next_POT(miny)
         if @common_filter_fb
             @common_filter_fb.destroy()
         if not @common_filter_fb or @common_filter_fb.width!=minx or @common_filter_fb.height!=miny
             #print "remaking filter fb", minx, miny
-            @common_filter_fb = Framebuffer(minx, miny, @gl.UNSIGNED_BYTE)
+            @common_filter_fb = new Framebuffer(@context.render_manager, minx, miny, @gl.UNSIGNED_BYTE)
 
         # Write fb_size to all materials that require it
         for k, scene of @context.scenes
@@ -384,7 +241,7 @@ class RenderManager
                 #for filter in viewport.post_processing_filters:
                     #@common_filter_fb.draw_with_filter(filter, src_rect)
                 ## Draw translucid pass (post processing is required because it uses the filter fb)
-                #if len(viewport.camera.scene.mesh_passes[2]):
+                #if viewport.camera.scene.mesh_passes[2].length
                     #@draw_viewport(viewport, src_rect, viewport.dest_buffer, false, [2])
             #else
             if viewport.camera.scene.enabled
@@ -434,7 +291,7 @@ class RenderManager
             return true
 
         # Reconfigure materials of mesh if they're missing
-        if len(amesh.materials) == 0
+        if amesh.materials.length == 0
             if amesh.configure_materials() == false
                 # This means frame is too long
                 return false
@@ -473,14 +330,15 @@ class RenderManager
                 gl.uniform4fv(mat.u_color, mesh.color)
 
             mat.u_custom[2] and gl.uniform1f(mat.u_custom[2], mesh.alpha)
-            for i in range(len(mat.u_custom))
+            i = 0
+            while i < mat.u_custom.length
                 cv = mesh.custom_uniform_values[i]
                 if cv
                     if cv.length
                         gl.uniform4fv(mat.u_custom[i], cv)
                     else
                         gl.uniform1f(mat.u_custom[i], cv)
-
+                i+=1
             for lavars in mat.lamps
                 lamp = lavars[0]
                 gl.uniform3fv(lavars[1], lamp._view_pos)
@@ -492,7 +350,8 @@ class RenderManager
                 gl.uniform3fv(lavars[5], lamp._dir)
                 gl.uniformMatrix4fv(lavars[6], false, lamp._cam2depth)
 
-            for i in range(len(mat.textures))
+            i = 0
+            while i < mat.textures.length
                 tex = mat.textures[i]
                 if not tex.loaded
                     tex = render_manager.blank_texture
@@ -507,6 +366,7 @@ class RenderManager
                         active_texture = i
                     gl.bindTexture(gl.TEXTURE_2D, tex.tex)
                     bound_textures[i] = tex
+                i+=1
 
             if mat.u_shapef.length != 0
                 i = 0
@@ -516,7 +376,7 @@ class RenderManager
                     gl.uniform1f(mat.u_shapef[i], influence)
                     i += 1
                 # Set unused shape slots to 0
-                while i<len(mat.u_shapef)
+                while i<mat.u_shapef.length
                     gl.uniform1f(mat.u_shapef[i], 0)
                     i += 1
                 if amesh.shape_multiplier != mat.shape_multiplier
@@ -532,15 +392,19 @@ class RenderManager
                 ## Commented lines sets a float array instead of a matrix array
                 ## Useful for reducing calls
                 ## (TODO: flatten list at source and compare performance)
-                #flat = new Float32Array(len(mat.u_bones))
-                #for i in range(mat.num_bone_uniforms/16):
+                #flat = new Float32Array(mat.u_bones.length)
+                #i = 0
+                #while i < Math.floor(mat.num_bone_uniforms/16):
                     #j = i * 16
                     #cosa.subarray(j).set(m)
+                    #i+=1
                 #gl.uniform1fv(mat.u_bones[j], flat)
 
-                for i in range(mat.num_bone_uniforms)
+                i = 0
+                while i < mat.num_bone_uniforms
                     m = bones[i].ol_matrix
                     gl.uniformMatrix4fv(mat.u_bones[i], false, m)
+                    i+=1
 
             data = amesh.data
             attrib_pointers = data.attrib_pointers[submesh_idx]
@@ -571,21 +435,27 @@ class RenderManager
                 gl.drawElements(data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0)
                 gl.frontFace(2305) # gl.CCW
             ## TODO: Enable in debug mode, silence after n errors
-            #error = gl.getError()
-            #if error != gl.NO_ERROR:
-                #errcodes = {'1280': 'INVALID_ENUM', '1281': 'INVALID_VALUE',
-                            #'1282': 'INVALID_OPERATION', '1205': 'OUT_OF_MEMORY'}
-                #print ('GL Error ' + errcodes[error] + ' when drawing ' + mesh.name +
-                       #' (' + mesh.mesh_name + ') with ' + mesh.material_names[submesh_idx])
+            error = gl.getError()
+            if error != gl.NO_ERROR
+                errcodes = {
+                    '1280': 'INVALID_ENUM',
+                    '1281': 'INVALID_VALUE',
+                    '1282': 'INVALID_OPERATION',
+                    '1205': 'OUT_OF_MEMORY'
+                }
+                console.log ('GL Error ' + errcodes[error] + ' when drawing ' + mesh.name +
+                       ' (' + mesh.mesh_name + ') with ' + mesh.material_names[submesh_idx])
 
             ## shells technique for strand rendering (WIP)
             #h = mat.u_strand
             #if h?:
                 #steps = 10
-                #for i in range(steps):
+                #i = 0
+                #while i < steps:
                     ##gl.uniform1f(h, 1-(Math.pow(steps-i, 2)/(steps*steps)))
                     #gl.uniform1f(h, (i+1)/steps)
                     #gl.drawElements(data.draw_method, data.num_indices[submesh_idx], gl.UNSIGNED_SHORT, 0)
+                    #i+=1
                 #gl.uniform1f(h, 0)
 
             # @meshes_drawn += 1
@@ -680,13 +550,15 @@ class RenderManager
                         gl.uniformMatrix4fv(mat.u_model_view_matrix, false, m4)
                         gl.uniformMatrix4fv(mat.u_projection_matrix, false, lamp._projection_matrix)
                         data = ob.data
-                        for i in range(len(data.vertex_buffers))
+                        i = 0
+                        while i < data.vertex_buffers.length
                             gl.bindBuffer(gl.ARRAY_BUFFER, data.vertex_buffers[i])
                             @.change_enabled_attributes(1)
                             attr = data.attrib_pointers[i][0] # Vertex attribute
                             gl.vertexAttribPointer(attr[0], attr[1], attr[2], false, data.stride, attr[3])
                             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, data.index_buffers[i])
                             gl.drawElements(data.draw_method, data.num_indices[i], gl.UNSIGNED_SHORT, 0)
+                            i+=1
 
                 lamp.shadow_fb.enable()
                 @common_shadow_fb.draw_with_filter(@shadow_box_filter, [0, 0, size, size])
@@ -736,7 +608,7 @@ class RenderManager
                     #print ob.name, ob.loaded
 
         # PASS 1  (alpha)
-        if passes.indexOf(1)>=0 and len(scene.mesh_passes[1])
+        if passes.indexOf(1)>=0 and scene.mesh_passes[1].length
             gl.depthMask(false)
             gl.enable(gl.BLEND)
             # Sort by distence to camera
@@ -756,12 +628,12 @@ class RenderManager
                     return
 
                 #if ob.dupli_group?
-                    #for sphere in groups[ob.dupli_group]:
+                    #for sphere in groups[ob.dupli_group]
                         #mat4.multiply(m4, world2cam, ob.world_matrix)
                         #mat4.multiply(m4, m4, sphere.world_matrix)
                         #@draw_mesh(sphere, ob.world_matrix, m4)
 
-        if len(scene.mesh_passes[1])
+        if scene.mesh_passes[1].length
             gl.disable(gl.BLEND)
             gl.depthMask(true)
 
@@ -843,15 +715,19 @@ class RenderManager
         gl = @gl
         for p in ['uniform1fv', 'uniform2fv', 'uniform3fv', 'uniform4fv']
             gl['_'+p] = gl[p]
-            gl[p] = Function('l','v','''
-                if(v.byteLength==null) throw "wrong type";
-                return this._'''+p+'''(l,v)''')
+            gl[p] = (l,v)->
+                if not v.byteLength?
+                    throw "wrong type"
+                return gl["_"+p](l,v)
+
         for p in ['uniformMatrix3fv', 'uniformMatrix4fv']
             gl['_'+p] = gl[p]
-            gl[p] = Function('l','t','v','''
-                if(v.byteLength==null) throw "wrong type";
-                return this._'''+p+'''(l,t,v)''')
+            gl[p] = (l,t,v)->
+                if v.byteLength?
+                    throw "wrong type"
+                return gl["_"+p](l,t,v)
         return
+
     polycount_debug: (ratio=1)->
         total_polys = 0
         for ob in scene.children
@@ -913,7 +789,7 @@ class Debug
         cos=Math.cos
 
         # Generate and save generic shapes for debug_physics
-        box = Mesh()
+        box = new Mesh(@context)
         d=[1,1,1,
             1,-1,1,
             -1,-1,1,
@@ -925,41 +801,47 @@ class Debug
         box.load_from_lists(d, [0,1,1,2,2,3,3,0,4,5,5,6,6,7,7,4,
                     0,4,1,5,2,6,3,7])
 
-        cylinder = Mesh()
+        cylinder = new Mesh(@context)
         d=[]
         idx=[]
         a=(3.1416*2)/16
-        for i in range(16)
+        i = 0
+        while i < 16
             d=d.concat([sin(a*i),cos(a*i),1])
             d=d.concat([sin(a*i),cos(a*i),-1])
             idx=idx.concat([i*2,(i*2+2)%32,i*2+1,(i*2+3)%32,])
             if i%2==0
                 idx=idx.concat([i*2,i*2+1,])
-
+            i+=1
         cylinder.load_from_lists(d, idx)
 
-        sphere = Mesh()
+        sphere = new Mesh(@context)
         d = []
         idx = []
-        for i in range(16)
+        i = 0
+        while i < 16
             d = d.concat(sin(a*i),cos(a*i),0)
             idx = idx.concat(i, (i+1)%16)
-        for i in range(16)
+        i = 0
+        while i < 16
             d = d.concat(0,sin(a*i),cos(a*i))
             idx = idx.concat(i+16, (i+1)%16+16)
-        for i in range(16)
+            i+=1
+        i = 0
+        while i < 16
             d = d.concat(sin(a*i),0,cos(a*i))
             idx = idx.concat(i+32, (i+1)%16+32)
+            i+=1
         sphere.load_from_lists(d, idx)
 
-        mat = Material(context,'_debug', plain_fs, [{'type':5,'varname':'color'}],
+        mat = new Material(@context,'_debug', plain_fs, [{'type':5,'varname':'color'}],
             [], plain_vs)
 
-        arrow = Mesh()
+        arrow = new Mesh(@context)
         d = [0,0,0,  0,0,1,  0,0.07,0.7,  0,-0.07,0.7,]
         arrow.load_from_lists(d, [0,1,1,2,1,3])
 
-        bone = Mesh()
+        bone = new Mesh(@context)
         d = [0,0,0,
              -0.1, 0.1, -0.1,
               0.1, 0.1, -0.1,
@@ -970,7 +852,7 @@ class Debug
         bone.load_from_lists(d, [0,1,0,2,0,3,0,4,1,2,2,3,3,4,4,1,
                            5,1,5,2,5,3,5,4])
 
-        @material = mat = Material(context, '_debug', plain_fs, [{'type':5,'varname':'color'}],
+        @material = mat = new Material(context, '_debug', plain_fs, [{'type':5,'varname':'color'}],
             [], plain_vs)
 
         for ob in [box, cylinder, sphere, arrow, bone]
@@ -994,9 +876,9 @@ class Debug
     debug_mesh_from_va_ia: (va, ia)->
         # Disabled temporary to enable debug vectors
         return
-        mesh = Mesh()
+        mesh = new Mesh(@context)
         mesh.stride = 3*4
-        mesh.offsets = [0, 0, len(va), len(ia)]
+        mesh.offsets = [0, 0, va.length, ia.length]
         mesh.load_from_va_ia(va, ia)
         mesh.elements = []
         mesh.configure_materials([@material])
@@ -1009,7 +891,7 @@ class Debug
 #TODO: TimSort
 
 module.exports = {
-    Framebuffer, MainFramebuffer, Viewport, RenderManager,
+    RenderManager,
     MIRROR_MASK_X
     MIRROR_MASK_Y,
     MIRROR_MASK_Z,

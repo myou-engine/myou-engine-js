@@ -1,4 +1,4 @@
-
+"use strict"
 class Events
     # All are just 1 or 0
     keys_pressed: new Uint8Array 256
@@ -128,7 +128,7 @@ class Events
             rel_x = x - mouse.page_x
             rel_y = y - mouse.page_y
             mouse.move_events_since_mousedown += 1
-            if mouse.move_events_since_mousedown < NO_MOVE_TICKS
+            if mouse.move_events_since_mousedown < @NO_MOVE_TICKS
                 return
             mouse.page_x = x
             mouse.page_y = y
@@ -162,7 +162,7 @@ class Events
         wheel = (event)->
             # this value will eventually be normalized to be pixels or heights
             # until then, we'll have 1 or -1
-            mouse.wheel += max(-1, min(1, event.deltaY))
+            mouse.wheel += Math.max(-1, Math.min(1, event.deltaY))
             if mouse.cancel_wheel
                 event.preventDefault()
         root_element.addEventListener('wheel', wheel, false)
@@ -195,9 +195,9 @@ class Events
 
     _empty_key_array = new Uint8Array(256)
 
-    reset_frame_events = ->
-        keys_just_pressed.set(_empty_key_array)
-        keys_just_released.set(_empty_key_array)
+    reset_frame_events: ->
+        @keys_just_pressed.set(_empty_key_array)
+        @keys_just_released.set(_empty_key_array)
         @mouse.rel_x = 0
         @mouse.rel_y = 0
         @mouse.wheel = 0

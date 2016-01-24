@@ -1,6 +1,22 @@
 "use strict"
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require('gl-matrix')
 
+{
+    update_ob_physics,
+
+    BoxShape, SphereShape, CylinderShape, CapsuleShape,
+    ConvexShape, TriangleMeshShape, CompoundShape,
+    get_convex_hull_edges, add_child_shape,
+
+    RigidBody, StaticBody, CharacterBody,
+    add_body, remove_body,
+
+    allow_sleeping, make_ghost,
+    set_linear_factor, set_angular_factor
+
+} = require('./physics')
+
+
 NO_MIRROR = 1
 MIRROR_X = 2
 MIRROR_Y = 4
@@ -10,15 +26,10 @@ MIRROR_XZ = 32
 MIRROR_YZ = 64
 MIRROR_XYZ = 128
 
-groups = {}
-
-class Group
-    constructor: (objects, offset) ->
-        @objects = objects
-        @offset = offset
-
 class GameObject
-    constructor:  ()->
+    constructor: (use_physics=false, debug=false)->
+        @debug = debug
+        @use_physics = use_physics
         @position = vec3.create()
         @rotation = quat.create()
         @rotation_order = 'Q'
@@ -50,7 +61,7 @@ class GameObject
         @body = null
         @shape = null
         @physics_type = 'NO_COLLISION'
-        if MYOU_PARAMS.load_physics_engine
+        if use_physics
             @physical_radius = 1
             @anisotropic_friction = false
             @friction_coefficients = vec3.set(vec3.create(), 1, 1, 1)
@@ -98,7 +109,7 @@ class GameObject
             @body = null
             @phy_debug_mesh = null  # but it preserves phy_debug_hull
 
-        mass=@mass
+        mass = @mass
         shape = null
         #@phy_debug_mesh = null
         has_collision = @physics_type != 'NO_COLLISION'
@@ -120,22 +131,22 @@ class GameObject
                 vec3.scale(he, dim, 0.5)
 
             if @collision_shape=='BOX'
-                shape = BoxShape(he[0], he[1], he[2], @collision_margin)
+                shape = new BoxShape(he[0], he[1], he[2], @collision_margin)
                 @phy_debug_mesh = render_manager.debug.box
             else if @collision_shape=='SPHERE'
-                radius = max(he[0], he[1], he[2])
+                radius = Math.max(he[0], he[1], he[2])
                 he = [radius, radius, radius]
-                shape = SphereShape(radius, @collision_margin)
+                shape = new SphereShape(radius, @collision_margin)
                 @phy_debug_mesh = render_manager.debug.sphere
             else if @collision_shape=='CYLINDER'
-                radius = max(he[0], he[1])
+                radius = Math.max(he[0], he[1])
                 he = [radius, radius, he[2]]
-                shape = CylinderShape(radius, he[2], @collision_margin)
+                shape = new CylinderShape(radius, he[2], @collision_margin)
                 @phy_debug_mesh = render_manager.debug.cylinder
             else if @collision_shape=='CAPSULE'
-                radius = max(he[0], he[1])
+                radius = Math.max(he[0], he[1])
                 he = [radius, radius, he[2]]
-                shape = CapsuleShape(radius, he[2], @collision_margin)
+                shape = new CapsuleShape(radius, he[2], @collision_margin)
                 @phy_debug_mesh = render_manager.debug.cylinder
             else if is_hull or is_tmesh
                 # Choose which mesh to use as physics
@@ -182,14 +193,14 @@ class GameObject
                     if @mirrors & 2
                         scale[0] = -scale[0]
                     if is_hull
-                        shape = ConvexShape(data.varray, ob.stride/4, @scale, @collision_margin)
+                        shape = new ConvexShape(data.varray, ob.stride/4, @scale, @collision_margin)
                         data.phy_convex_hull = shape
-                        if MYOU_PARAMS.debug and not @phy_debug_hull
+                        if @debug and not @phy_debug_hull
                             va_ia = get_convex_hull_edges(data.varray, ob.stride/4, scale)
                             @phy_debug_hull = render_manager.debug.debug_mesh_from_va_ia(va_ia[0], va_ia[1])
                         @phy_debug_mesh = @phy_debug_hull
                     else
-                        shape = TriangleMeshShape
+                        shape = TriangleMeshShape(
                             data.varray,
                             # TODO: use all submeshes
                             data.iarray.subarray(0, ob.offsets[2]),
@@ -197,7 +208,7 @@ class GameObject
                             scale,
                             @collision_margin,
                             @name
-
+                        )
                         if @mirrors & 2
                             data.phy_mesh_mx = shape
                         else
@@ -226,7 +237,7 @@ class GameObject
                     add_child_shape(comp, shape, pos, rot)
                     shape = null
                 else
-                    comp = CompoundShape()
+                    comp = new CompoundShape()
                     add_child_shape(comp, shape, [0, 0, 0], [0, 0, 0, 1])
                     shape = comp
             else
@@ -240,19 +251,19 @@ class GameObject
                 rot = posrot[1]
                 # TODO: SOFT_BODY, OCCLUDE, NAVMESH
                 if @physics_type == 'RIGID_BODY'
-                    body = RigidBody(mass, shape, pos, rot, @friction, @elasticity, @form_factor)
+                    body = new RigidBody(mass, shape, pos, rot, @friction, @elasticity, @form_factor)
                     set_linear_factor(body, @linear_factor)
                     set_angular_factor(body, @angular_factor)
-                    @scene.rigid_bodies.append(@)
+                    @scene.rigid_bodies.push(@)
                 else if @physics_type == 'DYNAMIC'
-                    body = RigidBody(mass, shape, pos, rot, @friction, @elasticity, @form_factor)
+                    body = new RigidBody(mass, shape, pos, rot, @friction, @elasticity, @form_factor)
                     set_linear_factor(body, @linear_factor)
                     set_angular_factor(body, [0, 0, 0])
-                    @scene.rigid_bodies.append(@)
+                    @scene.rigid_bodies.push(@)
                 else if @physics_type == 'STATIC' or @physics_type == 'SENSOR'
-                    body = StaticBody(shape, pos, rot, @friction, @elasticity)
+                    body = new StaticBody(shape, pos, rot, @friction, @elasticity)
                 else if @physics_type == 'CHARACTER'
-                    body = CharacterBody
+                    body = CharacterBody(
                         shape
                         pos
                         rot
@@ -262,11 +273,11 @@ class GameObject
                         @jump_force
                         @max_fall_speed
                         PI_2 #slope
-
+                        )
                     #body.char.setJumpSpeed(0)
                     #body.char.jump()
                     #body.char.setJumpSpeed(10)
-                    @scene.rigid_bodies.append(@)
+                    @scene.rigid_bodies.push(@)
                 else
                     print "Warning: Type not handled", @physics_type
                 @shape = shape
@@ -279,10 +290,10 @@ class GameObject
                 if not @no_sleeping
                     allow_sleeping(body, true)
                 if @is_ghost or @physics_type == 'SENSOR'
-                    @scene.static_ghosts.append(@)
+                    @scene.static_ghosts.push(@)
                     make_ghost(body, true)
                 if @physics_type == 'CHARACTER'
-                    @scene.kinematic_characters.append(@)
+                    @scene.kinematic_characters.push(@)
                 update_ob_physics(@)
             @body = body
 
@@ -321,7 +332,8 @@ class GameObject
             #mat3.multiply(m,rm,m)
 
         else
-            for axisn in range(3)
+            axisn = 0
+            while axisn < 3
                 axis = @rotation_order[axisn]
                 mat3.identity(rm)
                 a = @rotation[{'X':0,'Y':1,'Z':2}[axis]]# * 0.017453 # PI/180
@@ -343,6 +355,8 @@ class GameObject
                     rm[1]=sina
                     rm[3]=-sina
                     rm[4]=cosa
+
+                axisn += 1
 
                 mat3.multiply(m,rm,m)
 
@@ -462,8 +476,10 @@ class GameObject
         # if the target scene have the same type of lamps!
         if n.materials and scene != this.scene
             n.materials = materials = n.materials[...]
-            for i in range(materials.length)
+            i = 0
+            while i < materials.length
                 mat = materials[i] = materials[i].clone_to_scene(scene)
+                i+=1
 
         scene.add_object(n, @name)
         if @body
@@ -475,9 +491,9 @@ class GameObject
         @scene.remove_object(recursive)
 
     add_animation: (anim_id, action) ->
-        if len(Object.keys(@animations)) == 0
-            _all_anim_objects.append(@)
-        anim = @animations[anim_id] = Animation()
+        if Object.keys(@animations).length == 0
+            _all_anim_objects.push(@)
+        anim = @animations[anim_id] = new Animation()
         anim.action = action
         anim.owner = @
         @_recalc_affected_channels()
@@ -485,8 +501,8 @@ class GameObject
 
     del_animation: (anim_id) ->
         #print 'removing',anim_id
-        del @animations[anim_id]
-        if len(Object.keys(@animations)) == 0
+        delete @animations[anim_id]
+        if Object.keys(@animations).length == 0
             _all_anim_objects.remove(@)
         @_recalc_affected_channels()
 
@@ -501,8 +517,8 @@ class GameObject
         # storing cache
         affected = {}
         i = 0
-        for anim in @animations.values()
-            for path in anim.action.channels.keys()
+        for key, anim of @animations
+            for path of anim.action.channels
                 c = affected[path]
                 if not c?
                     c = affected[path] = true
@@ -565,4 +581,4 @@ class STransform
                          Math.random()-0.5]
         @scale = Math.random()*2 + 0.1
 
-module.exports = {Group, GameObject, STransform}
+module.exports = {GameObject, STransform}
