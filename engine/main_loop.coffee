@@ -1,6 +1,6 @@
 "use strict"
 
-
+evaluate_all_animations = require('./animation').evaluate_all_animations
 # Logic assumes a frame won't be longer than this
 # Below that point, things go slow motion
 MAX_FRAME_DURATION = 167   # 10 fps
@@ -21,7 +21,7 @@ class MainLoop
     run: ->
         @_bound_tick = @tick.bind(@)
         requestAnimationFrame(@_bound_tick)
-        @enabled = false
+        @enabled = true
         @last_time = performance.now()
 
     stop: ->
@@ -31,13 +31,13 @@ class MainLoop
     tick: ->
         requestAnimationFrame(@_bound_tick)
         time = performance.now()
-        @frame_duration = frame_duration = min(time - @last_time, MAX_FRAME_DURATION)
+        @frame_duration = frame_duration = Math.min(time - @last_time, MAX_FRAME_DURATION)
 
-        if @enabled == false or len(@context.loaded_scenes) == 0
+        if @enabled == false or @context.loaded_scenes.length == 0
             return
 
         @last_frame_durations[@_fdi] = frame_duration
-        @_fdi = (@_fdi+1) % len(@last_frame_durations)
+        @_fdi = (@_fdi+1) % @last_frame_durations.length
 
         @last_time = time
 
@@ -59,10 +59,10 @@ class MainLoop
         evaluate_all_animations(frame_duration)
         for s in @context.active_sprites
             s.evaluate_sprite(frame_duration)
-        render_manager.draw_all()
+        @context.render_manager.draw_all()
 
         for scene in @context.loaded_scenes
-            if not @context.scene.enabled
+            if not @context.scene? or not @context.scene.enabled
                 continue
             callbacks = scene.post_draw_callbacks
             n_callbacks = callbacks.length
@@ -70,14 +70,14 @@ class MainLoop
                 n_callbacks -= 1
                 callbacks[n_callbacks](scene, frame_duration)
 
-        @context.reset_frame_events()
+        @context.events.reset_frame_events()
 
     reset_timeout: ->
         #TODO: find Where is this created and what is the meaning
         #clearTimeout(@timeout_timer)
         @enabled = true
-        f = =>
-            @enabled = false
-        @timeout_timer = setTimeout(f, @timeout)
+        # f = =>
+        #     @enabled = false
+        # @timeout_timer = setTimeout(f, @timeout)
 
 module.exports = {MainLoop}

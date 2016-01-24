@@ -39,7 +39,6 @@ Events = require('./events').Events
 MainLoop = require('./main_loop').MainLoop
 
 class Myou
-    scene: null
     scenes: {}
     loaded_scenes: []
     active_sprites: []
@@ -51,7 +50,7 @@ class Myou
     root: null
     all_materials: []
     mesh_datas: []
-    SHADER_LIB: null
+    SHADER_LIB: ''
 
     constructor: (root, MYOU_PARAMS)->
         @root = @canvas = canvas = root
@@ -97,7 +96,7 @@ create_canvas = (root)->
     canvas = document.createElement('canvas')
     canvas.style.position = 'absolute'
     canvas.style.width = '100%'
-    canvas.style.height = '100%'
+    canvas.style.height = '100vh'
     canvas.setAttribute('moz-opaque', true)
     if root?
         root.insertBefore(canvas, root.firstChild)

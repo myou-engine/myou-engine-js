@@ -1,7 +1,15 @@
+"use strict"
 
 CRUNCH_MEM = 64
 MAX_ACTIVE_TASKS = 6
 worker = @
+
+remove_from_array = (array, i) ->
+        i = array.indexOf(i)
+        if i != -1
+            array.splice(i,1)
+
+
 # Crunch is imported in the head of the load_worker (in loader.coffee)
 # JS("importScripts('crunch.js')")
 
@@ -182,7 +190,7 @@ class Queue
             @active_tasks += 1
 
     finish_task: (xhr)->
-        @tasks.remove(xhr)
+        remove_from_array(@tasks, xhr)
         @active_tasks -= 1
         @init_tasks()
         if @active_tasks == 0

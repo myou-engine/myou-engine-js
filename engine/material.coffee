@@ -1,12 +1,11 @@
 "use strict"
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require('gl-matrix')
 
-SHADER_LIB = ''
 
 load_material = (scene, data)->
     name = data['name']
     mat = scene.materials[name] = \
-        new Material(scene.context, name, [SHADER_LIB, data['fragment']], data['uniforms'], data['attributes'], "", scene)
+        new Material(scene.context, name, [scene.context.SHADER_LIB, data['fragment']], data['uniforms'], data['attributes'], "", scene)
     # make sure it's bool
     mat.double_sided = not not data.double_sided
 
@@ -97,18 +96,18 @@ class Material
             # GPU_DYNAMIC_SAMPLER_2DBUFFER = 12,
             # And 15 was distance wrongly, it's GPU_DYNAMIC_OBJECT_AUTOBUMPSCALE
             else if u.type == 14 # shadow texture
-                @textures.append(objects[u.lamp].shadow_fb.texture)
-                tex_uniforms.append(u.varname)
+                @textures.push(@scene.objects[u.lamp].shadow_fb.texture)
+                tex_uniforms.push(u.varname)
             else if u.type == 13 and scene # 2D image
                 tex = scene.loader.load_texture(u.image, u.filepath, u.filter, u.wrap, u.size)
-                @textures.append(tex)
-                tex.users.append(@)
-                tex_uniforms.append(u.varname)
+                @textures.push(tex)
+                tex.users.push(@)
+                tex_uniforms.push(u.varname)
             else if u.type == 77 # position in strand (0-1)
                 var_strand = u.varname
                 var_strand_type = u.gltype
             else if u.type == -1 # custom
-                var_custom.append(u.varname)
+                var_custom.push(u.varname)
             else
                 console.log u
                 console.log "Warning: unknown uniform", u.varname, u.type, "of data type", \
@@ -154,11 +153,13 @@ class Material
                 @attrib_locs["tangent"] = -1
             else if a.type == 99 # shape key
                 num_shapes = a.count
-                for i in range(num_shapes)
+                i = 0
+                while i < num_shapes
                     attribute_decl += "attribute vec3 shape"+i+";\n"
                     attribute_decl += "attribute vec3 shapenor"+i+";\n"
                     @attrib_locs["shape"+i] = -1
                     @attrib_locs["shapenor"+i] = -1
+                    i+=1
                 uniform_decl += "uniform float shapef["+num_shapes+"];"
             else if a.type == 88 # armature deform
                 num_bones = a.count
@@ -191,9 +192,11 @@ class Material
                     var_strand = "strand"
                 uniform_decl += "uniform "+var_strand_type+" "+var_strand+";\n"
                 num_particles = a.count
-                for i in range(num_particles)
+                i = 0
+                while i < num_particles
                     attribute_decl += "attribute vec3 particle"+i+";\n"
                     @attrib_locs["particle"+i] = -1
+                    i+=1
             else
                 # original coordinates (TODO: divide by dimensions)
                 attribute_decl += "varying vec3 "+v+";\n"
@@ -204,18 +207,22 @@ class Material
             shape_key_code = """float relf = 0.0;
             vec3 n;
                 """
-            for i in range(num_shapes)
+            i = 0
+            while i < num_shapes
                 shape_key_code += """co += shape"""+i+""" * shapef["""+i+"""] * shape_multiplier;
                 relf += shapef["""+i+"""];
                 """
+                i+=1
             # Interpolating normals instead of re-calculating them is wrong
             # But it's fast and completely unnoticeable in most cases
             shape_key_code += "normal *= clamp(1.0 - relf, 0.0, 1.0);\n"
-            for i in range(num_shapes)
+            i = 0
+            while i < num_shapes
                 shape_key_code += """
                 n = shapenor"""+i+""" * 0.007874;
-                normal += n * max(0.0, shapef["""+i+"""]);
+                normal += n * Math.max(0.0, shapef["""+i+"""]);
                 """
+                i+=1
             # TODO: interleave fors for efficency, adding an uniform with the sum?
             #       saving all uniforms in a single matrix?
             #       (so only one gl.uniform16fv is enough)
@@ -326,14 +333,18 @@ class Material
         @u_fb_size = gl.getUniformLocation(prog, "fb_size")
         @u_strand = gl.getUniformLocation(prog, var_strand)
         @u_shapef = []
-        for i in range(num_shapes)
+        i = 0
+        while i < num_shapes
             @u_shapef[i] = gl.getUniformLocation(prog, "shapef["+i+"]")
+            i+=1
         @u_bones = []
-        for i in range(@num_bone_uniforms)
+        i = 0
+        while i < @num_bone_uniforms
             @u_bones[i] = gl.getUniformLocation(prog, "bones["+i+"]")
+            i+=1
         @u_custom = []
         for v in var_custom
-            @u_custom.append(gl.getUniformLocation(prog, v))
+            @u_custom.push(gl.getUniformLocation(prog, v))
 
         fb = @context.render_manager.common_filter_fb
         if fb and @u_fb_size?
@@ -347,14 +358,15 @@ class Material
            a = gl.getAttribLocation(prog, a_name)|0
            @attrib_locs[a_name] = a
 
-        for i in range(len(tex_uniforms))
+        i = 0
+        while i < tex_uniforms.length
             gl.uniform1i(gl.getUniformLocation(prog, tex_uniforms[i]), i)
-
+            i+=1
         # TODO: only ~half of those vars are present
         for i of lamps
             lamp_data = lamps[i]
-            @lamps.append([
-                objects[i],
+            @lamps.push([
+                @scene.objects[i],
                 gl.getUniformLocation(prog, lamp_data.varpos),
                 gl.getUniformLocation(prog, lamp_data.varcolor3),
                 gl.getUniformLocation(prog, lamp_data.varcolor4),
@@ -370,7 +382,7 @@ class Material
     use: ->
         prog = @_program
         if _active_program != prog
-            render_manager.gl.useProgram(prog)
+            @context.render_manager.gl.useProgram(prog)
         return prog
 
     reupload: ->
@@ -378,20 +390,20 @@ class Material
         @uniforms_config, @attributes_config, @vs_code, @scene)
 
     destroy: ->
-        render_manager.gl.deleteProgram(@_program)
+        @context.render_manager.gl.deleteProgram(@_program)
 
     debug_set_uniform: (utype, uname, value)->
         # Use only for debugging purposes!
         # Examples:
         # debug_set_uniform('1f', 'some_uniform', 3.0)
         # debug_set_uniform('4fv', 'some_uniform', [1,2,3,4])
-        render_manager.gl.useProgram(@_program)
-        loc = render_manager.gl.getUniformLocation(@_program, uname)
-        render_manager.gl['uniform'+utype](loc, value)
+        @context.render_manager.gl.useProgram(@_program)
+        loc = @context.render_manager.gl.getUniformLocation(@_program, uname)
+        @context.render_manager.gl['uniform'+utype](loc, value)
 
     debug_set_custom_uniform: (utype, index, value)->
-        render_manager.gl.useProgram(@_program)
-        render_manager.gl['uniform'+utype](@u_custom[index], value)
+        @context.render_manager.gl.useProgram(@_program)
+        @context.render_manager.gl['uniform'+utype](@u_custom[index], value)
 
     clone_to_scene: (scene)->
         # The only reason we have for cloning a material is to change the lamps
@@ -411,7 +423,7 @@ class Material
                         l[0] = dlamp
                         dest_scene_lamps.remove(dlamp)
                         break
-            lamps.append(l)
+            lamps.push(l)
             # If matches weren't found, fat chance. We're not warning.
 
         return cloned
