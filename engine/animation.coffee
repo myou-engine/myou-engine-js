@@ -1,6 +1,9 @@
+"use strict"
 
 actions = {}
 animations = {}
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require('gl-matrix')
+{update_ob_physics} = require('./physics')
 
 # An action is a bunch of animation splines, without specific start, end
 # or any other setting
@@ -71,22 +74,21 @@ class Animation
     blendout_remaining : 0
     owner : null
 
-_all_anim_objects = []
-evaluate_all_animations = (frame_duration_ms)->
+evaluate_all_animations = (context, frame_duration_ms)->
     # TODO each animation will have a FPS setting
     # until then, we assume 60 fps animations,
     # and frame_factor adjusts the speed for that
     frame_factor = frame_duration_ms * 0.06
 
-    for ob in _all_anim_objects
+    for ob in context.all_anim_objects
 
         blended = []  # [orig_chan, final blend, total weight]
 
-        for path in ob.affected_anim_channels.keys()
+        for path of ob.affected_anim_channels
             blend = null
             weight = 0
             type = name = prop = ''
-            for anim in ob.animations.values()
+            for k,anim of ob.animations
                 orig_chan = anim.action.channels[path]
                 if not orig_chan
                     continue
@@ -132,7 +134,7 @@ evaluate_all_animations = (frame_duration_ms)->
                     quat.normalize(p, p)
             i += 1
 
-        for anim_id in ob.animations.keys()
+        for anim_id of ob.animations
             anim = ob.animations[anim_id]
             s = anim.speed * frame_factor
             anim.pos += s
@@ -155,9 +157,20 @@ evaluate_all_animations = (frame_duration_ms)->
 
 stop_all_animations = ->
     for ob in _all_anim_objects[...]
-        for anim_id in ob.animations.keys()
+        for anim_id of ob.animations
             ob.del_animation(anim_id)
     return
+
+interpolate = (t, p0, p1, p2, p3)->
+    t2 = t * t
+    t3 = t2 * t
+
+    c0 = p0
+    c1 = -3.0 * p0 + 3.0 * p1
+    c2 = 3.0 * p0 - 6.0 * p1 + 3.0 * p2
+    c3 = -p0 + 3.0 * p1 - 3.0 * p2 + p3
+
+    return c0 + t * c1 + t2 * c2 + t3 * c3
 
 cubic_root = (d) ->
     if d > 0

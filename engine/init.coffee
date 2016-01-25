@@ -51,6 +51,7 @@ class Myou
     all_materials: []
     mesh_datas: []
     SHADER_LIB: ''
+    all_anim_objects: []
 
     constructor: (root, MYOU_PARAMS)->
         @root = @canvas = canvas = root

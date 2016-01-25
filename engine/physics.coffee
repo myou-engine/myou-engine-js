@@ -3,6 +3,8 @@ PHYSICS_ENGINE_URL = 'ammo.asm.js'
 PHYSICS_ENGINE_SIZE = 3776745
 
 _phy_obs_ptrs = {} # used in body creation/destruction, colliding_bodies and ray_intersect_bodies
+_tmp_Vector3 = _tmp_Vector3b = _tmp_Vector3c = _tmp_Quaternion = _tmp_Transform = \
+_tmp_ClosestRayResultCallback = destroy = null
 
 physics_engine_init = ->
     # avoiding allocations
@@ -12,7 +14,7 @@ physics_engine_init = ->
     _tmp_Quaternion = new(Ammo.btQuaternion)(0, 0, 0, 0)
     _tmp_Transform = new(Ammo.btTransform)
     _tmp_ClosestRayResultCallback = new(Ammo.ClosestRayResultCallback)(new(Ammo.btVector3)(0, 0, 0), new(Ammo.btVector3)(0, 0, 0))
-    window.destroy = Ammo.destroy or (o)-> o.destroy()
+    destroy = Ammo.destroy or (o)-> o.destroy()
 
 xyz = (v)->
     p = v.ptr>>2
@@ -260,7 +262,7 @@ activate_body = (body)->
     body.activate()
 
 update_ob_physics = (ob)->
-    if ob.body is not None
+    if ob.body?
         if ob.parent
             posrot = ob.get_world_pos_rot()
             pos = posrot[0]
@@ -497,7 +499,7 @@ ray_intersect_body = (scene, origin, direction, int_mask=-1)->
            distance: vec3.dist(point, origin)
            }
 
-    return None
+    return null
 
 ray_intersect_body_absolute = (scene, rayfrom, rayto, int_mask)->
     # returns [body, point, normal]
@@ -529,7 +531,7 @@ ray_intersect_body_absolute = (scene, rayfrom, rayto, int_mask)->
                 new Float32Array(Ammo.HEAPF32.subarray(p,p+3)),
                 new Float32Array(Ammo.HEAPF32.subarray(n,n+3))]
 
-    return None
+    return null
 
 ray_intersect_body_bool = (scene, rayfrom, rayto, mask)->
     cp = _tmp_ClosestRayResultCallback.ptr

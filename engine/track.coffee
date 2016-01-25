@@ -12,7 +12,7 @@ class Track
         for i in [0...lc]
             curve_index = parseInt(i)
             c = curves[curve_index]
-            @offsets.append(None)
+            @offsets.append(null)
 
         @save_offsets(0)
         s = 0

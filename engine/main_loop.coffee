@@ -56,7 +56,7 @@ class MainLoop
             for p in scene.active_particle_systems
                 p._eval()
 
-        evaluate_all_animations(frame_duration)
+        evaluate_all_animations(@context, frame_duration)
         for s in @context.active_sprites
             s.evaluate_sprite(frame_duration)
         @context.render_manager.draw_all()
