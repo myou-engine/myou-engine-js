@@ -1,6 +1,6 @@
 "use strict"
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require('gl-matrix')
-
+Animation = require('./animation').Animation
 {
     update_ob_physics,
 
@@ -487,7 +487,7 @@ class GameObject
 
     add_animation: (anim_id, action) ->
         if Object.keys(@animations).length == 0
-            _all_anim_objects.push(@)
+            @scene.context.all_anim_objects.push(@)
         anim = @animations[anim_id] = new Animation()
         anim.action = action
         anim.owner = @
@@ -498,7 +498,7 @@ class GameObject
         #print 'removing',anim_id
         delete @animations[anim_id]
         if Object.keys(@animations).length == 0
-            _all_anim_objects.remove(@)
+            @scene.context.all_anim_objects.remove(@)
         @_recalc_affected_channels()
 
     _recalc_affected_channels:  ->
