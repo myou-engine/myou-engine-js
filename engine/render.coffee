@@ -351,7 +351,7 @@ class RenderManager
             for i in [0...mat.textures.length]
                 tex = mat.textures[i]
                 if not tex.loaded
-                    tex = @render_manager.blank_texture
+                    tex = @context.render_manager.blank_texture
                 #if tex.name == 'special:fb':
                     #gl.activeTexture(gl.TEXTURE0 + i)
                     #active_texture = i
