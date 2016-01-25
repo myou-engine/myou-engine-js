@@ -394,7 +394,7 @@ class Loader
                                     #'1282': 'INVALID_OPERATION', '1205': 'OUT_OF_MEMORY'}
                         #console.log ('GL Error ' + errcodes[error] + ' when loading ' + tex.path + ' size:' + width + 'x' + height + ' level:' + i)
 
-                gl_linear = if filter then gl.LINEAR else gl.NEAREST
+                gl_linear_nearest = if filter then gl.LINEAR else gl.NEAREST
                 if buffers_len > 1
                     mipmap_filter = {
                         C: (if filter then gl.LINEAR_MIPMAP_NEAREST  else gl.NEAREST_MIPMAP_NEAREST)
@@ -402,8 +402,8 @@ class Loader
                         }[wrap]
                     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, mipmap_filter)
                 else
-                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl_linear)
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl_linear)
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl_linear_nearest)
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl_linear_nearest)
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap_const)
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap_const)
 
@@ -426,10 +426,10 @@ class Loader
                 # Assuming texture is square
                 data = new Uint16Array(data)
                 width = height = Math.sqrt(data.length)
-                gl_linear = if filter then gl.LINEAR else gl.NEAREST
+                gl_linear_nearest = if filter then gl.LINEAR else gl.NEAREST
                 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, width, height, 0, gl.RGB, gl.UNSIGNED_SHORT_5_6_5, data)
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl_linear)
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl_linear)
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl_linear_nearest)
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl_linear_nearest)
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap_const)
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap_const)
 
@@ -493,7 +493,7 @@ class Loader
             @add_task(src, f, '')
         else
             @pending_operations += 1
-            img = new(Image)()
+            img = new Image
             #img.crossOrigin = 'anonymous'
             tex.reupload = ->
                 if tex.tex
@@ -528,7 +528,7 @@ class Loader
                 #self_.pending_operations -= 1
                 #self_.may_have_loaded_all()
                 console.log "Image not found: " + path
-            if path[..5]=='data:'
+            if path[...5]=='data:'
                 img.src = path
             else
                 base = @data_dir + 'textures/'
