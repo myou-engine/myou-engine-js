@@ -330,15 +330,13 @@ class RenderManager
                 gl.uniform4fv(mat.u_color, mesh.color)
 
             mat.u_custom[2] and gl.uniform1f(mat.u_custom[2], mesh.alpha)
-            i = 0
-            while i < mat.u_custom.length
+            for i in [0...mat.u_custom.length]
                 cv = mesh.custom_uniform_values[i]
                 if cv
                     if cv.length
                         gl.uniform4fv(mat.u_custom[i], cv)
                     else
                         gl.uniform1f(mat.u_custom[i], cv)
-                i+=1
             for lavars in mat.lamps
                 lamp = lavars[0]
                 gl.uniform3fv(lavars[1], lamp._view_pos)
@@ -350,8 +348,7 @@ class RenderManager
                 gl.uniform3fv(lavars[5], lamp._dir)
                 gl.uniformMatrix4fv(lavars[6], false, lamp._cam2depth)
 
-            i = 0
-            while i < mat.textures.length
+            for i in [0...mat.textures.length]
                 tex = mat.textures[i]
                 if not tex.loaded
                     tex = render_manager.blank_texture
@@ -366,7 +363,6 @@ class RenderManager
                         active_texture = i
                     gl.bindTexture(gl.TEXTURE_2D, tex.tex)
                     bound_textures[i] = tex
-                i+=1
 
             if mat.u_shapef.length != 0
                 i = 0
@@ -400,11 +396,9 @@ class RenderManager
                     #i+=1
                 #gl.uniform1fv(mat.u_bones[j], flat)
 
-                i = 0
-                while i < mat.num_bone_uniforms
+                for i in [0...mat.num_bone_uniforms]
                     m = bones[i].ol_matrix
                     gl.uniformMatrix4fv(mat.u_bones[i], false, m)
-                    i+=1
 
             data = amesh.data
             attrib_pointers = data.attrib_pointers[submesh_idx]
@@ -550,15 +544,13 @@ class RenderManager
                         gl.uniformMatrix4fv(mat.u_model_view_matrix, false, m4)
                         gl.uniformMatrix4fv(mat.u_projection_matrix, false, lamp._projection_matrix)
                         data = ob.data
-                        i = 0
-                        while i < data.vertex_buffers.length
+                        for i in [0...data.vertex_buffers.length]
                             gl.bindBuffer(gl.ARRAY_BUFFER, data.vertex_buffers[i])
                             @.change_enabled_attributes(1)
                             attr = data.attrib_pointers[i][0] # Vertex attribute
                             gl.vertexAttribPointer(attr[0], attr[1], attr[2], false, data.stride, attr[3])
                             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, data.index_buffers[i])
                             gl.drawElements(data.draw_method, data.num_indices[i], gl.UNSIGNED_SHORT, 0)
-                            i+=1
 
                 lamp.shadow_fb.enable()
                 @common_shadow_fb.draw_with_filter(@shadow_box_filter, [0, 0, size, size])
@@ -805,33 +797,26 @@ class Debug
         d=[]
         idx=[]
         a=(3.1416*2)/16
-        i = 0
-        while i < 16
+        for i in [0...16]
             d=d.concat([sin(a*i),cos(a*i),1])
             d=d.concat([sin(a*i),cos(a*i),-1])
             idx=idx.concat([i*2,(i*2+2)%32,i*2+1,(i*2+3)%32,])
             if i%2==0
                 idx=idx.concat([i*2,i*2+1,])
-            i+=1
         cylinder.load_from_lists(d, idx)
 
         sphere = new Mesh(@context)
         d = []
         idx = []
-        i = 0
-        while i < 16
+        for i in [0...16]
             d = d.concat(sin(a*i),cos(a*i),0)
             idx = idx.concat(i, (i+1)%16)
-        i = 0
-        while i < 16
+        for i in [0...16]
             d = d.concat(0,sin(a*i),cos(a*i))
             idx = idx.concat(i+16, (i+1)%16+16)
-            i+=1
-        i = 0
-        while i < 16
+        for i in [0...16]
             d = d.concat(sin(a*i),0,cos(a*i))
             idx = idx.concat(i+32, (i+1)%16+32)
-            i+=1
         sphere.load_from_lists(d, idx)
 
         mat = new Material(@context,'_debug', plain_fs, [{'type':5,'varname':'color'}],

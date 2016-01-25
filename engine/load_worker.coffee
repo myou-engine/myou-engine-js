@@ -36,8 +36,7 @@ load_crunch = (task_id, queue_id, data, extra_data, uri) ->
     else
         block_bytes = 16
     context = Crunch._crn_unpack_begin(src, src_size)
-    i = 0
-    while i < levels
+    for i in [0...levels]
         data_length = (Math.max( 4, width>>i )>>2) * (Math.max( 4, height>>i )>>2) * block_bytes
         #max_size = Math.max(max_size, src_size+dataLength)
         #console.log max_size
@@ -48,7 +47,6 @@ load_crunch = (task_id, queue_id, data, extra_data, uri) ->
             buffer = dxtToRgb565(new Uint16Array(buffer), 0, width>>i, height>>i).buffer
         level_buffers.push(buffer)
         Crunch._free(data_offset)
-        i += 1
     common_data = null
     transfer = level_buffers
     if additional_levels
@@ -113,10 +111,8 @@ dxtToRgb565 = (src, src16Offset, width, height) ->
     blockWidth = width / 4
     blockHeight = height / 4
 
-    blockY = 0
-    while blockY < blockHeight
-        blockX = 0
-        while blockX < blockWidth
+    for blockY in [0...blockHeight]
+        for blockX in [0...blockWidth]
             i = src16Offset + 4 * (blockY * blockWidth + blockX)
             c[0] = src[i]
             c[1] = src[i + 1]
@@ -156,8 +152,6 @@ dxtToRgb565 = (src, src16Offset, width, height) ->
             dst[dstI + 1] = c[(m >> 10) & 0x3]
             dst[dstI + 2] = c[(m >> 12) & 0x3]
             dst[dstI + 3] = c[(m >> 14)]
-            blockX += 1
-        blockY += 1
     return dst
 
 post_message = @postMessage.bind(@)

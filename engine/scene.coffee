@@ -125,11 +125,9 @@ class Scene
 
         if recursive
             children = ob.children
-            i = 0
-            while i < children.length
+            for i in [0...children.length]
                 child = l-i-1
                 @remove_object(children[i])
-                i+=1
         return
     make_parent: (parent, child, keep_transform=true)->
         if child.parent

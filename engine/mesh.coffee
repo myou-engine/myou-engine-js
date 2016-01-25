@@ -126,7 +126,7 @@ class Mesh extends GameObject
     load_from_arraybuffer: (data)->
         # ASSUMING LITTLE ENDIAN
         vlen = @offsets[@offsets.length-2] # 4 byte units
-        ilen = @offsets[@offsets.lenght-1] # 2 byte units
+        ilen = @offsets[@offsets.length-1] # 2 byte units
         offset = @pack_offset or 0
         va = new Float32Array(data, offset, vlen)
         ia = new Uint16Array(data, offset + vlen * 4, ilen)
@@ -150,7 +150,7 @@ class Mesh extends GameObject
             bytes = new Uint8Array(va.buffer, va.byteOffset, va.byteLength)
             if bytes[15] != mesh_id
                 # for i in range(15, bytes.length, @stride)
-                i = 15
+                i=0
                 while i < bytes.length
                     bytes[i] = mesh_id
                     i+=@stride
@@ -158,8 +158,7 @@ class Mesh extends GameObject
         offsets = @offsets
         num_submeshes = (offsets.length/2) - 1
         gl = @context.render_manager.gl
-        i = 0
-        while i < num_submeshes
+        for i in [0...num_submeshes]
             i2 = i*2
             vb = gl.createBuffer()
             gl.bindBuffer(gl.ARRAY_BUFFER, vb)
@@ -177,7 +176,6 @@ class Mesh extends GameObject
                 pass #TODO
             data.index_buffers.push(ib)
             data.num_indices.push(offsets[i2+3] - offsets[i2+1])
-            i += 1
         data.stride = @stride
         if @scene
             # If it has materials (some mesh was already loaded), configure again
@@ -203,12 +201,10 @@ class Mesh extends GameObject
         num_submeshes = (offsets.length/2) - 1
         ia = @data.iarray
         gl = @context.render_manager.gl
-        i = 0
-        while i < num_submeshes
+        for i in [0...num_submeshes]
             i2 = i*2
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, @data.index_buffers[i])
             gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, ia.subarray(offsets[i2+1], offsets[i2+3]), gl.STATIC_DRAW)
-            i+=1
         return
 
     configure_materials: (materials=[])->
@@ -271,11 +267,9 @@ class Mesh extends GameObject
                 o_tangent.push(stride)
                 stride += if @all_f then  4*4  else 4
             else if etype == 'particles'
-                i = 0
-                while i < e[1]
+                for i in [0...e[1]]
                     o_particles.push(stride)
                     stride += 3 * 4
-                    i+=1
             else if etype == 'uv'
                 o_uvs.push([e[1], stride])
                 stride += 2 * 4
@@ -373,10 +367,8 @@ class Mesh extends GameObject
             num_values = Math.max(num_values, m.u_custom.length)
         if @custom_uniform_values.length == 0
             @custom_uniform_values = cuv = []
-            i = 0
-            while i < num_values
+            for i in [0...num_values]
                 cuv.push(null)
-                i+=1
         return true
 
 module.exports = {Mesh}

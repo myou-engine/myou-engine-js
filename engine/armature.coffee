@@ -225,45 +225,30 @@ class BoneConstraints
 
         q = []
 
-        iteration = 0
-        while iteration < num_iterations
+        for iteration in [0...num_iterations]
             vec3.sub(target, target, points[0])
-            i = 0
-            while i < points.length-1
+            for i in [0...points.length-1]
                 vec3.sub(points[i], points[i], points[i+1])
-                i += 1
-            i = 0
-            while i < points.length
+            for i in [0...points.length]
                 vec3.add(target, target, points[i])
-                j = 0
-                while j < i
+                for j in [0...i]
                     vec3.add(points[j], points[j], points[i])
-                    j += 1
 
                 rotation_to(q, points[0], target, 0.4)
                 # IK limits should be applied here to q
-                j = 0
-                while j < i+1
+                for j in [0...i+1]
                     vec3.transformQuat(points[j], points[j], q)
-                    j += 1
-                i += 1
-            iteration += 1
 
-        i = 0
-        while i < points.length
+        for i in [0...points.length]
             vec3.add(points[i], points[i], first)
             vec3.add(original_points[i], original_points[i], first)
-            j += 1
-        #i = 0
-        #while i < points.length-1
+        #for i in [0...point.length-1]
             #render_manager.debug.vectors.push([vec3.sub([], points[i], points[i+1]), vec3.clone(points[i+1]), [1,1,0,1]])
         #render_manager.debug.vectors.push([vec3.sub([], points[points.length-1], first), first, [1,1,0,1]])
-        #i = 0
-        #while i < original_points.length-1
+        #for i in [0...original_points.length-1]
             #render_manager.debug.vectors.push([vec3.sub([], original_points[i], original_points[i+1]), vec3.clone(original_points[i+1]), [1,0,1,1]])
         #render_manager.debug.vectors.push([vec3.sub([], original_points[original_points.length-1], first), first, [1,0,1,1]])
-        #i = 0
-        #while i < points.length
+        #for i in [0...points.length]
             #objects['Icosphere.00'+i].position = vec3.clone(points[i])
 
         v = vec3.create()
@@ -271,8 +256,7 @@ class BoneConstraints
         original_points.push(first)
         points.push([0,0,0])
         original_points.push([0,0,0])
-        i = 0
-        while i < points.length-2
+        for i in [0...points.length-2]
             # Set bone to final position
             vec3.copy(bones[i].final_position, points[i+1])
             # Make relative and exctract rotation
@@ -281,6 +265,5 @@ class BoneConstraints
             rotation_to(q, original_points[i], points[i], 100)
             r = bones[i].final_rotation
             quat.mul(r, q, r)
-            i+=1
 
 module.exports = {Armature, Bone, BoneConstraints}

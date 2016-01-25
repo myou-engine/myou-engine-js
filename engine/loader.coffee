@@ -384,11 +384,9 @@ class Loader
                 buffers_len = buffers.length
                 if @context.MYOU_PARAMS.no_mipmaps
                     buffers_len = 1
-                i = 0
-                while i < buffers_len
+                for i in [0...buffers_len]
                     data = new Uint8Array(buffers[i])
                     gl.compressedTexImage2D(gl.TEXTURE_2D, i, internal_format, width>>i, height>>i, 0, data)
-                    i+=1
                     ## TODO: Enable in debug mode, silence after n errors
                     #error = gl.getError()
                     #if error != gl.NO_ERROR
@@ -678,15 +676,13 @@ class XhrLoader extends Loader
         num_workers = NUM_WORKERS_32
         if is_64_bit_os
             num_workers = NUM_WORKERS_64
-        w = 0
-        while w < num_workers
+        for w in [0...num_workers]
             worker = new Worker(worker_uri)
             worker.id = w
             worker.last_progress = [0] # One per queue
             worker.remaining = [0] # One per queue
             worker.onmessage = onmessage
             workers.push(worker)
-            w+=1
 
     check_queue_finished: (queue_id)->
         remaining = @remaining_tasks[queue_id]
