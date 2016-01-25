@@ -153,13 +153,11 @@ class Material
                 @attrib_locs["tangent"] = -1
             else if a.type == 99 # shape key
                 num_shapes = a.count
-                i = 0
-                while i < num_shapes
+                for i in [0...num_shapes]
                     attribute_decl += "attribute vec3 shape"+i+";\n"
                     attribute_decl += "attribute vec3 shapenor"+i+";\n"
                     @attrib_locs["shape"+i] = -1
                     @attrib_locs["shapenor"+i] = -1
-                    i+=1
                 uniform_decl += "uniform float shapef["+num_shapes+"];"
             else if a.type == 88 # armature deform
                 num_bones = a.count
@@ -192,11 +190,9 @@ class Material
                     var_strand = "strand"
                 uniform_decl += "uniform "+var_strand_type+" "+var_strand+";\n"
                 num_particles = a.count
-                i = 0
-                while i < num_particles
+                for i in [0...num_particles]
                     attribute_decl += "attribute vec3 particle"+i+";\n"
                     @attrib_locs["particle"+i] = -1
-                    i+=1
             else
                 # original coordinates (TODO: divide by dimensions)
                 attribute_decl += "varying vec3 "+v+";\n"
@@ -207,22 +203,18 @@ class Material
             shape_key_code = """float relf = 0.0;
             vec3 n;
                 """
-            i = 0
-            while i < num_shapes
+            for i in [0...num_shapes]
                 shape_key_code += """co += shape"""+i+""" * shapef["""+i+"""] * shape_multiplier;
                 relf += shapef["""+i+"""];
                 """
-                i+=1
             # Interpolating normals instead of re-calculating them is wrong
             # But it's fast and completely unnoticeable in most cases
             shape_key_code += "normal *= clamp(1.0 - relf, 0.0, 1.0);\n"
-            i = 0
-            while i < num_shapes
+            for i in [0...num_shapes]
                 shape_key_code += """
                 n = shapenor"""+i+""" * 0.007874;
                 normal += n * Math.max(0.0, shapef["""+i+"""]);
                 """
-                i+=1
             # TODO: interleave fors for efficency, adding an uniform with the sum?
             #       saving all uniforms in a single matrix?
             #       (so only one gl.uniform16fv is enough)
@@ -333,15 +325,11 @@ class Material
         @u_fb_size = gl.getUniformLocation(prog, "fb_size")
         @u_strand = gl.getUniformLocation(prog, var_strand)
         @u_shapef = []
-        i = 0
-        while i < num_shapes
+        for i in [0...num_shapes]
             @u_shapef[i] = gl.getUniformLocation(prog, "shapef["+i+"]")
-            i+=1
         @u_bones = []
-        i = 0
-        while i < @num_bone_uniforms
+        for i in [0...@num_bone_uniforms]
             @u_bones[i] = gl.getUniformLocation(prog, "bones["+i+"]")
-            i+=1
         @u_custom = []
         for v in var_custom
             @u_custom.push(gl.getUniformLocation(prog, v))
@@ -358,10 +346,8 @@ class Material
            a = gl.getAttribLocation(prog, a_name)|0
            @attrib_locs[a_name] = a
 
-        i = 0
-        while i < tex_uniforms.length
+        for i in [0...tex_uniforms.length]
             gl.uniform1i(gl.getUniformLocation(prog, tex_uniforms[i]), i)
-            i+=1
         # TODO: only ~half of those vars are present
         for i of lamps
             lamp_data = lamps[i]

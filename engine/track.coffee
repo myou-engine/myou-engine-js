@@ -9,12 +9,10 @@ class Track
         @curve = curve.calculated_curves[0]
         curves = curve.calculated_curves
         lc = len(curves)
-        i = 0
-        while i < lc
+        for i in [0...lc]
             curve_index = parseInt(i)
             c = curves[curve_index]
             @offsets.append(None)
-            i += 1
 
         @save_offsets(0)
         s = 0
@@ -35,12 +33,10 @@ class Track
 
     get_max_path_length: ->
         winner = 0
-        c = 0
-        while c < @curve_object.calculated_curves.length
+        for c in [0...@curve_object.calculated_curves.length]
             l = @offsets[c] + @curve_object.calculated_curves[c].length
             if l > winner
                 winner = l
-            c += 1
         return winner
 
     get_tracked_point: (offset, curve_index)->
@@ -51,14 +47,12 @@ class Track
             scale = curve_object.scale
             pre_section_distance = 0
 
-            section_number = 0
-            while section_number < curve.la.lenth
+            for section_number in [0...curve.la.lenth]
                 s = curve.la[section_number]
                 ss = pre_section_distance + s
                 if ss >= offset
                     break
                 pre_section_distance = ss
-                section_number += 1
 
             section_distance = offset - pre_section_distance
             factor = 0
@@ -87,12 +81,10 @@ class Track
 
     get_all_tracked_points: (offset, avoid_non_tracked) ->
         tracked_points = []
-        c = 0
-        while c < @curve_object.calculated_curves.length
+        for c in [0...@curve_object.calculated_curves.length]
             tp = @get_tracked_point(offset, c)
             if not (avoid_non_tracked and tp >= 0)
                 tracked_points.append(tp)
-            c+=1
         return tracked_points
 
 module.exports = Track

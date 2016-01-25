@@ -78,12 +78,10 @@ ConvexShape = (vertices, vstride, scale, margin)->
     shape = new Ammo.btConvexHullShape
     p = shape.ptr
     i = 0
-    i = 0
-    while i < vlen
+    for i in [0...vlen]
         j = i*vstride
         _tmp_Vector3.setValue(vertices[j], vertices[j+1], vertices[j+2])
         shape.addPoint(_tmp_Vector3)
-        i+=1
     _tmp_Vector3.setValue(scale[0], scale[1], scale[2])
     shape.setLocalScaling(_tmp_Vector3)
     shape.setMargin(margin)
@@ -95,16 +93,13 @@ get_convex_hull_edges = (vertices, vstride)->
     # and use original vertices
     vlen = vertices.length/vstride
     verts = []
-    i = 0
-    while i < vlen
+    for i in [0...vlen]
         j = i*vstride
         verts.push([vertices[j], vertices[j+1], vertices[j+2]])
-        i+=1
     faces = convexHull(verts)
     verts = new(Float32Array)(faces.length*9)
     indices = new(Int16Array)(faces.length*6)
-    i = 0
-    while i < faces.length
+    for i in [0...faces.length]
         i3 = i*3
         i6 = i*6
         i9 = i*9
@@ -130,11 +125,9 @@ TriangleMeshShape = (vertices, indices, vstride, scale, margin, name)->
     verts = Ammo._malloc(vlen*3*4)
     offset = verts>>2
     HEAPF32 = Ammo.HEAPF32
-    v = 0
-    while v < vlen
+    for v in [0...vlen]
         HEAPF32.set(vertices.subarray(v*vstride,v*vstride+3), offset)
         offset += 3
-        v+=1
     mesh = new Ammo.btTriangleIndexVertexArray(indices.length/3, inds, 3*4,
                                               vertices.length/3, verts, 3*4)
     shape = new(Ammo.btBvhTriangleMeshShape)(mesh, True, True)
@@ -320,18 +313,15 @@ colliding_bodies = (body)->
     ret = []
     p = body.ptr
     dispatcher = scene.world.getDispatcher()
-    i = 0
-    while i < dispatcher.getNumManifolds()
+    for i in [0...dispatcher.getNumManifolds()]
         m = dispatcher.getManifoldByIndexInternal(i)
         num_contacts = m.getNumContacts()
         if num_contacts!=0
             has_contact = False
-            j = 0
-            while j < num_contacts
+            for j in [0...num_contacts]
                 point = m.getContactPoint(j)
                 if point.get_m_distance1()<0
                     has_contact = True
-                j+=1
             if has_contact
                 b0 = m.getBody0()
                 b1 = m.getBody1()
@@ -339,7 +329,6 @@ colliding_bodies = (body)->
                     ret.push(_phy_obs_ptrs[b1])
                 else if b1 == p
                     ret.push(_phy_obs_ptrs[b0])
-        i+=1
     return ret
 
 get_linear_velocity = (body, local = False)->

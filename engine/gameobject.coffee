@@ -332,8 +332,7 @@ class GameObject
             #mat3.multiply(m,rm,m)
 
         else
-            axisn = 0
-            while axisn < 3
+            for axisn in [0...3]
                 axis = @rotation_order[axisn]
                 mat3.identity(rm)
                 a = @rotation[{'X':0,'Y':1,'Z':2}[axis]]# * 0.017453 # PI/180
@@ -355,8 +354,6 @@ class GameObject
                     rm[1]=sina
                     rm[3]=-sina
                     rm[4]=cosa
-
-                axisn += 1
 
                 mat3.multiply(m,rm,m)
 
@@ -476,10 +473,8 @@ class GameObject
         # if the target scene have the same type of lamps!
         if n.materials and scene != this.scene
             n.materials = materials = n.materials[...]
-            i = 0
-            while i < materials.length
+            for i in [0...materials.length]
                 mat = materials[i] = materials[i].clone_to_scene(scene)
-                i+=1
 
         scene.add_object(n, @name)
         if @body

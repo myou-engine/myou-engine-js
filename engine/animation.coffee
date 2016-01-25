@@ -92,20 +92,16 @@ evaluate_all_animations = (frame_duration_ms)->
                     continue
                 v = anim.action.get(path, anim.pos)
                 w = anim.weight * anim.factor
-                i = 0
-                while i < v.length
+                for i in [0...v.length]
                     v[i] *= w
-                    i += 1
                 if blend is null
                     blend = v
                     type = orig_chan[0]
                     name = orig_chan[1]
                     prop = orig_chan[2]
                 else
-                    i = 0
-                    while i < blend.length
+                    for i in [0...blend.length]
                         blend[i] += v[i]
-                        i+=1
                 weight += w
             blended.push([type, name, prop, blend, weight])
 
@@ -130,10 +126,8 @@ evaluate_all_animations = (frame_duration_ms)->
                 target[prop] = (target[prop]*wi) + v*wo
             else
                 p = target[prop]
-                j = 0
-                while j < v.length
+                for j in [0...v.length]
                     p[j] = p[j]*wi + v[j]*wo
-                    j+=1
                 if prop == 'rotation'
                     quat.normalize(p, p)
             i += 1
