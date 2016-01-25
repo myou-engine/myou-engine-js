@@ -45,7 +45,7 @@ class Bone extends GameObject
 
 class Armature extends GameObject
 
-    type = 'ARMATURE'
+    type : 'ARMATURE'
 
     constructor: ->
         super()
