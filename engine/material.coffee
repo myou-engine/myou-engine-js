@@ -98,8 +98,8 @@ class Material
             else if u.type == 14 # shadow texture
                 @textures.push(@scene.objects[u.lamp].shadow_fb.texture)
                 tex_uniforms.push(u.varname)
-            else if u.type == 13 and scene # 2D image
-                tex = scene.loader.load_texture(u.image, u.filepath, u.filter, u.wrap, u.size)
+            else if u.type == 13 and @scene # 2D image
+                tex = @scene.loader.load_texture(u.image, u.filepath, u.filter, u.wrap, u.size)
                 @textures.push(tex)
                 tex.users.push(@)
                 tex_uniforms.push(u.varname)
