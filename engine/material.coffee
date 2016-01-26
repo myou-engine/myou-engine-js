@@ -356,13 +356,13 @@ class Material
             lamp_data = lamps[i]
             @lamps.push([
                 @scene.objects[i],
-                gl.getUniformLocation prog, lamp_data.varpos,
-                gl.getUniformLocation prog, lamp_data.varcolor3,
-                gl.getUniformLocation prog, lamp_data.varcolor4,
-                gl.getUniformLocation prog, lamp_data.dist,
-                gl.getUniformLocation prog, lamp_data.vardir,
-                gl.getUniformLocation prog, lamp_data.varmat,
-                gl.getUniformLocation prog, lamp_data.varenergy,
+                gl.getUniformLocation(prog, lamp_data.varpos),
+                gl.getUniformLocation(prog, lamp_data.varcolor3),
+                gl.getUniformLocation(prog, lamp_data.varcolor4),
+                gl.getUniformLocation(prog, lamp_data.dist),
+                gl.getUniformLocation(prog, lamp_data.vardir),
+                gl.getUniformLocation(prog, lamp_data.varmat),
+                gl.getUniformLocation(prog, lamp_data.varenergy),
             ])
 
         @_program = prog
