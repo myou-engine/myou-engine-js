@@ -1,5 +1,5 @@
 "use strict"
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require('gl-matrix')
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 
 class Viewport
 
@@ -16,8 +16,8 @@ class Viewport
         @custom_size = custom_size
         @eye_shift = vec3.create()
         @debug_camera = null
-        @set_clear(true, true)
-        render_manager.viewports.push(@)
+        @set_clear true, true
+        render_manager.viewports.push @
         @recalc_aspect()
         render_manager.recalculate_fb_size()
 

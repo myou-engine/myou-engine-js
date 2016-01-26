@@ -1,5 +1,5 @@
 "use strict"
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require('gl-matrix')
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 
 class Track
     last_section: -1
@@ -8,27 +8,27 @@ class Track
         @curve_object = curve
         @curve = curve.calculated_curves[0]
         curves = curve.calculated_curves
-        lc = len(curves)
+        lc = curves.length
         for i in [0...lc]
-            curve_index = parseInt(i)
+            curve_index = parseInt i
             c = curves[curve_index]
-            @offsets.append(null)
+            @offsets.append null
 
-        @save_offsets(0)
+        @save_offsets 0
         s = 0
 
     save_offsets: (curve_index,offset=0) ->
         @offsets[curve_index] = offset
         c = @curve_object.calculated_curves[curve_index]
         for n of c.nodes
-            i = parseInt(n)
+            i = parseInt n
             for node in c.nodes[i]
                 o = node[0]
                 if not @offsets[o]?
                     s = offset
                     for e in c.la.subarray(0,i)
                         s+=e
-                    @save_offsets(o,s)
+                    @save_offsets o,s
         return
 
     get_max_path_length: ->
@@ -64,14 +64,14 @@ class Track
             p2 = vec3.create()
             start = section_number*3
             end = start+3
-            direction = curve.da.subarray(start,end)
+            direction = curve.da.subarray start, end
             p = vec3.create()
-            vec3.mul(p1, curve.va.subarray(start, end), scale)
-            vec3.mul(p2, curve.va.subarray(start+3, end+6), scale)
+            vec3.mul p1, curve.va.subarray(start, end), scale
+            vec3.mul p2, curve.va.subarray(start+3, end+6), scale
 
-            vec3.lerp(p, p1, p2, factor)
-            vec3.transformQuat(p,p,curve_object.rotation)
-            vec3.add(p,p,curve_object.get_world_position())
+            vec3.lerp p, p1, p2, factor
+            vec3.transformQuat p, p, curve_object.rotation
+            vec3.add p, p, curve_object.get_world_position()
 
             return [p,direction]
         else if offset<0
@@ -82,9 +82,9 @@ class Track
     get_all_tracked_points: (offset, avoid_non_tracked) ->
         tracked_points = []
         for c in [0...@curve_object.calculated_curves.length]
-            tp = @get_tracked_point(offset, c)
+            tp = @get_tracked_point offset, c
             if not (avoid_non_tracked and tp >= 0)
-                tracked_points.append(tp)
+                tracked_points.append tp
         return tracked_points
 
 module.exports = Track
