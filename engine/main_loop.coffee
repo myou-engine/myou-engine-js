@@ -1,6 +1,6 @@
 "use strict"
 {evaluate_all_animations} = require './animation'
-
+{get_last_char_phy, step_world, step_world, phy_to_ob} = require './physics'
 # Logic assumes a frame won't be longer than this
 # Below that point, things go slow motion
 MAX_FRAME_DURATION = 167   # 10 fps

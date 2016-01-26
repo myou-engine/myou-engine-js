@@ -34,7 +34,6 @@ module.exports = {
     output: {
         path: __dirname + '/example/build/',
         filename: "myou.js",
-        library: "myou"
     },
     devtool: 'inline-source-map',
     plugins: [

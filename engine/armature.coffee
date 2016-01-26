@@ -15,7 +15,7 @@
 
 class Bone extends GameObject
 
-    constructor: ->
+    constructor: (@context)->
         # Base pose position and rotation in PARENT space
         @base_position = new(Float32Array)(3)
         @base_rotation = new(Float32Array)(4)
@@ -47,8 +47,8 @@ class Armature extends GameObject
 
     type : 'ARMATURE'
 
-    constructor: ->
-        super()
+    constructor: (@context)->
+        super @context
         @bones = {} # all bones by name
         @_bone_list = [] # all bones, ordered, parents first
         @deform_bones = []
@@ -57,7 +57,7 @@ class Armature extends GameObject
 
     add_bones: (bones)->
         for b in bones
-            bone = new Bone
+            bone = new Bone @context
             vec3.copy bone.base_position, b['position']
             vec4.copy bone.base_rotation, b['rotation']
             deform_id = b['deform_id']
