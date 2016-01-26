@@ -756,15 +756,7 @@ class XhrLoader extends Loader
         @add_task base + scene_name + '/all.json', f, 'text'
 
     load_physics_engine: ()->
-        f = =>
-            physics_engine_init()
-            @physics_engine_loaded = true
-            for scene in @context.scenes
-                # WARNING: physics can be loaded before or after the scene
-                # TODO: Check all physics objects are instanced in both scenarios
-                if scene and not scene.world
-                    scene.on_physics_engine_loaded()
-
+        # Add promise if it doesn't exist yet (to be used by any engine instance)
         if not window.global_ammo_promise
             window.global_ammo_promise = new Promise (resolve, reject) ->
                 check_ammo_is_loaded = ->
@@ -777,12 +769,22 @@ class XhrLoader extends Loader
                         resolve()
                 setTimeout(check_ammo_is_loaded, 300)
 
-        script = document.createElement 'script'
-        script.type = 'text/javascript'
-        script.async = true
-        script.src = @scripts_dir + PHYSICS_ENGINE_URL
-        document.body.appendChild script
-        window.global_ammo_promise = global_ammo_promise.then(f)
+            script = document.createElement 'script'
+            script.type = 'text/javascript'
+            script.async = true
+            script.src = @scripts_dir + PHYSICS_ENGINE_URL
+            document.body.appendChild script
+        
+        # Callback for when the engine has loaded
+        # (will be executed immediately if the promise was already resolved)
+        window.global_ammo_promise = global_ammo_promise.then =>
+            physics_engine_init()
+            @physics_engine_loaded = true
+            for scene in @context.scenes
+                # WARNING: physics can be loaded before or after the scene
+                # TODO: Check all physics objects are instanced in both scenarios
+                if scene and not scene.world
+                    scene.on_physics_engine_loaded()
 
     load_script: (uri, func=null)->
         if location.protocol == "chrome-extension:"
