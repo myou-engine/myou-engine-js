@@ -1,8 +1,8 @@
 {
   "name": "myou-engine",
   "version": "0.0.1",
-  "description": "Myou is a game engine for web, mobile and desktop applications, it features an editor based on Blender.",
-  "main": "init.coffee",
+  "description": "Myou is a game engine for web, it features an editor based on Blender.",
+  "main": "main.coffee",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

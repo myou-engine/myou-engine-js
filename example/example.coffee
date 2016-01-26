@@ -1,6 +1,6 @@
 require 'file?name=example.html!./example.html'
 
-myou_engine = require('../engine/init.coffee')
+{create_canvas, Myou} = window.myou = myou = require '../main.coffee'
 
 MYOU_PARAMS =
     total_size: 26775095
@@ -13,7 +13,7 @@ MYOU_PARAMS =
     no_mipmaps: false
     no_s3tc: navigator.userAgent.toString().indexOf('Edge/12.')!=-1
 
-root  = document.getElementById('app')
-myou_engine.create_canvas(root)
+root  = document.getElementById 'app'
 
-window.myou_instance = new myou_engine.Myou(root, MYOU_PARAMS)
+create_canvas root
+window.myou_instance = new Myou root, MYOU_PARAMS
