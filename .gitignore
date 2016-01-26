@@ -21,3 +21,4 @@ npm-debug.log
 local/
 *.local.*
 Thumbs.db
+*.local
