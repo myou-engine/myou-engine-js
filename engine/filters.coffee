@@ -1,6 +1,6 @@
 "use strict"
 
-Material = require('./material').Material
+{Material} = require './material'
 
 box_filter_code = """
     return (get(-1,-1)+get(0,-1)+get(1,-1)+
@@ -109,14 +109,14 @@ class Filter extends Material
 
 
         gl = render_manager.gl
-        super(render_manager.context, name, fs, [], [], vs)
+        super render_manager.context, name, fs, [], [], vs
 
         prog = @._program
-        gl.uniform1i(gl.getUniformLocation(prog, 'source'), 0)
+        gl.uniform1i gl.getUniformLocation(prog, 'source'), 0
 
         if not Filter.quad
             Filter.quad = quad = gl.createBuffer()
-            gl.bindBuffer(gl.ARRAY_BUFFER, quad)
-            gl.bufferData(gl.ARRAY_BUFFER, new(Float32Array)([0,1,0,0,0,0,1,1,0,1,0,0]), gl.STATIC_DRAW)
+            gl.bindBuffer gl.ARRAY_BUFFER, quad
+            gl.bufferData gl.ARRAY_BUFFER, new(Float32Array)([0,1,0,0,0,0,1,1,0,1,0,0]), gl.STATIC_DRAW
 
 module.exports = {box_filter_code, barrel_filter_code, barrel_filter_chromeab_code, Filter}

@@ -1,56 +1,55 @@
 "use strict"
 
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require('gl-matrix')
-Filter = require('./filters.coffee').Filter
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{Filter, box_filter_code} = require './filters'
+{Framebuffer, MainFramebuffer} = require './framebuffer'
 
 MIRROR_MASK_X = 2|16|32|128 #178
 MIRROR_MASK_Y = 4|16|64|128 #212
 MIRROR_MASK_Z = 8|32|64|128 #232
-VECTOR_MINUS_Z = new Float32Array([0,0,-1])
+VECTOR_MINUS_Z = new Float32Array [0,0,-1]
 
-filters = require('./filters')
-{Framebuffer, MainFramebuffer} = require('./framebuffer')
 
 class RenderManager
     initialize: ()->
         gl = @gl
         @extensions =
-            standard_derivatives: gl.getExtension('OES_standard_derivatives')
-            texture_float: gl.getExtension('OES_texture_float')
-            texture_float_linear: gl.getExtension('OES_texture_float_linear')
-            compressed_texture_s3tc: gl.getExtension('WEBGL_compressed_texture_s3tc')
+            standard_derivatives: gl.getExtension 'OES_standard_derivatives'
+            texture_float: gl.getExtension 'OES_texture_float'
+            texture_float_linear: gl.getExtension 'OES_texture_float_linear'
+            compressed_texture_s3tc: gl.getExtension 'WEBGL_compressed_texture_s3tc'
             texture_filter_anisotropic: gl.getExtension("EXT_texture_filter_anisotropic") or
                                     gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic") or
                                     gl.getExtension("MOZ_EXT_texture_filter_anisotropic")
-            lose_context: gl.getExtension("WEBGL_lose_context")
+            lose_context: gl.getExtension "WEBGL_lose_context"
         if @no_s3tc
             @extensions['compressed_texture_s3tc'] = null
 
-        @dummy_filter = new Filter(@, """return get(0,0);""", 'dummy_filter')
-        @shadow_box_filter = new Filter(@, filters.box_filter_code, 'box_filter')
-        @invert_filter = new Filter(@, """return vec3(1.0) - get(0,0);""", 'invert_filter')
+        @dummy_filter = new Filter @, """return get(0,0);""", 'dummy_filter'
+        @shadow_box_filter = new Filter @, box_filter_code, 'box_filter'
+        @invert_filter = new Filter @, """return vec3(1.0) - get(0,0);""", 'invert_filter'
 
-        @common_shadow_fb = new Framebuffer(@, 512,512)
-        @debug = new Debug(@context)
+        @common_shadow_fb = new Framebuffer @, 512,512
+        @debug = new Debug @context
 
         # Initial GL state
-        gl.clearDepth(1.0)
-        gl.enable(gl.DEPTH_TEST)
-        gl.depthFunc(gl.LEQUAL)
-        gl.enable(gl.CULL_FACE)
-        gl.cullFace(gl.BACK)
+        gl.clearDepth 1.0
+        gl.enable gl.DEPTH_TEST
+        gl.depthFunc gl.LEQUAL
+        gl.enable gl.CULL_FACE
+        gl.cullFace gl.BACK
         @cull_face_enabled = true
         # Not premultiplied alpha textures
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+        gl.blendFunc gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA
         # For premul, use  gl.ONE, gl.ONE_MINUS_SRC_ALPHA
         @attrib_bitmask = 0
 
         @blank_texture = tex = gl.createTexture()
-        gl.bindTexture(gl.TEXTURE_2D, tex)
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,0,0]))
-        gl.bindTexture(gl.TEXTURE_2D, null)
+        gl.bindTexture gl.TEXTURE_2D, tex
+        gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,0,0])
+        gl.bindTexture gl.TEXTURE_2D, null
 
-        @resize(@width, @height, @pixel_ratio_x, @pixel_ratio_y)
+        @resize @width, @height, @pixel_ratio_x, @pixel_ratio_y
 
     constructor: (context, canvas, width, height, glflags, on_webgl_failed, on_context_lost, on_context_restored, no_s3tc)->
         try
@@ -61,9 +60,9 @@ class RenderManager
         if not gl
             # MSIE <= 10 with the ActiveX WebGL plugin
             if navigator.appName == "Microsoft Internet Explorer"
-                iecanvas = document.createElement('object')
+                iecanvas = document.createElement 'object'
                 iecanvas.type = "application/x-webgl"
-                canvas.parentNode.replaceChild(iecanvas, canvas)
+                canvas.parentNode.replaceChild iecanvas, canvas
                 canvas = iecanvas
                 gl = canvas.getContext("webgl", glflags) or canvas.getContext("experimental-webgl", glflags)
 
@@ -78,7 +77,7 @@ class RenderManager
         @textures = {}
         @width = width
         @height = height
-        @main_fb = new MainFramebuffer(@)
+        @main_fb = new MainFramebuffer @
         @viewports = []
         @render_tick = 0
         @context_lost_count = 0
@@ -115,9 +114,9 @@ class RenderManager
             render_manager.clear_context()
         restored = (event)->
             render_manager.restore_context()
-            on_context_restored? and requestAnimationFrame(on_context_restored)
-        canvas.addEventListener("webglcontextlost", lost, false)
-        canvas.addEventListener("webglcontextrestored", restored, false)
+            on_context_restored? and requestAnimationFrame on_context_restored
+        canvas.addEventListener "webglcontextlost", lost, false
+        canvas.addEventListener "webglcontextrestored", restored, false
         @initialize()
 
     clear_context: ()->
@@ -138,9 +137,9 @@ class RenderManager
 
     set_cull_face: (enable)->
         if enable
-            @gl.enable(2884) # 2884 = gl.CULL_FACE
+            @gl.enable 2884 # 2884 = gl.CULL_FACE
         else
-            @gl.disable(2884)
+            @gl.disable 2884
 
     resize: (width, height, pixel_ratio_x=1, pixel_ratio_y=1)->
         @width = width
@@ -192,14 +191,14 @@ class RenderManager
             @common_filter_fb.destroy()
         if not @common_filter_fb or @common_filter_fb.width!=minx or @common_filter_fb.height!=miny
             #print "remaking filter fb", minx, miny
-            @common_filter_fb = new Framebuffer(@context.render_manager, minx, miny, @gl.UNSIGNED_BYTE)
+            @common_filter_fb = new Framebuffer @context.render_manager, minx, miny, @gl.UNSIGNED_BYTE
 
         # Write fb_size to all materials that require it
         for k, scene of @context.scenes
             for kk ,mat of scene.materials
                 if mat.u_fb_size?
                     mat.use()
-                    @gl.uniform2f(mat.u_fb_size, minx, miny)
+                    @gl.uniform2f mat.u_fb_size, minx, miny
         return
 
     change_enabled_attributes: (bitmask)->
@@ -209,14 +208,14 @@ class RenderManager
         i = 0
         while mask!=0
             if mask&1
-                gl.disableVertexAttribArray(i)
+                gl.disableVertexAttribArray i
             i += 1
             mask >>= 1
         mask = bitmask&~previous
         i = 0
         while mask!=0
             if mask&1
-                gl.enableVertexAttribArray(i)
+                gl.enableVertexAttribArray i
             i += 1
             mask >>= 1
         @attrib_bitmask = bitmask
@@ -245,7 +244,7 @@ class RenderManager
                     #@draw_viewport(viewport, src_rect, viewport.dest_buffer, false, [2])
             #else
             if viewport.camera.scene.enabled
-                @draw_viewport(viewport, viewport.rect_pix, viewport.dest_buffer, [0, 1])
+                @draw_viewport viewport, viewport.rect_pix, viewport.dest_buffer, [0, 1]
 
         #@gl.flush()
         @debug.vectors.clear() # TODO: have them per scene?
@@ -260,12 +259,12 @@ class RenderManager
 
         # Cull object if it's outside camera frustum
         parented_pos = if mesh.parent then  mesh.get_world_position() else mesh.position
-        pos = vec3.copy(@_v, parented_pos)
+        pos = vec3.copy @_v, parented_pos
         if mesh.mirrors == 2
             pos[0] = -pos[0]
-        vec3.sub(pos, pos, cam.position)
+        vec3.sub pos, pos, cam.position
         r = mesh.radius
-        distance_to_camera = vec3.dot(pos, @camera_z)
+        distance_to_camera = vec3.dot pos, @camera_z
         if ((distance_to_camera+r) *
             (vec3.dot(pos, @_cull_top)+r) *
             (vec3.dot(pos, @_cull_left)+r) *
@@ -308,45 +307,45 @@ class RenderManager
 
             if mat.double_sided == @cull_face_enabled
                 @cull_face_enabled = not @cull_face_enabled
-                @set_cull_face(@cull_face_enabled)
+                @set_cull_face @cull_face_enabled
 
             # # mesh_id/group_id are not used during regular rendering
             # if mat.u_group_id? and mat.group_id != mesh.group_id:
             #     mat.group_id = mesh.group_id
             #     gl.uniform1f(mat.u_group_id, mat.group_id)
 
-            gl.uniformMatrix4fv(mat.u_projection_matrix, false, cam.projection_matrix)
+            gl.uniformMatrix4fv mat.u_projection_matrix, false, cam.projection_matrix
             # not doing this mirrored can make something fail (shadows?)
-            gl.uniformMatrix4fv(mat.u_inv_model_view_matrix, false, @_cam2world)
+            gl.uniformMatrix4fv mat.u_inv_model_view_matrix, false, @_cam2world
 
             if mat.u_var_object_matrix?
-                gl.uniformMatrix4fv(mat.u_var_object_matrix, false, mesh2world)
+                gl.uniformMatrix4fv mat.u_var_object_matrix, false, mesh2world
 
             if mat.u_var_inv_object_matrix?
-                mat4.invert(m4, mesh2world)
-                gl.uniformMatrix4fv(mat.u_var_inv_object_matrix, false, m4)
+                mat4.invert m4, mesh2world
+                gl.uniformMatrix4fv mat.u_var_inv_object_matrix, false, m4
 
             if mat.u_color?
-                gl.uniform4fv(mat.u_color, mesh.color)
+                gl.uniform4fv mat.u_color, mesh.color
 
-            mat.u_custom[2] and gl.uniform1f(mat.u_custom[2], mesh.alpha)
+            mat.u_custom[2] and gl.uniform1f mat.u_custom[2], mesh.alpha
             for i in [0...mat.u_custom.length]
                 cv = mesh.custom_uniform_values[i]
                 if cv
                     if cv.length
-                        gl.uniform4fv(mat.u_custom[i], cv)
+                        gl.uniform4fv mat.u_custom[i], cv
                     else
-                        gl.uniform1f(mat.u_custom[i], cv)
+                        gl.uniform1f mat.u_custom[i], cv
             for lavars in mat.lamps
                 lamp = lavars[0]
-                gl.uniform3fv(lavars[1], lamp._view_pos)
-                gl.uniform3fv(lavars[2], lamp.color)
+                gl.uniform3fv lavars[1], lamp._view_pos
+                gl.uniform3fv lavars[2], lamp.color
                 # if gl.getError() != gl.NO_ERROR:
                 #     console.error('Error with', mesh.name, mat.name)
-                gl.uniform4fv(lavars[3], lamp._color4)
-                gl.uniform1f(lavars[4], lamp.falloff_distance)
-                gl.uniform3fv(lavars[5], lamp._dir)
-                gl.uniformMatrix4fv(lavars[6], false, lamp._cam2depth)
+                gl.uniform4fv lavars[3], lamp._color4
+                gl.uniform1f lavars[4], lamp.falloff_distance
+                gl.uniform3fv lavars[5], lamp._dir
+                gl.uniformMatrix4fv lavars[6], false, lamp._cam2depth
 
             for i in [0...mat.textures.length]
                 tex = mat.textures[i]
@@ -359,9 +358,9 @@ class RenderManager
                 #else
                 if bound_textures[i] != tex
                     if active_texture != i
-                        gl.activeTexture(gl.TEXTURE0 + i)
+                        gl.activeTexture gl.TEXTURE0 + i
                         active_texture = i
-                    gl.bindTexture(gl.TEXTURE_2D, tex.tex)
+                    gl.bindTexture gl.TEXTURE_2D, tex.tex
                     bound_textures[i] = tex
 
             if mat.u_shapef.length != 0
@@ -369,19 +368,19 @@ class RenderManager
                 for shape in mesh._shape_names
                     # shape = ['shape_name', offset in bytes, [attribute locations]]
                     influence = mesh.shapes[shape]
-                    gl.uniform1f(mat.u_shapef[i], influence)
+                    gl.uniform1f mat.u_shapef[i], influence
                     i += 1
                 # Set unused shape slots to 0
                 while i<mat.u_shapef.length
-                    gl.uniform1f(mat.u_shapef[i], 0)
+                    gl.uniform1f mat.u_shapef[i], 0
                     i += 1
                 if amesh.shape_multiplier != mat.shape_multiplier
                     mat.shape_multiplier = amesh.shape_multiplier
-                    gl.uniform1f(mat.u_shape_multiplier, amesh.shape_multiplier)
+                    gl.uniform1f mat.u_shape_multiplier, amesh.shape_multiplier
 
             if amesh.uv_multiplier != mat.uv_multiplier
                 mat.uv_multiplier = amesh.uv_multiplier
-                gl.uniform1f(mat.u_uv_multiplier, amesh.uv_multiplier)
+                gl.uniform1f mat.u_uv_multiplier, amesh.uv_multiplier
 
             if mesh.armature? and mesh.parent_bone_index == -1
                 bones = mesh.armature.deform_bones
@@ -398,36 +397,36 @@ class RenderManager
 
                 for i in [0...mat.num_bone_uniforms]
                     m = bones[i].ol_matrix
-                    gl.uniformMatrix4fv(mat.u_bones[i], false, m)
+                    gl.uniformMatrix4fv mat.u_bones[i], false, m
 
             data = amesh.data
             attrib_pointers = data.attrib_pointers[submesh_idx]
             attrib_bitmasks = data.attrib_bitmasks[submesh_idx]
             stride = data.stride
-            gl.bindBuffer(gl.ARRAY_BUFFER, data.vertex_buffers[submesh_idx])
-            @change_enabled_attributes(attrib_bitmasks)
+            gl.bindBuffer gl.ARRAY_BUFFER, data.vertex_buffers[submesh_idx]
+            @change_enabled_attributes attrib_bitmasks
             for attr in attrib_pointers
                 # [location, number of components, type, offset]
-                gl.vertexAttribPointer(attr[0], attr[1], attr[2], false, stride, attr[3])
+                gl.vertexAttribPointer attr[0], attr[1], attr[2], false, stride, attr[3]
 
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, data.index_buffers[submesh_idx])
+            gl.bindBuffer gl.ELEMENT_ARRAY_BUFFER, data.index_buffers[submesh_idx]
             mirrors = mesh.mirrors
             num_indices = data.num_indices[submesh_idx]
             # num_indices = (data.num_indices[submesh_idx] * @_polygon_ratio)|0
             if mirrors & 1
-                mat4.multiply(m4, @_world2cam, mesh2world)
-                gl.uniformMatrix4fv(mat.u_model_view_matrix, false, m4)
-                mat3.multiply(m3, @_world2cam3, mesh.normal_matrix)
-                gl.uniformMatrix3fv(mat.u_normal_matrix, false, m3)
-                gl.drawElements(data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0)
+                mat4.multiply m4, @_world2cam, mesh2world
+                gl.uniformMatrix4fv mat.u_model_view_matrix, false, m4
+                mat3.multiply m3, @_world2cam3, mesh.normal_matrix
+                gl.uniformMatrix3fv mat.u_normal_matrix, false, m3
+                gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
             if mirrors & 178
-                mat4.multiply(m4, @_world2cam_mx, mesh2world)
-                gl.uniformMatrix4fv(mat.u_model_view_matrix, false, m4)
-                mat3.multiply(m3, @_world2cam3_mx, mesh.normal_matrix)
-                gl.uniformMatrix3fv(mat.u_normal_matrix, false, m3)
-                gl.frontFace(2304) # gl.CW
-                gl.drawElements(data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0)
-                gl.frontFace(2305) # gl.CCW
+                mat4.multiply m4, @_world2cam_mx, mesh2world
+                gl.uniformMatrix4fv mat.u_model_view_matrix, false, m4
+                mat3.multiply m3, @_world2cam3_mx, mesh.normal_matrix
+                gl.uniformMatrix3fv mat.u_normal_matrix, false, m3
+                gl.frontFace 2304 # gl.CW
+                gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
+                gl.frontFace 2305 # gl.CCW
             ## TODO: Enable in debug mode, silence after n errors
             error = gl.getError()
             if error != gl.NO_ERROR
@@ -490,36 +489,36 @@ class RenderManager
         debug = @debug
         filter_fb = @common_filter_fb
 
-        cam2world = mat4.copy(@_cam2world, cam.world_matrix)
+        cam2world = mat4.copy @_cam2world, cam.world_matrix
         world2cam = @_world2cam
         world2cam3 = @_world2cam3
         world2cam_mx = @_world2cam_mx
         world2cam3_mx = @_world2cam3_mx
         world2light = @_world2light
         # Shift position for stereo VR rendering
-        vec3.transformMat4(cam2world.subarray(12), viewport.eye_shift, cam2world)
+        vec3.transformMat4 cam2world.subarray(12), viewport.eye_shift, cam2world
 
-        mat4.invert(world2cam, cam2world)
-        mat3.fromMat4(world2cam3, world2cam)
+        mat4.invert world2cam, cam2world
+        mat3.fromMat4 world2cam3, world2cam
 
-        mat4.copy(world2cam_mx, world2cam)
+        mat4.copy world2cam_mx, world2cam
         world2cam_mx[0] = -world2cam_mx[0]
         world2cam_mx[1] = -world2cam_mx[1]
         world2cam_mx[2] = -world2cam_mx[2]
-        mat3.fromMat4(world2cam3_mx, world2cam_mx)
-        vec3.transformMat3(@camera_z, VECTOR_MINUS_Z, cam.rotation_matrix)
+        mat3.fromMat4 world2cam3_mx, world2cam_mx
+        vec3.transformMat3 @camera_z, VECTOR_MINUS_Z, cam.rotation_matrix
         # Set plane vectors that will be used for culling objects in perspective
-        vec3.transformMat3(@_cull_left, cam.cull_left, cam.rotation_matrix)
-        v = vec3.copy(@_cull_right, cam.cull_left)
+        vec3.transformMat3 @_cull_left, cam.cull_left, cam.rotation_matrix
+        v = vec3.copy @_cull_right, cam.cull_left
         v[0] = -v[0]
-        vec3.transformMat3(v, v, cam.rotation_matrix)
-        vec3.transformMat3(@_cull_bottom, cam.cull_bottom, cam.rotation_matrix)
-        v = vec3.copy(@_cull_top, cam.cull_bottom)
+        vec3.transformMat3 v, v, cam.rotation_matrix
+        vec3.transformMat3 @_cull_bottom, cam.cull_bottom, cam.rotation_matrix
+        v = vec3.copy @_cull_top, cam.cull_bottom
         v[1] = -v[1]
-        vec3.transformMat3(v, v, cam.rotation_matrix)
+        vec3.transformMat3 v, v, cam.rotation_matrix
 
         # For usage outside this render loop
-        mat4.mul(cam.world_to_screen_matrix, cam.projection_matrix, world2cam)
+        mat4.mul cam.world_to_screen_matrix, cam.projection_matrix, world2cam
 
         @bound_textures.clear()
         active_texture = -1
@@ -529,53 +528,53 @@ class RenderManager
             if lamp.shadow_fb? and shadows_pending
 
                 size = lamp.shadow_fb.size_x * 2
-                @common_shadow_fb.enable([0, 0, size, size])
-                gl.clearColor(1,1,1,1)  # TODO: which color should we use?
-                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+                @common_shadow_fb.enable [0, 0, size, size]
+                gl.clearColor 1,1,1,1  # TODO: which color should we use?
+                gl.clear gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT
                 mat = lamp._shadow_material
                 mat.use()
-                mat4.invert(world2light, lamp.world_matrix)
+                mat4.invert world2light, lamp.world_matrix
 
 
                 for ob in scene.mesh_passes[0]
                     if ob.visible == true and ob.data
-                        mat4.multiply(m4, world2light, ob.world_matrix)
-                        #draw_mesh(ob, ob.world_matrix, world2light, mat)
-                        gl.uniformMatrix4fv(mat.u_model_view_matrix, false, m4)
-                        gl.uniformMatrix4fv(mat.u_projection_matrix, false, lamp._projection_matrix)
+                        mat4.multiply m4, world2light, ob.world_matrix
+                        #draw_mesh ob, ob.world_matrix, world2light, mat
+                        gl.uniformMatrix4fv mat.u_model_view_matrix, false, m4
+                        gl.uniformMatrix4fv mat.u_projection_matrix, false, lamp._projection_matrix
                         data = ob.data
                         for i in [0...data.vertex_buffers.length]
-                            gl.bindBuffer(gl.ARRAY_BUFFER, data.vertex_buffers[i])
-                            @.change_enabled_attributes(1)
+                            gl.bindBuffer gl.ARRAY_BUFFER, data.vertex_buffers[i]
+                            @.change_enabled_attributes 1
                             attr = data.attrib_pointers[i][0] # Vertex attribute
-                            gl.vertexAttribPointer(attr[0], attr[1], attr[2], false, data.stride, attr[3])
-                            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, data.index_buffers[i])
-                            gl.drawElements(data.draw_method, data.num_indices[i], gl.UNSIGNED_SHORT, 0)
+                            gl.vertexAttribPointer attr[0], attr[1], attr[2], false, data.stride, attr[3]
+                            gl.bindBuffer gl.ELEMENT_ARRAY_BUFFER, data.index_buffers[i]
+                            gl.drawElements data.draw_method, data.num_indices[i], gl.UNSIGNED_SHORT, 0
 
                 lamp.shadow_fb.enable()
-                @common_shadow_fb.draw_with_filter(@shadow_box_filter, [0, 0, size, size])
+                @common_shadow_fb.draw_with_filter @shadow_box_filter, [0, 0, size, size]
 
             if lamp.shadow_fb?
                 # Calculate and save cam2depth matrix for this lamp
-                mat4.multiply(m4, world2light, cam2world)
-                mat4.multiply(lamp._cam2depth, lamp._depth_matrix, m4)
+                mat4.multiply m4, world2light, cam2world
+                mat4.multiply lamp._cam2depth, lamp._depth_matrix, m4
 
             # Update lamp view pos and direction
-            vec3.transformMat4(lamp._view_pos, lamp.world_matrix.subarray(12,15), world2cam)
-            mat4.multiply(m4, world2cam, lamp.world_matrix)
+            vec3.transformMat4 lamp._view_pos, lamp.world_matrix.subarray(12,15), world2cam
+            mat4.multiply m4, world2cam, lamp.world_matrix
             lamp._dir[0] = -m4[8]
             lamp._dir[1] = -m4[9]
             lamp._dir[2] = -m4[10]
 
 
         # Main drawing code to destination buffer (usually the screen)
-        dest_buffer.enable(rect)
+        dest_buffer.enable rect
 
         clear_bits = viewport.clear_bits
         if clear_bits & gl.COLOR_BUFFER_BIT
             c = scene.background_color
-            gl.clearColor(c[0],c[1],c[2],1)
-        clear_bits and gl.clear(clear_bits)
+            gl.clearColor c[0],c[1],c[2],1
+        clear_bits and gl.clear clear_bits
 
         # TODO: Think better about how to manage passes
         # Add a function for moving objects between passes freely?
@@ -588,7 +587,7 @@ class RenderManager
                 if ob.visible == true
                     if @draw_mesh(ob, ob.world_matrix, 0) == false
                         return
-            gl.clear(gl.DEPTH_BUFFER_BIT)
+            gl.clear gl.DEPTH_BUFFER_BIT
 
         # PASS 0  (solid objects)
         if passes.indexOf(0)>=0
@@ -601,8 +600,8 @@ class RenderManager
 
         # PASS 1  (alpha)
         if passes.indexOf(1)>=0 and scene.mesh_passes[1].length
-            gl.depthMask(false)
-            gl.enable(gl.BLEND)
+            gl.depthMask false
+            gl.enable gl.BLEND
             # Sort by distence to camera
             z = @camera_z
             for ob in scene.mesh_passes[1]
@@ -612,7 +611,7 @@ class RenderManager
                     x = -x
                 ob._sqdist = - (x*z[0] + v[1]*z[1] + v[2]*z[2]) - (ob.zindex * (ob.dimensions[0]+ob.dimensions[1]+ob.dimensions[2])*0.166666)
                 # ob._sqdist = -vec3.dot(s,z) - (ob.zindex * (ob.dimensions[0]+ob.dimensions[1]+ob.dimensions[2])*0.166666)
-            timsort_sqdist(scene.mesh_passes[1])
+            timsort_sqdist scene.mesh_passes[1]
 
         for ob in scene.mesh_passes[1]
             if ob.visible == true
@@ -621,16 +620,16 @@ class RenderManager
 
                 #if ob.dupli_group?
                     #for sphere in groups[ob.dupli_group]
-                        #mat4.multiply(m4, world2cam, ob.world_matrix)
-                        #mat4.multiply(m4, m4, sphere.world_matrix)
-                        #@draw_mesh(sphere, ob.world_matrix, m4)
+                        #mat4.multiply m4, world2cam, ob.world_matrix
+                        #mat4.multiply m4, m4, sphere.world_matrix
+                        #@draw_mesh sphere, ob.world_matrix, m4
 
         if scene.mesh_passes[1].length
-            gl.disable(gl.BLEND)
-            gl.depthMask(true)
+            gl.disable gl.BLEND
+            gl.depthMask true
 
         if scene.fg_pass and scene.fg_pass.length
-            gl.clear(gl.DEPTH_BUFFER_BIT)
+            gl.clear gl.DEPTH_BUFFER_BIT
             for ob in scene.fg_pass
                 if ob.visible == true
                     if @draw_mesh(ob, ob.world_matrix, 0) == false
@@ -641,7 +640,7 @@ class RenderManager
         if passes.indexOf(2)>=0
             for ob in scene.mesh_passes[2]
                 if ob.visible == true
-                    @draw_mesh(ob, ob.world_matrix, 2)
+                    @draw_mesh ob, ob.world_matrix, 2
 
 
         # Debug physics and vectors (TODO: move vector to debug properties?)
@@ -659,48 +658,48 @@ class RenderManager
                         # TODO: It's better to have a separate debug mesh
                         # than recalculating the matrices of the same mesh
 
-                    mat4.multiply(mm4, world2cam, dob.world_matrix)
-                    dob.color=vec4.clone([1,1,1,0.2])
-                    gl.enable(gl.BLEND)
-                    gl.disable(gl.DEPTH_TEST)
-                    @draw_mesh(dob, dob.world_matrix, mm4)
-                    gl.disable(gl.BLEND)
-                    gl.enable(gl.DEPTH_TEST)
-                    dob.color=vec4.clone([1,1,1,1])
-                    @draw_mesh(dob, dob.world_matrix, mm4)
+                    mat4.multiply mm4, world2cam, dob.world_matrix
+                    dob.color=vec4.clone [1,1,1,0.2]
+                    gl.enable gl.BLEND
+                    gl.disable gl.DEPTH_TEST
+                    @draw_mesh dob, dob.world_matrix, mm4
+                    gl.disable gl.BLEND
+                    gl.enable gl.DEPTH_TEST
+                    dob.color=vec4.clone [1,1,1,1]
+                    @draw_mesh dob, dob.world_matrix, mm4
 
 
 
         if scene.debug_physics
-            gl.disable(gl.DEPTH_TEST)
+            gl.disable gl.DEPTH_TEST
             for dvec in debug.vectors
                 # TODO: draw something else when it's too small (a different arrow?)
                 #       and a circle when it's 0
                 dob = debug.arrow
-                dob.color = vec4.clone(dvec[2])
+                dob.color = vec4.clone dvec[2]
                 dob.position = dvec[1]
                 v3 = dvec[0]
-                v2 = vec3.cross([0,0,0], cam.position, v3)
-                v1 = vec3.normalize([0,0,0], vec3.cross([0,0,0],v2,v3))
-                v2 = vec3.normalize([0,0,0], vec3.cross(v2,v3,v1))
-                s = vec3.length(v3)
-                vec3.scale(v2,v2,s)
-                vec3.scale(v1,v1,s)
+                v2 = vec3.cross [0,0,0], cam.position, v3
+                v1 = vec3.normalize [0,0,0], vec3.cross([0,0,0],v2,v3)
+                v2 = vec3.normalize [0,0,0], vec3.cross(v2,v3,v1)
+                s = vec3.length v3
+                vec3.scale v2,v2,s
+                vec3.scale v1,v1,s
                 ma = [v1[0], v1[1], v1[2], 0,
                     v2[0], v2[1], v2[2], 0,
                     v3[0], v3[1], v3[2], 0,
                     dob.position[0], dob.position[1], dob.position[2], 1]
-                mat4.multiply(mm4, world2cam, ma)
-                @draw_mesh(dob, ma, mm4)
+                mat4.multiply mm4, world2cam, ma
+                @draw_mesh dob, ma, mm4
             dob = debug.bone
             for ob in scene.armatures
                 for b in ob._bone_list
-                    mat4.scale(mm4, b.matrix, [b.blength,b.blength,b.blength])
-                    mat4.multiply(mm4, ob.world_matrix, mm4)
-                    mat4.multiply(mm4, world2cam, mm4)
-                    @draw_mesh(dob, b.matrix, mm4)
+                    mat4.scale mm4, b.matrix, [b.blength,b.blength,b.blength]
+                    mat4.multiply mm4, ob.world_matrix, mm4
+                    mat4.multiply mm4, world2cam, mm4
+                    @draw_mesh dob, b.matrix, mm4
 
-            gl.enable(gl.DEPTH_TEST)
+            gl.enable gl.DEPTH_TEST
 
     type_debug: ()->
         # This function makes sure that all vectors/matrices are typed arrays
@@ -736,9 +735,9 @@ class RenderManager
                 for n in ob.data.num_indices
                     removed_polys += n
                 ob.visible = false
-                scene.mesh_passes[0].remove(ob)
-                scene.mesh_passes[1].remove(ob)
-                @removed_meshes.push(ob)
+                scene.mesh_passes[0].remove ob
+                scene.mesh_passes[1].remove ob
+                @removed_meshes.push ob
         return
 
     restore_polycount_debug: ()->
@@ -746,7 +745,7 @@ class RenderManager
             added_passes = []
             for pa in ob.passes
                 if not added_passes[pa] and pa < 5
-                    scene.mesh_passes[pa].push(ob)
+                    scene.mesh_passes[pa].push ob
                     added_passes[pa]=true
             ob.visible = true
         return
@@ -781,7 +780,7 @@ class Debug
         cos=Math.cos
 
         # Generate and save generic shapes for debug_physics
-        box = new Mesh(@context)
+        box = new Mesh @context
         d=[1,1,1,
             1,-1,1,
             -1,-1,1,
@@ -793,40 +792,39 @@ class Debug
         box.load_from_lists(d, [0,1,1,2,2,3,3,0,4,5,5,6,6,7,7,4,
                     0,4,1,5,2,6,3,7])
 
-        cylinder = new Mesh(@context)
+        cylinder = new Mesh @context
         d=[]
         idx=[]
         a=(3.1416*2)/16
         for i in [0...16]
-            d=d.concat([sin(a*i),cos(a*i),1])
-            d=d.concat([sin(a*i),cos(a*i),-1])
-            idx=idx.concat([i*2,(i*2+2)%32,i*2+1,(i*2+3)%32,])
+            d=d.concat [sin(a*i),cos(a*i),1]
+            d=d.concat [sin(a*i),cos(a*i),-1]
+            idx=idx.concat [i*2,(i*2+2)%32,i*2+1,(i*2+3)%32,]
             if i%2==0
-                idx=idx.concat([i*2,i*2+1,])
-        cylinder.load_from_lists(d, idx)
+                idx=idx.concat [i*2,i*2+1,]
+        cylinder.load_from_lists d, idx
 
-        sphere = new Mesh(@context)
+        sphere = new Mesh @context
         d = []
         idx = []
         for i in [0...16]
-            d = d.concat(sin(a*i),cos(a*i),0)
-            idx = idx.concat(i, (i+1)%16)
+            d = d.concat sin(a*i),cos(a*i),0
+            idx = idx.concat i, (i+1)%16
         for i in [0...16]
-            d = d.concat(0,sin(a*i),cos(a*i))
-            idx = idx.concat(i+16, (i+1)%16+16)
+            d = d.concat 0,sin(a*i),cos(a*i)
+            idx = idx.concat i+16, (i+1)%16+16
         for i in [0...16]
-            d = d.concat(sin(a*i),0,cos(a*i))
-            idx = idx.concat(i+32, (i+1)%16+32)
-        sphere.load_from_lists(d, idx)
+            d = d.concat sin(a*i),0,cos(a*i)
+            idx = idx.concat i+32, (i+1)%16+32
+        sphere.load_from_lists d, idx
 
-        mat = new Material(@context,'_debug', plain_fs, [{'type':5,'varname':'color'}],
-            [], plain_vs)
+        mat = new Material @context,'_debug', plain_fs, [{'type':5,'varname':'color'}], [], plain_vs
 
-        arrow = new Mesh(@context)
+        arrow = new Mesh @context
         d = [0,0,0,  0,0,1,  0,0.07,0.7,  0,-0.07,0.7,]
-        arrow.load_from_lists(d, [0,1,1,2,1,3])
+        arrow.load_from_lists d, [0,1,1,2,1,3]
 
-        bone = new Mesh(@context)
+        bone = new Mesh @context
         d = [0,0,0,
              -0.1, 0.1, -0.1,
               0.1, 0.1, -0.1,
@@ -843,8 +841,8 @@ class Debug
         for ob in [box, cylinder, sphere, arrow, bone]
             ob.elements = []
             ob.stride = 4
-            ob.configure_materials([mat])
-            ob.color = vec4.create(1,1,1,1)
+            ob.configure_materials [mat]
+            ob.color = vec4.create 1,1,1,1
             ob.data.draw_method = render_manager.gl.LINES
             ob.scale = [1,1,1]
             ob._update_matrices()
@@ -861,13 +859,13 @@ class Debug
     debug_mesh_from_va_ia: (va, ia)->
         # Disabled temporary to enable debug vectors
         return
-        mesh = new Mesh(@context)
+        mesh = new Mesh @context
         mesh.stride = 3*4
         mesh.offsets = [0, 0, va.length, ia.length]
-        mesh.load_from_va_ia(va, ia)
+        mesh.load_from_va_ia va, ia
         mesh.elements = []
-        mesh.configure_materials([@material])
-        mesh.color = vec4.create(1,1,1,1)
+        mesh.configure_materials [@material]
+        mesh.color = vec4.create 1,1,1,1
         mesh.data.draw_method = render_manager.gl.LINES
         mesh.scale = [1,1,1]
         mesh._update_matrices()

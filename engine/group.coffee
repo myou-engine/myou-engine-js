@@ -5,4 +5,4 @@ class Group
         @objects = objects
         @offset = offset
 
-module.exports = (Group)
+module.exports = {Group}

@@ -1,6 +1,6 @@
 "use strict"
+{evaluate_all_animations} = require './animation'
 
-evaluate_all_animations = require('./animation').evaluate_all_animations
 # Logic assumes a frame won't be longer than this
 # Below that point, things go slow motion
 MAX_FRAME_DURATION = 167   # 10 fps
@@ -19,19 +19,19 @@ class MainLoop
         @context = context
 
     run: ->
-        @_bound_tick = @tick.bind(@)
-        requestAnimationFrame(@_bound_tick)
+        @_bound_tick = @tick.bind @
+        requestAnimationFrame @_bound_tick
         @enabled = true
         @last_time = performance.now()
 
     stop: ->
-        cancelAnimationFrame(@_bound_tick)
+        cancelAnimationFrame @_bound_tick
         @enabled = false
 
     tick: ->
-        requestAnimationFrame(@_bound_tick)
+        requestAnimationFrame @_bound_tick
         time = performance.now()
-        @frame_duration = frame_duration = Math.min(time - @last_time, MAX_FRAME_DURATION)
+        @frame_duration = frame_duration = Math.min time - @last_time, MAX_FRAME_DURATION
 
         if @enabled == false or @context.loaded_scenes.length == 0
             return
@@ -46,19 +46,19 @@ class MainLoop
                 continue
 
             if scene.rigid_bodies.length or scene.kinematic_characters.length
-                get_last_char_phy(scene.kinematic_characters)
-                step_world(scene.world, frame_duration * 0.001)
-                phy_to_ob(scene.rigid_bodies)
+                get_last_char_phy scene.kinematic_characters
+                step_world scene.world, frame_duration * 0.001
+                phy_to_ob scene.rigid_bodies
 
             for f in scene.pre_draw_callbacks
-                f(scene, frame_duration)
+                f scene, frame_duration
 
             for p in scene.active_particle_systems
                 p._eval()
 
-        evaluate_all_animations(@context, frame_duration)
-        for s in @context.active_sprites
-            s.evaluate_sprite(frame_duration)
+        evaluate_all_animations @context, frame_duration
+        # for s in @context.active_sprites
+        #     s.evaluate_sprite frame_duration
         @context.render_manager.draw_all()
 
         for scene in @context.loaded_scenes
@@ -74,10 +74,10 @@ class MainLoop
 
     reset_timeout: ->
         #TODO: find Where is this created and what is the meaning
-        #clearTimeout(@timeout_timer)
+        #clearTimeout @timeout_timer
         @enabled = true
         # f = =>
         #     @enabled = false
-        # @timeout_timer = setTimeout(f, @timeout)
+        # @timeout_timer = setTimeout f, @timeout
 
 module.exports = {MainLoop}

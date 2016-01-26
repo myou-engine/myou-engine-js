@@ -2,8 +2,8 @@
 
 actions = {}
 animations = {}
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require('gl-matrix')
-{update_ob_physics} = require('./physics')
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{update_ob_physics} = require './physics'
 
 # An action is a bunch of animation splines, without specific start, end
 # or any other setting
@@ -24,7 +24,7 @@ class Action
             @channels[path] = ch
             for i in ch[3]
                 if i.length == 0
-                    console.error('Empty channel on ' + name + ' -> '+path)
+                    console.error 'Empty channel on ' + name + ' -> '+path
         return
 
     get: (channel_path, time)->
@@ -37,9 +37,9 @@ class Action
             #           \_____________first_spline____________/
             last_x = ch[ch.length-4]
             if time > last_x
-                ret_vec.push(ch[ch.length-3])
+                ret_vec.push ch[ch.length-3]
             else if time <= ch[2]
-                ret_vec.push(ch[3])
+                ret_vec.push ch[3]
             else
                 idx = 2      # first point X
                 while ch[idx] < time
@@ -49,14 +49,13 @@ class Action
                 rr = solve_roots(time, spline[0], spline[2],
                                        spline[4], spline[6])
                 rr = Math.max(0, Math.min(1, rr))
-                v = interpolate(rr, spline[1], spline[3],
-                                    spline[5], spline[7])
+                v = interpolate rr, spline[1], spline[3], spline[5], spline[7]
 
                 #slen = spline[6] - spline[0]
                 #f = (time-spline[0]) / slen
                 ## linear interpolation
                 #v = spline[7] * f + spline[1] * (1-f)
-                ret_vec.push(v)
+                ret_vec.push v
         return ret_vec
 
 # An animation is a group of actions (usually one of them) with settings
@@ -92,7 +91,7 @@ evaluate_all_animations = (context, frame_duration_ms)->
                 orig_chan = anim.action.channels[path]
                 if not orig_chan
                     continue
-                v = anim.action.get(path, anim.pos)
+                v = anim.action.get path, anim.pos
                 w = anim.weight * anim.factor
                 for i in [0...v.length]
                     v[i] *= w
@@ -105,7 +104,7 @@ evaluate_all_animations = (context, frame_duration_ms)->
                     for i in [0...blend.length]
                         blend[i] += v[i]
                 weight += w
-            blended.push([type, name, prop, blend, weight])
+            blended.push [type, name, prop, blend, weight]
 
         for chan in blended
             type = chan[0]
@@ -131,7 +130,7 @@ evaluate_all_animations = (context, frame_duration_ms)->
                 for j in [0...v.length]
                     p[j] = p[j]*wi + v[j]*wo
                 if prop == 'rotation'
-                    quat.normalize(p, p)
+                    quat.normalize p, p
             i += 1
 
         for anim_id of ob.animations
@@ -151,32 +150,21 @@ evaluate_all_animations = (context, frame_duration_ms)->
                     anim.blendout_remaining = bo_r
                     anim.weight = bo_r / anim.blendout_total
 
-        update_ob_physics(ob)
+        update_ob_physics ob
 
     return
 
 stop_all_animations = ->
     for ob in _all_anim_objects[...]
         for anim_id of ob.animations
-            ob.del_animation(anim_id)
+            ob.del_animation anim_id
     return
-
-interpolate = (t, p0, p1, p2, p3)->
-    t2 = t * t
-    t3 = t2 * t
-
-    c0 = p0
-    c1 = -3.0 * p0 + 3.0 * p1
-    c2 = 3.0 * p0 - 6.0 * p1 + 3.0 * p2
-    c3 = -p0 + 3.0 * p1 - 3.0 * p2 + p3
-
-    return c0 + t * c1 + t2 * c2 + t3 * c3
 
 cubic_root = (d) ->
     if d > 0
-        Math.pow(d, 0.3333333333333333)
+        Math.pow d, 0.3333333333333333
     else
-        -Math.pow(-d, 0.3333333333333333)
+        -Math.pow -d, 0.3333333333333333
 
 solve_roots = (x, p0, p1, p2, p3, s) ->
     # Adapted from Graphics Gems
@@ -193,12 +181,12 @@ solve_roots = (x, p0, p1, p2, p3, s) ->
     c2 = 3.0 * p0 - 6.0 * p1 + 3.0 * p2
     c3 = -p0 + 3.0 * p1 - 3.0 * p2 + p3
 
-    if (Math.abs(c3) <= 0.000000119209290)
-        if (Math.abs(c1) > 0.000000119209290)
+    if  Math.abs(c3) <= 0.000000119209290
+        if  Math.abs(c1) > 0.000000119209290
                 s = -c0 / c1
-        if (akEq(s))
+        if  akEq(s)
                 return 1
-        if (Math.abs(c0) <= 0.000000119209290)
+        if  Math.abs(c0) <= 0.000000119209290
                 return 1
         return 0
 
@@ -223,34 +211,34 @@ solve_roots = (x, p0, p1, p2, p3, s) ->
     cp = p * p * p
     d = q * q + cp
 
-    if (Math.abs(d) <= 0.000000119209290)
-        if (Math.abs(q) <= 0.000000119209290)
+    if  Math.abs(d) <= 0.000000119209290
+        if  Math.abs(q) <= 0.000000119209290
                 # one triple solution
                 s = 0.0
                 console.log 'triple'
                 return s
         else
-                u = cubic_root(-q)
+                u = cubic_root -q
 
                 # one single and one double solution
                 s = 2.0 * u
                 # try next
-                if (not akEq(s - ao3))
+                if  not akEq(s - ao3)
                         s = -u
-    else if (d < 0.0)
+    else if  d < 0.0
         # three real solutions
         phi = 0.3333333333333333 * Math.acos(-q / Math.sqrt(-cp))
-        t = 2.0 * Math.sqrt(-p)
+        t = 2.0 * Math.sqrt -p
 
-        s = t * Math.cos(phi)
-        if (not akEq(s - ao3))
+        s = t * Math.cos phi
+        if  not akEq(s - ao3)
                 # try next
                 s = -t *  Math.cos(phi + tPI)
-                if (not akEq(s - ao3))
+                if  not akEq(s - ao3)
                         s = -t * Math.cos(phi - tPI)
     else
         # one real solution
-        S = Math.sqrt(d)
+        S = Math.sqrt d
         u = cubic_root(S - q)
         v = -cubic_root(S + q)
         s = u  + v

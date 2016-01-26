@@ -71,23 +71,23 @@ class Framebuffer
         prog = filter.use()
         gl = @render_manager.gl
         gl.uniform2f gl.getUniformLocation(prog, 'src_size'), @size_x, @size_y
-        l = gl.getUniformLocation(prog, 'src_rect')
+        l = gl.getUniformLocation prog, 'src_rect'
         if l and l._!=-1
-            gl.uniform4f(l, src_rect[0], src_rect[1], src_rect[2], src_rect[3])
-        l = gl.getUniformLocation(prog, 'dst_rect')
+            gl.uniform4f l, src_rect[0], src_rect[1], src_rect[2], src_rect[3]
+        l = gl.getUniformLocation prog, 'dst_rect'
         if l and l._!=-1
             gl.uniform4fv l, Framebuffer.active_rect
-        #gl.uniform2fv(gl.getUniformLocation(prog, 'pixel_ratio'), @pixel_ratio)
+        #gl.uniform2fv gl.getUniformLocation(prog, 'pixel_ratio'), @pixel_ratio
         gl.bindBuffer gl.ARRAY_BUFFER, Filter.quad
         gl.activeTexture gl.TEXTURE0
         gl.bindTexture gl.TEXTURE_2D, @texture
-        @render_manager.change_enabled_attributes(1<<filter.a_vertex)
-        gl.vertexAttribPointer(filter.a_vertex, 3.0, gl.FLOAT, false, 0, 0)
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+        @render_manager.change_enabled_attributes 1<<filter.a_vertex
+        gl.vertexAttribPointer filter.a_vertex, 3.0, gl.FLOAT, false, 0, 0
+        gl.drawArrays gl.TRIANGLE_STRIP, 0, 4
 
     destroy: ()->
-        @render_manager.gl.deleteRenderbuffer(@render_buffer)
-        @render_manager.gl.deleteFramebuffer(@framebuffer)
+        @render_manager.gl.deleteRenderbuffer @render_buffer
+        @render_manager.gl.deleteFramebuffer @framebuffer
 
 class MainFramebuffer extends Framebuffer
 

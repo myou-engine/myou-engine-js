@@ -1,6 +1,6 @@
 "use strict"
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require('gl-matrix')
-Animation = require('./animation').Animation
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{Animation} = require './animation'
 {
     update_ob_physics,
 
@@ -14,7 +14,7 @@ Animation = require('./animation').Animation
     allow_sleeping, make_ghost,
     set_linear_factor, set_angular_factor
 
-} = require('./physics')
+} = require './physics'
 
 
 NO_MIRROR = 1
@@ -33,11 +33,11 @@ class GameObject
         @position = vec3.create()
         @rotation = quat.create()
         @rotation_order = 'Q'
-        @scale = vec3.set(vec3.create(), 1, 1, 1)
+        @scale = vec3.set vec3.create(), 1, 1, 1
         @dimensions = vec3.create()
-        @color = vec4.set(vec4.create(), 1, 1, 1, 1)
+        @color = vec4.set vec4.create(), 1, 1, 1, 1
         @alpha = 1
-        @offset_scale = vec3.set(vec3.create(), 1, 1, 1)
+        @offset_scale = vec3.set vec3.create(), 1, 1, 1
         @scene = null
         @dupli_group = null
         @visible = true
@@ -64,7 +64,7 @@ class GameObject
         if use_physics
             @physical_radius = 1
             @anisotropic_friction = false
-            @friction_coefficients = vec3.set(vec3.create(), 1, 1, 1)
+            @friction_coefficients = vec3.set vec3.create(), 1, 1, 1
             @collision_group = 1   # [1, 0, 0, 0, 0, 0, 0, 0]
             @collision_mask = 255  # [1, 1, 1, 1, 1, 1, 1, 1]
             @collision_shape = null
@@ -73,8 +73,8 @@ class GameObject
             @mass = 0
             @no_sleeping = false
             @is_ghost = false
-            @linear_factor = vec3.set(vec3.create(), 1, 1, 1)
-            @angular_factor = vec3.set(vec3.create(), 1, 1, 1)
+            @linear_factor = vec3.set vec3.create(), 1, 1, 1
+            @angular_factor = vec3.set vec3.create(), 1, 1, 1
             @form_factor = 0.4
             @friction = 0.5
             @elasticity = 0
@@ -103,9 +103,9 @@ class GameObject
             return
 
         if @body# and @body.world == @scene.world
-            remove_body(@scene.world, @body)
-            @scene.rigid_bodies.remove(@)
-            @scene.static_ghosts.remove(@)
+            remove_body @scene.world, @body
+            @scene.rigid_bodies.remove @
+            @scene.static_ghosts.remove @
             @body = null
             @phy_debug_mesh = null  # but it preserves phy_debug_hull
 
@@ -117,8 +117,8 @@ class GameObject
             if not @scene.world
                 return
 
-            is_hull = (@collision_shape=='CONVEX_HULL')
-            is_tmesh = (@collision_shape=='TRIANGLE_MESH')
+            is_hull =  @collision_shape == 'CONVEX_HULL'
+            is_tmesh =  @collision_shape == 'TRIANGLE_MESH'
 
             # TODO: CONE
 
@@ -126,27 +126,27 @@ class GameObject
             he = @phy_he
             dim = @dimensions
             if dim[0] == 0 and dim[1] == 0 and dim[2] == 0
-                he = vec3.scale(he, @scale, @physical_radius)
+                he = vec3.scale he, @scale, @physical_radius
             else
-                vec3.scale(he, dim, 0.5)
+                vec3.scale he, dim, 0.5
 
             if @collision_shape=='BOX'
-                shape = new BoxShape(he[0], he[1], he[2], @collision_margin)
+                shape = new BoxShape he[0], he[1], he[2], @collision_margin
                 @phy_debug_mesh = render_manager.debug.box
             else if @collision_shape=='SPHERE'
-                radius = Math.max(he[0], he[1], he[2])
+                radius = Math.max he[0], he[1], he[2]
                 he = [radius, radius, radius]
-                shape = new SphereShape(radius, @collision_margin)
+                shape = new SphereShape radius, @collision_margin
                 @phy_debug_mesh = render_manager.debug.sphere
             else if @collision_shape=='CYLINDER'
-                radius = Math.max(he[0], he[1])
+                radius = Math.max he[0], he[1]
                 he = [radius, radius, he[2]]
-                shape = new CylinderShape(radius, he[2], @collision_margin)
+                shape = new CylinderShape radius, he[2], @collision_margin
                 @phy_debug_mesh = render_manager.debug.cylinder
             else if @collision_shape=='CAPSULE'
-                radius = Math.max(he[0], he[1])
+                radius = Math.max he[0], he[1]
                 he = [radius, radius, he[2]]
-                shape = new CapsuleShape(radius, he[2], @collision_margin)
+                shape = new CapsuleShape radius, he[2], @collision_margin
                 @phy_debug_mesh = render_manager.debug.cylinder
             else if is_hull or is_tmesh
                 # Choose which mesh to use as physics
@@ -163,7 +163,7 @@ class GameObject
 
                 if not data
                     if @visible
-                        @scene.loader.load_mesh_data(ob)
+                        @scene.loader.load_mesh_data ob
                     # This will be called in mesh.load_from_va_ia
                     # or in loader.load_mesh_data
                     # after it has been loaded
@@ -177,8 +177,8 @@ class GameObject
                         shape = data.phy_mesh_mx
 
                 if shape and (not use_visual_mesh) != (not @_use_visual_mesh)
-                    shape.mesh and destroy(shape.mesh)
-                    destroy(shape)
+                    shape.mesh and destroy shape.mesh
+                    destroy shape
                     shape = null
 
                 @_use_visual_mesh = use_visual_mesh
@@ -186,18 +186,18 @@ class GameObject
                 if not shape
                     # Get "global" scale
                     # TODO: Get average scale and add an option for recomputing real scale
-                    scale = vec3.clone(@scale)
+                    scale = vec3.clone @scale
                     while p
-                        vec3.scale(scale, scale, p.scale[2])
+                        vec3.scale scale, scale, p.scale[2]
                         p = p.parent
                     if @mirrors & 2
                         scale[0] = -scale[0]
                     if is_hull
-                        shape = new ConvexShape(data.varray, ob.stride/4, @scale, @collision_margin)
+                        shape = new ConvexShape data.varray, ob.stride/4, @scale, @collision_margin
                         data.phy_convex_hull = shape
                         if @debug and not @phy_debug_hull
-                            va_ia = get_convex_hull_edges(data.varray, ob.stride/4, scale)
-                            @phy_debug_hull = render_manager.debug.debug_mesh_from_va_ia(va_ia[0], va_ia[1])
+                            va_ia = get_convex_hull_edges data.varray, ob.stride/4, scale
+                            @phy_debug_hull = render_manager.debug.debug_mesh_from_va_ia va_ia[0], va_ia[1]
                         @phy_debug_mesh = @phy_debug_hull
                     else
                         shape = TriangleMeshShape(
@@ -213,7 +213,7 @@ class GameObject
                             data.phy_mesh_mx = shape
                         else
                             data.phy_mesh = shape
-                vec3.copy(he, @scale)
+                vec3.copy he, @scale
             else
                 print "Warning: Unknown shape", @collision_shape
 
@@ -229,16 +229,16 @@ class GameObject
                     rot = posrot[1]
                     # TODO: avoid calling this all the time
                     parent_posrot = parent.get_world_pos_rot()
-                    vec3.sub(pos, pos, parent_posrot[0])
-                    inv = quat.invert([], parent_posrot[1])
-                    vec3.transformQuat(pos, pos, inv)
-                    quat.mul(rot, inv, rot)
+                    vec3.sub pos, pos, parent_posrot[0]
+                    inv = quat.invert [], parent_posrot[1]
+                    vec3.transformQuat pos, pos, inv
+                    quat.mul rot, inv, rot
                     comp = parent.shape
-                    add_child_shape(comp, shape, pos, rot)
+                    add_child_shape comp, shape, pos, rot
                     shape = null
                 else
-                    comp = new CompoundShape()
-                    add_child_shape(comp, shape, [0, 0, 0], [0, 0, 0, 1])
+                    comp = new CompoundShape
+                    add_child_shape comp, shape, [0, 0, 0], [0, 0, 0, 1]
                     shape = comp
             else
                 @collision_compound = false
@@ -251,17 +251,17 @@ class GameObject
                 rot = posrot[1]
                 # TODO: SOFT_BODY, OCCLUDE, NAVMESH
                 if @physics_type == 'RIGID_BODY'
-                    body = new RigidBody(mass, shape, pos, rot, @friction, @elasticity, @form_factor)
-                    set_linear_factor(body, @linear_factor)
-                    set_angular_factor(body, @angular_factor)
-                    @scene.rigid_bodies.push(@)
+                    body = new RigidBody mass, shape, pos, rot, @friction, @elasticity, @form_factor
+                    set_linear_factor body, @linear_factor
+                    set_angular_factor body, @angular_factor
+                    @scene.rigid_bodies.push @
                 else if @physics_type == 'DYNAMIC'
-                    body = new RigidBody(mass, shape, pos, rot, @friction, @elasticity, @form_factor)
-                    set_linear_factor(body, @linear_factor)
-                    set_angular_factor(body, [0, 0, 0])
-                    @scene.rigid_bodies.push(@)
+                    body = new RigidBody mass, shape, pos, rot, @friction, @elasticity, @form_factor
+                    set_linear_factor body, @linear_factor
+                    set_angular_factor body, [0, 0, 0]
+                    @scene.rigid_bodies.push @
                 else if @physics_type == 'STATIC' or @physics_type == 'SENSOR'
-                    body = new StaticBody(shape, pos, rot, @friction, @elasticity)
+                    body = new StaticBody shape, pos, rot, @friction, @elasticity
                 else if @physics_type == 'CHARACTER'
                     body = CharacterBody(
                         shape
@@ -274,10 +274,8 @@ class GameObject
                         @max_fall_speed
                         PI_2 #slope
                         )
-                    #body.char.setJumpSpeed(0)
-                    #body.char.jump()
-                    #body.char.setJumpSpeed(10)
-                    @scene.rigid_bodies.push(@)
+
+                    @scene.rigid_bodies.push @
                 else
                     print "Warning: Type not handled", @physics_type
                 @shape = shape
@@ -285,16 +283,16 @@ class GameObject
                 body = null
 
             if body
-                add_body(@scene.world, body, @collision_group, @collision_mask)
+                add_body @scene.world, body, @collision_group, @collision_mask
                 body.owner = @
                 if not @no_sleeping
-                    allow_sleeping(body, true)
+                    allow_sleeping body, true
                 if @is_ghost or @physics_type == 'SENSOR'
-                    @scene.static_ghosts.push(@)
-                    make_ghost(body, true)
+                    @scene.static_ghosts.push @
+                    make_ghost body, true
                 if @physics_type == 'CHARACTER'
-                    @scene.kinematic_characters.push(@)
-                update_ob_physics(@)
+                    @scene.kinematic_characters.push @
+                update_ob_physics @
             @body = body
 
     _update_matrices:  ->
@@ -306,8 +304,6 @@ class GameObject
             z = @rotation[2]
             w = @rotation[3]
 
-            #quat.normalize(@rotation, @rotation)
-
             rm[0] = w*w + x*x - y*y - z*z
             rm[1] = 2 * (x * y + z * w)
             rm[2] = 2 * (x * z - y * w)
@@ -318,27 +314,14 @@ class GameObject
             rm[7] = 2 * (y * z - x * w)
             rm[8] = w*w - x*x - y*y + z*z
 
-            ## Optimized for normalized quats
-            #rm[0] = 1 - 2 * (y * y + z * z)
-            #rm[1] = 2 * (x * y + z * w)
-            #rm[2] = 2 * (x * z - y * w)
-            #rm[3] = 2 * (x * y - z * w)
-            #rm[4] = 1 - 2 * (x * x + z * z)
-            #rm[5] = 2 * (z * y + x * w)
-            #rm[6] = 2 * (x * z + y * w)
-            #rm[7] = 2 * (y * z - x * w)
-            #rm[8] = 1 - 2 * (x * x + y * y)
-
-            #mat3.multiply(m,rm,m)
-
         else
             for axisn in [0...3]
                 axis = @rotation_order[axisn]
-                mat3.identity(rm)
+                mat3.identity rm
                 a = @rotation[{'X':0,'Y':1,'Z':2}[axis]]# * 0.017453 # PI/180
 
-                cosa = Math.cos(a)
-                sina = Math.sin(a)
+                cosa = Math.cos a
+                sina = Math.sin a
                 if axis=='X'
                     rm[4]=cosa
                     rm[5]=sina
@@ -355,7 +338,7 @@ class GameObject
                     rm[3]=-sina
                     rm[4]=cosa
 
-                mat3.multiply(m,rm,m)
+                mat3.multiply m,rm,m
 
         pos = @position
         ox = @offset_scale[0]
@@ -401,15 +384,15 @@ class GameObject
             bi = @parent_bone_index
             # if bi >= 0
             #     bone = @parent._bone_list[bi]
-            #     # mat3.mul(rm, @parent.rotation_matrix, rm)
-            #     # mat3.mul(nm, @parent.normal_matrix, nm)
-            #     mat4.mul(@world_matrix, bone.ol_matrix, @world_matrix)
+            #     # mat3.mul rm, @parent.rotation_matrix, rm
+            #     # mat3.mul nm, @parent.normal_matrix, nm
+            #     mat4.mul @world_matrix, bone.ol_matrix, @world_matrix
 
             ## TODO: make this more efficient, etc
-            mat3.mul(rm, @parent.rotation_matrix, rm)
-            mat3.mul(nm, @parent.normal_matrix, nm)
-            mat4.mul(@world_matrix, @parent.world_matrix, @world_matrix)
-            #ppos = @parent.world_matrix.subarray(12,15)
+            mat3.mul rm, @parent.rotation_matrix, rm
+            mat3.mul nm, @parent.normal_matrix, nm
+            mat4.mul @world_matrix, @parent.world_matrix, @world_matrix
+            #ppos = @parent.world_matrix.subarray 12,15
             #pos = [pos[0] + ppos[0], pos[1] + ppos[1], pos[2] + ppos[2]]
 
 
@@ -417,53 +400,53 @@ class GameObject
     # TODO: make property
     get_world_position:  ->
         p = @parent
-        pos = vec3.copy(@_world_position, @position)
+        pos = vec3.copy @_world_position, @position
         while p
-            vec3.mul(pos, pos, p.scale)
-            vec3.transformQuat(pos, pos, p.rotation)
-            vec3.add(pos, pos, p.position)
+            vec3.mul pos, pos, p.scale
+            vec3.transformQuat pos, pos, p.rotation
+            vec3.add pos, pos, p.position
             p = p.parent
         return pos
 
     # TODO: make property
     get_world_rotation:  ->
         p = @parent
-        rot = quat.clone(@rotation)
+        rot = quat.clone @rotation
         while p
-            quat.mul(rot, p.rotation, rot)
+            quat.mul rot, p.rotation, rot
             p = p.parent
         return rot
 
     get_world_pos_rot:  ->
         p = @parent
-        pos = vec3.clone(@position)
-        rot = quat.clone(@rotation)
+        pos = vec3.clone @position
+        rot = quat.clone @rotation
         while p
-            vec3.mul(pos, pos, p.scale)
-            vec3.transformQuat(pos, pos, p.rotation)
-            vec3.add(pos, pos, p.position)
-            quat.mul(rot, p.rotation, rot)
+            vec3.mul pos, pos, p.scale
+            vec3.transformQuat pos, pos, p.rotation
+            vec3.add pos, pos, p.position
+            quat.mul rot, p.rotation, rot
 
             p = p.parent
         return [pos, rot]
 
     clone: (scene=this.scene) ->
-        n = Object.create(@)
-        n.position = vec3.clone(@position)
-        n.rotation = vec4.clone(@rotation)
-        n.scale = vec3.clone(@scale)
-        n.dimensions = vec3.clone(@dimensions)
-        n.offset_scale = vec3.clone(@offset_scale)
-        n.world_matrix = mat4.clone(@world_matrix)
-        n.rotation_matrix = mat3.clone(@rotation_matrix)
-        n.normal_matrix = mat3.clone(@normal_matrix)
-        n.color = vec4.clone(@color)
+        n = Object.create @
+        n.position = vec3.clone @position
+        n.rotation = vec4.clone @rotation
+        n.scale = vec3.clone @scale
+        n.dimensions = vec3.clone @dimensions
+        n.offset_scale = vec3.clone @offset_scale
+        n.world_matrix = mat4.clone @world_matrix
+        n.rotation_matrix = mat3.clone @rotation_matrix
+        n.normal_matrix = mat3.clone @normal_matrix
+        n.color = vec4.clone @color
         n.custom_uniform_values = @custom_uniform_values[...]
-        n.properties = Object.create(@properties)
+        n.properties = Object.create @properties
         n.actions = @actions[...]
         n.passes = @passes and @passes[...]
 
-        #n.state_machines = Object.create(@state_machines)
+        #n.state_machines = Object.create @state_machines
         #n.friction_coefficients = @friction_coefficients[...]
         #n.linear_factor = @linear_factor[...]
         #n.angular_factor = @angular_factor[...]
@@ -474,21 +457,21 @@ class GameObject
         if n.materials and scene != this.scene
             n.materials = materials = n.materials[...]
             for i in [0...materials.length]
-                mat = materials[i] = materials[i].clone_to_scene(scene)
+                mat = materials[i] = materials[i].clone_to_scene scene
 
-        scene.add_object(n, @name)
+        scene.add_object n, @name
         if @body
             n.body = null
-            n.instance_physics(@_use_visual_mesh)
+            n.instance_physics @_use_visual_mesh
         return n
 
     remove: (recursive) ->
-        @scene.remove_object(recursive)
+        @scene.remove_object recursive
 
     add_animation: (anim_id, action) ->
         if Object.keys(@animations).length == 0
-            @scene.context.all_anim_objects.push(@)
-        anim = @animations[anim_id] = new Animation()
+            @scene.context.all_anim_objects.push @
+        anim = @animations[anim_id] = new Animation
         anim.action = action
         anim.owner = @
         @_recalc_affected_channels()
@@ -497,8 +480,8 @@ class GameObject
     del_animation: (anim_id) ->
         #print 'removing',anim_id
         delete @animations[anim_id]
-        if Object.keys(@animations).length == 0
-            @scene.context.all_anim_objects.remove(@)
+        if Object.keys @animations.length == 0
+            @scene.context.all_anim_objects.remove @
         @_recalc_affected_channels()
 
     _recalc_affected_channels:  ->
@@ -522,7 +505,7 @@ class GameObject
 
     # delete me
     set_altmesh: (index) ->
-        set_altmesh(@,index)
+        set_altmesh @,index
 
 class STransform
 
@@ -555,22 +538,22 @@ class STransform
         out[15] = 1
 
     transform: (out, other) ->
-        vec3.add(out.position, other.position, out.position)
-        quat.mul(out.rotation. other.rotation, out.rotation)
+        vec3.add out.position, other.position, out.position
+        quat.mul out.rotation. other.rotation, out.rotation
         out.scale *= other.scale
 
     invert: (out) ->
         scale = out.scale = 1/@scale
-        rot = quat.invert(out.rotation, @rotation)
-        pos = vec3.scale(out.position, @position, -scale)
-        vec3.transformQuat(pos, pos, rot)
+        rot = quat.invert out.rotation, @rotation
+        pos = vec3.scale out.position, @position, -scale
+        vec3.transformQuat pos, pos, rot
 
     randomize:  ->
         @rotation = [Math.random()-0.5,
                          Math.random()-0.5,
                          Math.random()-0.5,
                          Math.random()-0.5]
-        quat.normalize(@rotation, @rotation)
+        quat.normalize @rotation, @rotation
         @position = [Math.random()-0.5,
                          Math.random()-0.5,
                          Math.random()-0.5]

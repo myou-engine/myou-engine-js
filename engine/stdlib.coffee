@@ -1,6 +1,17 @@
 "use strict"
 
-TimSort = require('timsort')
+TimSort = require 'timsort'
+
+window.interpolate = (t, p0, p1, p2, p3)->
+    t2 = t * t
+    t3 = t2 * t
+
+    c0 = p0
+    c1 = -3.0 * p0 + 3.0 * p1
+    c2 = 3.0 * p0 - 6.0 * p1 + 3.0 * p2
+    c3 = -p0 + 3.0 * p1 - 3.0 * p2 + p3
+
+    return c0 + t * c1 + t2 * c2 + t3 * c3
 
 window.timsort_sqdist = (arr) ->
     TimSort.sort arr, (a,b)-> a._sqdist - b._sqdist
@@ -25,7 +36,7 @@ window.reversed = (x) ->
     l = x.length
     i=0
     while i < l
-        result.push(x[l-i-1])
+        result.push x[l-i-1]
         i+=1
     return result
 
@@ -34,24 +45,24 @@ window.reversed = (x) ->
 
 Object.defineProperty(Array.prototype, 'insert',
     {value: (index, item) ->
-        @splice(index, 0, item)
+        @splice index, 0, item
     })
 Object.defineProperty(Array.prototype, 'extend',
     {value: (items)->
         for item in items
-            @append(item)
+            @append item
         return
     })
 Object.defineProperty(Array.prototype, 'remove',
     {value: (i) ->
-        i = @indexOf(i)
+        i = @indexOf i
         if i != -1
-            @splice(i,1)
+            @splice i,1
     })
 
 Object.defineProperty(Array.prototype, 'clear',
     {value: () ->
-        @splice(0)
+        @splice 0
     })
 
 window.range = (start, stop, step=1) ->
@@ -63,7 +74,6 @@ window.range = (start, stop, step=1) ->
 
     i = start
     while i < stop
-        r.push(i)
+        r.push i
         i += step
     return r
-    
