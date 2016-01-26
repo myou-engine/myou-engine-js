@@ -1,3 +1,4 @@
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 
 PHYSICS_ENGINE_URL = 'ammo.asm.js'
 PHYSICS_ENGINE_SIZE = 3776745
