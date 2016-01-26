@@ -1,6 +1,6 @@
 "use strict"
-GameObject = require('./gameobject').GameObject
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require('gl-matrix')
+{GameObject} = require './gameobject'
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 
 # FUTURE OPTIMIZATION STRATEGIES
 # Make a single flat array for positions and rotations,
@@ -57,9 +57,9 @@ class Armature extends GameObject
 
     add_bones: (bones)->
         for b in bones
-            bone = new Bone()
-            vec3.copy(bone.base_position, b['position'])
-            vec4.copy(bone.base_rotation, b['rotation'])
+            bone = new Bone
+            vec3.copy bone.base_position, b['position']
+            vec4.copy bone.base_rotation, b['rotation']
             deform_id = b['deform_id']
             if deform_id != -1
                 bone.deform_id = deform_id
@@ -71,7 +71,7 @@ class Armature extends GameObject
             # TODO: only for debug
             bone.blength = b.blength
             #bone.name = b.name
-            @_bone_list.push(bone)
+            @_bone_list.push bone
             @bones[b.name] = bone
         # Note: this relies on constraints not being evaluated
         # because they are not added yet
@@ -80,7 +80,7 @@ class Armature extends GameObject
         for bone in @_bone_list
             # Get inverse matrix from rest pose, which
             # is used in recalculate_bone_matrices
-            mat4.invert(bone.inv_rest_matrix, bone.matrix)
+            mat4.invert bone.inv_rest_matrix, bone.matrix
             # Not needed for poses stored in actions
             i += 1
         for b in bones
@@ -94,19 +94,19 @@ class Armature extends GameObject
     recalculate_bone_matrices: ->
         for bone in @_bone_list
             pos = bone.final_position
-            rot = quat.copy(bone.final_rotation, bone.rotation)
-            scl = vec3.copy(bone.final_scale, bone.scale)
-            vec3.transformQuat(pos, bone.position, bone.base_rotation)
-            vec3.add(pos, bone.base_position, pos)
-            quat.mul(rot, bone.base_rotation, bone.rotation)
+            rot = quat.copy bone.final_rotation, bone.rotation
+            scl = vec3.copy bone.final_scale, bone.scale
+            vec3.transformQuat pos, bone.position, bone.base_rotation
+            vec3.add pos, bone.base_position, pos
+            quat.mul rot, bone.base_rotation, bone.rotation
 
             parent = bone.parent
             if parent
-                vec3.mul(scl, parent.final_scale, scl)
-                quat.mul(rot, parent.final_rotation, rot)
-                vec3.mul(pos, pos, parent.final_scale)
-                vec3.transformQuat(pos, pos, parent.final_rotation)
-                vec3.add(pos, pos, parent.final_position)
+                vec3.mul scl, parent.final_scale, scl
+                quat.mul rot, parent.final_rotation, rot
+                vec3.mul pos, pos, parent.final_scale
+                vec3.transformQuat pos, pos, parent.final_rotation
+                vec3.add pos, pos, parent.final_position
 
             for con in bone.constraints
                 con[0](con[1], con[2], con[3], con[4])
@@ -118,7 +118,7 @@ class Armature extends GameObject
             scl = bone.final_scale
             # TODO: scale is not calculated correctly
             #       when parent's scale X!=Y!=Z
-            mat4.fromRotationTranslation(m, rot, pos)
+            mat4.fromRotationTranslation m, rot, pos
             m[0] *= scl[0]
             m[1] *= scl[0]
             m[2] *= scl[0]
@@ -128,8 +128,7 @@ class Armature extends GameObject
             m[8] *= scl[2]
             m[9] *= scl[2]
             m[10] *= scl[2]
-            #mat4.mul(m, bone.parent_matrix, m)
-            mat4.mul(bone.ol_matrix, m, bone.inv_rest_matrix, m)
+            mat4.mul bone.ol_matrix, m, bone.inv_rest_matrix, m
 
         return
 
@@ -137,31 +136,30 @@ class Armature extends GameObject
         for bname of pose
             p = pose[bname]
             b = @bones[bname]
-            vec3.copy(b.position, p.position)
-            vec4.copy(b.rotation, p.rotation)
-            vec3.copy(b.scale, p.scale)
+            vec3.copy b.position, p.position
+            vec4.copy b.rotation, p.rotation
+            vec3.copy b.scale, p.scale
         return
 
 rotation_to = (out, p1, p2, maxang)->
-    #angle = acos(vec3.dot(p1,p2)/(vec3.length(p1)*vec3.length(p2)))
-    angle = Math.atan2(vec3.length(vec3.cross([],p1,p2)),vec3.dot(p1,p2))
-    angle = Math.max(-maxang, Math.min(maxang, angle))
-    axis = vec3.cross([], p1, p2)
-    vec3.normalize(axis, axis)
-    quat.setAxisAngle(out, axis, angle)
-    quat.normalize(out, out)
+    angle = Math.atan2 vec3.length(vec3.cross([],p1,p2)), vec3.dot(p1,p2)
+    angle = Math.max -maxang, Math.min(maxang, angle)
+    axis = vec3.cross [], p1, p2
+    vec3.normalize axis, axis
+    quat.setAxisAngle out, axis, angle
+    quat.normalize out, out
     return out
 
 class BoneConstraints
     # Assuming world coordinates
     copy_location: (owner, target)->
-        quat.copy(owner.final_position, target.final_position)
+        quat.copy owner.final_position, target.final_position
 
     copy_rotation: (owner, target)->
-        quat.copy(owner.final_rotation, target.final_rotation)
+        quat.copy owner.final_rotation, target.final_rotation
 
     copy_scale: (owner, target)->
-        quat.copy(owner.final_scale, target.final_scale)
+        quat.copy owner.final_scale, target.final_scale
 
     track_to_y: (owner, target)->
         pass
@@ -171,46 +169,46 @@ class BoneConstraints
         rot = target.final_rotation
         q = quat.create()
         if target.parent
-            quat.invert(q, target.parent.final_rotation)
-            rot = quat.mul([], q, rot)
-        t = vec3.transformQuat(vec3.create(), axis, rot)
-        q = rotation_to(q, t, axis, 9999)
-        quat.mul(q, q, rot)
-        quat.mul(owner.final_rotation, owner.final_rotation, q)
+            quat.invert q, target.parent.final_rotation
+            rot = quat.mul [], q, rot
+        t = vec3.transformQuat vec3.create(), axis, rot
+        q = rotation_to q, t, axis, 9999
+        quat.mul q, q, rot
+        quat.mul owner.final_rotation, owner.final_rotation, q
 
     stretch_to: (owner, target, rest_length, bulge)->
         # Assuming scale of parents is 1 for now
-        dist = vec3.dist(owner.final_position, target.final_position)
+        dist = vec3.dist owner.final_position, target.final_position
         scl = owner.final_scale
         scl[1] *= dist / rest_length
         XZ = 1 - Math.sqrt(bulge) + Math.sqrt(bulge * (rest_length / dist))
         scl[0] *= XZ
         scl[2] *= XZ
-        v = vec3.sub(vec3.create(), target.final_position, owner.final_position)
-        v2 = vec3.transformQuat(vec3.create(), VECTOR_Y, owner.final_rotation)
-        q = rotation_to(quat.create(), v2, v, 9999)
-        quat.mul(owner.final_rotation, q, owner.final_rotation)
+        v = vec3.sub vec3.create(), target.final_position, owner.final_position
+        v2 = vec3.transformQuat vec3.create(), VECTOR_Y, owner.final_rotation
+        q = rotation_to quat.create(), v2, v, 9999
+        quat.mul owner.final_rotation, q, owner.final_rotation
 
     ik: (owner, target, chain_length, num_iterations)->
         bones=[]
         tip_bone = b = owner
         while chain_length and b
-            bones.push(b)
+            bones.push b
             b = b.parent
             chain_length -= 1
         first = bones[bones.length-1].final_position
-        target = vec3.clone(target.final_position)
-        vec3.sub(target, target, first)
+        target = vec3.clone target.final_position
+        vec3.sub target, target, first
         points = []
         for b in bones[...-1]
-            points.push(vec3.sub([], b.final_position, first))
-        tip = vec3.transformQuat([], [0,tip_bone.blength,0], tip_bone.final_rotation)
-        vec3.add(tip, tip, tip_bone.final_position)
-        vec3.sub(tip, tip, first)
-        points.insert(0, tip)
+            points.push vec3.sub([], b.final_position, first)
+        tip = vec3.transformQuat [], [0,tip_bone.blength,0], tip_bone.final_rotation
+        vec3.add tip, tip, tip_bone.final_position
+        vec3.sub tip, tip, first
+        points.insert 0, tip
         original_points = []
         for p in points
-            original_points.push(vec3.clone(p))
+            original_points.push vec3.clone(p)
 
         # now we have a list of points (tips) relative to the base bone
         # from last (tip) to first (base)
@@ -226,44 +224,44 @@ class BoneConstraints
         q = []
 
         for iteration in [0...num_iterations]
-            vec3.sub(target, target, points[0])
+            vec3.sub target, target, points[0]
             for i in [0...points.length-1]
-                vec3.sub(points[i], points[i], points[i+1])
+                vec3.sub points[i], points[i], points[i+1]
             for i in [0...points.length]
-                vec3.add(target, target, points[i])
+                vec3.add target, target, points[i]
                 for j in [0...i]
-                    vec3.add(points[j], points[j], points[i])
+                    vec3.add points[j], points[j], points[i]
 
-                rotation_to(q, points[0], target, 0.4)
+                rotation_to q, points[0], target, 0.4
                 # IK limits should be applied here to q
                 for j in [0...i+1]
-                    vec3.transformQuat(points[j], points[j], q)
+                    vec3.transformQuat points[j], points[j], q
 
         for i in [0...points.length]
-            vec3.add(points[i], points[i], first)
-            vec3.add(original_points[i], original_points[i], first)
+            vec3.add points[i], points[i], first
+            vec3.add original_points[i], original_points[i], first
         #for i in [0...point.length-1]
-            #render_manager.debug.vectors.push([vec3.sub([], points[i], points[i+1]), vec3.clone(points[i+1]), [1,1,0,1]])
-        #render_manager.debug.vectors.push([vec3.sub([], points[points.length-1], first), first, [1,1,0,1]])
+            #render_manager.debug.vectors.push [vec3.sub([], points[i], points[i+1]), vec3.clone(points[i+1]), [1,1,0,1]]
+        #render_manager.debug.vectors.push [vec3.sub([], points[points.length-1], first), first, [1,1,0,1]]
         #for i in [0...original_points.length-1]
-            #render_manager.debug.vectors.push([vec3.sub([], original_points[i], original_points[i+1]), vec3.clone(original_points[i+1]), [1,0,1,1]])
-        #render_manager.debug.vectors.push([vec3.sub([], original_points[original_points.length-1], first), first, [1,0,1,1]])
+            #render_manager.debug.vectors.push [vec3.sub([], original_points[i], original_points[i+1]), vec3.clone(original_points[i+1]), [1,0,1,1]]
+        #render_manager.debug.vectors.push [vec3.sub([], original_points[original_points.length-1], first), first, [1,0,1,1]]
         #for i in [0...points.length]
-            #objects['Icosphere.00'+i].position = vec3.clone(points[i])
+            #objects['Icosphere.00'+i].position = vec3.clone points[i]
 
         v = vec3.create()
-        points.push(first)
-        original_points.push(first)
-        points.push([0,0,0])
-        original_points.push([0,0,0])
+        points.push first
+        original_points.push first
+        points.push [0,0,0]
+        original_points.push [0,0,0]
         for i in [0...points.length-2]
             # Set bone to final position
-            vec3.copy(bones[i].final_position, points[i+1])
+            vec3.copy bones[i].final_position, points[i+1]
             # Make relative and exctract rotation
-            vec3.sub(points[i], points[i], points[i+1])
-            vec3.sub(original_points[i], original_points[i], original_points[i+1])
-            rotation_to(q, original_points[i], points[i], 100)
+            vec3.sub points[i], points[i], points[i+1]
+            vec3.sub original_points[i], original_points[i], original_points[i+1]
+            rotation_to q, original_points[i], points[i], 100
             r = bones[i].final_rotation
-            quat.mul(r, q, r)
+            quat.mul r, q, r
 
 module.exports = {Armature, Bone, BoneConstraints}

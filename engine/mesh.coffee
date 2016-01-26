@@ -1,7 +1,7 @@
 "use strict"
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require('gl-matrix')
-GameObject = require('./gameobject').GameObject
-{load_material, load_textures_of_material} = require('./material')
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{GameObject} = require './gameobject'
+{load_material, load_textures_of_material} = require './material'
 #   Mesh format:
 #
 #   Vertex array:
@@ -78,15 +78,15 @@ class MeshData
 
     reupload: ->
         if @users[0]
-            new_data = @users[0].load_from_va_ia(@varray, @iarray)
+            new_data = @users[0].load_from_va_ia @varray, @iarray
             for u in @users
-                u.data.remove(u)
+                u.data.remove u
                 u.data = new_data
                 u.configure_materials()
         return
 
     remove: (ob)->
-        @users.remove(ob.data)
+        @users.remove ob.data
         if @users.length==0
             delete @context.meshes[@hash]
 
@@ -94,7 +94,7 @@ class MeshData
 class Mesh extends GameObject
 
     constructor: (@context)->
-        super(@context)
+        super @context
         @type = 'MESH'
         @data = null
         @materials = []
@@ -128,28 +128,27 @@ class Mesh extends GameObject
         vlen = @offsets[@offsets.length-2] # 4 byte units
         ilen = @offsets[@offsets.length-1] # 2 byte units
         offset = @pack_offset or 0
-        va = new Float32Array(data, offset, vlen)
-        ia = new Uint16Array(data, offset + vlen * 4, ilen)
-        @load_from_va_ia(va, ia)
+        va = new Float32Array data, offset, vlen
+        ia = new Uint16Array data, offset + vlen * 4, ilen
+        @load_from_va_ia va, ia
 
     load_from_lists: (vertices, indices)->
         @offsets = [0, 0, vertices.length, indices.length]
-        @load_from_va_ia(new Float32Array(vertices), new Uint16Array(indices))
+        @load_from_va_ia new Float32Array(vertices), new Uint16Array(indices)
 
     load_from_va_ia: (va, ia)->
         if @data != null
-            @data.remove(@)
-        data = @data = mesh_datas[@hash] = new MeshData(@context)
+            @data.remove @
+        data = @data = mesh_datas[@hash] = new MeshData @context
         data.hash = @hash
-        data.users.push(@)
+        data.users.push @
         data.varray = va
         data.iarray = ia
         # If mesh has a mesh_id, we'll assign it to the 4th byte of the normal (usually 0)
         if @mesh_id
             mesh_id = @mesh_id|0
-            bytes = new Uint8Array(va.buffer, va.byteOffset, va.byteLength)
+            bytes = new Uint8Array va.buffer, va.byteOffset, va.byteLength
             if bytes[15] != mesh_id
-                # for i in range(15, bytes.length, @stride)
                 i=0
                 while i < bytes.length
                     bytes[i] = mesh_id
@@ -161,21 +160,21 @@ class Mesh extends GameObject
         for i in [0...num_submeshes]
             i2 = i*2
             vb = gl.createBuffer()
-            gl.bindBuffer(gl.ARRAY_BUFFER, vb)
-            gl.bufferData(gl.ARRAY_BUFFER, va.subarray(offsets[i2], offsets[i2+2]), gl.STATIC_DRAW)
-            data.vertex_buffers.push(vb)
+            gl.bindBuffer gl.ARRAY_BUFFER, vb
+            gl.bufferData gl.ARRAY_BUFFER, va.subarray(offsets[i2], offsets[i2+2]), gl.STATIC_DRAW
+            data.vertex_buffers.push vb
             ib = gl.createBuffer()
             if offsets[i2+1] != offsets[i2+3]
-                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib)
-                gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, ia.subarray(offsets[i2+1], offsets[i2+3]), gl.STATIC_DRAW)
+                gl.bindBuffer gl.ELEMENT_ARRAY_BUFFER, ib
+                gl.bufferData gl.ELEMENT_ARRAY_BUFFER, ia.subarray(offsets[i2+1], offsets[i2+3]), gl.STATIC_DRAW
             else
                 # If it's empty it means it will assigned from the parent mesh
                 pass #TODO
             for m in @altmeshes
                 # TODO: set the ib of the altmeshes without it
                 pass #TODO
-            data.index_buffers.push(ib)
-            data.num_indices.push(offsets[i2+3] - offsets[i2+1])
+            data.index_buffers.push ib
+            data.num_indices.push offsets[i2+3] - offsets[i2+1]
         data.stride = @stride
         if @scene
             # If it has materials (some mesh was already loaded), configure again
@@ -186,7 +185,7 @@ class Mesh extends GameObject
                 for matname in @material_names
                     mat = @scene.unloaded_material_data[matname]
                     if mat
-                        load_textures_of_material(@scene, mat)
+                        load_textures_of_material @scene, mat
 
         #@phy_mesh = null # only necessary for live server, otherwise it may cause bugs
         if @scene and @scene.world
@@ -198,41 +197,41 @@ class Mesh extends GameObject
         if not @data
             return
         offsets = @offsets
-        num_submeshes = (offsets.length/2) - 1
+        num_submeshes =  offsets.length/2 - 1
         ia = @data.iarray
         gl = @context.render_manager.gl
         for i in [0...num_submeshes]
             i2 = i*2
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, @data.index_buffers[i])
-            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, ia.subarray(offsets[i2+1], offsets[i2+3]), gl.STATIC_DRAW)
+            gl.bindBuffer gl.ELEMENT_ARRAY_BUFFER, @data.index_buffers[i]
+            gl.bufferData gl.ELEMENT_ARRAY_BUFFER, ia.subarray(offsets[i2+1], offsets[i2+3]), gl.STATIC_DRAW
         return
 
     configure_materials: (materials=[])->
 
         if materials.length == 0
             # If frame is too long, it was compiling other materials, exit early.
-            # console.log(render_manager.frame_start, performance.now())
+            # console.log render_manager.frame_start, performance.now()
             if (@context.render_manager.frame_start + 3000) < performance.now()
                 return false
             scene = @scene
             for mname in @material_names
                 if mname == 'UNDEFINED_MATERIAL'
-                    console.warn('Mesh '+@name+' has undefined material')
+                    console.warn 'Mesh '+@name+' has undefined material'
                 if scene
                     data = scene.unloaded_material_data[mname]
                     if data
-                        load_material(scene, data)
+                        load_material scene, data
                         delete scene.unloaded_material_data[mname]
                 mat = scene.materials[mname]
                 if mat
-                    materials.push(mat)
+                    materials.push mat
                 else
                     # Abort
                     return true
 
         for m in materials
-            m.users.remove(@)
-            m.users.push(@)
+            m.users.remove @
+            m.users.push @
             # TODO: remove before re-assignment
 
 
@@ -254,30 +253,30 @@ class Mesh extends GameObject
             if etype == 'normal'
                 stride += if @all_f then  3*4  else 4
             else if etype == 'shape'
-                o_shapes.push(stride)
+                o_shapes.push stride
                 @shapes[e[1]] = 0
-                @_shape_names.push(e[1])
+                @_shape_names.push e[1]
                 stride += 4 * 4
             else if etype == 'shape_b'
-                o_shapes_b.push(stride)
+                o_shapes_b.push stride
                 @shapes[e[1]] = 0
-                @_shape_names.push(e[1])
+                @_shape_names.push e[1]
                 stride += 2 * 4
             else if etype == 'tangent'
-                o_tangent.push(stride)
+                o_tangent.push stride
                 stride += if @all_f then  4*4  else 4
             else if etype == 'particles'
                 for i in [0...e[1]]
-                    o_particles.push(stride)
+                    o_particles.push stride
                     stride += 3 * 4
             else if etype == 'uv'
-                o_uvs.push([e[1], stride])
+                o_uvs.push [e[1], stride]
                 stride += 2 * 4
             else if etype == 'uv_s'
-                o_uvs_s.push([e[1], stride])
+                o_uvs_s.push [e[1], stride]
                 stride += 2 * 2
             else if etype == 'color'
-                o_colors.push([e[1], stride])
+                o_colors.push [e[1], stride]
                 stride += 4
             else if etype == 'weights'
                 @armature = @parent
@@ -291,10 +290,10 @@ class Mesh extends GameObject
         # (The first layer can be used named and unnamed at the same time)
         # TODO: active layer instead of first?
         if o_uvs.length
-            o_uvs.push(['0', o_uvs[0][1]])
+            o_uvs.push ['0', o_uvs[0][1]]
 
         if o_colors.length
-            o_colors.push(['0', o_colors[0][1]])
+            o_colors.push ['0', o_colors[0][1]]
 
         attrib_pointers = []
         attrib_bitmasks = []
@@ -308,55 +307,55 @@ class Mesh extends GameObject
             gl_float_byte = if @all_f then GL_FLOAT else GL_BYTE
             gl_float_unsigned_byte = if @all_f then GL_FLOAT else GL_UNSIGNED_BYTE
             if a_normal != -1
-                attribs.push([a_normal, 3, gl_float_byte, 12])
+                attribs.push [a_normal, 3, gl_float_byte, 12]
 
             i = 0
             for o in o_shapes
-                attribs.push([mat.attrib_locs["shape"+i], 3, GL_FLOAT, o])
-                attribs.push([mat.attrib_locs["shapenor"+i], 3, GL_BYTE, o+12])
+                attribs.push [mat.attrib_locs["shape"+i], 3, GL_FLOAT, o]
+                attribs.push [mat.attrib_locs["shapenor"+i], 3, GL_BYTE, o+12]
                 i += 1
             for o in o_shapes_b
-                attribs.push([mat.attrib_locs["shape"+i], 3, GL_BYTE, o])
-                attribs.push([mat.attrib_locs["shapenor"+i], 3, GL_BYTE, o+4])
+                attribs.push [mat.attrib_locs["shape"+i], 3, GL_BYTE, o]
+                attribs.push [mat.attrib_locs["shapenor"+i], 3, GL_BYTE, o+4]
                 i += 1
 
             if o_tangent.length and mat.attrib_locs["tangent"]
-                attribs.push([mat.attrib_locs["tangent"], 4, gl_float_byte, o_tangent])
+                attribs.push [mat.attrib_locs["tangent"], 4, gl_float_byte, o_tangent]
 
             i = 0
             for o in o_particles
-                attribs.push([mat.attrib_locs["particle"+i], 3, GL_FLOAT, o])
+                attribs.push [mat.attrib_locs["particle"+i], 3, GL_FLOAT, o]
                 i += 1
 
             for uv in o_uvs
                 # uv = ['shape_name', offset in bytes]
                 varname = mat.uv_layer_attribs[uv[0]]
                 if varname
-                    attribs.push([mat.attrib_locs[varname], 2, GL_FLOAT, uv[1]])
+                    attribs.push [mat.attrib_locs[varname], 2, GL_FLOAT, uv[1]]
 
             for uv in o_uvs_s
                 varname = mat.uv_layer_attribs[uv[0]]
                 if varname
-                    attribs.push([mat.attrib_locs[varname], 2, GL_UNSIGNED_SHORT, uv[1]])
+                    attribs.push [mat.attrib_locs[varname], 2, GL_UNSIGNED_SHORT, uv[1]]
 
             for color in o_colors
                 varname = mat.color_attribs[color[0]]
                 if varname
-                    attribs.push([mat.attrib_locs[varname], 4, GL_UNSIGNED_BYTE, color[1]])
+                    attribs.push [mat.attrib_locs[varname], 4, GL_UNSIGNED_BYTE, color[1]]
 
             if @armature
-                attribs.push([mat.attrib_locs['weights'], 4, GL_FLOAT, o_weights])
+                attribs.push [mat.attrib_locs['weights'], 4, GL_FLOAT, o_weights]
                 attribs.push([mat.attrib_locs['b_indices'], 4,
                                 gl_float_unsigned_byte, o_b_indices])
 
             bitmask = 0
-            for attr in reversed(attribs)
+            for attr in reversed attribs
                 if attr[0] != -1
                     bitmask |= 1<<attr[0]
                 else
-                    attribs.pop(attribs.indexOf(attr))
-            attrib_pointers.push(attribs)
-            attrib_bitmasks.push(bitmask)
+                    attribs.pop attribs.indexOf attr
+            attrib_pointers.push attribs
+            attrib_bitmasks.push bitmask
             mi += 1
 
         @data.attrib_pointers = attrib_pointers
@@ -364,11 +363,11 @@ class Mesh extends GameObject
 
         num_values = 0
         for m in @materials
-            num_values = Math.max(num_values, m.u_custom.length)
+            num_values = Math.max num_values, m.u_custom.length
         if @custom_uniform_values.length == 0
             @custom_uniform_values = cuv = []
             for i in [0...num_values]
-                cuv.push(null)
+                cuv.push null
         return true
 
 module.exports = {Mesh}

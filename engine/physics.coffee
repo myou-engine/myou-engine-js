@@ -8,63 +8,63 @@ _tmp_ClosestRayResultCallback = destroy = null
 
 physics_engine_init = ->
     # avoiding allocations
-    _tmp_Vector3 = new(Ammo.btVector3)(0, 0, 0)
-    _tmp_Vector3b = new(Ammo.btVector3)(0, 0, 0)
-    _tmp_Vector3c = new(Ammo.btVector3)(0, 0, 0)
-    _tmp_Quaternion = new(Ammo.btQuaternion)(0, 0, 0, 0)
-    _tmp_Transform = new(Ammo.btTransform)
-    _tmp_ClosestRayResultCallback = new(Ammo.ClosestRayResultCallback)(new(Ammo.btVector3)(0, 0, 0), new(Ammo.btVector3)(0, 0, 0))
+    _tmp_Vector3 = new Ammo.btVector3 0, 0, 0
+    _tmp_Vector3b = new Ammo.btVector3 0, 0, 0
+    _tmp_Vector3c = new Ammo.btVector3 0, 0, 0
+    _tmp_Quaternion = new Ammo.btQuaternion 0, 0, 0, 0
+    _tmp_Transform = new Ammo.btTransform
+    _tmp_ClosestRayResultCallback = new Ammo.ClosestRayResultCallback new Ammo.btVector3(0, 0, 0), new Ammo.btVector3(0, 0, 0)
     destroy = Ammo.destroy or (o)-> o.destroy()
 
 xyz = (v)->
     p = v.ptr>>2
-    return Ammo.HEAPF32.subarray(p,p+3)
+    return Ammo.HEAPF32.subarray p,p+3
 
 PhysicsWorld = ->
     configuration = new Ammo.btDefaultCollisionConfiguration
-    dispatcher = new Ammo.btCollisionDispatcher(configuration)
+    dispatcher = new Ammo.btCollisionDispatcher configuration
     broadphase = new Ammo.btDbvtBroadphase
     #ghost_pair_callback = new Ammo.btGhostPairCallback
     #broadphase.getOverlappingPairCache().setInternalGhostPairCallback(ghost_pair_callback)
     solver = new Ammo.btSequentialImpulseConstraintSolver
-    world = new Ammo.btDiscreteDynamicsWorld(dispatcher, broadphase, solver, configuration)
+    world = new Ammo.btDiscreteDynamicsWorld dispatcher, broadphase, solver, configuration
     world.pointers = [solver, broadphase, dispatcher, configuration]
     return world
 
 destroy_world = (world)->
     pointers = world.pointers
-    destroy(world)
+    destroy world
     for p in pointers
-        destroy(p)
+        destroy p
     return
 
 PhyVec3 = (x, y, z)->
-    return new(Ammo.btVector3)(x, y, z)
+    return  new Ammo.btVector3 x, y, z
     # warning: new objects are not freed automatically
 
 PhyQuat = (x, y, z, w)->
-    return new(Ammo.btQuaternion)(x, y, z, w)
+    return  new Ammo.btQuaternion x, y, z, w
 
 BoxShape = (x, y, z, margin)->
-    _tmp_Vector3.setValue(x, y, z)
-    shape = new(Ammo.btBoxShape)(_tmp_Vector3)
-    shape.setMargin(margin)
+    _tmp_Vector3.setValue x, y, z
+    shape =  new Ammo.btBoxShape _tmp_Vector3
+    shape.setMargin margin
     return shape
 
 SphereShape = (radius, margin)->
-    shape = new(Ammo.btSphereShape)(radius)
-    shape.setMargin(margin)
+    shape =  new Ammo.btSphereShape radius
+    shape.setMargin margin
     return shape
 
 CylinderShape = (radius, height, margin)->
-    _tmp_Vector3.setValue(radius, radius, height)
-    shape = new(Ammo.btCylinderShapeZ)(_tmp_Vector3)
-    shape.setMargin(margin)
+    _tmp_Vector3.setValue radius, radius, height
+    shape =  new Ammo.btCylinderShapeZ _tmp_Vector3
+    shape.setMargin margin
     return shape
 
 CapsuleShape = (radius, height, margin)->
-    shape = new(Ammo.btCapsuleShapeZ)(radius, (height-radius)*2)
-    shape.setMargin(margin)
+    shape =  new Ammo.btCapsuleShapeZ radius, (height-radius)*2
+    shape.setMargin margin
     return shape
 
 ConvexShape = (vertices, vstride, scale, margin)->
@@ -82,11 +82,11 @@ ConvexShape = (vertices, vstride, scale, margin)->
     i = 0
     for i in [0...vlen]
         j = i*vstride
-        _tmp_Vector3.setValue(vertices[j], vertices[j+1], vertices[j+2])
-        shape.addPoint(_tmp_Vector3)
-    _tmp_Vector3.setValue(scale[0], scale[1], scale[2])
-    shape.setLocalScaling(_tmp_Vector3)
-    shape.setMargin(margin)
+        _tmp_Vector3.setValue vertices[j], vertices[j+1], vertices[j+2]
+        shape.addPoint _tmp_Vector3
+    _tmp_Vector3.setValue scale[0], scale[1], scale[2]
+    shape.setLocalScaling _tmp_Vector3
+    shape.setMargin margin
     return shape
 
 get_convex_hull_edges = (vertices, vstride)->
@@ -97,18 +97,18 @@ get_convex_hull_edges = (vertices, vstride)->
     verts = []
     for i in [0...vlen]
         j = i*vstride
-        verts.push([vertices[j], vertices[j+1], vertices[j+2]])
-    faces = convexHull(verts)
-    verts = new(Float32Array)(faces.length*9)
-    indices = new(Int16Array)(faces.length*6)
+        verts.push [vertices[j], vertices[j+1], vertices[j+2]]
+    faces = convexHull verts
+    verts = new Float32Array faces.length*9
+    indices = new Int16Array faces.length*6
     for i in [0...faces.length]
         i3 = i*3
         i6 = i*6
         i9 = i*9
         f = faces[i].vertices
-        verts.set(f[0], i9)
-        verts.set(f[1], i9+3)
-        verts.set(f[2], i9+6)
+        verts.set f[0], i9
+        verts.set f[1], i9+3
+        verts.set f[2], i9+6
         indices[i6] = i3
         indices[i6+1] = i3+1
         indices[i6+2] = i3+1
@@ -122,41 +122,41 @@ TriangleMeshShape = (vertices, indices, vstride, scale, margin, name)->
     # TODO all this is not deleted
     #pn = performance.now()
     vlen = vertices.length/vstride
-    inds = Ammo._malloc(indices.length*4)
-    Ammo.HEAPU32.set(indices, inds>>2)
-    verts = Ammo._malloc(vlen*3*4)
+    inds = Ammo._malloc indices.length*4
+    Ammo.HEAPU32.set indices, inds>>2
+    verts = Ammo._malloc vlen*3*4
     offset = verts>>2
     HEAPF32 = Ammo.HEAPF32
     for v in [0...vlen]
-        HEAPF32.set(vertices.subarray(v*vstride,v*vstride+3), offset)
+        HEAPF32.set vertices.subarray(v*vstride,v*vstride+3), offset
         offset += 3
     mesh = new Ammo.btTriangleIndexVertexArray(indices.length/3, inds, 3*4,
                                               vertices.length/3, verts, 3*4)
-    shape = new(Ammo.btBvhTriangleMeshShape)(mesh, True, True)
-    _tmp_Vector3.setValue(scale[0], scale[1], scale[2])
-    shape.setLocalScaling(_tmp_Vector3)
-    shape.setMargin(margin)
+    shape =  new Ammo.btBvhTriangleMeshShape mesh, True, True
+    _tmp_Vector3.setValue scale[0], scale[1], scale[2]
+    shape.setLocalScaling _tmp_Vector3
+    shape.setMargin margin
     #print performance.now() - pn, name
     return shape
 
 CompoundShape = ->
-    return new(Ammo.btCompoundShape)
+    return new Ammo.btCompoundShape
 
 RigidBody = (mass, shape, position, rotation, friction, elasticity, form_factor)->
     # For some reason this is the formula in BGE for inertia
     inertia = form_factor * mass/3
-    localInertia = new(Ammo.btVector3)(inertia, inertia, inertia)
-    shape.calculateLocalInertia(mass, localInertia)
-    startTransform = new(Ammo.btTransform)
-    _tmp_Vector3.setValue(position[0], position[1], position[2])
-    startTransform.setOrigin(_tmp_Vector3)
-    _tmp_Quaternion.setValue(rotation[0], rotation[1], rotation[2], rotation[3])
-    startTransform.setRotation(_tmp_Quaternion)
-    myMotionState = new(Ammo.btDefaultMotionState)(startTransform)
-    rbInfo = new(Ammo.btRigidBodyConstructionInfo)(mass, myMotionState, shape, localInertia)
-    rbInfo.set_m_friction(friction)
-    rbInfo.set_m_restitution(elasticity)
-    body = new(Ammo.btRigidBody)(rbInfo)
+    localInertia =  new Ammo.btVector3 inertia, inertia, inertia
+    shape.calculateLocalInertia mass, localInertia
+    startTransform = new Ammo.btTransform
+    _tmp_Vector3.setValue position[0], position[1], position[2]
+    startTransform.setOrigin _tmp_Vector3
+    _tmp_Quaternion.setValue rotation[0], rotation[1], rotation[2], rotation[3]
+    startTransform.setRotation _tmp_Quaternion
+    myMotionState =  new Ammo.btDefaultMotionState startTransform
+    rbInfo =  new Ammo.btRigidBodyConstructionInfo mass, myMotionState, shape, localInertia
+    rbInfo.set_m_friction friction
+    rbInfo.set_m_restitution elasticity
+    body =  new Ammo.btRigidBody rbInfo
     body.pointers = [rbInfo, myMotionState, startTransform, localInertia]
     # TODO test destroy(shape)
     if body.getPtr
@@ -166,26 +166,26 @@ RigidBody = (mass, shape, position, rotation, friction, elasticity, form_factor)
     return body
 
 StaticBody = (shape, position, rotation, friction, elasticity)->
-    return RigidBody(0, shape, position, rotation, friction, elasticity, 0)
+    return RigidBody 0, shape, position, rotation, friction, elasticity, 0
 
 _character_controllers = []
 
 CharacterBody = (shape, position, rotation, step_height, axis, gravity, jump_speed, fall_speed, max_slope)->
     body = new Ammo.btPairCachingGhostObject
-    body.setCollisionFlags(16) # CF_CHARACTER_OBJECT
-    body.setCollisionShape(shape)
-    char = body.char = new Ammo.btKinematicCharacterController(body, shape, step_height, axis)
-    char.setGravity(gravity)
-    char.setJumpSpeed(jump_speed)
-    char.setFallSpeed(fall_speed)
-    char.setMaxSlope(max_slope)
-    _character_controllers.push(body.char)
+    body.setCollisionFlags 16 # CF_CHARACTER_OBJECT
+    body.setCollisionShape shape
+    char = body.char = new Ammo.btKinematicCharacterController body, shape, step_height, axis
+    char.setGravity gravity
+    char.setJumpSpeed jump_speed
+    char.setFallSpeed fall_speed
+    char.setMaxSlope max_slope
+    _character_controllers.push body.char
     startTransform = new Ammo.btTransform
-    _tmp_Vector3.setValue(position[0], position[1], position[2])
-    startTransform.setOrigin(_tmp_Vector3)
-    _tmp_Quaternion.setValue(rotation[0], rotation[1], rotation[2], rotation[3])
-    startTransform.setRotation(_tmp_Quaternion)
-    body.setWorldTransform(startTransform)
+    _tmp_Vector3.setValue position[0], position[1], position[2]
+    startTransform.setOrigin _tmp_Vector3
+    _tmp_Quaternion.setValue rotation[0], rotation[1], rotation[2], rotation[3]
+    startTransform.setRotation _tmp_Quaternion
+    body.setWorldTransform startTransform
     body.pointers = [body.char, startTransform]
     # TODO test destroy(shape)
     if body.getPtr
@@ -200,21 +200,21 @@ destroy_body = (body)->
     else
         del _phy_obs_ptrs[body.ptr]
     if body.char
-        _character_controllers.remove(body.char)
+        _character_controllers.remove body.char
     pointers = body.pointers
-    destroy(body)
+    destroy body
     for p in pointers
-        destroy(p)
+        destroy p
     return
 
 class Ray
     constructor: ->
-        @origin = new(Ammo.btVector3)(0, 0, 0)
-        @rayto = new(Ammo.btVector3)(0, 0, 0)
+        @origin =  new Ammo.btVector3 0, 0, 0
+        @rayto =  new Ammo.btVector3 0, 0, 0
 
-    destroy: (self) ->
-        destroy(@origin)
-        destroy(@rayto)
+    destroy: ->
+        destroy @origin
+        destroy @rayto
 
 # Shape methods
 

@@ -1,17 +1,6 @@
 "use strict"
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require('gl-matrix')
-GameObject = require('./gameobject').GameObject
-
-interpolate = (t, p0, p1, p2, p3)->
-    t2 = t * t
-    t3 = t2 * t
-
-    c0 = p0
-    c1 = -3.0 * p0 + 3.0 * p1
-    c2 = 3.0 * p0 - 6.0 * p1 + 3.0 * p2
-    c3 = -p0 + 3.0 * p1 - 3.0 * p2 + p3
-
-    return c0 + t * c1 + t2 * c2 + t3 * c3
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{GameObject} = require './gameobject'
 
 class Curve extends GameObject
 
@@ -54,32 +43,32 @@ class Curve extends GameObject
                 for j in [0...resolution]
                     # interpolate() is in animation.py
 
-                    x = interpolate(j/resolution, p0x, p1x, p2x, p3x)
-                    y = interpolate(j/resolution, p0y, p1y, p2y, p3y)
-                    z = interpolate(j/resolution, p0z, p1z, p2z, p3z)
+                    x = interpolate j/resolution, p0x, p1x, p2x, p3x
+                    y = interpolate j/resolution, p0y, p1y, p2y, p3y
+                    z = interpolate j/resolution, p0z, p1z, p2z, p3z
 
-                    vertices.extend([x,y,z])
-                    indices.append(n)
-                    indices.append(n+1)
+                    vertices.extend [x,y,z]
+                    indices.append n
+                    indices.append n+1
 
                     #sub_curve vertices and indices
-                    c_vertices.extend([x,y,z])
-                    c_indices.append(cn)
-                    c_indices.append(cn+1)
+                    c_vertices.extend [x,y,z]
+                    c_indices.append cn
+                    c_indices.append cn+1
 
                     n += 1
                     cn += 1
 
 
-            c_vertices.extend([p3x, p3y, p3z])
-            cva = new Float32Array(c_vertices)
-            cia = new Uint16Array(c_indices)
-            @calculated_curves.append({'ia':cia, 'va':cva})
-            vertices.extend([p3x, p3y, p3z])
+            c_vertices.extend [p3x, p3y, p3z]
+            cva = new Float32Array c_vertices
+            cia = new Uint16Array c_indices
+            @calculated_curves.append {'ia':cia, 'va':cva}
+            vertices.extend [p3x, p3y, p3z]
             n += 1
-        va = @va = new Float32Array(vertices)
-        ia = @ia = new Uint16Array(indices)
-        @phy_debug_mesh = render_manager.debug.debug_mesh_from_va_ia(va, ia)
+        va = @va = new Float32Array vertices
+        ia = @ia = new Uint16Array indices
+        @phy_debug_mesh = render_manager.debug.debug_mesh_from_va_ia va, ia
         @phy_he = [1, 1, 1]
 
         curve_index = 0
@@ -87,9 +76,9 @@ class Curve extends GameObject
             if nodes
                 c.nodes = nodes[curve_index]
             else
-                c.nodes = @get_nodes(curve_index)
-            c.la = @get_curve_edges_length(curve_index)
-            c.da = @get_curve_direction_vectors(curve_index)
+                c.nodes = @get_nodes curve_index
+            c.la = @get_curve_edges_length curve_index
+            c.da = @get_curve_direction_vectors curve_index
             c.curve = @
             c.length = 0
             for e in c.la
@@ -115,27 +104,27 @@ class Curve extends GameObject
         ia = @ia
         for i in [0...Math.floor(ia.length * 0.5)]
             i2 = i*2
-            vec3.mul(p1, va.subarray(ia[i2]*3, ia[i2]*3+3), scale)
-            vec3.mul(p2, va.subarray(ia[i2+1]*3, ia[i2+1]*3+3), scale)
+            vec3.mul p1, va.subarray(ia[i2]*3, ia[i2]*3+3), scale
+            vec3.mul p2, va.subarray(ia[i2+1]*3, ia[i2+1]*3+3), scale
             # calculate planes (todo: use tangents for that)
-            vec3.sub(np1, p2, p1)
-            vec3.sub(np2, p1, p2)
+            vec3.sub np1, p2, p1
+            vec3.sub np2, p1, p2
             # dot products = squared distance to planes
-            vec3.sub(d1, q, p1)
-            vec3.sub(d2, q, p2)
-            dp1 = vec3.dot(np1, d1)
-            dp2 = vec3.dot(np2, d2)
+            vec3.sub d1, q, p1
+            vec3.sub d2, q, p2
+            dp1 = vec3.dot np1, d1
+            dp2 = vec3.dot np2, d2
             sum = dp1 + dp2
             # clamp (0,1) and get point
             f = max(0, min(1, dp1/sum))
-            vec3.lerp(p, p1, p2, f)
-            ds_ = vec3.sqrDist(p, q)
+            vec3.lerp p, p1, p2, f
+            ds_ = vec3.sqrDist p, q
             if ds_ < ds
                 ds = ds_
-                vec3.copy(wp, p)
-                vec3.sub(wn, p2, p1)
+                vec3.copy wp, p
+                vec3.sub wn, p2, p1
 
-        vec3.normalize(wn, wn)
+        vec3.normalize wn, wn
         return [wp, wn]
 
     get_curve_edges_length: (curve_index) ->
@@ -148,10 +137,10 @@ class Curve extends GameObject
             p1 = vec3.create()
             p2 = vec3.create()
             i2 = i*2
-            vec3.mul(p1, va.subarray(ia[i2]*3, ia[i2]*3+3), scale)
-            vec3.mul(p2, va.subarray(ia[i2+1]*3, ia[i2+1]*3+3), scale)
-            l.append(vec3.dist(p1, p2))
-        return new Float32Array(l)
+            vec3.mul p1, va.subarray(ia[i2]*3, ia[i2]*3+3), scale
+            vec3.mul p2, va.subarray(ia[i2+1]*3, ia[i2+1]*3+3), scale
+            l.append vec3.dist(p1, p2)
+        return new Float32Array l
 
     get_curve_direction_vectors: (curve_index)->
         scale = @scale
@@ -163,10 +152,10 @@ class Curve extends GameObject
             p1 = vec3.create()
             p2 = vec3.create()
             i2 = i*2
-            vec3.mul(p1, va.subarray(ia[i2]*3, ia[i2]*3+3), scale)
-            vec3.mul(p2, va.subarray(ia[i2+1]*3, ia[i2+1]*3+3), scale)
-            l=l.concat(vec3.normalize([],vec3.sub([],p2, p1)))
-        return new Float32Array(l)
+            vec3.mul p1, va.subarray(ia[i2]*3, ia[i2]*3+3), scale
+            vec3.mul p2, va.subarray(ia[i2+1]*3, ia[i2+1]*3+3), scale
+            l=l.concat vec3.normalize([],vec3.sub([],p2, p1))
+        return new Float32Array l
 
     get_nodes: (main_curve_index=0, precission=0.0001)->
         main_curve = @calculated_curves[main_curve_index]
@@ -174,19 +163,19 @@ class Curve extends GameObject
         nodes = {}
         for i in [0...Math.floor(main_curve.ia.length * 0.5)]
             i2 = i*2
-            main_p = main_curve.va.subarray(main_curve.ia[i2]*3, main_curve.ia[i2]*3+3)
+            main_p = main_curve.va.subarray main_curve.ia[i2]*3, main_curve.ia[i2]*3+3
             ci = 0
             for curve in @calculated_curves
                 if ci != main_curve_index
                     for ii in [0...Math.floor(curve.ia.length * 0.5)]
                         ii2 = ii*2
-                        p = curve.va.subarray(curve.ia[ii2]*3, curve.ia[ii2]*3+3)
-                        d = vec3.dist(main_p,p)
+                        p = curve.va.subarray curve.ia[ii2]*3, curve.ia[ii2]*3+3
+                        d = vec3.dist main_p,p
                         if d < precission
                             if not i in nodes
                                 nodes[i]=[[ci,ii]]
                             else
-                                nodes[i].append([ci,ii])
+                                nodes[i].append [ci,ii]
             ci += 1
 
                                 #nodes[node_vertex_index] = [attached_curve_index, attached_vertex_index]

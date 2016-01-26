@@ -1,11 +1,14 @@
 "use strict"
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require('gl-matrix')
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 
 
 load_material = (scene, data)->
     name = data['name']
     mat = scene.materials[name] = \
-        new Material(scene.context, name, [scene.context.SHADER_LIB, data['fragment']], data['uniforms'], data['attributes'], "", scene)
+        new Material(
+            scene.context, name, [scene.context.SHADER_LIB, data['fragment']],
+            data['uniforms'], data['attributes'], "", scene
+            )
     # make sure it's bool
     mat.double_sided = not not data.double_sided
 
@@ -13,7 +16,7 @@ load_textures_of_material = (scene, data) ->
     # When you only want to request textures to be loaded without compiling the shader
     for u in data['uniforms']
         if u.type == 13 and scene # 2D image
-            scene.loader.load_texture(u.image, u.filepath, u.filter, u.wrap, u.size)
+            scene.loader.load_texture u.image, u.filepath, u.filter, u.wrap, u.size
     return
 # http://www.blender.org/documentation/blender_python_api_2_65_release/gpu.html
 
@@ -23,7 +26,7 @@ class Material
 
     constructor: (@context, @name, fs, uniforms, attributes, vs="", @scene)->
         if @context.all_materials.indexOf(@) == -1
-            @context.all_materials.push(@)
+            @context.all_materials.push @
 
         gl = @context.render_manager.gl
         @textures = []
@@ -96,18 +99,18 @@ class Material
             # GPU_DYNAMIC_SAMPLER_2DBUFFER = 12,
             # And 15 was distance wrongly, it's GPU_DYNAMIC_OBJECT_AUTOBUMPSCALE
             else if u.type == 14 # shadow texture
-                @textures.push(@scene.objects[u.lamp].shadow_fb.texture)
-                tex_uniforms.push(u.varname)
+                @textures.push @scene.objects[u.lamp].shadow_fb.texture
+                tex_uniforms.push u.varname
             else if u.type == 13 and @scene # 2D image
-                tex = @scene.loader.load_texture(u.image, u.filepath, u.filter, u.wrap, u.size)
-                @textures.push(tex)
-                tex.users.push(@)
-                tex_uniforms.push(u.varname)
+                tex = @scene.loader.load_texture u.image, u.filepath, u.filter, u.wrap, u.size
+                @textures.push tex
+                tex.users.push @
+                tex_uniforms.push u.varname
             else if u.type == 77 # position in strand (0-1)
                 var_strand = u.varname
                 var_strand_type = u.gltype
             else if u.type == -1 # custom
-                var_custom.push(u.varname)
+                var_custom.push u.varname
             else
                 console.log u
                 console.log "Warning: unknown uniform", u.varname, u.type, "of data type", \
@@ -260,106 +263,106 @@ class Material
             gl_Position = projection_matrix * global_co;
         }"""
 
-        vertex_shader = gl.createShader(gl.VERTEX_SHADER)
-        gl.shaderSource(vertex_shader, vs)
-        gl.compileShader(vertex_shader)
+        vertex_shader = gl.createShader gl.VERTEX_SHADER
+        gl.shaderSource vertex_shader, vs
+        gl.compileShader vertex_shader
 
         if not gl.getShaderParameter(vertex_shader, gl.COMPILE_STATUS) and not gl.isContextLost()
             #console.log vs
             console.log "Error compiling vertex shader of material", name
-            console.log gl.getShaderInfoLog(vertex_shader)
-            # ext = gl.getExtension("WEBGL_debug_shaders")
+            console.log gl.getShaderInfoLog vertex_shader
+            # ext = gl.getExtension "WEBGL_debug_shaders"
             # if ext
-            #     console.log ('\n' + ext.getTranslatedShaderSource(vertex_shader)).split('\n')
-            gl.deleteShader(vertex_shader)
+            #     console.log  '\n' + ext.getTranslatedShaderSource(vertex_shader)).split('\n'
+            gl.deleteShader vertex_shader
             return
 
         @fs_code = fs
-        fragment_shader = gl.createShader(gl.FRAGMENT_SHADER)
+        fragment_shader = gl.createShader gl.FRAGMENT_SHADER
         fs = if fs.splice then fs.join('') else fs
-        gl.shaderSource(fragment_shader, fs)
-        gl.compileShader(fragment_shader)
+        gl.shaderSource fragment_shader, fs
+        gl.compileShader fragment_shader
 
         if not gl.getShaderParameter(fragment_shader, gl.COMPILE_STATUS) and not gl.isContextLost()
             console.log "Error compiling fragment shader of material", name
-            console.log gl.getShaderInfoLog(fragment_shader)
-            # ext = gl.getExtension("WEBGL_debug_shaders")
+            console.log gl.getShaderInfoLog fragment_shader
+            # ext = gl.getExtension "WEBGL_debug_shaders"
             # if ext
-            #     console.log ('\n' + ext.getTranslatedShaderSource(fragment_shader)).split('\n')
-            gl.deleteShader(fragment_shader)
+            #     console.log  '\n' + ext.getTranslatedShaderSource(fragment_shader)).split('\n'
+            gl.deleteShader fragment_shader
             return
 
 
         prog = gl.createProgram()
-        gl.attachShader(prog, vertex_shader)
-        gl.attachShader(prog, fragment_shader)
-        gl.bindAttribLocation(prog, 0, 'vertex')  # Ensure vertex is attrib 0
-        gl.linkProgram(prog)
+        gl.attachShader prog, vertex_shader
+        gl.attachShader prog, fragment_shader
+        gl.bindAttribLocation prog, 0, 'vertex'  # Ensure vertex is attrib 0
+        gl.linkProgram prog
 
         if not gl.getProgramParameter(prog, gl.LINK_STATUS) and not gl.isContextLost()
             console.log "Error linking shader of material", name
             console.log attributes
-            console.log gl.getProgramInfoLog(prog)
-            #ext = gl.getExtension("WEBGL_debug_shaders")
-            #if ext console.log ext.getTranslatedShaderSource(vertex_shader)
-            gl.deleteProgram(prog)
-            gl.deleteShader(vertex_shader)
-            gl.deleteShader(fragment_shader)
+            console.log gl.getProgramInfoLog prog
+            #ext = gl.getExtension "WEBGL_debug_shaders"
+            #if ext console.log ext.getTranslatedShaderSource vertex_shader
+            gl.deleteProgram prog
+            gl.deleteShader vertex_shader
+            gl.deleteShader fragment_shader
             return
 
-        gl.useProgram(prog)
-        @u_model_view_matrix = gl.getUniformLocation(prog, var_model_view_matrix)
-        @u_projection_matrix = gl.getUniformLocation(prog, "projection_matrix")
-        @u_normal_matrix = gl.getUniformLocation(prog, "normal_matrix")
-        @u_shape_multiplier = gl.getUniformLocation(prog, "shape_multiplier")
-        @u_uv_multiplier = gl.getUniformLocation(prog, "uv_multiplier")
-        @u_group_id = gl.getUniformLocation(prog, "group_id")
-        gl.uniform1f(@u_shape_multiplier, @shape_multiplier)
-        gl.uniform1f(@u_uv_multiplier, @uv_multiplier)
+        gl.useProgram prog
+        @u_model_view_matrix = gl.getUniformLocation prog, var_model_view_matrix
+        @u_projection_matrix = gl.getUniformLocation prog, "projection_matrix"
+        @u_normal_matrix = gl.getUniformLocation prog, "normal_matrix"
+        @u_shape_multiplier = gl.getUniformLocation prog, "shape_multiplier"
+        @u_uv_multiplier = gl.getUniformLocation prog, "uv_multiplier"
+        @u_group_id = gl.getUniformLocation prog, "group_id"
+        gl.uniform1f @u_shape_multiplier, @shape_multiplier
+        gl.uniform1f @u_uv_multiplier, @uv_multiplier
 
         # these getUniformLocation may yield null
-        @u_inv_model_view_matrix = gl.getUniformLocation(prog, var_inv_model_view_matrix)
-        @u_var_object_matrix = gl.getUniformLocation(prog, var_inv_object_matrix)
-        @u_var_inv_object_matrix = gl.getUniformLocation(prog, var_inv_object_matrix)
-        @u_color = gl.getUniformLocation(prog, var_color)
-        @u_fb_size = gl.getUniformLocation(prog, "fb_size")
-        @u_strand = gl.getUniformLocation(prog, var_strand)
+        @u_inv_model_view_matrix = gl.getUniformLocation prog, var_inv_model_view_matrix
+        @u_var_object_matrix = gl.getUniformLocation prog, var_inv_object_matrix
+        @u_var_inv_object_matrix = gl.getUniformLocation prog, var_inv_object_matrix
+        @u_color = gl.getUniformLocation prog, var_color
+        @u_fb_size = gl.getUniformLocation prog, "fb_size"
+        @u_strand = gl.getUniformLocation prog, var_strand
         @u_shapef = []
         for i in [0...num_shapes]
-            @u_shapef[i] = gl.getUniformLocation(prog, "shapef["+i+"]")
+            @u_shapef[i] = gl.getUniformLocation prog, "shapef["+i+"]"
         @u_bones = []
         for i in [0...@num_bone_uniforms]
-            @u_bones[i] = gl.getUniformLocation(prog, "bones["+i+"]")
+            @u_bones[i] = gl.getUniformLocation prog, "bones["+i+"]"
         @u_custom = []
         for v in var_custom
-            @u_custom.push(gl.getUniformLocation(prog, v))
+            @u_custom.push gl.getUniformLocation(prog, v)
 
         fb = @context.render_manager.common_filter_fb
         if fb and @u_fb_size?
-            gl.uniform2f(@u_fb_size, fb.size_x, fb.size_y)
+            gl.uniform2f @u_fb_size, fb.size_x, fb.size_y
 
         # getAttribLocation returns -1 if not present (instead of null)
-        @a_vertex = gl.getAttribLocation(prog, "vertex")
-        gl.enableVertexAttribArray(@a_vertex)
+        @a_vertex = gl.getAttribLocation prog, "vertex"
+        gl.enableVertexAttribArray @a_vertex
 
         for a_name of @attrib_locs
            a = gl.getAttribLocation(prog, a_name)|0
            @attrib_locs[a_name] = a
 
         for i in [0...tex_uniforms.length]
-            gl.uniform1i(gl.getUniformLocation(prog, tex_uniforms[i]), i)
+            gl.uniform1i gl.getUniformLocation(prog, tex_uniforms[i]), i
         # TODO: only ~half of those vars are present
         for i of lamps
             lamp_data = lamps[i]
             @lamps.push([
                 @scene.objects[i],
-                gl.getUniformLocation(prog, lamp_data.varpos),
-                gl.getUniformLocation(prog, lamp_data.varcolor3),
-                gl.getUniformLocation(prog, lamp_data.varcolor4),
-                gl.getUniformLocation(prog, lamp_data.dist),
-                gl.getUniformLocation(prog, lamp_data.vardir),
-                gl.getUniformLocation(prog, lamp_data.varmat),
-                gl.getUniformLocation(prog, lamp_data.varenergy),
+                gl.getUniformLocation prog, lamp_data.varpos,
+                gl.getUniformLocation prog, lamp_data.varcolor3,
+                gl.getUniformLocation prog, lamp_data.varcolor4,
+                gl.getUniformLocation prog, lamp_data.dist,
+                gl.getUniformLocation prog, lamp_data.vardir,
+                gl.getUniformLocation prog, lamp_data.varmat,
+                gl.getUniformLocation prog, lamp_data.varenergy,
             ])
 
         @_program = prog
@@ -368,7 +371,7 @@ class Material
     use: ->
         prog = @_program
         if _active_program != prog
-            @context.render_manager.gl.useProgram(prog)
+            @context.render_manager.gl.useProgram prog
         return prog
 
     reupload: ->
@@ -376,27 +379,27 @@ class Material
         @uniforms_config, @attributes_config, @vs_code, @scene)
 
     destroy: ->
-        @context.render_manager.gl.deleteProgram(@_program)
+        @context.render_manager.gl.deleteProgram @_program
 
     debug_set_uniform: (utype, uname, value)->
         # Use only for debugging purposes!
         # Examples:
-        # debug_set_uniform('1f', 'some_uniform', 3.0)
-        # debug_set_uniform('4fv', 'some_uniform', [1,2,3,4])
-        @context.render_manager.gl.useProgram(@_program)
-        loc = @context.render_manager.gl.getUniformLocation(@_program, uname)
+        # debug_set_uniform '1f', 'some_uniform', 3.0
+        # debug_set_uniform '4fv', 'some_uniform', [1,2,3,4]
+        @context.render_manager.gl.useProgram @_program
+        loc = @context.render_manager.gl.getUniformLocation @_program, uname
         @context.render_manager.gl['uniform'+utype](loc, value)
 
     debug_set_custom_uniform: (utype, index, value)->
-        @context.render_manager.gl.useProgram(@_program)
-        @context.render_manager.gl['uniform'+utype](@u_custom[index], value)
+        @context.render_manager.gl.useProgram @_program
+        @context.render_manager.gl['uniform'+utype] @u_custom[index], value
 
     clone_to_scene: (scene)->
         # The only reason we have for cloning a material is to change the lamps
         # to the ones of a different scene. And you can only do it if there are
         # lamps of the same type in the target scene.
         dest_scene_lamps = scene.lamps[...]
-        cloned = scene.materials[@name] = Object.create(@)
+        cloned = scene.materials[@name] = Object.create @
         lamps = cloned.lamps = []
         for l in @lamps
             # First we clone the lamp reference and properties...
@@ -407,9 +410,9 @@ class Material
                     if dlamp.lamp_type == l[0].lamp_type
                         # console.log 'found matching lamp', dlamp.name, l[0].name
                         l[0] = dlamp
-                        dest_scene_lamps.remove(dlamp)
+                        dest_scene_lamps.remove dlamp
                         break
-            lamps.push(l)
+            lamps.push l
             # If matches weren't found, fat chance. We're not warning.
 
         return cloned

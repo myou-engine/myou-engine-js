@@ -1,16 +1,16 @@
 "use strict"
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require('gl-matrix')
-Action = require('./animation').Action
-Group = require('./group').Group
-Viewport = require('./viewport').Viewport
-Camera = require('./camera').Camera
-Lamp = require('./lamp').Lamp
-Mesh = require('./mesh').Mesh
-{Scene, get_scene} = require('./scene')
-Curve = require('./curve').Curve
-GameObject = require('./gameobject').GameObject
-Armature = require('./armature').Armature
-{PHYSICS_ENGINE_URL, physics_engine_init} = require('./physics')
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{Action} = require './animation'
+{Group} = require './group'
+{Viewport} = require './viewport'
+{Camera} = require './camera'
+{Lamp} = require './lamp'
+{Mesh} = require './mesh'
+{Scene, get_scene} = require './scene'
+{Curve} = require './curve'
+{GameObject} = require './gameobject'
+{Armature} = require './armature'
+{PHYSICS_ENGINE_URL, physics_engine_init} = require './physics'
 
 NUM_WORKERS_64 = 2
 NUM_WORKERS_32 = 1
@@ -39,15 +39,15 @@ class Loader
         onload = =>
             scene.enabled = true
             console.log 'Scene "' + scene.name + '" loaded in ' + ((performance.now() - start)*0.001).toFixed(2) + ' seconds'
-            @remove_queue_listener(0, onload)
+            @remove_queue_listener 0, onload
             @context.onload_main_scene?()
             @context.onload_main_scene = null
             # Hack! (see below)
             scene.decrement_task_count()
 
-        @add_queue_listener(0, onload)
+        @add_queue_listener 0, onload
         for d in data
-            @load_datablock(d)
+            @load_datablock d
         # Hack!
         # We have to use increment_task_count and decrement_task_count
         # for each task loaded
@@ -63,9 +63,9 @@ class Loader
         if data.scene
             @current_scene = @context.scenes[data.scene]
         if data.type=='SCENE'
-            @current_scene = scene = get_scene(@context, data.name)
+            @current_scene = scene = get_scene @context, data.name
             scene.loader = scene.loader or @
-            scene.set_gravity(data.gravity)
+            scene.set_gravity data.gravity
             scene.background_color = data.background_color
             scene.debug_physics = data.debug_physics
             scene.active_camera_name = data.active_camera
@@ -100,20 +100,20 @@ class Loader
         else if data.type=='JSFILE'
             # NOTE: assumes the file always has a line at the end that executes
             # script_tag_loaded_callbacks['filename.js']()
-            @current_scene.loader.load_script_with_tag_callback(data.uri, -> pass)
+            @current_scene.loader.load_script_with_tag_callback data.uri, -> pass
 
         else if data.type=='JSCODE'
-            window.eval(data.code)
+            window.eval data.code
 
         else if data.type=='ACTION'
-            @context.actions[data.name] = new Action(data.name, data.channels, data.markers)
+            @context.actions[data.name] = new Action data.name, data.channels, data.markers
 
         else if data.type=='GROUP'
-            @context.groups[data.name] = new Group(data.objects, data.offset)
+            @context.groups[data.name] = new Group data.objects, data.offset
 
         else if data.type=='DELETE'
             for n in data.names
-                @current_scene.remove_object(@current_scene.objects[n])
+                @current_scene.remove_object @current_scene.objects[n]
 
 
         else if data.type=='STOP_RENDER'
@@ -141,7 +141,7 @@ class Loader
             if vp
                 vp.debug_camera = null
         else
-            @load_object(data)
+            @load_object data
 
         return
 
@@ -151,13 +151,13 @@ class Loader
         ob = scene.objects[data.name]
         if data.type == 'MESH'
             if not ob
-                ob = new Mesh(@context)
+                ob = new Mesh @context
                 ob.name = data.name
                 ob.static = data.static or false
                 ob.passes = data.passes # TODO: allow pass changes
-                scene.add_object(ob, data.name, data.parent, data.parent_bone)
+                scene.add_object ob, data.name, data.parent, data.parent_bone
 
-            vec4.copy(ob.color, data.color)
+            vec4.copy ob.color, data.color
             load_mesh_properties = (ob, data)=>
                 if ob.hash != data.hash
                     # This data should not used on render
@@ -177,39 +177,39 @@ class Loader
                     ob.packed_file = data.packed_file
                     if ob.hash of @context.mesh_datas
                         # This is duplicated in load_mesh_data
-                        ob.data and ob.data.remove(ob)
+                        ob.data and ob.data.remove ob
                         ob.data = @context.mesh_datas[ob.hash]
-                        ob.data.users.push(ob)
+                        ob.data.users.push ob
                         # NOTE: cached physics mesh hash is not checked!
                         ob.instance_physics()
 
                     else if data.visible
-                        scene.loader.load_mesh_data(ob)
-            load_mesh_properties(ob, data)
+                        scene.loader.load_mesh_data ob
+            load_mesh_properties ob, data
 
             if 'alternative_meshes' of data
                 alm = data.alternative_meshes
-                ob.altmeshes.splice(0)
+                ob.altmeshes.splice 0
                 for d in alm
                     d.visible = data.visible
                     d.materials = data.materials
-                    m = new Mesh(@context)
+                    m = new Mesh @context
                     m.name = ob.name
                     m.scene = ob.scene
                     m.mesh_id = data.mesh_id
                     m.group_id = data.group_id
-                    ob.altmeshes.push(m)
-                    load_mesh_properties(m,d)
+                    ob.altmeshes.push m
+                    load_mesh_properties m,d
 
                 ob.active_mesh_index = data.active_mesh_index
 
             if 'phy_mesh' of data
                 data.phy_mesh.visible = data.visible
-                m = ob.physics_mesh = new Mesh(@context)
+                m = ob.physics_mesh = new Mesh @context
                 m.visible_mesh = ob
                 m.name = ob.name
                 m.scene = ob.scene
-                load_mesh_properties(m, data.phy_mesh)
+                load_mesh_properties m, data.phy_mesh
 
             if data.lod_levels
                 ob.lod_objects = []
@@ -222,9 +222,9 @@ class Loader
                     lod_data.visible = data.visible
                     lod_data.mesh_id = data.mesh_id
                     lod_data.group_id = data.group_id
-                    lod_ob = new Mesh(@context)
+                    lod_ob = new Mesh @context
                     lod_ob.scene = ob.scene
-                    load_mesh_properties(lod_ob, lod_data)
+                    load_mesh_properties lod_ob, lod_data
                     ob.lod_objects.push
                         factor: lod_data.factor,
                         distance: 1/lod_data.factor,
@@ -237,24 +237,24 @@ class Loader
 
         else if data.type == 'CURVE'
             if not ob
-                ob = new Curve(@context)
+                ob = new Curve @context
                 ob.name = data.name
                 ob.static = data.static or false
-                scene.add_object(ob, data.name, data.parent, data.parent_bone)
+                scene.add_object ob, data.name, data.parent, data.parent_bone
 
-            ob.set_curves(data.curves, data.resolution, data.nodes)
+            ob.set_curves data.curves, data.resolution, data.nodes
         else if data.type == 'CAMERA'
             if not ob
-                ob = new Camera(@context)
+                ob = new Camera @context
                 ob.name = data.name
                 ob.static = data.static or false
-                scene.add_object(ob, data.name, data.parent, data.parent_bone)
+                scene.add_object ob, data.name, data.parent, data.parent_bone
                 if data.name == scene.active_camera_name
                     scene.active_camera = ob
                     if @context.render_manager.viewports.length == 0
-                        v = new Viewport(@context.render_manager, ob)
+                        v = new Viewport @context.render_manager, ob
                     if scene.stereo
-                        stereo_manager.enable(v)
+                        stereo_manager.enable v
             ob.near_plane = data.clip_start
             ob.far_plane = data.clip_end
             if not @context.render_manager.vrstate
@@ -266,37 +266,37 @@ class Loader
 
         else if data.type=='LAMP'
             if not ob
-                ob = new Lamp(@context)
+                ob = new Lamp @context
                 ob.name = data.name
                 ob.static = data.static or false
                 if data.lamp_type!='POINT' and data.shadow
-                    ob.init_shadow(data.frustum_size, data.clip_start, data.clip_end)
-                scene.add_object(ob, data.name, data.parent, data.parent_bone)
+                    ob.init_shadow data.frustum_size, data.clip_start, data.clip_end
+                scene.add_object ob, data.name, data.parent, data.parent_bone
             ob.lamp_type = data.lamp_type
-            ob.color.set(data.color)
+            ob.color.set data.color
             if data.energy != undefined
                 ob.energy = data.energy
             ob.falloff_distance = data.falloff_distance
 
         else if data.type=='ARMATURE'
             if not ob
-                ob = new Armature()
+                ob = new Armature
                 ob.name = data.name
                 ob.static = data.static or false
-                scene.add_object(ob, data.name, data.parent, data.parent_bone)
+                scene.add_object ob, data.name, data.parent, data.parent_bone
             if data.bones
                 ob.bones = {}
                 ob.children = []
                 ob.unfc = data.unfc
-                ob.add_bones(data.bones)
-            ob.apply_pose(data.pose)
+                ob.add_bones data.bones
+            ob.apply_pose data.pose
         else if data.type=='EMPTY'
             if not ob
-                ob = new GameObject(@context)
+                ob = new GameObject @context
                 ob.name = data.name
                 ob.static = data.static or false
-                vec4.copy(ob.color, data.color)
-                scene.add_object(ob, data.name, data.parent, data.parent_bone)
+                vec4.copy ob.color, data.color
+                scene.add_object ob, data.name, data.parent, data.parent_bone
         else
             console.log "Warning: unsupported type",data.type
             return
@@ -307,17 +307,17 @@ class Loader
                 if 'formula' of p
                     #string function to code
                     p.formula = (new Function('return ' + p.formula))()
-                ob.particle_systems.push({'properties':p})
+                ob.particle_systems.push {'properties':p}
 
-        vec3.copy(ob.position, data.pos)
+        vec3.copy ob.position, data.pos
         r = data.rot
-        quat.copy(ob.rotation, [r[1], r[2], r[3], r[0]])
+        quat.copy ob.rotation, [r[1], r[2], r[3], r[0]]
         ob.rotation_order = data.rot_mode
-        vec3.copy(ob.scale, data.scale)
-        vec3.copy(ob.offset_scale, data.offset_scale)
+        vec3.copy ob.scale, data.scale
+        vec3.copy ob.offset_scale, data.offset_scale
         ob.visible = data.visible
         ob.mirrors = data.mirrors or 1
-        vec3.copy(ob.dimensions, data.dimensions) # is this used outside physics?
+        vec3.copy ob.dimensions, data.dimensions # is this used outside physics?
         ob.radius = vec3.len(ob.dimensions.length) * 0.5
         ob.properties = data.properties or {}
         ob.actions = data.actions or []
@@ -334,8 +334,8 @@ class Loader
             ob.mass = data.mass
             ob.no_sleeping = data.no_sleeping
             ob.is_ghost = data.is_ghost
-            vec3.copy(ob.linear_factor, data.linear_factor)
-            vec3.copy(ob.angular_factor, data.angular_factor)
+            vec3.copy ob.linear_factor, data.linear_factor
+            vec3.copy ob.angular_factor, data.angular_factor
             ob.form_factor = data.form_factor
             ob.friction = data.friction
             ob.elasticity = data.elasticity
@@ -355,7 +355,7 @@ class Loader
             return tex
         gl = @context.render_manager.gl
         wrap_const = {'C': gl.CLAMP_TO_EDGE, 'R': gl.REPEAT, 'M': gl.MIRRORED_REPEAT}[wrap]
-        if name.startswith('special:')
+        if name.startswith 'special:'
             return {'name': name}
         tex = {'tex': gl.createTexture(), 'size': size}
         @context.render_manager.textures[name] = tex
@@ -375,7 +375,7 @@ class Loader
 
             load_levels = (num_additional_levels, width, height, format, buffers, common_data) ->
                 #t = performance.now()
-                gl.bindTexture(gl.TEXTURE_2D, tex.tex)
+                gl.bindTexture gl.TEXTURE_2D, tex.tex
 
                 if format == 0
                     internal_format = ext.COMPRESSED_RGBA_S3TC_DXT1_EXT
@@ -385,27 +385,27 @@ class Loader
                 if @context.MYOU_PARAMS.no_mipmaps
                     buffers_len = 1
                 for i in [0...buffers_len]
-                    data = new Uint8Array(buffers[i])
-                    gl.compressedTexImage2D(gl.TEXTURE_2D, i, internal_format, width>>i, height>>i, 0, data)
+                    data = new Uint8Array buffers[i]
+                    gl.compressedTexImage2D gl.TEXTURE_2D, i, internal_format, width>>i, height>>i, 0, data
                     ## TODO: Enable in debug mode, silence after n errors
                     #error = gl.getError()
                     #if error != gl.NO_ERROR
                         #errcodes = {'1280': 'INVALID_ENUM', '1281': 'INVALID_VALUE',
                                     #'1282': 'INVALID_OPERATION', '1205': 'OUT_OF_MEMORY'}
-                        #console.log ('GL Error ' + errcodes[error] + ' when loading ' + tex.path + ' size:' + width + 'x' + height + ' level:' + i)
+                        #console.log  'GL Error ' + errcodes[error] + ' when loading ' + tex.path + ' size:' + width + 'x' + height + ' level:' + i
 
                 gl_linear_nearest = if filter then gl.LINEAR else gl.NEAREST
                 if buffers_len > 1
                     mipmap_filter = {
-                        C: (if filter then gl.LINEAR_MIPMAP_NEAREST  else gl.NEAREST_MIPMAP_NEAREST)
-                        R: (if filter then gl.LINEAR_MIPMAP_LINEAR else gl.NEAREST_MIPMAP_LINEAR)
+                        C:  if filter then gl.LINEAR_MIPMAP_NEAREST  else gl.NEAREST_MIPMAP_NEAREST
+                        R:  if filter then gl.LINEAR_MIPMAP_LINEAR else gl.NEAREST_MIPMAP_LINEAR
                         }[wrap]
-                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, mipmap_filter)
+                    gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, mipmap_filter
                 else
-                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl_linear_nearest)
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl_linear_nearest)
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap_const)
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap_const)
+                    gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl_linear_nearest
+                gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl_linear_nearest
+                gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap_const
+                gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap_const
 
                 # We preserve the base buffers in case of lost context
                 # (the higher levels can be loaded later)
@@ -417,21 +417,21 @@ class Loader
                 tex.height = height
                 tex.format = format
 
-                #profile_tex_upload_times.push([performance.now()-t, name])
+                #profile_tex_upload_times.push [performance.now()-t, name]
                 main_loop.reset_timeout()
                 return true
 
             load_565 = (data) ->
-                gl.bindTexture(gl.TEXTURE_2D, tex.tex)
+                gl.bindTexture gl.TEXTURE_2D, tex.tex
                 # Assuming texture is square
-                data = new Uint16Array(data)
-                width = height = Math.sqrt(data.length)
+                data = new Uint16Array data
+                width = height = Math.sqrt data.length
                 gl_linear_nearest = if filter then gl.LINEAR else gl.NEAREST
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, width, height, 0, gl.RGB, gl.UNSIGNED_SHORT_5_6_5, data)
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl_linear_nearest)
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl_linear_nearest)
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap_const)
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap_const)
+                gl.texImage2D gl.TEXTURE_2D, 0, gl.RGB, width, height, 0, gl.RGB, gl.UNSIGNED_SHORT_5_6_5, data
+                gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl_linear_nearest
+                gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl_linear_nearest
+                gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap_const
+                gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap_const
 
                 # We preserve the base buffers in case of lost context
                 # (the higher levels can be loaded later)
@@ -441,27 +441,27 @@ class Loader
                 main_loop.reset_timeout()
                 return true
             if ext
-                @add_task(src, load_levels, 'load_crunch')
+                @add_task src, load_levels, 'load_crunch'
             else
-                @add_task(src+'.565', load_565, '')
+                @add_task src+'.565', load_565, ''
 
             load_single_level = (width, height, format, buffers) ->
                 pass
 
             reupload = tex.reupload = ->
                 if tex.tex
-                    gl.deleteTexture(tex.tex)
+                    gl.deleteTexture tex.tex
                 tex.tex = gl.createTexture()
-                load_levels(n, tex.width, tex.height, tex.format, tex.level_buffers, tex.common_data)
+                load_levels n, tex.width, tex.height, tex.format, tex.level_buffers, tex.common_data
 
             add_level_buffer = (width, height, format, buffer) ->
                 if @context.render_manager.context_lost_count
                     return
-                gl.deleteTexture(tex.tex)
+                gl.deleteTexture tex.tex
                 tex.tex = gl.createTexture()
                 buffers = tex.level_buffers
-                buffers.insert(0, buffer)
-                load_levels(tex.num_additional_levels, width, height, format, buffers, tex.common_data)
+                buffers.insert 0, buffer
+                load_levels tex.num_additional_levels, width, height, format, buffers, tex.common_data
 
             tex.load_additional_level = (queue_id=1) =>
                 if @context.render_manager.context_lost_count
@@ -471,7 +471,7 @@ class Loader
                     n = tex.num_additional_levels = tex.num_additional_levels - 1
                     file_name = src+'.'+n
                     common_data = tex.common_data[...]
-                    @add_task(file_name, add_level_buffer, 'load_crunch_extra', common_data, queue_id)
+                    @add_task file_name, add_level_buffer, 'load_crunch_extra', common_data, queue_id
                     return true
                 return false
 
@@ -482,42 +482,42 @@ class Loader
             src = base + path
             ext = @context.render_manager.extensions.compressed_texture_s3tc
             f = (data)->
-                gl.bindTexture(gl.TEXTURE_2D, tex.tex)
-                gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
-                mipmaps = uploadDDSLevels(gl, ext, data)
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+                gl.bindTexture gl.TEXTURE_2D, tex.tex
+                gl.pixelStorei gl.UNPACK_FLIP_Y_WEBGL, true
+                mipmaps = uploadDDSLevels gl, ext, data
+                gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR
                 x = if mipmaps > 1 then gl.LINEAR_MIPMAP_LINEAR else gl.LINEAR
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, x)
+                gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, x
                 tex.loaded = true
                 return true
-            @add_task(src, f, '')
+            @add_task src, f, ''
         else
             @pending_operations += 1
             img = new Image
             #img.crossOrigin = 'anonymous'
             tex.reupload = ->
                 if tex.tex
-                    gl.deleteTexture(tex.tex)
+                    gl.deleteTexture tex.tex
                 tex.tex = gl.createTexture()
                 img.onload()
             img.onload = =>
-                gl.bindTexture(gl.TEXTURE_2D, tex.tex)
-                gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img)
+                gl.bindTexture gl.TEXTURE_2D, tex.tex
+                gl.pixelStorei gl.UNPACK_FLIP_Y_WEBGL, true
+                gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img
                 gl_linear_nearest = if filter then gl.LINEAR else gl.NEAREST
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl_linear_nearest)
+                gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl_linear_nearest
                 # TODO: add mipmap options to the GUI
                 gl_linear_nearest_mipmap = if filter then gl.LINEAR_MIPMAP_LINEAR else gl.NEAREST_MIPMAP_NEAREST
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl_linear_nearest_mipmap)
-                gl.generateMipmap(gl.TEXTURE_2D)
+                gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl_linear_nearest_mipmap
+                gl.generateMipmap gl.TEXTURE_2D
                 # TODO: detect which textures need this (mostly walls, floors...)
                 # and add a global switch
                 ext = @context.render_manager.extensions.texture_filter_anisotropic
                 if @context.MYOU_PARAMS.anisotropic_filter and ext
-                    gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, 4)
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap_const)
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap_const)
-                gl.bindTexture(gl.TEXTURE_2D, null)
+                    gl.texParameterf gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, 4
+                gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap_const
+                gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap_const
+                gl.bindTexture gl.TEXTURE_2D, null
                 tex.loaded = true
                 # TODO
                 #@loaded += size
@@ -550,25 +550,25 @@ class WebSocketLoader
         ws.onopen = (x)=>
             console.log "Connected to debug WebSocket"
             f () ->
-                ws.send('keepalive')
-            @keep_alive_int = setInterval(f,10000)
+                ws.send 'keepalive'
+            @keep_alive_int = setInterval f,10000
 
         ws.onmessage = (e)=>
             # If it's a number, it's the number of fragments
             if not @num_pending and e.data[0] != '{' and e.data[0] != '['
-                @num_pending = int(e.data)
+                @num_pending = Math.floor e.data
             else if @num_pending
                 @pending += e.data
                 @num_pending -= 1
             if not @num_pending
-                data = JSON.parse(@pending or e.data)
+                data = JSON.parse @pending or e.data
                 @pending = ""
-                if hasattr(data, 'length')
+                if hasattr data, 'length'
                     console.log 'load onmessage'
-                    @load(data)
+                    @load data
                 else
                     console.log 'load datablock onmessage'
-                    @load_datablock(data)
+                    @load_datablock data
 
         ws.onclose = (x) =>
             console.log x
@@ -578,9 +578,9 @@ class WebSocketLoader
             '','TOO_LARGE','','','','','','TLS_ERROR'][x.code-1000]
             console.log "Disconnected with code",code,x.reason
             console.log "Reconnecting in 1 second"
-            clearInterval(@keep_alive_int)
-            f = -> WebSocketLoader(address, loader)
-            setTimeout(f, 1000)
+            clearInterval @keep_alive_int
+            f = -> WebSocketLoader address, loader
+            setTimeout f, 1000
 
 
 
@@ -609,7 +609,7 @@ class XhrLoader extends Loader
         @next_task_id = 0
         @task_cb = task_cb = {}  # {id: [callback, callback, ...]}
 
-        prog = document.getElementById('progress')
+        prog = document.getElementById 'progress'
 
         xhrloader = @
         onmessage = (e)->
@@ -637,11 +637,11 @@ class XhrLoader extends Loader
                 queue_id = data[1]
                 finished = true
                 for f in task_cb[data[0]]
-                    finished = finished and f.apply(null, data[2])
+                    finished = finished and f.apply null, data[2]
                 if finished
                     @remaining[queue_id] -= 1
                     xhrloader.remaining_tasks[queue_id] -= 1
-                    xhrloader.check_queue_finished(queue_id)
+                    xhrloader.check_queue_finished queue_id
 
         ext = @context.render_manager.extensions.compressed_texture_s3tc
         worker_code = """
@@ -666,10 +666,10 @@ class XhrLoader extends Loader
             worker.last_progress = [0] # One per queue
             worker.remaining = [0] # One per queue
             worker.onmessage = onmessage
-            workers.push(worker)
+            workers.push worker
             NUM_WORKERS_32 = NUM_WORKERS_64 = 1
             return
-        blob = new Blob([worker_code], {'type': 'application/javascript'})
+        blob = new Blob [worker_code], {'type': 'application/javascript'}
         worker_uri = (window.URL or window.webkitURL).createObjectURL(blob)
         # worker_uri = 'data:application/javascript,' + encodeURIComponent(worker_code)
 
@@ -677,12 +677,12 @@ class XhrLoader extends Loader
         if is_64_bit_os
             num_workers = NUM_WORKERS_64
         for w in [0...num_workers]
-            worker = new Worker(worker_uri)
+            worker = new Worker worker_uri
             worker.id = w
             worker.last_progress = [0] # One per queue
             worker.remaining = [0] # One per queue
             worker.onmessage = onmessage
-            workers.push(worker)
+            workers.push worker
 
     check_queue_finished: (queue_id)->
         remaining = @remaining_tasks[queue_id]
@@ -700,7 +700,7 @@ class XhrLoader extends Loader
         # Decoder can be "text", "json", "" (for arraybuffer) or a function name in load_worker
         id = @next_task_id
         cb_list = @task_cb[id] = @task_cb[id] or []
-        cb_list.push(callback)
+        cb_list.push callback
         # Eventually it will be better to choose the worker more intelligently
         num_workers = NUM_WORKERS_32
         if is_64_bit_os
@@ -711,37 +711,37 @@ class XhrLoader extends Loader
         if not /^http/.test(uri)
             uri = @full_local_path + uri
         if extra_data and extra_data.byteArray != null
-            worker.postMessage(['get', queue_id, id, uri, decoder, extra_data], [extra_data])
+            worker.postMessage ['get', queue_id, id, uri, decoder, extra_data], [extra_data]
         else
-            worker.postMessage(['get', queue_id, id, uri, decoder, extra_data])
+            worker.postMessage ['get', queue_id, id, uri, decoder, extra_data]
         @next_task_id += 1
 
     add_anon_task: (queue_id) ->
         id = @next_task_id
-        @remaining_tasks[queue_id] = (@remaining_tasks[queue_id]|0) + 1
+        @remaining_tasks[queue_id] =  @remaining_tasks[queue_id]|0 + 1
         @next_task_id += 1
         return @next_task_id
 
     finish_anon_task: (queue_id) ->
         @remaining_tasks[queue_id] -= 1
-        @check_queue_finished(queue_id)
+        @check_queue_finished queue_id
 
-    add_queue_listener: (, queue_id, f)->
+    add_queue_listener: (queue_id, f)->
         l = @queue_listeners[queue_id] = @queue_listeners[queue_id] or []
-        l.push(f)
+        l.push f
 
     remove_queue_listener: (queue_id, f)->
         l = @queue_listeners[queue_id]
         if l
-            l.remove(f)
+            l.remove f
 
     load_scene: (scene_name, filter_function)->
         console.log "loading_scene"
         f = (data)=>
-            d = JSON.parse(data)
+            d = JSON.parse data
             if filter_function
-                d = filter_function(d)
-            @load(d)
+                d = filter_function d
+            @load d
             if @debug and not debug_loader
                 global debug_loader
                 host = location.hostname
@@ -750,12 +750,12 @@ class XhrLoader extends Loader
                 port = location.port
                 if host == "127.0.0.1" or host == "localhost"
                     port = WEBSOCKET_PORT
-                debug_loader = new WebSocketLoader("ws://"+host+":"+port+"/ws/", @)
+                debug_loader = new WebSocketLoader "ws://"+host+":"+port+"/ws/", @
                 debug_loader.current_scene = @current_scene or scene
                 # TODO: show a debug widget
             return true
         base = @data_dir + 'scenes/'
-        @add_task(base + scene_name + '/all.json', f, 'text')
+        @add_task base + scene_name + '/all.json', f, 'text'
 
     load_physics_engine: ()->
         f = =>
@@ -775,15 +775,15 @@ class XhrLoader extends Loader
                     else
                         raise "There was an error initializing physics"
                 else
-                    setTimeout(check_ammo_is_loaded, 1000)
+                    setTimeout check_ammo_is_loaded, 1000
             else
                 f()
 
-        script = document.createElement('script')
+        script = document.createElement 'script'
         script.type = 'text/javascript'
         script.async = true
         script.src = @scripts_dir + PHYSICS_ENGINE_URL
-        document.body.appendChild(script)
+        document.body.appendChild script
         check_ammo_is_loaded()
 
     load_script: (uri, func=null)->
@@ -794,28 +794,28 @@ class XhrLoader extends Loader
             if @context.MYOU_PARAMS.debug
                 data="console.log('Loading "+uri+"');\n"+data
             # TODO does try catch (to detect syntax errors) degrade performance?
-            window.eval(data)
+            window.eval data
             if func
                 func()
             return true
-        @add_task(@data_dir + uri, f, 'text')
+        @add_task @data_dir + uri, f, 'text'
 
     load_script_with_tag_callback: (uri, func=null)->
         script_file_name = uri.split('/').pop(-1).split('?')[0]
         queue_id = 0
-        @add_anon_task(queue_id)
+        @add_anon_task queue_id
         f = =>
-            @finish_anon_task(queue_id)
+            @finish_anon_task queue_id
             delete script_tag_loaded_callbacks[script_file_name]
             if func
                 func()
         script_tag_loaded_callbacks[script_file_name] = f
 
-        script = document.createElement('script')
+        script = document.createElement 'script'
         script.type = 'text/javascript'
         script.async = true
         script.src = @data_dir + uri
-        document.body.appendChild(script)
+        document.body.appendChild script
 
 
     load_mesh_data: (mesh_object, min_lod=1)->
@@ -826,7 +826,7 @@ class XhrLoader extends Loader
 
         for alt in mesh_object.altmeshes
             if alt != mesh_object
-                @load_mesh_data(alt)
+                @load_mesh_data alt
 
         # Load LoD
         any_loaded = false
@@ -843,8 +843,8 @@ class XhrLoader extends Loader
             return any_loaded
 
         if file_name of pending_meshes
-            if pending_meshes[file_name].indexOf(mesh_object) == -1
-                pending_meshes[file_name].push(mesh_object)
+            if pending_meshes[file_name].indexOf mesh_object == -1
+                pending_meshes[file_name].push mesh_object
         else
             pending_meshes[file_name] = []
             base = @data_dir + 'scenes/'
@@ -853,12 +853,12 @@ class XhrLoader extends Loader
                 m = mesh_object
                 others = pending_meshes[file_name]
                 while m
-                    m.data and m.data.remove(m)
+                    m.data and m.data.remove m
                     m.data = @context.mesh_datas[m.hash]
                     if m.data
-                        m.data.users.push(m)
+                        m.data.users.push m
                     else
-                        m.load_from_arraybuffer(data)
+                        m.load_from_arraybuffer data
                     # Assuming live server don't give packed data
                     m = others.pop()
                 delete pending_meshes[file_name]
@@ -867,9 +867,9 @@ class XhrLoader extends Loader
                 mesh_object.load_from_arraybuffer(data)
                 for m in pending_meshes[file_name]
                     # TODO: equal meshes with different materials fail?
-                    m.data and m.data.remove(m)
+                    m.data and m.data.remove m
                     m.data = mesh_object.data
-                    m.data.users.push(m)
+                    m.data.users.push m
                     if not m.body
                         # TODO: remove this from load_from_va_ia
                         # and leave only this?
@@ -878,10 +878,10 @@ class XhrLoader extends Loader
                 return true
             if mesh_object.packed_file
                 #console.log 'packed'
-                @add_task(uri, packed, '')
+                @add_task uri, packed, ''
             else
                 #console.log 'non packed'
-                @add_task(uri, non_packed, '')
+                @add_task uri, non_packed, ''
         return true
 
 set_altmesh = (ob,i) ->

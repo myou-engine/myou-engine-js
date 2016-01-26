@@ -165,7 +165,7 @@ class Events
             mouse.wheel += Math.max(-1, Math.min(1, event.deltaY))
             if mouse.cancel_wheel
                 event.preventDefault()
-        root_element.addEventListener('wheel', wheel, false)
+        root_element.addEventListener 'wheel', wheel, false
 
         locked_mousemove = (event)->
             rel_x = event.mozMovementX or event.webkitMovementX or event.movementX or 0
@@ -179,25 +179,25 @@ class Events
 
         pointerlockchange = (event)->
             if mouse.lock_element
-                mouse.lock_element.removeEventListener('mousemove', locked_mousemove)
+                mouse.lock_element.removeEventListener 'mousemove', locked_mousemove
             e = (document.mozPointerLockElement or
                 document.webkitPointerLockElement or
                 document.pointerLockElement)
             if e
                 mouse.lock_element = e
-                e.addEventListener('mousemove', locked_mousemove)
+                e.addEventListener 'mousemove', locked_mousemove
             mouse.rel_x = mouse.rel_y = 0
 
-        document.addEventListener('pointerlockchange', pointerlockchange)
-        document.addEventListener('mozpointerlockchange', pointerlockchange)
-        document.addEventListener('webkitpointerlockchange', pointerlockchange)
+        document.addEventListener 'pointerlockchange', pointerlockchange
+        document.addEventListener 'mozpointerlockchange', pointerlockchange
+        document.addEventListener 'webkitpointerlockchange', pointerlockchange
 
 
-    _empty_key_array = new Uint8Array(256)
+    _empty_key_array = new Uint8Array 256
 
     reset_frame_events: ->
-        @keys_just_pressed.set(_empty_key_array)
-        @keys_just_released.set(_empty_key_array)
+        @keys_just_pressed.set _empty_key_array
+        @keys_just_released.set _empty_key_array
         @mouse.rel_x = 0
         @mouse.rel_y = 0
         @mouse.wheel = 0
