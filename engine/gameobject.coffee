@@ -27,9 +27,11 @@ MIRROR_YZ = 64
 MIRROR_XYZ = 128
 
 class GameObject
-    constructor: (use_physics=false, debug=false)->
-        @debug = debug
-        @use_physics = use_physics
+    constructor: (@context)->
+        @use_physics=false
+        @debug=false
+        if @context?
+            @use_physics = @context.MYOU_PARAMS.load_physics_engine
         @position = vec3.create()
         @rotation = quat.create()
         @rotation_order = 'Q'
@@ -61,7 +63,7 @@ class GameObject
         @body = null
         @shape = null
         @physics_type = 'NO_COLLISION'
-        if use_physics
+        if @use_physics
             @physical_radius = 1
             @anisotropic_friction = false
             @friction_coefficients = vec3.set vec3.create(), 1, 1, 1
@@ -132,22 +134,22 @@ class GameObject
 
             if @collision_shape=='BOX'
                 shape = new BoxShape he[0], he[1], he[2], @collision_margin
-                @phy_debug_mesh = render_manager.debug.box
+                @phy_debug_mesh = @context.render_manager.debug.box
             else if @collision_shape=='SPHERE'
                 radius = Math.max he[0], he[1], he[2]
                 he = [radius, radius, radius]
                 shape = new SphereShape radius, @collision_margin
-                @phy_debug_mesh = render_manager.debug.sphere
+                @phy_debug_mesh = @context.render_manager.debug.sphere
             else if @collision_shape=='CYLINDER'
                 radius = Math.max he[0], he[1]
                 he = [radius, radius, he[2]]
                 shape = new CylinderShape radius, he[2], @collision_margin
-                @phy_debug_mesh = render_manager.debug.cylinder
+                @phy_debug_mesh = @context.render_manager.debug.cylinder
             else if @collision_shape=='CAPSULE'
                 radius = Math.max he[0], he[1]
                 he = [radius, radius, he[2]]
                 shape = new CapsuleShape radius, he[2], @collision_margin
-                @phy_debug_mesh = render_manager.debug.cylinder
+                @phy_debug_mesh = @context.render_manager.debug.cylinder
             else if is_hull or is_tmesh
                 # Choose which mesh to use as physics
 
@@ -197,7 +199,7 @@ class GameObject
                         data.phy_convex_hull = shape
                         if @debug and not @phy_debug_hull
                             va_ia = get_convex_hull_edges data.varray, ob.stride/4, scale
-                            @phy_debug_hull = render_manager.debug.debug_mesh_from_va_ia va_ia[0], va_ia[1]
+                            @phy_debug_hull = @context.render_manager.debug.debug_mesh_from_va_ia va_ia[0], va_ia[1]
                         @phy_debug_mesh = @phy_debug_hull
                     else
                         shape = TriangleMeshShape(
@@ -269,7 +271,7 @@ class GameObject
                         rot
                         @step_height
                         2 #axis
-                        -scene.world.getGravity().z()*1
+                        -@scene.world.getGravity().z()*1
                         @jump_force
                         @max_fall_speed
                         PI_2 #slope

@@ -32,7 +32,6 @@ class Loader
         @context = context
 
     load: (data) ->
-        console.log 'loading' + data
         scene = null
         start = performance.now()
 
@@ -57,7 +56,7 @@ class Loader
 
 
     load_datablock: (data) ->
-        console.log 'loading data: ' + data.type
+        console.log 'loading data: ' + data.type + ' ' + data.name
         # TODO: This has grown a little too much
         # We should use a map with functions instead of so many ifs...
         if data.scene
@@ -170,6 +169,7 @@ class Loader
                     ob.group_id = data.group_id or ob.group_id or -1
                     ob.mesh_name = data.mesh_name
                     ob.material_names = data.materials
+                    console.log 'materials:' + ob.material_names
                     ob.all_f = data.all_f
                     ob.shape_multiplier = data.shape_multiplier or 1
                     ob.uv_multiplier = data.uv_multiplier or 1
@@ -280,7 +280,7 @@ class Loader
 
         else if data.type=='ARMATURE'
             if not ob
-                ob = new Armature
+                ob = new Armature @context
                 ob.name = data.name
                 ob.static = data.static or false
                 scene.add_object ob, data.name, data.parent, data.parent_bone
@@ -564,10 +564,8 @@ class WebSocketLoader
                 data = JSON.parse @pending or e.data
                 @pending = ""
                 if hasattr data, 'length'
-                    console.log 'load onmessage'
                     @load data
                 else
-                    console.log 'load datablock onmessage'
                     @load_datablock data
 
         ws.onclose = (x) =>
@@ -767,24 +765,24 @@ class XhrLoader extends Loader
                 if scene and not scene.world
                     scene.on_physics_engine_loaded()
 
-        check_ammo_is_loaded = ->
-            if Ammo?
-                if window.Module and Module.allocate
-                    if @context.MYOU_PARAMS.on_init_physics_error
-                        @context.MYOU_PARAMS.on_init_physics_error()
+        if not window.global_ammo_promise
+            window.global_ammo_promise = new Promise (resolve, reject) ->
+                check_ammo_is_loaded = ->
+                    if not Ammo?
+                        if window.Module?.allocate
+                            reject("There was an error initializing physics")
+                        else
+                            setTimeout(check_ammo_is_loaded, 300)
                     else
-                        raise "There was an error initializing physics"
-                else
-                    setTimeout check_ammo_is_loaded, 1000
-            else
-                f()
+                        resolve()
+                setTimeout(check_ammo_is_loaded, 300)
 
         script = document.createElement 'script'
         script.type = 'text/javascript'
         script.async = true
         script.src = @scripts_dir + PHYSICS_ENGINE_URL
         document.body.appendChild script
-        check_ammo_is_loaded()
+        window.global_ammo_promise = global_ammo_promise.then(f)
 
     load_script: (uri, func=null)->
         if location.protocol == "chrome-extension:"
