@@ -1,11 +1,19 @@
 # Myou
 
-Myou is a __game engine for web__, it features an __editor based on Blender__ (It will be added soon).
+Myou is a __game engine for web__, it features an __editor based on Blender__
+(It will be added soon).
+
 It is built as a platform with __collaborative__ groups in mind, enabling a fast working environment which allows editing, prototyping, testing and also deployment of both __2D__ and __3D__ interactive content.
 
 The __simplicity__ of Myou allows it to be suitable for people with or without any technical knowledge or a background in programming.
 
 In the future the optimizations for __VR__ together with __Blender__ integration makes Myou inherently excellent for making __animated VR movies__ and engaging, interactive game cutscenes.
+
+The first version of myou engine written on Pyva (a python based languaje) and compiled to a javascript file.
+
+This version of the myou engine has been ported to coffee-script and modified to
+get it working as a node package. The node version of myou also allows the creation of
+multiple instances of the engine.
 
 ## Features
 
@@ -87,7 +95,7 @@ MYOU_PARAMS =
 ```
 If you don't include some of the parameters above, these parameters will be interpreted as its default option.
 
-#### create a myou instance
+#### Create a myou instance
 The myou object contains the scenes, game objects, MYOU_PARAMS, render manager, etc.
 ```coffee-script
 myou_instance = new myou.Myou root, MYOU_PARAMS
@@ -97,6 +105,25 @@ need to create a root element by each of the instances.
 
 ## Documentation
 We are working on the documentation. It will be added soon.
+
+## Examples
+You can compile an example included on the package.
+You only have to execute the next command on the root package directory
+```
+webpack --config webpack.config.example
+```
+
+And run this simple python server from this bash script on the example directory.
+```
+cd example
+sh server.sh
+```
+And then you can enter in your browser to:
+
+http://localhost:8000/build/example.html
+
+You can enable the required flag to get file access on you browser instead this method.
+
 
 ## Feedback
 
