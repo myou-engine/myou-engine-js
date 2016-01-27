@@ -9,6 +9,8 @@ The __simplicity__ of Myou allows it to be suitable for people with or without a
 
 In the future the optimizations for __VR__ together with __Blender__ integration makes Myou inherently excellent for making __animated VR movies__ and engaging, interactive game cutscenes.
 
+Myou is being used on some projects such as: [VidaBody](http://vidasystems.com/vidabody/) or [pixelments.net] (http://pixelements.net)
+
 The first version of myou engine was written on Pyva (a python based languaje) and compiled to a javascript file.
 
 This version of the myou engine has been ported to coffee-script and modified to
@@ -26,7 +28,8 @@ multiple instances of the engine.
 * Support for armature and material drivers from Blender.
 * Automatic LoD based on multi-resolution, subsurf and decimation.
 * Dynamic loading of assets without framerate reduction (even in WebGL).
-* Physics: Currently only Bullet (ammo.js when running in JS) is supported.
+* Physics: Currently Bullet (ammo.js when running in JS) is supported.
+* Multiple self-contained engine instances are allowed on the same webpage.
 
 
 ## Future features
@@ -52,7 +55,7 @@ npm install --save myou-engine
 ```
 
 ### Use the package in your code
-The next code is written in coffe-script:
+The example code in this page was written in coffee-script:
 ```coffee-script
 myou = require 'myou'
 ```
@@ -78,7 +81,7 @@ The "create_canvas" function returns a canvas, but if you set the root element
 as parameter the canvas will also be inserted on it.
 
 #### Api configuration
-You can set some parameteres to configure the myou's api.
+You can set some parameters to configure myou's behaviour.
 
 ```coffee-script
 MYOU_PARAMS =
@@ -93,7 +96,7 @@ MYOU_PARAMS =
     no_s3tc: navigator.userAgent.toString().indexOf('Edge/12.')!=-1
     #This code disables s3tc only if you are using Edge.
 ```
-If you don't include some of the parameters above, these parameters will be interpreted as its default option.
+The boolean options are optional, false by default.
 
 #### Create a myou instance
 The myou object contains the scenes, game objects, MYOU_PARAMS, render manager, etc.
@@ -101,29 +104,28 @@ The myou object contains the scenes, game objects, MYOU_PARAMS, render manager, 
 myou_instance = new myou.Myou root, MYOU_PARAMS
 ```
 You can create any number of myou engine instances in your project but you will
-need to create a root element by each of the instances.
+need to create a root element for each of the instances.
 
 ## Documentation
 We are working on the documentation. It will be added soon.
 
 ## Examples
-You can compile an example included on the package.
-You only have to execute the next command on the root package directory
+You can compile an example included in the package.
+You just have to run this command in the root dir of the package:
 ```
 webpack --config webpack.config.example
 ```
 
-And run this simple python server from this bash script on the example directory.
+And run this simple python server from this bash script in the example directory.
 ```
 cd example
 sh server.sh
 ```
 And then you can enter in your browser to:
 
-http://localhost:8000/build/example.html
+<http://localhost:8000/build/example.html>
 
-You can enable the required flag to get file access on you browser instead this method.
-
+Alternatively, you can configure your browser to allow file access.
 
 ## Feedback
 
