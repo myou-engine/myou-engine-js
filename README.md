@@ -57,7 +57,7 @@ npm install --save myou-engine
 ### Use the package in your code
 The example code in this page was written in coffee-script:
 ```coffee-script
-myou = require 'myou'
+myou = require 'myou-engine'
 ```
 
 #### Define the root element
