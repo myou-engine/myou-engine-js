@@ -9,7 +9,7 @@ The __simplicity__ of Myou allows it to be suitable for people with or without a
 
 In the future the optimizations for __VR__ together with __Blender__ integration makes Myou inherently excellent for making __animated VR movies__ and engaging, interactive game cutscenes.
 
-The first version of myou engine written on Pyva (a python based languaje) and compiled to a javascript file.
+The first version of myou engine was written on Pyva (a python based languaje) and compiled to a javascript file.
 
 This version of the myou engine has been ported to coffee-script and modified to
 get it working as a node package. The node version of myou also allows the creation of
@@ -82,7 +82,7 @@ You can set some parameteres to configure the myou's api.
 
 ```coffee-script
 MYOU_PARAMS =
-    total_size: 26775095 # Reserved memory by the engine
+    total_size: 26775095 #Total size of the app to be used on the loading progress bar.
     debug: false # If true, it enables the debug features
     live_server: false # True when you are using the blender live server.
     data_dir: "./data" # Path to the folder that contains <scenes> and <texture> folders
