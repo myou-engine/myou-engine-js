@@ -48,7 +48,7 @@ and game consoles will be supported.
 ## Usage
 ### Install the pagckage
 ```
-npm install --save myou
+npm install --save myou-engine
 ```
 
 ### Use the package in your code
