@@ -1,4 +1,3 @@
-"use strict"
 
 CRUNCH_MEM = 64
 MAX_ACTIVE_TASKS = 6

@@ -596,8 +596,10 @@ class XhrLoader extends Loader
         @pending_meshes = {}
 
         @data_dir = data_dir
-        @scripts_dir = scripts_dir
         @full_local_path = location.href.split('#')[0].split('/')[...-1].join('/')+'/'
+        if scripts_dir.indexOf('/') > 0 # if it's a relative path
+            scripts_dir = @full_local_path + scripts_dir
+        @scripts_dir = scripts_dir
 
         @workers = workers = workers or []
         @remaining_tasks = [0] # One per queue
@@ -774,7 +776,7 @@ class XhrLoader extends Loader
             script.async = true
             script.src = @scripts_dir + PHYSICS_ENGINE_URL
             document.body.appendChild script
-        
+
         # Callback for when the engine has loaded
         # (will be executed immediately if the promise was already resolved)
         window.global_ammo_promise = global_ammo_promise.then =>
