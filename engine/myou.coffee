@@ -61,11 +61,11 @@ class Myou
 
 create_canvas = (root)->
     canvas = document.createElement 'canvas'
-    canvas.style.position = 'absolute'
-    canvas.style.width = '100%'
-    canvas.style.height = '100vh'
     canvas.setAttribute 'moz-opaque', true
     if root?
+        canvas.style.position = 'relative'
+        canvas.style.width = '100%'
+        canvas.style.height = '100%'
         root.insertBefore canvas, root.firstChild
     return canvas
 
