@@ -197,9 +197,9 @@ CharacterBody = (shape, position, rotation, step_height, axis, gravity, jump_spe
 
 destroy_body = (body)->
     if body.getPtr
-        del _phy_obs_ptrs[body.getPtr()]
+        delete _phy_obs_ptrs[body.getPtr()]
     else
-        del _phy_obs_ptrs[body.ptr]
+        delete _phy_obs_ptrs[body.ptr]
     if body.char
         _character_controllers.remove body.char
     pointers = body.pointers

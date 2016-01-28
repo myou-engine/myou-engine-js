@@ -72,7 +72,7 @@ class ParticleSystem
         #Getting tracker from the specified scene("Scene" by default).
         if not 'tracker_scene' in @properties
             @properties.tracker_scene = 'Scene'
-        @tracker_scene = t_scn = scenes[@properties.tracker_scene]
+        @tracker_scene = t_scn = @context.scenes[@properties.tracker_scene]
         if not t_scn
             return console.error 'Error: no scene found "'+@properties.tracker_scene+'" for tracker "'+@properties.tracker+'"'
         @tracker = t_scn.parents[@properties.tracker]
@@ -85,14 +85,14 @@ class ParticleSystem
         #Every particle clon will be clonned to the tracker scene.
         if not 'particle_scene' in @properties
             @properties.particle_scene = 'Scene'
-        @particle_scene = p_scn = scenes[@properties.particle_scene]
+        @particle_scene = p_scn = @context.scenes[@properties.particle_scene]
         if not p_scn
             return console.error 'Error: no scene found "'+@properties.particle_scene+'" for particle "'+@properties.particle+'"'
         @particle = p_scn.parents[@properties.particle]
         if not @particle
             return console.error 'Error: no particle found "'+@properties.particle+'" for tracker "'+@properties.tracker+'"'
         if @particle.type == 'MESH' and not @particle.data
-            scene.loader.load_mesh_data @particle
+            p_scn.loader.load_mesh_data @particle
         if not 'unused_clones' in @particle
             @particle.unused_clones = []
 
