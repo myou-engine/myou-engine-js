@@ -4,21 +4,22 @@
 {MainLoop} = require './main_loop'
 
 class Myou
-    scenes: {}
-    loaded_scenes: []
-    active_sprites: []
-    objects: {}
-    actions: {}
-    groups: {}
-    debug_loader: null
-    canvas: null
-    root: null
-    all_materials: []
-    mesh_datas: []
-    SHADER_LIB: ''
-    all_anim_objects: []
 
     constructor: (root, MYOU_PARAMS)->
+        @scenes= {}
+        @loaded_scenes= []
+        @active_sprites= []
+        @objects= {}
+        @actions= {}
+        @groups= {}
+        @debug_loader= null
+        @canvas= null
+        @root= null
+        @all_materials= []
+        @mesh_datas= []
+        @SHADER_LIB= ''
+        @all_anim_objects= []
+
         @root = @canvas = canvas = root
         @MYOU_PARAMS = MYOU_PARAMS
         # The root element needs to be positioned, so the mouse events (layerX/Y) are
