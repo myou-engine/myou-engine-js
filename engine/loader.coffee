@@ -782,11 +782,13 @@ class XhrLoader extends Loader
         window.global_ammo_promise = global_ammo_promise.then =>
             physics_engine_init()
             @physics_engine_loaded = true
-            for scene in @context.scenes
+            for k, scene of @context.scenes
                 # WARNING: physics can be loaded before or after the scene
                 # TODO: Check all physics objects are instanced in both scenarios
+                # console.log 'The scene '+k+' did load before the physics engine'
                 if scene and not scene.world
                     scene.on_physics_engine_loaded()
+            return
 
     load_script: (uri, func=null)->
         if location.protocol == "chrome-extension:"
