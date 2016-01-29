@@ -198,7 +198,7 @@ class Scene
         destroy_world @world
 
         # Reduce itself to a stub by deleting itself and copying callbacks
-        stub = @context.scenes[@name] = new Scene
+        stub = @context.scenes[@name] = new Scene @context
         stub.name = @name
         stub.load_callbacks = @load_callbacks
         stub.pre_draw_callbacks = @pre_draw_callbacks

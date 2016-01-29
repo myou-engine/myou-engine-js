@@ -15,7 +15,7 @@ window.cancelAnimationFrame =
     window.webkitCancelAnimationFrame or\
     window.msCancelAnimationFrame
 
-window.eproto = HTMLElement.prototype
+eproto = HTMLElement.prototype
 
 eproto.requestPointerLock =
     eproto.requestPointerLock or\
