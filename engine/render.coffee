@@ -88,6 +88,8 @@ class RenderManager
         @camera_z = vec3.create()
         @lod_factor = 1
         @no_s3tc = no_s3tc
+        ba = @context.MYOU_PARAMS.background_alpha
+        @background_alpha = if ba? then ba else 1
 
         # Temporary variables
         @_cam2world = mat4.create()
@@ -573,7 +575,7 @@ class RenderManager
         clear_bits = viewport.clear_bits
         if clear_bits & gl.COLOR_BUFFER_BIT
             c = scene.background_color
-            gl.clearColor c[0],c[1],c[2],1
+            gl.clearColor c[0],c[1],c[2],@background_alpha
         clear_bits and gl.clear clear_bits
 
         # TODO: Think better about how to manage passes

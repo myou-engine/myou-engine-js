@@ -11,6 +11,8 @@ MYOU_PARAMS =
     inital_scene: "Scene"
     load_physics_engine: true
     no_mipmaps: false
+    background_alpha: 0
+    gl_options: {alpha:true, antialias:true}
     no_s3tc: navigator.userAgent.toString().indexOf('Edge/12.')!=-1
 
 root  = document.getElementById 'myou'
