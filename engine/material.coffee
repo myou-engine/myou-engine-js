@@ -92,7 +92,7 @@ class Material
             # GPU_DYNAMIC_SAMPLER_2DBUFFER = 12,
             # And 15 was distance wrongly, it's GPU_DYNAMIC_OBJECT_AUTOBUMPSCALE
             else if u.type == 14 # shadow texture
-                @textures.push @scene.objects[u.lamp].shadow_fb.texture
+                @textures.push {loaded: true, tex: @scene.objects[u.lamp].shadow_fb.texture}
                 tex_uniforms.push u.varname
             else if u.type == 13 and @scene # 2D image
                 tex = @scene.loader.load_texture u.image, u.filepath, u.filter, u.wrap, u.size
