@@ -108,7 +108,6 @@ class Mesh extends GameObject
         @custom_uniform_values = []
         @active_mesh_index = 0
         @altmeshes = []
-        @group_id = -1
         @last_lod_object = null
         @culled_in_last_frame = false
 

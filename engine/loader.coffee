@@ -164,8 +164,6 @@ class Loader
                     ob.elements = data.elements
                     ob.offsets = data.offsets
                     ob.stride = data.stride
-                    ob.mesh_id = data.mesh_id or ob.mesh_id
-                    ob.group_id = data.group_id or ob.group_id or -1
                     ob.mesh_name = data.mesh_name
                     ob.material_names = data.materials
                     ob.all_f = data.all_f
@@ -194,8 +192,6 @@ class Loader
                     m = new Mesh @context
                     m.name = ob.name
                     m.scene = ob.scene
-                    m.mesh_id = data.mesh_id
-                    m.group_id = data.group_id
                     ob.altmeshes.push m
                     load_mesh_properties m,d
 
@@ -218,8 +214,6 @@ class Loader
                     lod_data.stride = data.stride
                     lod_data.materials = data.materials
                     lod_data.visible = data.visible
-                    lod_data.mesh_id = data.mesh_id
-                    lod_data.group_id = data.group_id
                     lod_ob = new Mesh @context
                     lod_ob.scene = ob.scene
                     load_mesh_properties lod_ob, lod_data
@@ -265,6 +259,7 @@ class Loader
         else if data.type=='LAMP'
             if not ob
                 ob = new Lamp @context
+                console.log data.lamp_type
                 ob.name = data.name
                 ob.static = data.static or false
                 if data.lamp_type!='POINT' and data.shadow
