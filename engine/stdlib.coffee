@@ -20,11 +20,6 @@ window.timsort_sqdist = (arr) ->
 
 window.timsort_numeric = TimSort.sort
 
-window.getattr =(ob,item_name,d)->
-    if item_name of ob
-        return ob[item_name]
-    return d
-
 window.randInt = (min, max) ->
     range = max - min
     rand = Math.floor(Math.random() * (range + 1))

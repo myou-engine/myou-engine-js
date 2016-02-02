@@ -133,7 +133,7 @@ TriangleMeshShape = (vertices, indices, vstride, scale, margin, name)->
         offset += 3
     mesh = new Ammo.btTriangleIndexVertexArray(indices.length/3, inds, 3*4,
                                               vertices.length/3, verts, 3*4)
-    shape =  new Ammo.btBvhTriangleMeshShape mesh, True, True
+    shape =  new Ammo.btBvhTriangleMeshShape mesh, true, true
     _tmp_Vector3.setValue scale[0], scale[1], scale[2]
     shape.setLocalScaling _tmp_Vector3
     shape.setMargin margin
@@ -324,7 +324,7 @@ colliding_bodies = (body)->
             for j in [0...num_contacts]
                 point = m.getContactPoint(j)
                 if point.get_m_distance1()<0
-                    has_contact = True
+                    has_contact = true
             if has_contact
                 b0 = m.getBody0()
                 b1 = m.getBody1()

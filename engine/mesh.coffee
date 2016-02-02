@@ -137,7 +137,7 @@ class Mesh extends GameObject
         @load_from_va_ia new Float32Array(vertices), new Uint16Array(indices)
 
     load_from_va_ia: (va, ia)->
-        if @data != null
+        if @data?
             @data.remove @
         data = @data = mesh_datas[@hash] = new MeshData @context
         data.hash = @hash

@@ -106,7 +106,7 @@ class ParticleSystem
         if 'auto_pause' in @properties
             @last_tracker_position = vec3.copy [],@tracker.position
             @auto_pause = @properties.auto_pause
-        if 'formula' in @properties and @properties.formula is not null
+        if 'formula' in @properties and @properties.formula?
             @formula = @properties.formula
         else
             @formula = basic_formula

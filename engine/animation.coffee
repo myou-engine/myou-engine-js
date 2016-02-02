@@ -95,7 +95,7 @@ evaluate_all_animations = (context, frame_duration_ms)->
                 w = anim.weight * anim.factor
                 for i in [0...v.length]
                     v[i] *= w
-                if blend is null
+                if not blend?
                     blend = v
                     type = orig_chan[0]
                     name = orig_chan[1]
