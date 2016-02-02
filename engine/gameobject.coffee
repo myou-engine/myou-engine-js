@@ -34,6 +34,7 @@ class GameObject
             @use_physics = @context.MYOU_PARAMS.load_physics_engine
         @position = vec3.create()
         @rotation = quat.create()
+        @radius = 0
         @rotation_order = 'Q'
         @scale = vec3.set vec3.create(), 1, 1, 1
         @dimensions = vec3.create()

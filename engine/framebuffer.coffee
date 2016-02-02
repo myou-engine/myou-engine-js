@@ -1,4 +1,5 @@
-"use strict"
+{Filter} = require './filters'
+
 class Framebuffer
 
     constructor: (@render_manager, size_x, size_y, tex_type=@render_manager.gl.FLOAT, tex_format=@render_manager.gl.RGBA) ->

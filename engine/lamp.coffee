@@ -5,7 +5,7 @@
 {Material} = require './material'
 
 class Lamp extends GameObject
-    type = 'LAMP'
+    type : 'LAMP'
 
     constructor: (@context)->
         super(@context)
