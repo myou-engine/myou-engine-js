@@ -313,6 +313,7 @@ class Material
         @u_shape_multiplier = gl.getUniformLocation prog, "shape_multiplier"
         @u_uv_multiplier = gl.getUniformLocation prog, "uv_multiplier"
         @u_group_id = gl.getUniformLocation prog, "group_id"
+        @u_mesh_id = gl.getUniformLocation prog, "mesh_id"
         gl.uniform1f @u_shape_multiplier, @shape_multiplier
         gl.uniform1f @u_uv_multiplier, @uv_multiplier
 
