@@ -542,12 +542,13 @@ class RenderManager
 
 
                 for ob in scene.mesh_passes[0]
-                    if ob.visible == true and ob.data?
+                    data = ob.last_lod_object?.data or ob.data
+                    if ob.visible and data and data.attrib_pointers.length != 0 and not ob.culled_in_last_frame
                         mat4.multiply m4, world2light, ob.world_matrix
                         #draw_mesh ob, ob.world_matrix, world2light, mat
                         gl.uniformMatrix4fv mat.u_model_view_matrix, false, m4
                         gl.uniformMatrix4fv mat.u_projection_matrix, false, lamp._projection_matrix
-                        data = ob.data
+
                         for i in [0...data.vertex_buffers.length]
                             gl.bindBuffer gl.ARRAY_BUFFER, data.vertex_buffers[i]
                             @change_enabled_attributes 1

@@ -311,7 +311,7 @@ class Loader
         ob.visible = data.visible
         ob.mirrors = data.mirrors or 1
         vec3.copy ob.dimensions, data.dimensions # is this used outside physics?
-        ob.radius = vec3.len(ob.dimensions.length) * 0.5
+        ob.radius = vec3.len(ob.dimensions) * 0.5
         ob.properties = data.properties or {}
         ob.actions = data.actions or []
         ob.physics_type = data.phy_type

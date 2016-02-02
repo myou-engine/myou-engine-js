@@ -18,9 +18,7 @@
     "url-loader": "^0.5.7",
     "webpack": "^1.12.11"
   },
-  "optionalDependencies": {
-    "electron-prebuilt": "^0.36.0"
-  },
+  "optionalDependencies": {},
   "repository": {
     "type": "git",
     "url": "ssh://root@pixelements.net/root/repositories/myou-engine.git"

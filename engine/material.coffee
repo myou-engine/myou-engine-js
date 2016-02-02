@@ -53,11 +53,8 @@ class Material
         var_strand_type = "float"
         var_custom = []
 
-        last_lamp = ""
-
         for u in uniforms
             if u.type == 6 or u.type == 7 or u.type == 11 or u.type == 15
-                u.lamp = last_lamp = u.lamp or last_lamp
                 l = lamps[u.lamp] or {
                     vardir:'', varpos:'', varmat:''
                     varcolor3:'', varcolor4:'', dist:''
