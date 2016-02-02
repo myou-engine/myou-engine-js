@@ -3,18 +3,18 @@
 
 
 load_material = (scene, data)->
-    name = data['name']
+    name = data.name
     mat = scene.materials[name] = \
         new Material(
             scene.context, name, [scene.context.SHADER_LIB, data['fragment']],
-            data['uniforms'], data['attributes'], "", scene
+            data.uniforms, data.attributes, "", scene
             )
     # make sure it's bool
     mat.double_sided = not not data.double_sided
 
 load_textures_of_material = (scene, data) ->
     # When you only want to request textures to be loaded without compiling the shader
-    for u in data['uniforms']
+    for u in data.uniforms
         if u.type == 13 and scene # 2D image
             scene.loader.load_texture u.image, u.filepath, u.filter, u.wrap, u.size
     return
@@ -58,14 +58,10 @@ class Material
         for u in uniforms
             if u.type == 6 or u.type == 7 or u.type == 11 or u.type == 15
                 u.lamp = last_lamp = u.lamp or last_lamp
-                l = getattr(lamps, u.lamp, {
-                    vardir:''
-                    varpos:''
-                    varmat:''
-                    varcolor3:''
-                    varcolor4:''
-                    dist:''
-                    })
+                l = lamps[u.lamp] or {
+                    vardir:'', varpos:'', varmat:''
+                    varcolor3:'', varcolor4:'', dist:''
+                    }
                 lamps[u.lamp] = l
 
             if u.type == 1 # model_view_matrix
@@ -273,7 +269,7 @@ class Material
             console.log gl.getShaderInfoLog vertex_shader
             # ext = gl.getExtension "WEBGL_debug_shaders"
             # if ext
-            #     console.log  '\n' + ext.getTranslatedShaderSource(vertex_shader)).split('\n'
+            #     console.log  '\n' + ext.getTranslatedShaderSource(vertex_shader)).split('\n')
             gl.deleteShader vertex_shader
             return
 
@@ -288,7 +284,7 @@ class Material
             console.log gl.getShaderInfoLog fragment_shader
             # ext = gl.getExtension "WEBGL_debug_shaders"
             # if ext
-            #     console.log  '\n' + ext.getTranslatedShaderSource(fragment_shader)).split('\n'
+            #     console.log  '\n' + ext.getTranslatedShaderSource(fragment_shader)).split('\n')
             gl.deleteShader fragment_shader
             return
 
@@ -351,9 +347,9 @@ class Material
 
         for i in [0...tex_uniforms.length]
             gl.uniform1i gl.getUniformLocation(prog, tex_uniforms[i]), i
+
         # TODO: only ~half of those vars are present
-        for i of lamps
-            lamp_data = lamps[i]
+        for i, lamp_data of lamps
             @lamps.push([
                 @scene.objects[i],
                 gl.getUniformLocation(prog, lamp_data.varpos),
@@ -392,7 +388,7 @@ class Material
 
     debug_set_custom_uniform: (utype, index, value)->
         @context.render_manager.gl.useProgram @_program
-        @context.render_manager.gl['uniform'+utype] @u_custom[index], value
+        @context.render_manager.gl['uniform'+utype](@u_custom[index], value)
 
     clone_to_scene: (scene)->
         # The only reason we have for cloning a material is to change the lamps

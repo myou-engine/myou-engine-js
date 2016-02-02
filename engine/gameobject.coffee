@@ -397,6 +397,14 @@ class GameObject
             #ppos = @parent.world_matrix.subarray 12,15
             #pos = [pos[0] + ppos[0], pos[1] + ppos[1], pos[2] + ppos[2]]
 
+    calc_bounding_box: ->
+        @bounding_box_low = vec4.create()
+        @bounding_box_high = vec4.create()
+        @bounding_box_low[3] = @bounding_box_high[3] = 1
+        dim_half = vec3.create()
+        vec3.scale(dim_half, @dimensions, 0.5)
+        vec3.sub(@bounding_box_low, @position, dim_half)
+        vec3.add(@bounding_box_high, @position, dim_half)
 
 
     # TODO: make property

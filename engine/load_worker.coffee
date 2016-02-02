@@ -218,7 +218,7 @@ class Queue
                 if decode_function
                     worker[decode_function](task_id, queue.id, data, extra_data, uri)
                 else
-                    if data.byteLength != null
+                    if data.byteLength?
                         total = data.byteLength
                         #total = (new Uint8Array(data)).length
                         post_message [task_id, queue.id, [xhr.response], [xhr.response]]

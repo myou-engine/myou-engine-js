@@ -62,8 +62,6 @@ class MainLoop
         @context.render_manager.draw_all()
 
         for scene in @context.loaded_scenes
-            if not @context.scene? or not @context.scene.enabled
-                continue
             callbacks = scene.post_draw_callbacks
             n_callbacks = callbacks.length
             while n_callbacks

@@ -11,46 +11,6 @@ VECTOR_MINUS_Z = new Float32Array [0,0,-1]
 
 
 class RenderManager
-    initialize: ()->
-        gl = @gl
-        @extensions =
-            standard_derivatives: gl.getExtension 'OES_standard_derivatives'
-            texture_float: gl.getExtension 'OES_texture_float'
-            texture_float_linear: gl.getExtension 'OES_texture_float_linear'
-            compressed_texture_s3tc: gl.getExtension 'WEBGL_compressed_texture_s3tc'
-            texture_filter_anisotropic: gl.getExtension("EXT_texture_filter_anisotropic") or
-                                    gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic") or
-                                    gl.getExtension("MOZ_EXT_texture_filter_anisotropic")
-            lose_context: gl.getExtension "WEBGL_lose_context"
-        if @no_s3tc
-            @extensions['compressed_texture_s3tc'] = null
-
-        @dummy_filter = new Filter @, """return get(0,0);""", 'dummy_filter'
-        @shadow_box_filter = new Filter @, box_filter_code, 'box_filter'
-        @invert_filter = new Filter @, """return vec3(1.0) - get(0,0);""", 'invert_filter'
-
-        @common_shadow_fb = new Framebuffer @, 512,512
-        @debug = new Debug @context
-
-        # Initial GL state
-        gl.clearDepth 1.0
-        gl.enable gl.DEPTH_TEST
-        gl.depthFunc gl.LEQUAL
-        gl.enable gl.CULL_FACE
-        gl.cullFace gl.BACK
-        @cull_face_enabled = true
-        # Not premultiplied alpha textures
-        gl.blendFunc gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA
-        # For premul, use  gl.ONE, gl.ONE_MINUS_SRC_ALPHA
-        @attrib_bitmask = 0
-
-        @blank_texture = tex = gl.createTexture()
-        gl.bindTexture gl.TEXTURE_2D, tex
-        gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,0,0])
-        gl.bindTexture gl.TEXTURE_2D, null
-
-        @resize @width, @height, @pixel_ratio_x, @pixel_ratio_y
-
     constructor: (context, canvas, width, height, glflags, on_webgl_failed, on_context_lost, on_context_restored, no_s3tc)->
         try
             gl = canvas.getContext("webgl", glflags) or canvas.getContext("experimental-webgl", glflags)
@@ -116,10 +76,50 @@ class RenderManager
             render_manager.clear_context()
         restored = (event)->
             render_manager.restore_context()
-            on_context_restored? and requestAnimationFrame on_context_restored
+            on_context_restored? and requestAnimationFrame(on_context_restored)
         canvas.addEventListener "webglcontextlost", lost, false
         canvas.addEventListener "webglcontextrestored", restored, false
         @initialize()
+
+    initialize: ()->
+        gl = @gl
+        @extensions =
+            standard_derivatives: gl.getExtension 'OES_standard_derivatives'
+            texture_float: gl.getExtension 'OES_texture_float'
+            texture_float_linear: gl.getExtension 'OES_texture_float_linear'
+            compressed_texture_s3tc: gl.getExtension 'WEBGL_compressed_texture_s3tc'
+            texture_filter_anisotropic: gl.getExtension("EXT_texture_filter_anisotropic") or
+                                    gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic") or
+                                    gl.getExtension("MOZ_EXT_texture_filter_anisotropic")
+            lose_context: gl.getExtension "WEBGL_lose_context"
+        if @no_s3tc
+            @extensions['compressed_texture_s3tc'] = null
+
+        @dummy_filter = new Filter @, """return get(0,0);""", 'dummy_filter'
+        @shadow_box_filter = new Filter @, box_filter_code, 'box_filter'
+        @invert_filter = new Filter @, """return vec3(1.0) - get(0,0);""", 'invert_filter'
+
+        @common_shadow_fb = new Framebuffer @, 512,512
+        @debug = new Debug @context
+
+        # Initial GL state
+        gl.clearDepth 1.0
+        gl.enable gl.DEPTH_TEST
+        gl.depthFunc gl.LEQUAL
+        gl.enable gl.CULL_FACE
+        gl.cullFace gl.BACK
+        @cull_face_enabled = true
+        # Not premultiplied alpha textures
+        gl.blendFunc gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA
+        # For premul, use  gl.ONE, gl.ONE_MINUS_SRC_ALPHA
+        @attrib_bitmask = 0
+
+        @blank_texture = tex = gl.createTexture()
+        gl.bindTexture gl.TEXTURE_2D, tex
+        gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,0,0])
+        gl.bindTexture gl.TEXTURE_2D, null
+
+        @resize @width, @height, @pixel_ratio_x, @pixel_ratio_y
 
     clear_context: ()->
         @context_lost_count += 1
@@ -330,7 +330,9 @@ class RenderManager
             if mat.u_color?
                 gl.uniform4fv mat.u_color, mesh.color
 
-            mat.u_custom[2] and gl.uniform1f mat.u_custom[2], mesh.alpha
+            if mat.u_custom[2]
+                gl.uniform1f(mat.u_custom[2], mesh.alpha)
+
             for i in [0...mat.u_custom.length]
                 cv = mesh.custom_uniform_values[i]
                 if cv
@@ -338,6 +340,7 @@ class RenderManager
                         gl.uniform4fv mat.u_custom[i], cv
                     else
                         gl.uniform1f mat.u_custom[i], cv
+
             for lavars in mat.lamps
                 lamp = lavars[0]
                 gl.uniform3fv lavars[1], lamp._view_pos
@@ -430,16 +433,16 @@ class RenderManager
                 gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
                 gl.frontFace 2305 # gl.CCW
             ## TODO: Enable in debug mode, silence after n errors
-            error = gl.getError()
-            if error != gl.NO_ERROR
-                errcodes = {
-                    '1280': 'INVALID_ENUM',
-                    '1281': 'INVALID_VALUE',
-                    '1282': 'INVALID_OPERATION',
-                    '1205': 'OUT_OF_MEMORY'
-                }
-                console.log ('GL Error ' + errcodes[error] + ' when drawing ' + mesh.name +
-                       ' (' + mesh.mesh_name + ') with ' + mesh.material_names[submesh_idx])
+            # error = gl.getError()
+            # if error != gl.NO_ERROR
+            #     errcodes = {
+            #         '1280': 'INVALID_ENUM',
+            #         '1281': 'INVALID_VALUE',
+            #         '1282': 'INVALID_OPERATION',
+            #         '1205': 'OUT_OF_MEMORY'
+            #     }
+            #     console.log ('GL Error ' + errcodes[error] + ' when drawing ' + mesh.name +
+            #            ' (' + mesh.mesh_name + ') with ' + mesh.material_names[submesh_idx])
 
             ## shells technique for strand rendering (WIP)
             #h = mat.u_strand
@@ -539,7 +542,7 @@ class RenderManager
 
 
                 for ob in scene.mesh_passes[0]
-                    if ob.visible == true and ob.data
+                    if ob.visible == true and ob.data?
                         mat4.multiply m4, world2light, ob.world_matrix
                         #draw_mesh ob, ob.world_matrix, world2light, mat
                         gl.uniformMatrix4fv mat.u_model_view_matrix, false, m4
@@ -547,7 +550,7 @@ class RenderManager
                         data = ob.data
                         for i in [0...data.vertex_buffers.length]
                             gl.bindBuffer gl.ARRAY_BUFFER, data.vertex_buffers[i]
-                            @.change_enabled_attributes 1
+                            @change_enabled_attributes 1
                             attr = data.attrib_pointers[i][0] # Vertex attribute
                             gl.vertexAttribPointer attr[0], attr[1], attr[2], false, data.stride, attr[3]
                             gl.bindBuffer gl.ELEMENT_ARRAY_BUFFER, data.index_buffers[i]
@@ -592,7 +595,7 @@ class RenderManager
             gl.clear gl.DEPTH_BUFFER_BIT
 
         # PASS 0  (solid objects)
-        if passes.indexOf(0)>=0
+        if passes.indexOf(0) >= 0
             for ob in scene.mesh_passes[0]
                 if ob.visible == true and not ob.bg and not ob.fg
                     if @draw_mesh(ob, ob.world_matrix, 0) == false

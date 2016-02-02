@@ -56,7 +56,6 @@ class Loader
 
 
     load_datablock: (data) ->
-        console.log 'loading data: ' + data.type + ' ' + data.name
         # TODO: This has grown a little too much
         # We should use a map with functions instead of so many ifs...
         if data.scene
@@ -169,7 +168,6 @@ class Loader
                     ob.group_id = data.group_id or ob.group_id or -1
                     ob.mesh_name = data.mesh_name
                     ob.material_names = data.materials
-                    console.log 'materials:' + ob.material_names
                     ob.all_f = data.all_f
                     ob.shape_multiplier = data.shape_multiplier or 1
                     ob.uv_multiplier = data.uv_multiplier or 1
@@ -274,7 +272,7 @@ class Loader
                 scene.add_object ob, data.name, data.parent, data.parent_bone
             ob.lamp_type = data.lamp_type
             ob.color.set data.color
-            if data.energy != undefined
+            if data.energy?
                 ob.energy = data.energy
             ob.falloff_distance = data.falloff_distance
 
@@ -645,7 +643,7 @@ class XhrLoader extends Loader
 
         ext = @context.render_manager.extensions.compressed_texture_s3tc
         worker_code = """
-        COMPRESSED_TEXTURE_SUPPORT = """ + (ext != null) + "\n" + """
+        COMPRESSED_TEXTURE_SUPPORT = """ + ext? + "\n" + """
         importScripts('"""+(scripts_dir or @full_local_path)+"""crunch.js')\n
         """ + require 'raw!./load_worker.coffee'
         if EMULATE_WORKERS
@@ -710,7 +708,7 @@ class XhrLoader extends Loader
         worker.remaining[queue_id] = (worker.remaining[queue_id]|0) + 1
         if not /^http/.test(uri)
             uri = @full_local_path + uri
-        if extra_data and extra_data.byteArray != null
+        if extra_data and extra_data.byteArray?
             worker.postMessage ['get', queue_id, id, uri, decoder, extra_data], [extra_data]
         else
             worker.postMessage ['get', queue_id, id, uri, decoder, extra_data]
@@ -736,7 +734,6 @@ class XhrLoader extends Loader
             l.remove f
 
     load_scene: (scene_name, filter_function)->
-        console.log "loading_scene"
         f = (data)=>
             d = JSON.parse data
             if filter_function

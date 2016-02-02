@@ -1,6 +1,8 @@
 "use strict"
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 {GameObject} = require './gameobject'
+{Framebuffer} = require './framebuffer'
+{Material} = require './material'
 
 class Lamp extends GameObject
     type = 'LAMP'
@@ -18,10 +20,8 @@ class Lamp extends GameObject
         @_cam2depth = mat4.create()
         @_projection_matrix = mat4.create()
 
-    init_shadow: (self, frustum_size, clip_start, clip_end)->
-        debugger
+    init_shadow: (frustum_size, clip_start, clip_end)->
         @shadow_fb = new Framebuffer @context.render_manager, 256,256
-
         vs = """precision highp float;
         uniform mat4 projection_matrix;
         uniform mat4 model_view_matrix;
@@ -43,15 +43,26 @@ class Lamp extends GameObject
             gl_FragColor = vec4(depth, pow(depth, 2.0) + 0.25*(dx*dx + dy*dy), 0.0, 1.0);
         }"""
 
-        mat = new Material @name+'_shadow', fs,[],[],vs
+        mat = new Material @context, @name+'_shadow', fs,[],[],vs
         mat.is_shadow_material = true
         @_shadow_material = mat
-        mat4.ortho(@_projection_matrix,
-            -frustum_size, frustum_size, -frustum_size, frustum_size, clip_start, clip_end)
-        mat4.multiply(@_depth_matrix, [
-            0.5, 0.0, 0.0, 0.0,
+
+        mat4.ortho(
+            @_projection_matrix,
+            -frustum_size,
+            frustum_size,
+            -frustum_size,
+            frustum_size,
+            clip_start,
+            clip_end
+            )
+        mat4.multiply(
+            @_depth_matrix,
+            [0.5, 0.0, 0.0, 0.0,
             0.0, 0.5, 0.0, 0.0,
             0.0, 0.0, 0.5, 0.0,
-            0.5, 0.5, 0.5, 1.0], @_projection_matrix)
+            0.5, 0.5, 0.5, 1.0],
+            @_projection_matrix
+            )
 
 module.exports = {Lamp}
