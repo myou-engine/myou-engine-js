@@ -579,9 +579,8 @@ class WebSocketLoader
 
 class XhrLoader extends Loader
 
-    constructor: (context, data_dir='', scripts_dir='', workers=null)->
-        if not scripts_dir
-            scripts_dir = data_dir
+    constructor: (context, data_dir='', workers=null)->
+        scripts_dir = data_dir + '/scripts/'
         @context = context
         @loaded = 0
         @total = 0

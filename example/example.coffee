@@ -7,7 +7,6 @@ MYOU_PARAMS =
     debug: false
     live_server: false
     data_dir: "../data/"
-    scripts_dir: "../scripts/"
     inital_scene: "Scene"
     load_physics_engine: true
     no_mipmaps: false

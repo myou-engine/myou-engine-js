@@ -45,10 +45,10 @@ class Myou
 
         size = MYOU_PARAMS.total_size or 0
         initial_scene = MYOU_PARAMS.initial_scene or 'Scene'
-        data_dir = MYOU_PARAMS.data_dir or ''
-        scripts_dir = MYOU_PARAMS.scripts_dir or ''
+        data_dir = MYOU_PARAMS.data_dir or './data/'
 
-        loader = new XhrLoader @,data_dir, scripts_dir
+
+        loader = new XhrLoader @, data_dir
         loader.total += size
         loader.debug = if MYOU_PARAMS.live_server then true else false
         loader.load_scene initial_scene, MYOU_PARAMS.initial_scene_filter
