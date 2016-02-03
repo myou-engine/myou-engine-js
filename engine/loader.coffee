@@ -258,7 +258,6 @@ class Loader
         else if data.type=='LAMP'
             if not ob
                 ob = new Lamp @context
-                console.log data.lamp_type
                 ob.name = data.name
                 ob.static = data.static or false
                 if data.lamp_type!='POINT' and data.shadow
