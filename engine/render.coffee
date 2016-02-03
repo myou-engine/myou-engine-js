@@ -1,5 +1,3 @@
-"use strict"
-
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 {Filter, box_filter_code} = require './filters'
 {Framebuffer, MainFramebuffer} = require './framebuffer'

@@ -1,4 +1,3 @@
-"use strict"
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 {GameObject} = require './gameobject'
 {load_material, load_textures_of_material} = require './material'

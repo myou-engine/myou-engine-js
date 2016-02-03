@@ -1,5 +1,3 @@
-"use strict"
-
 require './stdlib'
 
 # Browser prefix management

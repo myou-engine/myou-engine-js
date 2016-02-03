@@ -1,5 +1,3 @@
-"use strict"
-
 actions = {}
 animations = {}
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'

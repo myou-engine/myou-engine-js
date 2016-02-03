@@ -1,4 +1,3 @@
-"use strict"
 
 {Material} = require './material'
 

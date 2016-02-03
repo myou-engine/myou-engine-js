@@ -1,7 +1,4 @@
-"use strict"
-
 TimSort = require 'timsort'
-
 window.PI_2 = Math.PI * 2
 
 window.closest_pow2 = (n)->
