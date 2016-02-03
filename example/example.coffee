@@ -18,6 +18,9 @@ window.myou_instance = new Myou document.getElementById('myou'), MYOU_PARAMS
 
 window.create_second_instance = ->
     window.myou_instance2 = new Myou document.getElementById('myou2'), MYOU_PARAMS
+    document.getElementById('myou').style.height = '50vh'
+    myou_instance.canvas.rect.update()
+    myou_instance.render_manager.resize myou_instance.canvas.rect.width, myou_instance.canvas.rect.height
 
 window.enable_gl_ray = ->
     gl_ray_canvas = document.getElementById('glray')
@@ -26,3 +29,10 @@ window.enable_gl_ray = ->
 
     window.glray = new myou_engine.GLRay(myou_instance, document.getElementById('glray'))
     glray.init myou_instance.scenes['Scene'], myou_instance.objects['Camera']
+
+
+game_logic = (scene, frame_duration)->
+    m = scene.context
+    # console.log m.events.touch.touches
+
+myou_instance.post_draw_callback('Scene',game_logic)

@@ -19,7 +19,6 @@ class Myou
         @mesh_datas= []
         @SHADER_LIB= ''
         @all_anim_objects= []
-
         @root = @canvas = canvas = root
         @MYOU_PARAMS = MYOU_PARAMS
         # The root element needs to be positioned, so the mouse events (layerX/Y) are
@@ -38,8 +37,17 @@ class Myou
             canvas.clientHeight,
             MYOU_PARAMS.gl_options or {antialias: true, alpha: false}
         )
+
+        update_canvas_rect = =>
+            canvas.rect = @canvas_rect = canvas.getClientRects()[0]
+            @canvas_rect.update = update_canvas_rect
+            return
+
+        update_canvas_rect()
+
         resize_canvas = ->
             render_manager.resize canvas.clientWidth, canvas.clientHeight
+            update_canvas_rect()
 
         window.addEventListener 'resize', resize_canvas
 
@@ -58,6 +66,14 @@ class Myou
         @events = new Events root
         @main_loop = new MainLoop @
         @main_loop.run()
+
+    post_draw_callback: (scene, callback)->
+        physics_ready = not @MYOU_PARAMS.load_physics_engine or Ammo?
+        if @scenes[scene]? and physics_ready
+            @scenes[scene].post_draw_callbacks.push(callback)
+            console.log callback
+        else
+            window.requestAnimationFrame(=> @post_draw_callback(scene, callback))
 
 create_canvas = (root)->
     canvas = document.createElement 'canvas'
