@@ -263,7 +263,9 @@ class Loader
                 ob.name = data.name
                 ob.static = data.static or false
                 if data.lamp_type!='POINT' and data.shadow
-                    ob.init_shadow data.frustum_size, data.clip_start, data.clip_end
+                    tex_size = if data.tex_size? then data.tex_size else 256
+                    ob.init_shadow data.frustum_size, data.clip_start, data.clip_end, closest_pow2(tex_size)
+
                 scene.add_object ob, data.name, data.parent, data.parent_bone
             ob.lamp_type = data.lamp_type
             ob.color.set data.color

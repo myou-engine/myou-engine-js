@@ -4,6 +4,9 @@ TimSort = require 'timsort'
 
 window.PI_2 = Math.PI * 2
 
+window.closest_pow2 = (n)->
+    return Math.pow(2, Math.round(Math.log(n)/Math.log(2)))
+
 window.interpolate = (t, p0, p1, p2, p3)->
     t2 = t * t
     t3 = t2 * t

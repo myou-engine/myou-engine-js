@@ -99,7 +99,7 @@ class RenderManager
         @shadow_box_filter = new Filter @, box_filter_code, 'box_filter'
         @invert_filter = new Filter @, """return vec3(1.0) - get(0,0);""", 'invert_filter'
 
-        @common_shadow_fb = new Framebuffer @, 512,512
+        @common_shadow_fb = null
         @debug = new Debug @context
 
         # Initial GL state
@@ -533,6 +533,9 @@ class RenderManager
             if lamp.shadow_fb? and shadows_pending
 
                 size = lamp.shadow_fb.size_x * 2
+                if not @common_shadow_fb?
+                    @common_shadow_fb = new Framebuffer @, size,size
+
                 @common_shadow_fb.enable [0, 0, size, size]
                 gl.clearColor 1,1,1,1  # TODO: which color should we use?
                 gl.clear gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT
