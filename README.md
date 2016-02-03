@@ -18,7 +18,7 @@ get it working as a node package. The node version of myou also allows the creat
 multiple instances of the engine.
 
 ## Features
-
+* Blender exporter plugin
 * Meshes with n-gons in a fast and compact binary format.
 * Blender GLSL materials (plus some additional features available as material nodes).
 * Soft shadows.
@@ -54,6 +54,39 @@ and game consoles will be supported.
 npm install --save myou-engine
 ```
 
+### Install the blender plugin
+The blender plugin is currently supported in __Blender 2.71__.
+
+Only the exporter is available on the blender plugin but the live server and other
+tools will be added soon.
+
+To install the blender plugin just copy the __myou_bl_plugin__ folder to the __blender addons__ folder.
+
+Windows 7,8,10
+```
+C:\Users\%username%\AppData\Roaming\Blender Foundation\Blender\2.71\scripts\addons
+```
+Windows XP
+```
+C:\Documents and Settings\%username%\Application Data\Blender Foundation\Blender\2.71\scripts\addons
+```
+Linux
+```
+/home/$user/.config/blender/$version/scripts/addons
+```
+
+### Export your blender scene
+The exporter is placed here: *__File > Export > Myou engine__*
+
+#### WARNING:
+Currently the blender export interface only supports exporting to file but the
+myou plugin exports to a folder. To avoid this bug you have to create a "dumb"
+file in the same directory where you want to export the scene with the chosen name.
+
+Alternatively you can save your \*.blend file in the same directory
+where you will export the scene and export using the same name of the \*.blend file.
+
+
 ### Use the package in your code
 The example code in this page was written in coffee-script:
 ```coffee-script
@@ -87,9 +120,7 @@ You can set some parameters to configure myou's behaviour.
 MYOU_PARAMS =
     total_size: 26775095 #Total size of the app to be used on the loading progress bar.
     debug: false # If true, it enables the debug features
-    live_server: false # True when you are using the blender live server.
-    data_dir: "./data" # Path to the folder that contains <scenes> and <texture> folders
-    scripts_dir: "./scripts" # Where the physics engine, and other JS scripts are placed.
+    data_dir: "./data" # Path to the folder that contains <scenes> and <texture> and <scripts> folders
     inital_scene: "Scene" # "Scene" by default. It is the name of the scene that will be loaded at the beginning.
     load_physics_engine: true # if true, it allows to load the physic engine.
     no_mipmaps: false # If true, it disables the mipmaps
