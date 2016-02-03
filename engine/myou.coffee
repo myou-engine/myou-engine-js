@@ -71,7 +71,6 @@ class Myou
         physics_ready = not @MYOU_PARAMS.load_physics_engine or Ammo?
         if @scenes[scene]? and physics_ready
             @scenes[scene].post_draw_callbacks.push(callback)
-            console.log callback
         else
             window.requestAnimationFrame(=> @post_draw_callback(scene, callback))
 
