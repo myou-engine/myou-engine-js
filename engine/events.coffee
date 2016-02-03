@@ -1,4 +1,3 @@
-"use strict"
 class Events
     # All are just 1 or 0
     keys_pressed: new Uint8Array 256
