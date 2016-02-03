@@ -20,8 +20,8 @@ class Lamp extends GameObject
         @_cam2depth = mat4.create()
         @_projection_matrix = mat4.create()
 
-    init_shadow: (frustum_size, clip_start, clip_end)->
-        @shadow_fb = new Framebuffer @context.render_manager, 256,256
+    init_shadow: (frustum_size, clip_start, clip_end, tex_size)->
+        @shadow_fb = new Framebuffer @context.render_manager, tex_size, tex_size
         vs = """precision highp float;
         uniform mat4 projection_matrix;
         uniform mat4 model_view_matrix;
