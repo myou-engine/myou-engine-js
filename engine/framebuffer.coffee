@@ -79,7 +79,7 @@ class Framebuffer
         if l and l._!=-1
             gl.uniform4fv l, Framebuffer.active_rect
         #gl.uniform2fv gl.getUniformLocation(prog, 'pixel_ratio'), @pixel_ratio
-        gl.bindBuffer gl.ARRAY_BUFFER, Filter.quad
+        gl.bindBuffer gl.ARRAY_BUFFER, @render_manager.quad
         gl.activeTexture gl.TEXTURE0
         gl.bindTexture gl.TEXTURE_2D, @texture
         @render_manager.change_enabled_attributes 1<<filter.a_vertex
