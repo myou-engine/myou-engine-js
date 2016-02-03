@@ -86,7 +86,6 @@ file in the same directory where you want to export the scene with the chosen na
 Alternatively you can save your \*.blend file in the same directory
 where you will export the scene and export using the same name of the \*.blend file.
 
-
 ### Use the package in your code
 The example code in this page was written in coffee-script:
 ```coffee-script
@@ -120,7 +119,7 @@ You can set some parameters to configure myou's behaviour.
 MYOU_PARAMS =
     total_size: 26775095 #Total size of the app to be used on the loading progress bar.
     debug: false # If true, it enables the debug features
-    data_dir: "./data" # Path to the folder that contains <scenes> and <texture> and <scripts> folders
+    data_dir: "./data" # Path to the folder exported from blender that contains <scenes> and <texture> and <scripts> folders
     inital_scene: "Scene" # "Scene" by default. It is the name of the scene that will be loaded at the beginning.
     load_physics_engine: true # if true, it allows to load the physic engine.
     no_mipmaps: false # If true, it disables the mipmaps
