@@ -67,6 +67,12 @@ class MainLoop
                 n_callbacks -= 1
                 callbacks[n_callbacks](scene, frame_duration)
 
+        if @context.events.touch.touches > 1
+            @context.events.two_finger_gestures()
+        else
+            @context.events.touch.rel_rot = @context.events.touch.rel_pinch = 0
+            @context.events.touch.rot = @context.events.touch.pinch = null
+
         @context.events.reset_frame_events()
 
     reset_timeout: ->
