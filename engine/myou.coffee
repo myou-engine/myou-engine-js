@@ -43,6 +43,7 @@ class Myou
             @canvas_rect.update = update_canvas_rect
             return
 
+
         update_canvas_rect()
 
         resize_canvas = ->
@@ -55,7 +56,6 @@ class Myou
         initial_scene = MYOU_PARAMS.initial_scene or 'Scene'
         data_dir = MYOU_PARAMS.data_dir or './data/'
 
-
         loader = new XhrLoader @, data_dir
         loader.total += size
         loader.debug = if MYOU_PARAMS.live_server then true else false
@@ -67,12 +67,25 @@ class Myou
         @main_loop = new MainLoop @
         @main_loop.run()
 
-    post_draw_callback: (scene, callback)->
-        physics_ready = not @MYOU_PARAMS.load_physics_engine or Ammo?
-        if @scenes[scene]? and physics_ready
-            @scenes[scene].post_draw_callbacks.push(callback)
+    on_scene_ready_queue: {}
+
+    on_scene_ready: (scene_name, callback)->
+        scene_ready = @scenes[scene_name]? and (not @MYOU_PARAMS.load_physics_engine or Ammo?)
+        if scene_ready
+            while @on_scene_ready_queue[scene_name].length
+                @on_scene_ready_queue[scene_name].shift()()
+            if callback?
+                callback()
         else
-            window.requestAnimationFrame(=> @post_draw_callback(scene, callback))
+            if callback?
+                if @on_scene_ready_queue[scene_name]?
+                        @on_scene_ready_queue[scene_name].push(callback)
+                else
+                    @on_scene_ready_queue[scene_name] = [callback]
+
+            for k,s of @on_scene_ready_queue
+                if s.length
+                    window.requestAnimationFrame(=> @on_scene_ready(k))
 
 create_canvas = (root)->
     canvas = document.createElement 'canvas'

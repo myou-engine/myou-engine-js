@@ -1,6 +1,6 @@
 require 'file?name=index.html!./example.html'
-
-{create_canvas, Myou} = window.myou_engine = require '../main.coffee'
+{create_canvas, Myou, LogicBlock} = window.myou_engine = require '../main.coffee'
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = myou_engine.glm
 
 MYOU_PARAMS =
     total_size: 26775095
@@ -24,15 +24,30 @@ window.create_second_instance = ->
 
 window.enable_gl_ray = ->
     gl_ray_canvas = document.getElementById('glray')
-    gl_ray_canvas.style.display='inline-block'
-    gl_ray_canvas.style.transform='scale(-1)'
+    gl_ray_canvas.style.display = 'inline-block'
+    gl_ray_canvas.style.transform = 'scale(-1)'
 
     window.glray = new myou_engine.GLRay(myou_instance, document.getElementById('glray'))
     glray.init myou_instance.scenes['Scene'], myou_instance.objects['Camera']
 
+phy = myou_engine.physics
+class TouchDemo extends LogicBlock
+    init: (scene)=>
+        @ob = scene.objects.roorh_phy
+        @fx = 1
+        @fy = @ob.scale[1]/@ob.scale[0]
+        @fz = @ob.scale[2]/@ob.scale[0]
+        @scale = vec3.create()
 
-game_logic = (scene, frame_duration)->
-    m = scene.context
-    # console.log m.events.touch.touches
+    actuators: (scene, frame_duration)->
+        if @events.touch.touches
+            {ob, scale} = @
+            s = @events.touch.rel_pinch*2/@context.canvas_rect.height
+            scale[0] = s*@fx
+            scale[1] = s*@fy
+            scale[2] = s*@fz
+            vec3.add(ob.scale,ob.scale,scale)
+            quat.rotateY(ob.rotation, ob.rotation, @events.touch.rel_rot)
+            ob.instance_physics()
 
-myou_instance.post_draw_callback('Scene',game_logic)
+new TouchDemo myou_instance, 'Scene'
