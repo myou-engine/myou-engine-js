@@ -25,6 +25,9 @@ class Camera extends GameObject
         @cull_bottom = new Float32Array 3
         @recalculate_projection()
 
+    #Avoid physical lamps and cameras
+    instance_physics: ->
+
     get_ray_direction: (x, y)->
         # Assumes screen coordinates (0 to 1)
         v = vec3.create()

@@ -19,6 +19,9 @@ class Lamp extends GameObject
         @_cam2depth = mat4.create()
         @_projection_matrix = mat4.create()
 
+    #Avoid physical lamps and cameras
+    instance_physics: ->
+
     init_shadow: (frustum_size, clip_start, clip_end, tex_size)->
         @shadow_fb = new Framebuffer @context.render_manager, tex_size, tex_size
         vs = """precision highp float;
