@@ -36,7 +36,6 @@ class Camera extends GameObject
         v[2] = 1
         vec3.transformMat4 v, v, @projection_matrix_inv
         vec3.transformQuat v, v, @get_world_rotation()
-        vec3.normalize v, v
         return v
 
     get_ray_direction_local: (x, y)->
@@ -47,7 +46,6 @@ class Camera extends GameObject
         v[2] = 1
         vec3.transformMat4 v, v, @projection_matrix_inv
         vec3.transformQuat v, v, @rotation
-        vec3.normalize v, v
         return v
 
     recalculate_projection: ->
