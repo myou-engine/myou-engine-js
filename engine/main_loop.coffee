@@ -11,17 +11,21 @@ class MainLoop
     last_frame_durations: [16, 16, 16, 16, 16, 16, 16, 16, 16, 16]
     _fdi: 0
     last_time: 0
-    timeout: 5000
+    timeout: null
     timeout_timer: null
     enabled: false
     constructor: (context)->
         @context = context
+        @timeout = context.MYOU_PARAMS.timeout
+        @timeout? and console.log 'WARNING: Timeout set: ' + @timeout
 
     run: ->
         @_bound_tick = @tick.bind @
         requestAnimationFrame @_bound_tick
+        not @enabled and @timeout? and console.log 'Main loop running: ' + Math.floor(performance.now())
         @enabled = true
         @last_time = performance.now()
+
 
     stop: ->
         cancelAnimationFrame @_bound_tick
@@ -32,9 +36,16 @@ class MainLoop
         time = performance.now()
         @frame_duration = frame_duration = Math.min time - @last_time, MAX_FRAME_DURATION
 
+
+        if @timeout? and @timeout_timer > @timeout
+            @stop()
+            @timeout_timer = 0
+            console.log 'Main loop paused: ' + Math.floor(time)
+
         if @enabled == false or @context.loaded_scenes.length == 0
             return
 
+        @timeout_timer += frame_duration
         @last_frame_durations[@_fdi] = frame_duration
         @_fdi = (@_fdi+1) % @last_frame_durations.length
 
@@ -75,12 +86,9 @@ class MainLoop
 
         @context.events.reset_frame_events()
 
-    reset_timeout: ->
-        #TODO: find Where is this created and what is the meaning
-        #clearTimeout @timeout_timer
-        @enabled = true
-        # f = =>
-        #     @enabled = false
-        # @timeout_timer = setTimeout f, @timeout
+    reset_timeout: =>
+        @timeout_timer = 0
+        @enabled = @enabled or @run()
+
 
 module.exports = {MainLoop}
