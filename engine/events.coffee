@@ -1,5 +1,4 @@
 {vec2} = require 'gl-matrix'
-tmpv1 = vec2.create()
 class Events
     # All are just 1 or 0
     constructor: (root_element)->
@@ -9,7 +8,7 @@ class Events
         @keys_pressed_count = 0
         @NO_MOVE_TICKS = 3
         @_empty_key_array = new Uint8Array 256
-
+        @tmpv = vec2.create()
         @mouse =
             # mouse x and y are relative to the app root element
             # and they can be negative or out of the element when
@@ -312,7 +311,7 @@ class Events
         @touch.pinch = pinch
 
         #rot
-        r = tmpv1
+        r = @tmpv
         vec2.sub(r, pos2, pos1)
         x = r[0]
         y = r[1]
