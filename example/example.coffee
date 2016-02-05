@@ -26,11 +26,24 @@ canvas.ontouchmove = myou_instance.main_loop.reset_timeout
 canvas.onkeydown = myou_instance.main_loop.reset_timeout
 
 window.create_second_instance = ->
+    #creating 2nd instance and canvas2
     canvas2 = document.getElementById('myou2')
+    canvas2.style.display = 'inline-block'
     window.myou_instance2 = new Myou canvas2, MYOU_PARAMS
-    document.getElementById('myou').style.height = '50vh'
-    myou_instance.canvas.rect.update()
+
+    #2nd instance logic
+    new TouchDemo myou_instance2, 'Scene'
+
+    canvas2.onmousemove = myou_instance2.main_loop.reset_timeout
+    canvas2.ontouchstart = myou_instance2.main_loop.reset_timeout
+    canvas2.ontouchmove = myou_instance2.main_loop.reset_timeout
+    canvas2.onkeydown = myou_instance2.main_loop.reset_timeout
+
+    #Resizing canvas1
+    canvas.style.height = '50vh'
+    myou_instance.update_canvas_rect()
     myou_instance.render_manager.resize myou_instance.canvas.rect.width, myou_instance.canvas.rect.height
+
 
 window.enable_gl_ray = ->
     gl_ray_canvas = document.getElementById('glray')
@@ -81,10 +94,13 @@ class TouchDemo extends LogicBlock
     actuators: (scene, frame_duration)->
         msgs = ['TOUCHES:'+ @events.touch.touches]
         if @events.touch.touches
+
+            #printing fingers
             fingers = []
             for f in @touches
                 fingers.push f.id
             msgs.push fingers
+
             #scaling and rotating roorh
             {ob, scale} = @
             s = @events.touch.rel_pinch*2/@context.canvas_rect.height
@@ -94,6 +110,8 @@ class TouchDemo extends LogicBlock
             vec3.add(ob.scale,ob.scale,scale)
             quat.rotateY(ob.rotation, ob.rotation, @events.touch.rel_rot)
             ob.instance_physics()
+
+            #printing collision
             if @collisions.length
                 msgs.push ''
                 msgs.push 'TOUCHING:'
