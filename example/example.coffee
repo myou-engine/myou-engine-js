@@ -1,7 +1,6 @@
 require 'file?name=index.html!./example.html'
-{create_canvas, Myou, LogicBlock} = window.myou_engine = require '../main'
+{create_canvas, Myou, LogicBlock, sensors} = window.myou_engine = require '../main'
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = myou_engine.glm
-{pointer_over} = require '../engine/sensors'
 
 MYOU_PARAMS =
     total_size: 26775095
@@ -86,7 +85,7 @@ class TouchDemo extends LogicBlock
 
             for touch in @touches
                 {x, y} = touch
-                c =  pointer_over x, y, cam, 1
+                c =  sensors.pointer_over x, y, cam, 1
                 if c?
                     c.push(touch)
                     @collisions.push(c)
