@@ -32,17 +32,19 @@ class Camera extends GameObject
         # Assumes screen coordinates (0 to 1)
         v = vec3.create()
         v[0] = x*2-1
-        v[1] = y*-2+1
+        v[1] = 1-y*2
         v[2] = 1
+        pos_rot = @get_world_pos_rot()
         vec3.transformMat4 v, v, @projection_matrix_inv
-        vec3.transformQuat v, v, @get_world_rotation()
+        vec3.transformQuat v, v, pos_rot[1]
+        vec3.add(v, v, pos_rot[0])
         return v
 
     get_ray_direction_local: (x, y)->
         # Assumes screen coordinates (0 to 1)
         v = vec3.create()
         v[0] = x*2-1
-        v[1] = y*-2+1
+        v[1] = 1-y*2
         v[2] = 1
         vec3.transformMat4 v, v, @projection_matrix_inv
         vec3.transformQuat v, v, @rotation

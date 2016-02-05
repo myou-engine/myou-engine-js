@@ -7,8 +7,8 @@ pointer_over = (x, y, cam, int_mask)->
     pos = cam.get_world_position()
     {width, height} = context.canvas_rect
 
-    x = x/width*2 - 1
-    y = 1 - y/height*2
+    x = x/width
+    y = y/height
 
     rayto = cam.get_ray_direction(x,y)
 

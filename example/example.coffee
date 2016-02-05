@@ -1,6 +1,7 @@
 require 'file?name=index.html!./example.html'
-{create_canvas, Myou, LogicBlock} = window.myou_engine = require '../main.coffee'
+{create_canvas, Myou, LogicBlock} = window.myou_engine = require '../main'
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = myou_engine.glm
+{pointer_over} = require '../engine/sensors'
 
 MYOU_PARAMS =
     total_size: 26775095
@@ -10,14 +11,23 @@ MYOU_PARAMS =
     inital_scene: "Scene"
     load_physics_engine: true
     no_mipmaps: false
+    timeout: 5000 #time to pause the main_loop
     # background_alpha: 0
     # gl_options: {alpha:true, antialias:true}
     no_s3tc: navigator.userAgent.toString().indexOf('Edge/12.')!=-1
 
-window.myou_instance = new Myou document.getElementById('myou'), MYOU_PARAMS
+canvas = document.getElementById('myou')
+window.myou_instance = new Myou canvas, MYOU_PARAMS
+
+#resume main_loop
+canvas.onmousemove = myou_instance.main_loop.reset_timeout
+canvas.ontouchstart = myou_instance.main_loop.reset_timeout
+canvas.ontouchmove = myou_instance.main_loop.reset_timeout
+canvas.onkeydown = myou_instance.main_loop.reset_timeout
 
 window.create_second_instance = ->
-    window.myou_instance2 = new Myou document.getElementById('myou2'), MYOU_PARAMS
+    canvas2 = document.getElementById('myou2')
+    window.myou_instance2 = new Myou canvas2, MYOU_PARAMS
     document.getElementById('myou').style.height = '50vh'
     myou_instance.canvas.rect.update()
     myou_instance.render_manager.resize myou_instance.canvas.rect.width, myou_instance.canvas.rect.height
@@ -30,17 +40,52 @@ window.enable_gl_ray = ->
     window.glray = new myou_engine.GLRay(myou_instance, document.getElementById('glray'))
     glray.init myou_instance.scenes['Scene'], myou_instance.objects['Camera']
 
+db = document.getElementById('debug')
+debug = (msgs)->
+    db.innerHTML = ''
+    for msg in msgs
+        db.innerHTML += msg + '</br>'
+
+
 phy = myou_engine.physics
 class TouchDemo extends LogicBlock
     init: (scene)=>
         @ob = scene.objects.roorh_phy
+
+        #scaling factor
         @fx = 1
         @fy = @ob.scale[1]/@ob.scale[0]
         @fz = @ob.scale[2]/@ob.scale[0]
+
+        #scale vector to be used on the actuators.
         @scale = vec3.create()
 
-    actuators: (scene, frame_duration)->
+        #finger collisions with the scene objects
+        @collisions = []
+        @touches = []
+
+    sensors: (scene, frame_duration)->
         if @events.touch.touches
+            cam = scene.objects.Camera
+            @touches = @events.get_touch_events()
+
+            @collisions = []
+
+            for touch in @touches
+                {x, y} = touch
+                c =  pointer_over x, y, cam, 1
+                if c?
+                    c.push(touch)
+                    @collisions.push(c)
+
+    actuators: (scene, frame_duration)->
+        msgs = ['TOUCHES:'+ @events.touch.touches]
+        if @events.touch.touches
+            fingers = []
+            for f in @touches
+                fingers.push f.id
+            msgs.push fingers
+            #scaling and rotating roorh
             {ob, scale} = @
             s = @events.touch.rel_pinch*2/@context.canvas_rect.height
             scale[0] = s*@fx
@@ -49,5 +94,12 @@ class TouchDemo extends LogicBlock
             vec3.add(ob.scale,ob.scale,scale)
             quat.rotateY(ob.rotation, ob.rotation, @events.touch.rel_rot)
             ob.instance_physics()
+            if @collisions.length
+                msgs.push ''
+                msgs.push 'TOUCHING:'
+                for c in @collisions
+                    msgs.push c[3].id + ':' + c[0].owner.name
+        debug(msgs)
+
 
 new TouchDemo myou_instance, 'Scene'
