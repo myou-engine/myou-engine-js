@@ -9,7 +9,7 @@ The __simplicity__ of Myou allows it to be suitable for people with or without a
 
 In the future the optimizations for __VR__ together with __Blender__ integration makes Myou inherently excellent for making __animated VR movies__ and engaging, interactive game cutscenes.
 
-Myou is being used on some projects such as: [VidaBody](http://vidasystems.com/vidabody/) or [pixelments.net] (http://pixelements.net)
+Myou is being used on some projects such as: [VidaBody](http://vidasystems.com/vidabody/) or [pixelements.net] (http://pixelements.net)
 
 The first version of myou engine was written on Pyva (a python based languaje) and compiled to a javascript file.
 
@@ -140,8 +140,10 @@ need to create a root element for each of the instances.
 We are working on the documentation. It will be added soon.
 
 ## Examples
-You can compile an example included in the package.
-You just have to run this command in the root dir of the package:
+You can compile the example included in the package or try it from:
+<http://pixelements.net/myou/build/>
+
+To compile the example just run this command in the root dir of the package:
 ```
 webpack --config webpack.config.example
 ```
