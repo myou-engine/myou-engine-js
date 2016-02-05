@@ -21,6 +21,7 @@ class Myou
         @all_anim_objects= []
         @root = @canvas = canvas = root
         @MYOU_PARAMS = MYOU_PARAMS
+        @hash = Math.random()
         # The root element needs to be positioned, so the mouse events (layerX/Y) are
         # registered correctly, and the canvas is scaled inside
         if getComputedStyle(root).position == 'static'
@@ -38,17 +39,13 @@ class Myou
             MYOU_PARAMS.gl_options or {antialias: true, alpha: false}
         )
 
-        update_canvas_rect = =>
-            canvas.rect = @canvas_rect = canvas.getClientRects()[0]
-            @canvas_rect.update = update_canvas_rect
-            return
 
 
-        update_canvas_rect()
+        @update_canvas_rect()
 
-        resize_canvas = ->
+        resize_canvas = =>
             render_manager.resize canvas.clientWidth, canvas.clientHeight
-            update_canvas_rect()
+            @update_canvas_rect()
 
         window.addEventListener 'resize', resize_canvas
 
@@ -86,6 +83,10 @@ class Myou
             for k,s of @on_scene_ready_queue
                 if s.length
                     window.requestAnimationFrame(=> @on_scene_ready(k))
+
+    update_canvas_rect:  =>
+        @canvas_rect = @canvas.getClientRects()[0]
+        @canvas.rect = @canvas_rect
 
 create_canvas = (root)->
     canvas = document.createElement 'canvas'
