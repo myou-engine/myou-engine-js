@@ -64,6 +64,8 @@ class Events
         return touch_events
 
     two_finger_gestures: ->
+        if @touch.touches < 2
+            return
         touch_events = @get_touch_events()[...2]
         pos1 = @touch.pos1
         pos2 = @touch.pos2
@@ -85,8 +87,6 @@ class Events
         vec2.sub(r, pos2, pos1)
         x = r[0]
         y = r[1]
-
-
 
         if x > 0 # +X
             rot = Math.atan(y/x)
