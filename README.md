@@ -144,6 +144,7 @@ Try it from:
 <http://pixelements.net/myou/build/>
 
 To run the example locally, you can choose one of these two alternatives:
+
 1. From the browser using __Webpack__
 
     ```
@@ -158,6 +159,7 @@ To run the example locally, you can choose one of these two alternatives:
     Alternatively, you can configure your browser to allow file access to avoid using the server.
 
 2. Natively using __Electron__
+
     ```
     cd example
     node electron_example.js
