@@ -2,10 +2,11 @@
 
 var webpack = require('webpack');
 
+console.log(__dirname)
 module.exports = {
     context: __dirname,
     entry: [
-        __dirname + '/example/example.coffee',
+        __dirname + '/example.coffee',
     ],
     stats: {
         colors: true,
@@ -32,7 +33,7 @@ module.exports = {
         ]
     },
     output: {
-        path: __dirname + '/example/build/',
+        path: __dirname + '/build/',
         filename: 'myou.js',
     },
     devtool: 'inline-source-map',
@@ -67,6 +68,7 @@ module.exports = {
         ].join('\n'), {
             raw: true
         }),
+        new webpack.IgnorePlugin(/^(fs|path|coffee-script)$/)
     ],
     resolve: {
         extensions: ['', '.webpack.js', '.web.js', '.js', '.coffee', '.json']

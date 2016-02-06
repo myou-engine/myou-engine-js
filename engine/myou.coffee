@@ -39,8 +39,6 @@ class Myou
             MYOU_PARAMS.gl_options or {antialias: true, alpha: false}
         )
 
-
-
         @update_canvas_rect()
 
         resize_canvas = =>
@@ -51,7 +49,7 @@ class Myou
 
         size = MYOU_PARAMS.total_size or 0
         initial_scene = MYOU_PARAMS.initial_scene or 'Scene'
-        data_dir = MYOU_PARAMS.data_dir or './data/'
+        data_dir = MYOU_PARAMS.data_dir or './data'
 
         loader = new XhrLoader @, data_dir
         loader.total += size

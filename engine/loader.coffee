@@ -14,7 +14,7 @@
 NUM_WORKERS_64 = 2
 NUM_WORKERS_32 = 1
 WEBSOCKET_PORT = 9971
-EMULATE_WORKERS = navigator.userAgent.toString().indexOf('Edge/12.') != -1
+EMULATE_WORKERS = not process.browser or navigator.userAgent.toString().indexOf('Edge/12.') != -1
 
 profile_tex_upload_times = []
 
@@ -357,7 +357,7 @@ class Loader
         tex.loaded = false
 
         if path[-4...] == '.crn'
-            base = @data_dir + 'textures/'
+            base = @data_dir + '/textures/'
             if @debug and @context.MYOU_PARAMS.nodejs
                 base = '/tmp/textures/'
             src = base + path
@@ -469,7 +469,7 @@ class Loader
                 return false
 
         else if path[-4...] == '.dds'
-            base = @data_dir + 'textures/'
+            base = @data_dir + '/textures/'
             if @debug and @context.MYOU_PARAMS.nodejs
                 base = '/tmp/textures/'
             src = base + path
@@ -524,7 +524,7 @@ class Loader
             if path[...5]=='data:'
                 img.src = path
             else
-                base = @data_dir + 'textures/'
+                base = @data_dir + '/textures/'
                 if @debug and @context.MYOU_PARAMS.nodejs
                     base = '/tmp/textures/'
                 img.src = base + path
@@ -639,7 +639,20 @@ class XhrLoader extends Loader
         worker_code = """
         COMPRESSED_TEXTURE_SUPPORT = """ + ext? + "\n" + """
         importScripts('"""+(scripts_dir or @full_local_path)+"""crunch.js')\n
-        """ + require 'raw!./load_worker.coffee'
+        """
+        if process.browser
+            worker_code += require 'raw!./load_worker.coffee'
+        else
+            #Electron code only
+            fs = require('fs')
+            path = require('path')
+            coffee_compile = require('coffee-script').compile
+            dir = path.dirname __filename
+            cs_load_worker= fs.readFileSync dir + '/load_worker.coffee', 'utf8'
+            worker_code = coffee_compile(cs_load_worker, {bare: true})
+
+
+
         if EMULATE_WORKERS
             worker = new Function("""
             function importScripts(url){
@@ -648,12 +661,22 @@ class XhrLoader extends Loader
                 xhr.send();
                 window.eval(xhr.response.replace('var Crunch','window.Crunch'));
             }
+
             """+worker_code+"""
-            var fake = {onmessage: null,
-                postMessage: function(msg){onmessage({data:msg})}}
-            post_message = function(msg){fake.onmessage({data:msg})};
+
+            var fake = {
+                onmessage: null,
+                postMessage: function(msg){
+                    onmessage({data:msg})
+                    }
+                }
+
+            post_message = function(msg){
+                fake.onmessage({data:msg})
+                };
             return fake
             """)()
+
             worker.id = w
             worker.last_progress = [0] # One per queue
             worker.remaining = [0] # One per queue
@@ -745,7 +768,7 @@ class XhrLoader extends Loader
                 debug_loader.current_scene = @current_scene or scene
                 # TODO: show a debug widget
             return true
-        base = @data_dir + 'scenes/'
+        base = @data_dir + '/scenes/'
         @add_task base + scene_name + '/all.json', f, 'text'
 
     load_physics_engine: ()->
@@ -842,7 +865,7 @@ class XhrLoader extends Loader
                 pending_meshes[file_name].push mesh_object
         else
             pending_meshes[file_name] = []
-            base = @data_dir + 'scenes/'
+            base = @data_dir + '/scenes/'
             uri = base + mesh_object.scene.name + '/' + file_name + '.mesh'
             packed = (data) ->
                 m = mesh_object
