@@ -91,14 +91,16 @@ class Events
                 touch = {}
                 touch.touching = true
                 touch.id = t.identifier
+                touch.client_x = t.clientX
+                touch.client_y = t.clientY
                 touch.page_x = t.pageX
                 touch.page_y = t.pageY
                 touch.force = t.force
                 touch.radius_x = t.radiusX
                 touch.radius_y = t.radiusY
                 touch.rotation_angle = t.rotationAngle
-                touch.x = t.pageX - root_element.rect.left
-                touch.y = t.pageY - root_element.rect.top
+                touch.x = t.clientX - root_element.rect.left
+                touch.y = t.clientY - root_element.rect.top
                 touch.rel_x = 0
                 touch.rel_y = 0
                 touch.movement_since_touch = 0
@@ -132,19 +134,21 @@ class Events
                 touch = {}
                 touch.id = t.identifier
                 touch.touching = true
+                touch.client_x = t.clientX
+                touch.client_y = t.clientY
                 touch.page_x = t.pageX
                 touch.page_y = t.pageY
                 touch.force = t.force
                 touch.radius_x = t.radiusX
                 touch.radius_y = t.radiusY
                 touch.rotation_angle = t.rotationAngle
-                touch.x = t.pageX - root_element.rect.left
-                touch.y = t.pageY - root_element.rect.top
-                x = t.pageX
-                y = t.pageY
+                touch.x = t.clientX - root_element.rect.left
+                touch.y = t.clientY - root_element.rect.top
+                x = t.clientX
+                y = t.clientY
                 if @touch.touch_events[touch.id]?
-                    touch.rel_x = x - @touch.touch_events[touch.id].page_x
-                    touch.rel_y = y - @touch.touch_events[touch.id].page_y
+                    touch.rel_x = x - @touch.touch_events[touch.id].client_x
+                    touch.rel_y = y - @touch.touch_events[touch.id].client_y
                 else
                     touch.rel_x = 0
                     touch.rel_y = 0
