@@ -8,7 +8,7 @@ class LogicBlock
         @context.on_scene_ready scene_name, =>
             @init @context.scenes[scene_name]
         @context.on_scene_ready scene_name, =>
-            @context.scenes[scene_name].post_draw_callbacks.push(@sensors.bind(@))
+            @context.scenes[scene_name].pre_draw_callbacks.push(@sensors.bind(@))
         @context.on_scene_ready scene_name, =>
             @context.scenes[scene_name].pre_draw_callbacks.push(@actuators.bind(@))
 
