@@ -6,15 +6,15 @@ MAX_FRAME_DURATION = 167   # 10 fps
 
 class MainLoop
 
-    # All milliseconds
-    frame_duration: 16
-    last_frame_durations: [16, 16, 16, 16, 16, 16, 16, 16, 16, 16]
-    _fdi: 0
-    last_time: 0
-    timeout: null
-    timeout_timer: null
-    enabled: false
     constructor: (context)->
+        # All milliseconds
+        @frame_duration = 16
+        @last_frame_durations = [16, 16, 16, 16, 16, 16, 16, 16, 16, 16]
+        @_fdi = 0
+        @last_time = 0
+        @timeout = null
+        @timeout_timer = null
+        @enabled = false
         @context = context
         @timeout = context.MYOU_PARAMS.timeout
         @timeout? and console.log 'WARNING: Timeout set: ' + @timeout
@@ -55,16 +55,21 @@ class MainLoop
             if not scene.enabled
                 continue
 
+            for f in scene.pre_draw_callbacks
+                f scene, frame_duration
+
+            for f in scene.logic_ticks
+                f frame_duration
+
+            for p in scene.active_particle_systems
+                p._eval()
+
             if scene.rigid_bodies.length or scene.kinematic_characters.length
                 get_last_char_phy scene.kinematic_characters
                 step_world scene.world, frame_duration * 0.001
                 phy_to_ob scene.rigid_bodies
 
-            for f in scene.pre_draw_callbacks
-                f scene, frame_duration
 
-            for p in scene.active_particle_systems
-                p._eval()
 
         evaluate_all_animations @context, frame_duration
         # for s in @context.active_sprites
@@ -72,11 +77,10 @@ class MainLoop
         @context.render_manager.draw_all()
 
         for scene in @context.loaded_scenes
-            callbacks = scene.post_draw_callbacks
-            n_callbacks = callbacks.length
-            while n_callbacks
-                n_callbacks -= 1
-                callbacks[n_callbacks](scene, frame_duration)
+            for f in scene.post_draw_callbacks
+                f scene, frame_duration
+
+
 
 
         cancel_gesture = @context.events.two_finger_gestures()
