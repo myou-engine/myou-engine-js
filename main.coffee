@@ -6,8 +6,13 @@ particles = require './engine/particles'
 {LogicBlock} = require './engine/logic_block'
 glm = {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 sensors = require './engine/sensors'
+actuators = require './engine/actuators'
 
 module.exports = {
-    Myou, create_canvas, LogicBlock, sensors,
-    physics, particles, glm, GLRay,
+    #myou engine
+    Myou, create_canvas,
+    #Game logic
+    LogicBlock, sensors, actuators, glm
+    #Extras
+    physics, particles, GLRay,
 }
