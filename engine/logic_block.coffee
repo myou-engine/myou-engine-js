@@ -1,4 +1,5 @@
 
+#only tick must write in the scene
 class LogicBlock
     constructor: (@context, scene_name)->
         @objets = @context.objects
@@ -7,13 +8,10 @@ class LogicBlock
 
         @context.on_scene_ready scene_name, =>
             @init @context.scenes[scene_name]
-        @context.on_scene_ready scene_name, =>
-            @context.scenes[scene_name].pre_draw_callbacks.push(@sensors.bind(@))
-        @context.on_scene_ready scene_name, =>
-            @context.scenes[scene_name].pre_draw_callbacks.push(@actuators.bind(@))
 
-    init: (scene) => return
-    sensors: (scene, frame_duration)-> return
-    actuators: (scene, frame_duration)-> return
+        if @tick? then @context.on_scene_ready scene_name, =>
+            @context.scenes[scene_name].logic_ticks.push(@tick.bind(@))
+
+    init: (@scene)->
 
 module.exports = {LogicBlock}
