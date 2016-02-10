@@ -1,12 +1,12 @@
 if process.browser
     require 'file?name=index.html!./example.html'
-{create_canvas, Myou, LogicBlock, sensors} = window.myou_engine = require '../main'
+{create_canvas, Myou, LogicBlock, sensors, actuators} = window.myou_engine = require '../main'
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = myou_engine.glm
 
 MYOU_PARAMS =
     total_size: 26775095
-    debug: false
-    live_server: false
+    debug: true
+    debug_physics: true
     #if browser then ../data -- If electron ./data
     data_dir: if process.browser then "../data" else "./data"
     inital_scene: "Scene"
@@ -63,24 +63,29 @@ debug = (msgs)->
 
 phy = myou_engine.physics
 class TouchDemo extends LogicBlock
-    init: (scene)=>
-        @ob = scene.objects.roorh_phy
-
+    init: (@scene)=>
+        @roorh = @scene.objects.roorh_phy
+        @monkey = @scene.objects.monkey
         #scaling factor
         @fx = 1
-        @fy = @ob.scale[1]/@ob.scale[0]
-        @fz = @ob.scale[2]/@ob.scale[0]
+        @fy = @roorh.scale[1]/@roorh.scale[0]
+        @fz = @roorh.scale[2]/@roorh.scale[0]
 
-        #scale vector to be used on the actuators.
+        #scale vector to be used on tick.
         @scale = vec3.create()
 
         #finger collisions with the scene objects
         @collisions = []
         @touches = []
 
-    sensors: (scene, frame_duration)->
+        #actuators
+        @look_at = new actuators.LookAt @context, @scene.name
+        @rotate_around = new actuators.RotateAround @context, @scene.name
+
+    tick: (frame_duration)->
+        #sensors
         if @events.touch.touches
-            cam = scene.objects.Camera
+            cam = @scene.objects.Camera
             @touches = @events.get_touch_events()
 
             @collisions = []
@@ -91,8 +96,25 @@ class TouchDemo extends LogicBlock
                     c.push(touch)
                     @collisions.push(c)
 
-    actuators: (scene, frame_duration)->
         msgs = ['TOUCHES:'+ @events.touch.touches]
+        # Testing actuators
+
+        #flow, ob, target=[0,0,0], rotation=[0,0,0]
+        x = (@events.mouse.rel_x/Math.PI) * frame_duration * 0.001
+        y = (@events.mouse.rel_y/Math.PI) * frame_duration * 0.001
+
+        # INPUTS: ob, target=[0,0,0], rotation=[0,0,0]
+        @rotate_around.eval @monkey, [0,0,0], [y, 0, x]
+
+        # INPUTS: viewer, target, viewer_up='Z', viewer_front='-Y', smooth, frame_duration
+        @look_at.eval @monkey, @scene.objects['Cube.017'].position, 'Z', '-Y', 0.8, frame_duration
+
+        #debug
+        @context.render_manager.debug.vectors.push [@look_at.tup,@monkey.position,[0,0,255,255]]
+        @context.render_manager.debug.vectors.push [@look_at.front,@monkey.position,[0,255,0,255]]
+        @context.render_manager.debug.vectors.push [@look_at.side,@monkey.position,[255,0,0,255]]
+
+
         if @events.touch.touches
 
             #printing fingers
@@ -102,14 +124,14 @@ class TouchDemo extends LogicBlock
             msgs.push fingers
 
             #scaling and rotating roorh
-            {ob, scale} = @
+            {roorh, scale} = @
             s = @events.touch.rel_pinch*2/@context.canvas_rect.height
             scale[0] = s*@fx
             scale[1] = s*@fy
             scale[2] = s*@fz
-            vec3.add(ob.scale,ob.scale,scale)
-            quat.rotateY(ob.rotation, ob.rotation, @events.touch.rel_rot)
-            ob.instance_physics()
+            vec3.add(roorh.scale,roorh.scale,scale)
+            quat.rotateY(roorh.rotation, roorh.rotation, @events.touch.rel_rot)
+            roorh.instance_physics()
 
             #printing collision
             if @collisions.length
