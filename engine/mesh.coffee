@@ -188,7 +188,7 @@ class Mesh extends GameObject
         #@phy_mesh = null # only necessary for live server, otherwise it may cause bugs
         if @scene and @scene.world
             @instance_physics()
-        @context.main_loop.reset_timeout()
+        @context.main_loop?.reset_timeout()
         return data
 
     update_iarray: ->

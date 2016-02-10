@@ -1,7 +1,8 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 {Filter, box_filter_code} = require './filters'
 {Framebuffer, MainFramebuffer} = require './framebuffer'
-
+{Mesh} = require './mesh'
+{Material} = require './material'
 MIRROR_MASK_X = 2|16|32|128 #178
 MIRROR_MASK_Y = 4|16|64|128 #212
 MIRROR_MASK_Z = 8|32|64|128 #232
@@ -652,7 +653,7 @@ class RenderManager
 
         # Debug physics and vectors (TODO: move vector to debug properties?)
         if scene.debug_physics
-            mm4 = mat4.create()
+
             for ob in scene.children
                 dob = ob.phy_debug_mesh
                 if dob
@@ -665,46 +666,43 @@ class RenderManager
                         # TODO: It's better to have a separate debug mesh
                         # than recalculating the matrices of the same mesh
 
-                    mat4.multiply mm4, world2cam, dob.world_matrix
                     dob.color=vec4.clone [1,1,1,0.2]
                     gl.enable gl.BLEND
                     gl.disable gl.DEPTH_TEST
-                    @draw_mesh dob, dob.world_matrix, mm4
+                    @draw_mesh dob, dob.world_matrix
                     gl.disable gl.BLEND
                     gl.enable gl.DEPTH_TEST
                     dob.color=vec4.clone [1,1,1,1]
-                    @draw_mesh dob, dob.world_matrix, mm4
+                    @draw_mesh dob, dob.world_matrix
 
-
-
-        if scene.debug_physics
             gl.disable gl.DEPTH_TEST
-            for dvec in debug.vectors
+            for dvec in @debug.vectors
                 # TODO: draw something else when it's too small (a different arrow?)
                 #       and a circle when it's 0
-                dob = debug.arrow
+                dob = @debug.arrow
                 dob.color = vec4.clone dvec[2]
                 dob.position = dvec[1]
                 v3 = dvec[0]
                 v2 = vec3.cross [0,0,0], cam.position, v3
                 v1 = vec3.normalize [0,0,0], vec3.cross([0,0,0],v2,v3)
                 v2 = vec3.normalize [0,0,0], vec3.cross(v2,v3,v1)
-                s = vec3.length v3
+                s = vec3.len v3
                 vec3.scale v2,v2,s
                 vec3.scale v1,v1,s
                 ma = [v1[0], v1[1], v1[2], 0,
                     v2[0], v2[1], v2[2], 0,
                     v3[0], v3[1], v3[2], 0,
                     dob.position[0], dob.position[1], dob.position[2], 1]
-                mat4.multiply mm4, world2cam, ma
-                @draw_mesh dob, ma, mm4
-            dob = debug.bone
-            for ob in scene.armatures
-                for b in ob._bone_list
-                    mat4.scale mm4, b.matrix, [b.blength,b.blength,b.blength]
-                    mat4.multiply mm4, ob.world_matrix, mm4
-                    mat4.multiply mm4, world2cam, mm4
-                    @draw_mesh dob, b.matrix, mm4
+                @draw_mesh dob, ma
+
+            #TODO: Fix bone debug shapes
+            # dob = @debug.bone
+            # for ob in scene.armatures
+            #     for b in ob._bone_list
+            #         dob.scale[0] = b.blength
+            #         dob.scale[1] = b.blength
+            #         dob.scale[2] = b.blength
+            #         @draw_mesh dob, b.matrix
 
             gl.enable gl.DEPTH_TEST
 
@@ -842,7 +840,7 @@ class Debug
         bone.load_from_lists(d, [0,1,0,2,0,3,0,4,1,2,2,3,3,4,4,1,
                            5,1,5,2,5,3,5,4])
 
-        @material = mat = new Material(context, '_debug', plain_fs, [{'type':5,'varname':'color'}],
+        @material = mat = new Material(@context, '_debug', plain_fs, [{'type':5,'varname':'color'}],
             [], plain_vs)
 
         for ob in [box, cylinder, sphere, arrow, bone]
@@ -850,7 +848,7 @@ class Debug
             ob.stride = 4
             ob.configure_materials [mat]
             ob.color = vec4.create 1,1,1,1
-            ob.data.draw_method = render_manager.gl.LINES
+            ob.data.draw_method = @context.render_manager.gl.LINES
             ob.scale = [1,1,1]
             ob._update_matrices()
 

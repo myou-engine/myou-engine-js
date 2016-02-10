@@ -141,7 +141,7 @@ class Armature extends GameObject
         return
 
 rotation_to = (out, p1, p2, maxang)->
-    angle = Math.atan2 vec3.length(vec3.cross([],p1,p2)), vec3.dot(p1,p2)
+    angle = Math.atan2 vec3.len(vec3.cross([],p1,p2)), vec3.dot(p1,p2)
     angle = Math.max -maxang, Math.min(maxang, angle)
     axis = vec3.cross [], p1, p2
     vec3.normalize axis, axis
