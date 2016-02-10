@@ -25,7 +25,6 @@ script_tag_loaded_callbacks = {}
 class Loader
 
     current_scene: null
-    debug: false
 
     constructor: (context)->
         @context = context
@@ -64,7 +63,7 @@ class Loader
             scene.loader = scene.loader or @
             scene.set_gravity data.gravity
             scene.background_color = data.background_color
-            scene.debug_physics = data.debug_physics
+            scene.debug_physics = @context.MYOU_PARAMS.debug_physics or data.debug_physics
             scene.active_camera_name = data.active_camera
             scene.stereo = data.stereo
             scene.stereo_eye_separation = data.stereo_eye_separation
@@ -358,8 +357,6 @@ class Loader
 
         if path[-4...] == '.crn'
             base = @data_dir + '/textures/'
-            if @debug and @context.MYOU_PARAMS.nodejs
-                base = '/tmp/textures/'
             src = base + path
             ext = @context.render_manager.extensions.compressed_texture_s3tc
 
@@ -470,8 +467,6 @@ class Loader
 
         else if path[-4...] == '.dds'
             base = @data_dir + '/textures/'
-            if @debug and @context.MYOU_PARAMS.nodejs
-                base = '/tmp/textures/'
             src = base + path
             ext = @context.render_manager.extensions.compressed_texture_s3tc
             f = (data)->
@@ -525,8 +520,6 @@ class Loader
                 img.src = path
             else
                 base = @data_dir + '/textures/'
-                if @debug and @context.MYOU_PARAMS.nodejs
-                    base = '/tmp/textures/'
                 img.src = base + path
         tex.path = path
         return tex
@@ -756,17 +749,6 @@ class XhrLoader extends Loader
             if filter_function
                 d = filter_function d
             @load d
-            if @debug and not debug_loader
-                global debug_loader
-                host = location.hostname
-                if not host or location.protocol == "chrome-extension:"
-                    host = "127.0.0.1"
-                port = location.port
-                if host == "127.0.0.1" or host == "localhost"
-                    port = WEBSOCKET_PORT
-                debug_loader = new WebSocketLoader "ws://"+host+":"+port+"/ws/", @
-                debug_loader.current_scene = @current_scene or scene
-                # TODO: show a debug widget
             return true
         base = @data_dir + '/scenes/'
         @add_task base + scene_name + '/all.json', f, 'text'
