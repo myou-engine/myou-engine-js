@@ -16,7 +16,6 @@ pointer_over = (pointer_event, cam, int_mask)->
     rayto = cam.get_ray_direction(x,y)
 
     vec3.add(rayto, rayto, pos)
-    vec3.copy(context.objects.Icosphere.position, rayto)
 
     return phy.ray_intersect_body_absolute scene, pos, rayto, int_mask
 
