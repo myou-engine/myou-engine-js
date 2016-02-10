@@ -86,8 +86,7 @@ class TouchDemo extends LogicBlock
             @collisions = []
 
             for touch in @touches
-                {x, y} = touch
-                c =  sensors.pointer_over x, y, cam, 1
+                c =  sensors.pointer_over touch, cam, 1
                 if c?
                     c.push(touch)
                     @collisions.push(c)
