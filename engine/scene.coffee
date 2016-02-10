@@ -43,6 +43,7 @@ class Scene
         @_children_are_ordered = true
         @last_render_tick = 0
         @load_callbacks = []
+        @logic_ticks = []
         @pre_draw_callbacks = []
         @post_draw_callbacks = []
         @_pending_tasks = 0
@@ -202,6 +203,7 @@ class Scene
         stub.load_callbacks = @load_callbacks
         stub.pre_draw_callbacks = @pre_draw_callbacks
         stub.post_draw_callbacks = @post_draw_callbacks
+        stub.logic_ticks = @logic_ticks
 
         # TODO: unload textures, etc (or defer unloading to next scene load)
         # remove texture.users and garabage collect them after textures
