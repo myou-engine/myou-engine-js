@@ -26,8 +26,8 @@
     "url": "ssh://root@pixelements.net/root/repositories/myou-engine.git"
   },
   "keywords": [
-    "myou",
     "webgl",
+    "game",
     "engine",
     "blender"
   ],
