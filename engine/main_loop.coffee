@@ -2,7 +2,7 @@
 {get_last_char_phy, step_world, step_world, phy_to_ob} = require './physics'
 # Logic assumes a frame won't be longer than this
 # Below that point, things go slow motion
-MAX_FRAME_DURATION = 167   # 10 fps
+MAX_FRAME_DURATION = 167  # 6 fps
 
 class MainLoop
 
@@ -11,45 +11,51 @@ class MainLoop
         @frame_duration = 16
         @last_frame_durations = [16, 16, 16, 16, 16, 16, 16, 16, 16, 16]
         @_fdi = 0
-        @last_time = 0
-        @timeout = null
-        @timeout_timer = null
-        @enabled = false
-        @context = context
         @timeout = context.MYOU_PARAMS.timeout
         @timeout? and console.log 'WARNING: Timeout set: ' + @timeout
+        @pause_time = 0
+        @last_time = 0
+        @timeout_timer = @timeout
+        @enabled = false
+        @context = context
+        @_bound_tick = @tick.bind @
 
     run: ->
-        @_bound_tick = @tick.bind @
+        if @enabled
+            return
         requestAnimationFrame @_bound_tick
         not @enabled and @timeout? and console.log 'Main loop running: ' + Math.floor(performance.now())
         @enabled = true
         @last_time = performance.now()
 
-
     stop: ->
         cancelAnimationFrame @_bound_tick
         @enabled = false
 
+    pause: (pause_time)->
+        if not pause_time?
+            console.log 'WARNING: Undefined pause_time.'
+        @pause_time = pause_time
+
     tick: ->
         requestAnimationFrame @_bound_tick
         time = performance.now()
-        @frame_duration = frame_duration = Math.min time - @last_time, MAX_FRAME_DURATION
+        @frame_duration = frame_duration = Math.min(time - @last_time, MAX_FRAME_DURATION)
+        @last_time = time
 
-
-        if @timeout? and @timeout_timer > @timeout
-            @stop()
-            @timeout_timer = 0
-            console.log 'Main loop paused: ' + Math.floor(time)
-
-        if @enabled == false or @context.loaded_scenes.length == 0
+        if not @enabled or @pause_time > 0
+            @pause_time -= frame_duration
             return
 
-        @timeout_timer += frame_duration
+        if  @enabled and @timeout_timer <= 0
+            console.log  'Main loop paused: ' + Math.floor(time)
+            @enabled = false
+            return
+
+        @timeout_timer -= frame_duration
         @last_frame_durations[@_fdi] = frame_duration
         @_fdi = (@_fdi+1) % @last_frame_durations.length
 
-        @last_time = time
 
         for scene in @context.loaded_scenes
             if not scene.enabled
@@ -90,9 +96,17 @@ class MainLoop
 
         @context.events.reset_frame_events()
 
+    set_timeout: (timeout, reset=true)=>
+        'WARNING: Timeout set: ' + timeout
+        @timeout = timeout
+        if reset then @reset_timeout()
+
     reset_timeout: =>
-        @timeout_timer = 0
-        @enabled = @enabled or @run()
+        if not @enabled
+            console.log 'Main loop running: ' + Math.floor( performance.now())
+
+        @timeout_timer =  @timeout
+        @enabled = true
 
 
 module.exports = {MainLoop}
