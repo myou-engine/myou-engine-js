@@ -26,10 +26,12 @@ class MainLoop
         requestAnimationFrame @_bound_tick
         not @enabled and @timeout? and console.log 'Main loop running: ' + Math.floor(performance.now())
         @enabled = true
+        @pause_time = 0
         @last_time = performance.now()
 
     stop: ->
         cancelAnimationFrame @_bound_tick
+        @pause_time = Infinity
         @enabled = false
 
     pause: (pause_time)->
@@ -107,6 +109,5 @@ class MainLoop
 
         @timeout_timer =  @timeout
         @enabled = true
-
 
 module.exports = {MainLoop}
