@@ -30,6 +30,7 @@ multiple instances of the engine.
 * Dynamic loading of assets without framerate reduction (even in WebGL).
 * Physics: Currently Bullet (ammo.js when running in JS) is supported.
 * Multiple self-contained engine instances are allowed on the same webpage.
+* Multi-touch gestures (Only in chrome. Other browsers support will be added soon).
 
 
 ## Future features
@@ -40,6 +41,7 @@ multiple instances of the engine.
 you can learn from or expand.
 * VR support.
 * Generic and xInput Joystics.
+
 
 ## Supported platforms
 Web browsers with __WebGL__ support (no plugins required).
