@@ -41,17 +41,6 @@ class Events
             touch_events:[]
             #number of current touches
             touches:0
-            # 2 finger gestures
-            pos1: vec2.create()
-            pos2: vec2.create()
-
-            #pinch (zoom) gesture
-            pinch:null
-            rel_pinch:0
-
-            #rotation gesture
-            rot:null
-            rel_rot:0
 
         # The root_element is used on mousedown
         # and mousemove when no button is pressed
@@ -286,67 +275,6 @@ class Events
                 touch_events.push(t)
 
         return touch_events
-
-    two_finger_gestures: ->
-        touch_events = @get_touch_events()
-        if touch_events.length <2
-            return 'CANCEL'
-
-        # check if fingers replaced.
-        finger1 = touch_events[0].id
-        finger2 = touch_events[1].id
-
-        if finger1 != 0 or finger2 != 1
-            return 'CANCEL'
-
-        pos1 = @touch.pos1
-        pos2 = @touch.pos2
-        pos1[0] = touch_events[0].x
-        pos1[1] = touch_events[0].y
-        pos2[0] = touch_events[1].x
-        pos2[1] = touch_events[1].y
-
-        #pinch
-        pinch = vec2.dist(pos1,pos2)
-
-        #If last_pinch is null the rel_pinch must be 0
-        last_pinch = if @touch.pinch? then @touch.pinch else pinch
-        @touch.rel_pinch = pinch - last_pinch
-        @touch.pinch = pinch
-
-        #rot
-        r = @tmpv
-        vec2.sub(r, pos2, pos1)
-        x = r[0]
-        y = r[1]
-
-        if x > 0 # +X
-            rot = Math.atan(y/x)
-        else if x < 0 # -X
-            rot = Math.atan(y/x) + Math.PI
-        else
-            if y > 0 # (0,+Y)
-                rot = -Math.PI
-            else if y < 0  # (0,-Y)
-                rot = Math.PI
-            else # (0,0)
-                rot = @touch.rot
-
-        #If last_rot is null the rel_rot must be 0
-        last_rot = if @touch.rot? then @touch.rot else rot
-
-        @touch.rel_rot = rot - last_rot
-
-        #Avoid rotation jump when the rotation completes a circle.
-        if @touch.rel_rot > 0.9 * PI_2
-            @touch.rel_rot = @touch.rel_rot - PI_2
-
-        @touch.rot = rot
-        return
-
-    # This function sets a set of generic event handlers
-    # for keyboard, mouse, touch... to be used by game logic
-    # without having to add one listener per key or button
 
     reset_frame_events: ->
         @keys_just_pressed.set @_empty_key_array

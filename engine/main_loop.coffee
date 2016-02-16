@@ -88,14 +88,6 @@ class MainLoop
             for f in scene.post_draw_callbacks
                 f scene, frame_duration
 
-
-
-
-        cancel_gesture = @context.events.two_finger_gestures()
-        if cancel_gesture
-            @context.events.touch.rel_rot = @context.events.touch.rel_pinch = 0
-            @context.events.touch.rot = @context.events.touch.pinch = null
-
         @context.events.reset_frame_events()
 
     set_timeout: (timeout, reset=true)=>
