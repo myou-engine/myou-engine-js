@@ -320,7 +320,7 @@ colliding_bodies = (body)->
         m = dispatcher.getManifoldByIndexInternal(i)
         num_contacts = m.getNumContacts()
         if num_contacts!=0
-            has_contact = False
+            has_contact = false
             for j in [0...num_contacts]
                 point = m.getContactPoint(j)
                 if point.get_m_distance1()<0
@@ -334,7 +334,7 @@ colliding_bodies = (body)->
                     ret.push(_phy_obs_ptrs[b0])
     return ret
 
-get_linear_velocity = (body, local = False)->
+get_linear_velocity = (body, local = false)->
     v = body.getLinearVelocity()
     if local
         ir = quat.invert([], body.owner.get_world_rotation())
@@ -365,7 +365,7 @@ set_max_fall_speed = (body, f)->
     body.char.setFallSpeed(f)
     body.owner.max_fall_speed = f
 
-get_angular_velocity = (body, local = False)->
+get_angular_velocity = (body, local = false)->
     v = body.getAngularVelocity()
     if local
         ir = quat.invert([], body.owner.get_world_rotation())
