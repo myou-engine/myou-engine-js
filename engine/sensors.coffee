@@ -17,8 +17,12 @@ class TouchGesturesOver extends LogicBlock
         new_touches = @context.events.get_touch_events()
         touch_ids = []
         cam = @scene.active_camera
-        cam_pos = cam.get_world_position()
         {width, height} = @context.canvas_rect
+
+        cam_pos = cam.get_world_position()
+        cam_view = [0,0,-1]
+        vec3.transformQuat(cam_view,cam_view,cam.rotation)
+
         for touch in new_touches
             # pointer over
             {x,y,id} = touch
@@ -26,7 +30,6 @@ class TouchGesturesOver extends LogicBlock
             x = x/width
             y = y/height
             rayto = cam.get_ray_direction(x,y)
-            vec3.add(rayto, rayto, cam_pos)
             hit = phy.ray_intersect_body_absolute @scene, cam_pos, rayto, int_mask
 
             ob_name = @hits_by_touch_id[id]
@@ -37,27 +40,23 @@ class TouchGesturesOver extends LogicBlock
                 touch.hit = hit
 
             if ob_name?
-                @hits[ob_name] = @hits[ob_name] or {
+                obhit = @hits[ob_name] = @hits[ob_name] or {
                     touch_events:{}
-                    gesture_plane_dist: vec3.dist(hit[0].owner.position, cam_pos)
-                    gestures:
-                        drag: vec3.create()
-                        pinch: 0
-                        rel_pinch: 0
-                        rotation: 0
-                        rel_rotation: 0
+                    gesture_plane_dist_ratio: null
                     # Gesture sensors:
                     pinch_gesture: new PinchGesture @context, @scene.name
                     rot_gesture: new RotationGesture @context, @scene.name
                     drag_gesture: new DragGesture @context, @scene.name
                     }
 
-                #ray projection to gesture plane
-                vec3.normalize(rayto,rayto)
-                vec3.scale(rayto,rayto,@hits[ob_name].gesture_plane_dist)
-                touch.world_pos = rayto
+                # ray projection to gesture plane
+                ratio = obhit.gesture_plane_dist_ratio =
+                    obhit.gesture_plane_dist_ratio or
+                    (hit and vec3.len(vec3.sub([],hit[1],cam_pos))/vec3.len(vec3.sub([],rayto,cam_pos)))
 
-                @hits[ob_name].touch_events[id] = touch
+                touch.world_pos = vec3.scale([], rayto, ratio)
+
+                obhit.touch_events[id] = touch
                 @hits_by_touch_id[id] = ob_name
 
         #Reseting object locking if the finger is not touching
@@ -65,10 +64,12 @@ class TouchGesturesOver extends LogicBlock
             if id not in touch_ids and ob_name
                 @hits_by_touch_id[id] = null
                 new_touch_events = {}
+
                 for tid, touch of @hits[ob_name].touch_events
                     if tid != id
                         new_touch_events[tid] = touch
                 @hits[ob_name].touch_events = new_touch_events
+                @hits[ob_name].gesture_plane_dist_ratio = null
 
         output = {}
         for ob_name, hit of @hits
@@ -83,20 +84,20 @@ class TouchGesturesOver extends LogicBlock
                 for id, touch of hit.touch_events
                     touch_events_3D.push {id:touch.id, x:touch.world_pos[0], y:touch.world_pos[1], z:touch.world_pos[2]}
                     touch_events.push touch
-                {pos, rel_pos} = hit.drag_gesture.eval(touch_events_3D[0])
+                {pos, rel_pos, linear_velocity} = hit.drag_gesture.eval(touch_events_3D[0])
 
                 # Capturing rotation/pinch gestures
                 if fingers.length > 1
                     {pinch, rel_pinch} = hit.pinch_gesture.eval(touch_events_3D)
-                    {rot, rel_rot} = hit.rot_gesture.eval(touch_events)
+                    {rot, rel_rot, angular_velocity} = hit.rot_gesture.eval(touch_events)
                 else
                     # Reseting rotation/pinch  gestures
                     hit.pinch_gesture.init()
                     hit.rot_gesture.init()
                     {pinch, rel_pinch} = hit.pinch_gesture.eval(touch_events_3D)
-                    {rot, rel_rot} = hit.rot_gesture.eval(touch_events)
+                    {rot, rel_rot, angular_velocity} = hit.rot_gesture.eval(touch_events)
 
-                output[ob_name] = {pos, rel_pos, pinch, rel_pinch, rot, rel_rot}
+                output[ob_name] = {pos, rel_pos, linear_velocity, pinch, rel_pinch, rot, rel_rot, angular_velocity}
             else
                 #reseting drag gesture
                 hit.drag_gesture.init()
@@ -111,9 +112,11 @@ class DragGesture extends LogicBlock
     init: (@scene)->
         @pos = []
         @last_pos = null
-        @rel_pos = []
+        @rel_pos = [0,0,0]
         @id = null
+        @linear_velocity = [0,0,0]
     eval: (pointer_event)->
+        frame_duration = @context.main_loop.frame_duration
         {id,x,y,z} = pointer_event
         #if pointer_event.id changes, the relative pos will be locked
         if id != @id
@@ -125,11 +128,12 @@ class DragGesture extends LogicBlock
         pos[2] = z or 0
 
         #Locking relative pos if pointer_event.id changes
+        linear_velocity = vec3.scale(@linear_velocity,@rel_pos,1/frame_duration)
         @last_pos = if @last_pos? then @last_pos else pos
 
         rel_pos = vec3.sub(@rel_pos, pos, @last_pos)
         @last_pos = [x,y,z]
-        return {pos, rel_pos}
+        return {pos, rel_pos, linear_velocity}
 
 # Capture pinch gestures
 
@@ -191,6 +195,7 @@ class RotationGesture extends LogicBlock
         @tmpv = @tmpv or vec2.create()
 
     eval: (pointer_events)->
+        frame_duration = @context.main_loop.frame_duration
         if pointer_events.length < 2
             return {
                 rot:0
@@ -241,7 +246,8 @@ class RotationGesture extends LogicBlock
             @rel_rot = @rel_rot - PI_2
 
         @rot = rot
-        return {rot, rel_rot}
+        angular_velocity = vec3.scale([],rel_rot,1/frame_duration)
+        return {rot, rel_rot, angular_velocity}
 
 # output {objet, point, normal}
 pointer_over = (pointer_event, cam, int_mask)->
@@ -256,8 +262,6 @@ pointer_over = (pointer_event, cam, int_mask)->
     y = y/height
 
     rayto = cam.get_ray_direction(x,y)
-
-    vec3.add(rayto, rayto, pos)
 
     return phy.ray_intersect_body_absolute scene, pos, rayto, int_mask
 
