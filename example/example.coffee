@@ -5,7 +5,7 @@ if process.browser
 
 MYOU_PARAMS =
     total_size: 26775095
-    debug: true
+    # debug: true
     debug_physics: true
     #if browser then ../data -- If electron ./data
     data_dir: if process.browser then "../data" else "./data"
@@ -51,10 +51,11 @@ window.enable_gl_ray = ->
     gl_ray_canvas.style.display = 'inline-block'
     gl_ray_canvas.style.transform = 'scale(-1)'
 
-    window.glray = new myou_engine.GLRay(myou_instance, document.getElementById('glray'))
+    window.glray = new myou_engine.GLRay myou_instance, document.getElementById('glray')
     glray.init myou_instance.scenes['Scene'], myou_instance.objects['Camera']
 
-db = document.getElementById('debug')
+# Debug info:
+db = document.getElementById 'debug'
 debug = (msgs)->
     db.innerHTML = ''
     for msg in msgs
@@ -70,84 +71,104 @@ class TouchDemo extends LogicBlock
         @events = @context.events
         @touch_gestures_over = new sensors.TouchGesturesOver @context, @scene.name
         @touching_objects = []
+
     tick: (frame_duration)->
         msgs = ['TOUCHES:'+ @events.touch.touches]
         cam = @scene.active_camera
-        tgo = @touch_gestures_over.eval(1)
+        frame_duration = @context.main_loop.frame_duration
 
-        #droping objects
+        # Capturing gestures over objects (sensor)
+        tgo = @touch_gestures_over.eval 1
+
+        # Releasing objects when the gesture ends
+        # and appliying last linear_velocity (actuator)
         for ob_name of @tgo
+            # if the gesture ends in the object.
             if not tgo[ob_name]?
                 ob = @scene.objects[ob_name]
                 ob.physics_type = ob.original_physics_type
                 ob.touching = false
                 ob.instance_physics()
                 phy.set_linear_velocity(ob.body,vec3.scale(ob.linear_velocity,ob.linear_velocity,1000))
-
         @tgo = tgo
+
+        # Appliying gestures over objects (actuator)
         if @events.touch.touches
             for ob_name, gestures of tgo
                 ob = @scene.objects[ob_name]
+
+                # Initializing gesture.
+                # The object should not be affected by gravity or collisions during the gesture
+                # Because of that, the objet.physics_type should be STATIC.
                 if not ob.touching
+                    ob.original_gesture_distance = vec3.dist(cam.position,ob.position)
                     ob.original_physics_type = ob.physics_type
                     ob.touching = true
                     ob.physics_type = 'STATIC'
                     ob.instance_physics()
-                if not ob.scale_factor?
-                    sfx = 1
-                    sfy = ob.scale[1]/ob.scale[0]
-                    sfz = ob.scale[2]/ob.scale[0]
-                    ob.scale_factor = [sfx, sfy, sfz]
-                    ob.max_scale = Math.max(ob.scale[0],ob.scale[1],ob.scale[2])
 
-                rel_pinch = gestures.rel_pinch
-
-                if rel_pinch
-                    ob.scale[0] += ob.scale_factor[0] * rel_pinch
-                    ob.scale[1] += ob.scale_factor[1] * rel_pinch
-                    ob.scale[2] += ob.scale_factor[2] * rel_pinch
-                    ob.instance_physics()
+                gesture_offset = vec3.dist(cam.position,ob.position)/ob.original_gesture_distance
 
                 angle = gestures.rel_rot
                 if angle
                     #TODO: optimize
                     #rot_from = Y axis transformed with cam.rotation
                     rot_from = [0,1,0]
-                    vec3.transformQuat(rot_from,rot_from,cam.rotation)
+                    vec3.transformQuat rot_from, rot_from,cam.rotation
 
                     #rot_to = Y axis rotated angle in the Z axis
                     rot_to = [0,1,0]
-                    vec3.rotateZ(rot_to,rot_to,[0,0,0],-angle)
+                    vec3.rotateZ rot_to, rot_to, [0,0,0], -angle
                     # Transform rot_to with the cam_rotation
-                    vec3.transformQuat(rot_to,rot_to,cam.rotation)
+                    vec3.transformQuat rot_to, rot_to, cam.rotation
 
                     # q = quat from rot_from to rot_to
-                    q = quat.rotationTo([],rot_from,rot_to)
+                    q = quat.rotationTo [], rot_from, rot_to
 
                     # Applying q to the object rotation.
-                    quat.mul(ob.rotation, q, ob.rotation)
+                    quat.mul ob.rotation, q, ob.rotation
 
-                    @context.render_manager.debug.vectors.push [rot_to,ob.position,[0,100,255,255]] #cyan
-                    @context.render_manager.debug.vectors.push [rot_from,ob.position,[0,255,0,255]] #green
 
-                rel_pos = gestures.rel_pos
+                rel_pos = vec3.scale(gestures.rel_pos, gestures.rel_pos, gesture_offset)
                 if rel_pos
-                    vec3.add(ob.position, ob.position, rel_pos)
+                    #adding relative position to the object.
+                    vec3.add ob.position, ob.position, rel_pos
+
+                    #saving linear velocity to be applied in the gesture ending.
                     ob.linear_velocity = ob.linear_velocity or [0,0,0]
-                    vec3.copy(ob.linear_velocity, gestures.linear_velocity)
-
-                if not rel_pinch and (angle or rel_pos)
-                    phy.update_ob_physics(ob)
+                    vec3.copy ob.linear_velocity, gestures.linear_velocity
 
 
+                #Pinch gesture moves the object back/forth
+                rel_pinch = gestures.rel_pinch * gesture_offset
+                if rel_pinch
+                    # v = Position relative to camera
+                    v = vec3.sub ob.position, ob.position, cam.position
+
+                    #back/forth movement
+                    vec3.scale v, v, 1-rel_pinch
+
+                    #movement constraint
+                    l = vec3.len(v)
+                    l = Math.max(Math.min(l,12.5),ob.radius)
+                    vec3.normalize(v,v)
+                    vec3.scale(v,v,l)
+
+                    # Adding camera position to get the world position
+                    vec3.add v, v, cam.position
+
+                if rel_pos or angle or rel_pinch
+                    phy.update_ob_physics ob
+
+            # Collecting multitouch info to be printed in the debug info area.
             @touches = @events.get_touch_events()
             @collisions = []
 
             for touch in @touches
                 c =  sensors.pointer_over touch, cam, 1
                 if c?
-                    c.push(touch)
-                    @collisions.push(c)
+                    c.push touch
+                    @collisions.push c
 
             #printing fingers
             fingers = []
@@ -161,7 +182,7 @@ class TouchDemo extends LogicBlock
                 msgs.push 'TOUCHING:'
                 for c in @collisions
                     msgs.push c[3].id + ':' + c[0].owner.name
-        debug(msgs)
+        debug msgs
 
 
 window.td = new TouchDemo myou_instance, 'Scene'
