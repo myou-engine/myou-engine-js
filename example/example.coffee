@@ -64,30 +64,83 @@ debug = (msgs)->
 phy = myou_engine.physics
 class TouchDemo extends LogicBlock
     init: (@scene)=>
-        @roorh = @scene.objects.roorh_phy
-        @monkey = @scene.objects.monkey
-        #scaling factor
-        @fx = 1
-        @fy = @roorh.scale[1]/@roorh.scale[0]
-        @fz = @roorh.scale[2]/@roorh.scale[0]
-
-        #scale vector to be used on tick.
-        @scale = vec3.create()
-
         #finger collisions with the scene objects
         @collisions = []
         @touches = []
-
-        #actuators
-        @look_at = new actuators.LookAt @context, @scene.name
-        @rotate_around = new actuators.RotateAround @context, @scene.name
-
+        @events = @context.events
+        @touch_gestures_over = new sensors.TouchGesturesOver @context, @scene.name
+        @touching_objects = []
     tick: (frame_duration)->
-        #sensors
-        if @events.touch.touches
-            cam = @scene.objects.Camera
-            @touches = @events.get_touch_events()
+        msgs = ['TOUCHES:'+ @events.touch.touches]
+        cam = @scene.active_camera
+        tgo = @touch_gestures_over.eval(1)
 
+        #droping objects
+        for ob_name of @tgo
+            if not tgo[ob_name]?
+                ob = @scene.objects[ob_name]
+                ob.physics_type = ob.original_physics_type
+                ob.touching = false
+                ob.instance_physics()
+                phy.set_linear_velocity(ob.body,vec3.scale(ob.linear_velocity,ob.linear_velocity,1000))
+
+        @tgo = tgo
+        if @events.touch.touches
+            for ob_name, gestures of tgo
+                ob = @scene.objects[ob_name]
+                if not ob.touching
+                    ob.original_physics_type = ob.physics_type
+                    ob.touching = true
+                    ob.physics_type = 'STATIC'
+                    ob.instance_physics()
+                if not ob.scale_factor?
+                    sfx = 1
+                    sfy = ob.scale[1]/ob.scale[0]
+                    sfz = ob.scale[2]/ob.scale[0]
+                    ob.scale_factor = [sfx, sfy, sfz]
+                    ob.max_scale = Math.max(ob.scale[0],ob.scale[1],ob.scale[2])
+
+                rel_pinch = gestures.rel_pinch
+
+                if rel_pinch
+                    ob.scale[0] += ob.scale_factor[0] * rel_pinch
+                    ob.scale[1] += ob.scale_factor[1] * rel_pinch
+                    ob.scale[2] += ob.scale_factor[2] * rel_pinch
+                    ob.instance_physics()
+
+                angle = gestures.rel_rot
+                if angle
+                    #TODO: optimize
+                    #rot_from = Y axis transformed with cam.rotation
+                    rot_from = [0,1,0]
+                    vec3.transformQuat(rot_from,rot_from,cam.rotation)
+
+                    #rot_to = Y axis rotated angle in the Z axis
+                    rot_to = [0,1,0]
+                    vec3.rotateZ(rot_to,rot_to,[0,0,0],-angle)
+                    # Transform rot_to with the cam_rotation
+                    vec3.transformQuat(rot_to,rot_to,cam.rotation)
+
+                    # q = quat from rot_from to rot_to
+                    q = quat.rotationTo([],rot_from,rot_to)
+
+                    # Applying q to the object rotation.
+                    quat.mul(ob.rotation, q, ob.rotation)
+
+                    @context.render_manager.debug.vectors.push [rot_to,ob.position,[0,100,255,255]] #cyan
+                    @context.render_manager.debug.vectors.push [rot_from,ob.position,[0,255,0,255]] #green
+
+                rel_pos = gestures.rel_pos
+                if rel_pos
+                    vec3.add(ob.position, ob.position, rel_pos)
+                    ob.linear_velocity = ob.linear_velocity or [0,0,0]
+                    vec3.copy(ob.linear_velocity, gestures.linear_velocity)
+
+                if not rel_pinch and (angle or rel_pos)
+                    phy.update_ob_physics(ob)
+
+
+            @touches = @events.get_touch_events()
             @collisions = []
 
             for touch in @touches
@@ -96,44 +149,13 @@ class TouchDemo extends LogicBlock
                     c.push(touch)
                     @collisions.push(c)
 
-        msgs = ['TOUCHES:'+ @events.touch.touches]
-        # Testing actuators
-
-        #flow, ob, target=[0,0,0], rotation=[0,0,0]
-        x = (@events.mouse.rel_x/Math.PI) * frame_duration * 0.001
-        y = (@events.mouse.rel_y/Math.PI) * frame_duration * 0.001
-
-        # INPUTS: ob, target=[0,0,0], rotation=[0,0,0]
-        @rotate_around.eval @monkey, [0,0,0], [y, 0, x]
-
-        # INPUTS: viewer, target, viewer_up='Z', viewer_front='-Y', smooth, frame_duration
-        @look_at.eval @monkey, @scene.objects['Cube.017'].position, 'Z', '-Y', 0.8, frame_duration
-
-        #debug
-        @context.render_manager.debug.vectors.push [@look_at.tup,@monkey.position,[0,0,255,255]]
-        @context.render_manager.debug.vectors.push [@look_at.front,@monkey.position,[0,255,0,255]]
-        @context.render_manager.debug.vectors.push [@look_at.side,@monkey.position,[255,0,0,255]]
-
-
-        if @events.touch.touches
-
             #printing fingers
             fingers = []
             for f in @touches
                 fingers.push f.id
             msgs.push fingers
 
-            #scaling and rotating roorh
-            {roorh, scale} = @
-            s = @events.touch.rel_pinch*2/@context.canvas_rect.height
-            scale[0] = s*@fx
-            scale[1] = s*@fy
-            scale[2] = s*@fz
-            vec3.add(roorh.scale,roorh.scale,scale)
-            quat.rotateY(roorh.rotation, roorh.rotation, @events.touch.rel_rot)
-            roorh.instance_physics()
-
-            #printing collision
+            # printing collision
             if @collisions.length
                 msgs.push ''
                 msgs.push 'TOUCHING:'
@@ -142,4 +164,4 @@ class TouchDemo extends LogicBlock
         debug(msgs)
 
 
-new TouchDemo myou_instance, 'Scene'
+window.td = new TouchDemo myou_instance, 'Scene'
