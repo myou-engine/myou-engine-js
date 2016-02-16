@@ -36,40 +36,50 @@ class TouchGesturesOver extends LogicBlock
 
             if hit?
                 #Lock gestures to the first hit object
+                ob = hit[0].owner
+                ob_pos = ob.position
                 ob_name = ob_name or hit[0].owner.name
                 touch.hit = hit
 
             if ob_name?
                 obhit = @hits[ob_name] = @hits[ob_name] or {
                     touch_events:{}
-                    gesture_plane_dist_ratio: null
+                    init_ratio: null
                     # Gesture sensors:
                     pinch_gesture: new PinchGesture @context, @scene.name
                     rot_gesture: new RotationGesture @context, @scene.name
                     drag_gesture: new DragGesture @context, @scene.name
+                    ob: ob
                     }
 
                 # ray projection to gesture plane
-                ratio = obhit.gesture_plane_dist_ratio =
-                    obhit.gesture_plane_dist_ratio or
-                    (hit and vec3.len(vec3.sub([],hit[1],cam_pos))/vec3.len(vec3.sub([],rayto,cam_pos)))
+                if not obhit.init_ratio?
+                    obhit.init_ratio = obhit.init_ratio or
+                    vec3.len(vec3.sub([],obhit.ob.position,cam_pos))/vec3.len(vec3.sub([],rayto,cam_pos))
 
-                touch.world_pos = vec3.scale([], rayto, ratio)
+                touch.world_position = vec3.scale([], rayto, obhit.init_ratio)
 
                 obhit.touch_events[id] = touch
                 @hits_by_touch_id[id] = ob_name
 
+
         #Reseting object locking if the finger is not touching
         for id, ob_name of @hits_by_touch_id
+            #no ob_name means finger not touching
             if id not in touch_ids and ob_name
                 @hits_by_touch_id[id] = null
-                new_touch_events = {}
 
+                new_touch_events = {}
                 for tid, touch of @hits[ob_name].touch_events
                     if tid != id
                         new_touch_events[tid] = touch
+
                 @hits[ob_name].touch_events = new_touch_events
-                @hits[ob_name].gesture_plane_dist_ratio = null
+
+        for ob_name, hit of @hits
+            if not Object.keys(hit.touch_events).length
+                @hits[ob_name].init_ratio = null
+
 
         output = {}
         for ob_name, hit of @hits
@@ -82,9 +92,14 @@ class TouchGesturesOver extends LogicBlock
 
                 # Capturing drag gesture
                 for id, touch of hit.touch_events
-                    touch_events_3D.push {id:touch.id, x:touch.world_pos[0], y:touch.world_pos[1], z:touch.world_pos[2]}
+                    touch_events_3D.push
+                        id:touch.id,
+                        x:touch.world_position[0]
+                        y:touch.world_position[1]
+                        z:touch.world_position[2]
                     touch_events.push touch
-                {pos, rel_pos, linear_velocity} = hit.drag_gesture.eval(touch_events_3D[0])
+
+                {pos, rel_pos, linear_velocity} = hit.drag_gesture.eval(touch_events_3D)
 
                 # Capturing rotation/pinch gestures
                 if fingers.length > 1
@@ -115,24 +130,39 @@ class DragGesture extends LogicBlock
         @rel_pos = [0,0,0]
         @id = null
         @linear_velocity = [0,0,0]
-    eval: (pointer_event)->
+    eval: (pointer_events)->
         frame_duration = @context.main_loop.frame_duration
-        {id,x,y,z} = pointer_event
+        new_id = ''
+        ix = iy = iz = 0
+        for pointer in pointer_events
+            {id,x,y,z} = pointer
+            new_id += id + '_'
+            ix += x
+            iy += y
+            iz += z
+
+        n = pointer_events.length
+
+        ix /= n
+        iy /= n
+        iz /= n
         #if pointer_event.id changes, the relative pos will be locked
-        if id != @id
+        if new_id != @id
             @init()
-        @id = id
+
+        @id = new_id
+
         pos = @pos
-        pos[0] = x
-        pos[1] = y
-        pos[2] = z or 0
+        pos[0] = ix
+        pos[1] = iy
+        pos[2] = iz or 0
 
         #Locking relative pos if pointer_event.id changes
         linear_velocity = vec3.scale(@linear_velocity,@rel_pos,1/frame_duration)
         @last_pos = if @last_pos? then @last_pos else pos
 
         rel_pos = vec3.sub(@rel_pos, pos, @last_pos)
-        @last_pos = [x,y,z]
+        @last_pos = [ix,iy,iz]
         return {pos, rel_pos, linear_velocity}
 
 # Capture pinch gestures
