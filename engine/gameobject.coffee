@@ -287,8 +287,8 @@ class GameObject
             if body
                 add_body @scene.world, body, @collision_group, @collision_mask
                 body.owner = @
-                if not @no_sleeping
-                    allow_sleeping body, true
+                if @no_sleeping
+                    allow_sleeping body, false
                 if @is_ghost or @physics_type == 'SENSOR'
                     @scene.static_ghosts.push @
                     make_ghost body, true
