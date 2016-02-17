@@ -58,6 +58,7 @@ window.enable_gl_ray = ->
 # Debug info:
 db = document.getElementById 'debug'
 debug = (msgs)->
+    db.style.display = 'block'
     db.innerHTML = ''
     for msg in msgs
         db.innerHTML += msg + '</br>'
