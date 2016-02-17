@@ -1,14 +1,15 @@
 if process.browser
-    require 'file?name=index.html!./example.html'
-{create_canvas, Myou, LogicBlock, sensors, actuators} = window.myou_engine = require '../main'
+    require 'file?name=index.html!./static_files/myou.html'
+{create_canvas, Myou, LogicBlock, sensors, actuators} =
+    window.myou_engine = require '../../main' # 'myou-engine'
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = myou_engine.glm
 
 MYOU_PARAMS =
     total_size: 26775095
     # debug: true
     debug_physics: true
-    #if browser then ../data -- If electron ./data
-    data_dir: if process.browser then "../data" else "./data"
+    #if browser then ./data -- If electron ../data
+    data_dir: if process.browser then "./data" else "../data"
     inital_scene: "Scene"
     load_physics_engine: true
     no_mipmaps: false

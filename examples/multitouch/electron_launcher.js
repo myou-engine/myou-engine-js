@@ -27,7 +27,7 @@ if(isElectron){
         mainWindow = new BrowserWindow({width: 800, height: 600});
 
         // and load the index.html of the app.
-        mainWindow.loadUrl('file://' + __dirname + '/example.html');
+        mainWindow.loadUrl('file://' + __dirname + '/static_files/myou.html');
 
         // Open the devtools.
         // mainWindow.openDevTools();
