@@ -1,7 +1,6 @@
 'use strict'
 
 var webpack = require('webpack');
-
 module.exports = {
     context: __dirname,
     entry: [
@@ -22,7 +21,7 @@ module.exports = {
             },
             {
                 test: /\.(png|jpe?g|gif)$/i,
-                loader: "url-loader?limit=18000&name=[path][name].[ext]",
+                loader: 'url-loader?limit=18000&name=[path][name].[ext]',
             },
             {test: /\.svg$/, loader: 'url-loader?mimetype=image/svg+xml'},
             {test: /\.woff2?$/, loader: 'url-loader?mimetype=application/font-woff'},
@@ -33,7 +32,7 @@ module.exports = {
     },
     output: {
         path: __dirname + '/build/',
-        filename: "myou.js",
+        filename: 'myou.js',
     },
     devtool: 'inline-source-map',
     plugins: [
@@ -70,6 +69,11 @@ module.exports = {
         new webpack.IgnorePlugin(/^(fs|path|coffee-script)$/)
     ],
     resolve: {
-        extensions: ["", ".webpack.js", ".web.js", ".js", ".coffee", ".json"]
+        extensions: ['', '.webpack.js', '.web.js', '.js', '.coffee', '.json']
     },
 }
+
+//Copy data to build
+require('shelljs/global');
+mkdir('build/data')
+exec('rsync -rv data/* build/data')

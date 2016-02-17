@@ -141,30 +141,27 @@ need to create a root element for each of the instances.
 ## Documentation
 We are working on the documentation. It will be added soon.
 
-## Example
+## Examples
 Try it from:
-<http://pixelements.net/myou/build/>
+<http://pixelements.net/myou/examples/>
 
 To run the example locally, you can choose one of these two alternatives:
 
 1. From the browser using __Webpack__
 
     ```
-    cd example
+    cd [myou-engine]/examples/[example]
     webpack
-    sh server.sh
+    node run_server.js
     ```
-    And then you can enter in your browser to:
-
-    <http://localhost:8000/build/example.html>
 
     Alternatively, you can configure your browser to allow file access to avoid using the server.
 
 2. Natively using __Electron__
 
     ```
-    cd example
-    node electron_example.js
+    cd [myou-engine]/examples/[example]
+    node electron_launcher.js
     ```
 
 ## Feedback
