@@ -259,7 +259,7 @@ class Loader
                 ob = new Lamp @context
                 ob.name = data.name
                 ob.static = data.static or false
-                if data.lamp_type!='POINT' and data.shadow
+                if data.lamp_type!='POINT' and data.shadow and @context.render_manager.extensions.texture_float_linear?
                     tex_size = if data.tex_size? then data.tex_size else 256
                     ob.init_shadow data.frustum_size, data.clip_start, data.clip_end, closest_pow2(tex_size)
 
