@@ -14,7 +14,7 @@ remove_from_array = (array, i) ->
 # TODO: test: failing files, stuck files
 
 #decode functions:
-load_crunch = (task_id, queue_id, data, extra_data, uri) ->
+window.load_crunch = (task_id, queue_id, data, extra_data, uri) ->
     data = new Uint8Array data
     data_view = new DataView data.buffer
     src_size = data.length
@@ -56,7 +56,7 @@ load_crunch = (task_id, queue_id, data, extra_data, uri) ->
     Crunch._crn_unpack_end context
     Crunch._free src
 
-load_crunch_extra = (task_id, queue_id, data, original_common_data, uri)->
+window.load_crunch_extra = (task_id, queue_id, data, original_common_data, uri)->
     global max_size
     data = new Uint8Array data
     original_common_data = new Uint8Array original_common_data
