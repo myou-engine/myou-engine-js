@@ -68,7 +68,7 @@ class Curve extends GameObject
             n += 1
         va = @va = new Float32Array vertices
         ia = @ia = new Uint16Array indices
-        @phy_debug_mesh = render_manager.debug.debug_mesh_from_va_ia va, ia
+        # @phy_debug_mesh = render_manager.debug.debug_mesh_from_va_ia va, ia
         @phy_he = [1, 1, 1]
 
         curve_index = 0
