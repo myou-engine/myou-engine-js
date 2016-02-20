@@ -363,7 +363,7 @@ class Loader
             tex.level_buffers = null
             tex.num_additional_levels = 0
 
-            load_levels = (num_additional_levels, width, height, format, buffers, common_data) ->
+            load_levels = (num_additional_levels, width, height, format, buffers, common_data) =>
                 #t = performance.now()
                 gl.bindTexture gl.TEXTURE_2D, tex.tex
 
@@ -408,10 +408,10 @@ class Loader
                 tex.format = format
 
                 #profile_tex_upload_times.push [performance.now()-t, name]
-                main_loop.reset_timeout()
+                @context.main_loop.reset_timeout()
                 return true
 
-            load_565 = (data) ->
+            load_565 = (data) =>
                 gl.bindTexture gl.TEXTURE_2D, tex.tex
                 # Assuming texture is square
                 data = new Uint16Array data
@@ -428,7 +428,7 @@ class Loader
                 tex.loaded = true
                 tex.width = width
                 tex.height = height
-                main_loop.reset_timeout()
+                @context.main_loop.reset_timeout()
                 return true
             if ext
                 @add_task src, load_levels, 'load_crunch'
@@ -642,7 +642,7 @@ class XhrLoader extends Loader
             coffee_compile = require('coffee-script').compile
             dir = path.dirname __filename
             cs_load_worker= fs.readFileSync dir + '/load_worker.coffee', 'utf8'
-            worker_code = coffee_compile(cs_load_worker, {bare: true})
+            worker_code += coffee_compile(cs_load_worker, {bare: true})
 
 
 
@@ -849,7 +849,7 @@ class XhrLoader extends Loader
             pending_meshes[file_name] = []
             base = @data_dir + '/scenes/'
             uri = base + mesh_object.scene.name + '/' + file_name + '.mesh'
-            packed = (data) ->
+            packed = (data) =>
                 m = mesh_object
                 others = pending_meshes[file_name]
                 while m

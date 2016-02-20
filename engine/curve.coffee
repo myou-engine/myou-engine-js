@@ -4,14 +4,15 @@
 class Curve extends GameObject
 
     constructor: (@context)->
+        super @context
         @type = 'CURVE'
 
     instance_physics: ->
         # For now, use debug mesh for drawing the curve
         # and disable physics
-        pass
+        # pass
 
-    set_curves: (curves, resolution, nodes=False)->
+    set_curves: (curves, resolution, nodes=false)->
         #The nodes could be precalculed while exporting
         @curves = curves
         @calculated_curves = []
@@ -67,7 +68,7 @@ class Curve extends GameObject
             n += 1
         va = @va = new Float32Array vertices
         ia = @ia = new Uint16Array indices
-        @phy_debug_mesh = render_manager.debug.debug_mesh_from_va_ia va, ia
+        # @phy_debug_mesh = render_manager.debug.debug_mesh_from_va_ia va, ia
         @phy_he = [1, 1, 1]
 
         curve_index = 0
@@ -171,7 +172,7 @@ class Curve extends GameObject
                         p = curve.va.subarray curve.ia[ii2]*3, curve.ia[ii2]*3+3
                         d = vec3.dist main_p,p
                         if d < precission
-                            if not i in nodes
+                            if not (i in nodes)
                                 nodes[i]=[[ci,ii]]
                             else
                                 nodes[i].append [ci,ii]
