@@ -27,6 +27,7 @@ window.randInt = (min, max) ->
 
 String::startswith ?= (s) -> @[...s.length] == s
 String::endswith ?= (s) -> s == '' or @[-s.length..] == s
+Array::append ?= Array::push
 
 window.reversed = (x) ->
     result = []

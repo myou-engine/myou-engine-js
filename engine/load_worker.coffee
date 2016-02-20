@@ -100,6 +100,10 @@ load_crunch_extra = (task_id, queue_id, data, original_common_data, uri)->
     Crunch._crn_unpack_end context
     Crunch._free src
 
+if typeof window isnt 'undefined'
+    window.load_crunch = load_crunch
+    window.load_crunch_extra = load_crunch_extra
+
 dxtToRgb565 = (src, src16Offset, width, height) ->
     c = new Uint16Array 4
     dst = new Uint16Array width * height
