@@ -2,7 +2,7 @@
 /_cache/*
 
 #webpack builds
-*/build/*
+**/build/*
 /example/build/*
 
 #temporal files
