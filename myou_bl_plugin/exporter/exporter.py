@@ -714,8 +714,6 @@ def export_myou(path, scn):
     os.mkdir(full_dir)
     os.mkdir(join(full_dir, 'scenes'))
     os.mkdir(join(full_dir, 'textures'))
-    scr_dir = join(full_dir, 'scripts')
-    os.mkdir(scr_dir)
     save_textures(join(full_dir, 'textures'))
 
     for scene in bpy.data.scenes:
