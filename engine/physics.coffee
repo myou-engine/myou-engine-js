@@ -1,8 +1,5 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 
-PHYSICS_ENGINE_URL = 'ammo.asm.js'
-PHYSICS_ENGINE_SIZE = 3776745
-
 _phy_obs_ptrs = {} # used in body creation/destruction, colliding_bodies and ray_intersect_bodies
 _tmp_Vector3 = _tmp_Vector3b = _tmp_Vector3c = _tmp_Quaternion = _tmp_Transform = \
 _tmp_ClosestRayResultCallback = destroy = null
@@ -564,7 +561,7 @@ ray_intersect_body_bool_not_target = (scene, rayfrom, rayto, mask, target_body)-
 
 
 module.exports = {
-    PHYSICS_ENGINE_URL, physics_engine_init,
+    physics_engine_init,
     PhysicsWorld, destroy_world, set_gravity,
     step_world, update_ob_physics, set_phy_scale,
     ob_to_phy, phy_to_ob, get_last_char_phy,
