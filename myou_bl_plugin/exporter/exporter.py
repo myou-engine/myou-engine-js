@@ -15,21 +15,6 @@ GE_PATH = os.path.realpath(__file__).rsplit(os.sep,2)[0]
 if os.name=='nt':
     TEMPDIR = os.environ['TEMP']+'\\' # This may not work, use plugin dir as fallback
 
-MYOU_SCRIPTS = [
-    'howler.min.js',
-]
-
-MYOU_SCRIPTS_POST = [
-    'ammo.asm.js',
-    'crunch.js',
-    #'cannon.js',
-]
-
-DEBUG_SCRIPTS = [
-    #'convexHull.js',
-]
-
-
 def scene_data_to_json(scn=None):
     scn = scn or bpy.context.scene
     world = scn.world or bpy.data.scenes['Scene'].world
@@ -732,8 +717,6 @@ def export_myou(path, scn):
     scr_dir = join(full_dir, 'scripts')
     os.mkdir(scr_dir)
     save_textures(join(full_dir, 'textures'))
-    for f in MYOU_SCRIPTS + MYOU_SCRIPTS_POST:
-        shutil.copy(join(GE_PATH, 'build', f), scr_dir)
 
     for scene in bpy.data.scenes:
         scn_dir = join(full_dir, 'scenes', scene.name)
