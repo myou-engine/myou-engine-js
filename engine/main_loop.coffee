@@ -12,52 +12,52 @@ class MainLoop
         @last_frame_durations = [16, 16, 16, 16, 16, 16, 16, 16, 16, 16]
         @_fdi = 0
         @timeout = context.MYOU_PARAMS.timeout
-        @timeout? and console.log 'WARNING: Timeout set: ' + @timeout
-        @pause_time = 0
         @last_time = 0
         @timeout_timer = @timeout
         @enabled = false
+        @stopped = false
         @context = context
         @_bound_tick = @tick.bind @
+        @_bound_run = @run.bind @
 
     run: ->
+        @stopped = false
         if @enabled
             return
-        requestAnimationFrame @_bound_tick
-        not @enabled and @timeout? and console.log 'Main loop running: ' + Math.floor(performance.now())
+        @req_tick = requestAnimationFrame @_bound_tick
         @enabled = true
-        @pause_time = 0
         @last_time = performance.now()
+        @reset_timeout()
 
     stop: ->
-        cancelAnimationFrame @_bound_tick
-        @pause_time = Infinity
-        @enabled = false
+        if @req_tick?
+            cancelAnimationFrame @req_tick
+            @req_tick = null
 
-    pause: (pause_time)->
-        if not pause_time?
-            console.log 'WARNING: Undefined pause_time.'
-        @pause_time = pause_time
+        @enabled = false
+        @stopped = true
+
+    sleep: (sleep_time)->
+        if @sleep_timeout?
+            clearTimeout(@sleep_timeout)
+            @sleep_timeout = null
+        if @enabled
+            @stop()
+        @sleep_timeout = setTimeout(@_bound_run, sleep_time)
 
     tick: ->
-        requestAnimationFrame @_bound_tick
         time = performance.now()
         @frame_duration = frame_duration = Math.min(time - @last_time, MAX_FRAME_DURATION)
         @last_time = time
 
-        if not @enabled or @pause_time > 0
-            @pause_time -= frame_duration
-            return
-
         if  @enabled and @timeout_timer <= 0
-            console.log  'Main loop paused: ' + Math.floor(time)
             @enabled = false
             return
 
+        @req_tick = requestAnimationFrame @_bound_tick
         @timeout_timer -= frame_duration
         @last_frame_durations[@_fdi] = frame_duration
         @_fdi = (@_fdi+1) % @last_frame_durations.length
-
 
         for scene in @context.loaded_scenes
             if not scene.enabled
@@ -77,8 +77,6 @@ class MainLoop
                 step_world scene.world, frame_duration * 0.001
                 phy_to_ob scene.rigid_bodies
 
-
-
         evaluate_all_animations @context, frame_duration
         # for s in @context.active_sprites
         #     s.evaluate_sprite frame_duration
@@ -91,14 +89,12 @@ class MainLoop
         @context.events.reset_frame_events()
 
     set_timeout: (timeout, reset=true)=>
-        'WARNING: Timeout set: ' + timeout
         @timeout = timeout
         if reset then @reset_timeout()
 
     reset_timeout: =>
-        if not @enabled
-            console.log 'Main loop running: ' + Math.floor( performance.now())
-
+        if @stopped
+            return
         @timeout_timer =  @timeout
         @enabled = true
 
