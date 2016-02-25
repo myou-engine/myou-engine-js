@@ -11,14 +11,14 @@ class MainLoop
         @frame_duration = 16
         @last_frame_durations = [16, 16, 16, 16, 16, 16, 16, 16, 16, 16]
         @_fdi = 0
-        @timeout = context.MYOU_PARAMS.timeout
+        @timeout_time = context.MYOU_PARAMS.timeout
         @last_time = 0
-        @timeout_timer = @timeout
         @enabled = false
         @stopped = false
         @context = context
         @_bound_tick = @tick.bind @
         @_bound_run = @run.bind @
+        @_bound_stop = @stop.bind @
 
     run: ->
         @stopped = false
@@ -27,35 +27,43 @@ class MainLoop
         @req_tick = requestAnimationFrame @_bound_tick
         @enabled = true
         @last_time = performance.now()
-        @reset_timeout()
+
 
     stop: ->
         if @req_tick?
             cancelAnimationFrame @req_tick
             @req_tick = null
-
         @enabled = false
         @stopped = true
 
-    sleep: (sleep_time)->
-        if @sleep_timeout?
-            clearTimeout(@sleep_timeout)
-            @sleep_timeout = null
+    sleep: (time)->
+        if @sleep_timeout_id?
+            clearTimeout(@sleep_timeout_id)
+            @sleep_timeout_id = null
         if @enabled
             @stop()
-        @sleep_timeout = setTimeout(@_bound_run, sleep_time)
+        @sleep_timeout_id = setTimeout(@_bound_run, time)
+
+    timeout: (time)->
+        if @timeout_id?
+            clearTimeout(@timeout_id)
+            @timeout_id = null
+
+        @enabled = true
+        @timeout_id = setTimeout((=>@enabled = false), time)
+
+    reset_timeout: =>
+        @timeout(@timeout_time)
 
     tick: ->
+        @req_tick = requestAnimationFrame @_bound_tick
         time = performance.now()
         @frame_duration = frame_duration = Math.min(time - @last_time, MAX_FRAME_DURATION)
         @last_time = time
 
-        if  @enabled and @timeout_timer <= 0
-            @enabled = false
+        if not @enabled
             return
 
-        @req_tick = requestAnimationFrame @_bound_tick
-        @timeout_timer -= frame_duration
         @last_frame_durations[@_fdi] = frame_duration
         @_fdi = (@_fdi+1) % @last_frame_durations.length
 
@@ -88,14 +96,6 @@ class MainLoop
 
         @context.events.reset_frame_events()
 
-    set_timeout: (timeout, reset=true)=>
-        @timeout = timeout
-        if reset then @reset_timeout()
 
-    reset_timeout: =>
-        if @stopped
-            return
-        @timeout_timer =  @timeout
-        @enabled = true
 
 module.exports = {MainLoop}
