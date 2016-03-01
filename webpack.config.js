@@ -4,7 +4,7 @@ var webpack = require('webpack');
 module.exports = {
     context: __dirname,
     entry: [
-        __dirname + '/main.coffee',
+        __dirname + '/main.js',
     ],
     stats: {
         colors: true,

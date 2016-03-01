@@ -9,7 +9,7 @@
 {Curve} = require './curve'
 {GameObject} = require './gameobject'
 {Armature} = require './armature'
-{PHYSICS_ENGINE_URL, physics_engine_init} = require './physics'
+{@physics_engine_url, physics_engine_init} = require './physics'
 
 NUM_WORKERS_64 = 2
 NUM_WORKERS_32 = 1
@@ -582,9 +582,14 @@ class XhrLoader extends Loader
 
         @data_dir = data_dir
         @full_local_path = location.href.split('#')[0].split('/')[...-1].join('/')+'/'
-        if scripts_dir.indexOf('/') > 0 # if it's a relative path
-            scripts_dir = @full_local_path + scripts_dir
-        @scripts_dir = scripts_dir
+
+        if process.browser
+            @physics_engine_url = require("file?name=/libs/ammo.asm.js!./libs/ammo.asm.js")
+            @crunch_url = @full_local_path + require('file?name=/libs/crunch.js!./libs/crunch.js')
+        else
+            dirname =  __dirname.replace(/\\/g, '/')
+            @physics_engine_url = 'file://' + dirname + "/libs/ammo.asm.js"
+            @crunch_url = 'file://' + dirname + '/libs/crunch.js'
 
         @workers = workers = workers or []
         @remaining_tasks = [0] # One per queue
@@ -629,11 +634,13 @@ class XhrLoader extends Loader
                     xhrloader.check_queue_finished queue_id
 
         ext = @context.render_manager.extensions.compressed_texture_s3tc
+
         worker_code = """
-        COMPRESSED_TEXTURE_SUPPORT = """ + ext? + "\n"
+        COMPRESSED_TEXTURE_SUPPORT = """ + ext? + "\n" + """
+        importScripts('"""+@crunch_url+"""')\n
+        """
         if process.browser
-            crunch_code = require 'raw!../myou_bl_plugin/build/crunch.js'
-            worker_code += crunch_code + require 'raw!./load_worker.coffee'
+            worker_code += require 'raw!./load_worker.coffee'
         else
             #Electron code only
             fs = require('fs')
@@ -641,9 +648,9 @@ class XhrLoader extends Loader
             coffee_compile = require('coffee-script').compile
             dir = path.dirname __filename
             cs_load_worker= fs.readFileSync dir + '/load_worker.coffee', 'utf8'
-            crunch_code = fs.readFileSync path.join(__dirname, '../myou_bl_plugin/build/crunch.js'), 'utf8'
+            # crunch_code = fs.readFileSync path.join(__dirname, '../myou_bl_plugin/build/crunch.js'), 'utf8'
 
-            worker_code += crunch_code + coffee_compile(cs_load_worker, {bare: true})
+            worker_code += coffee_compile(cs_load_worker, {bare: true})
 
 
 
@@ -771,7 +778,7 @@ class XhrLoader extends Loader
             script = document.createElement 'script'
             script.type = 'text/javascript'
             script.async = true
-            script.src = @scripts_dir + PHYSICS_ENGINE_URL
+            script.src = @physics_engine_url
             document.body.appendChild script
 
         # Callback for when the engine has loaded

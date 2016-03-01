@@ -11,5 +11,5 @@ require('coffee-script/register');
     helpers.updateSyntaxError = function(e,c,f){
         return use(e, c, f).toString();
     }
-    require('../main');
-require('../main');
+    require('../main.coffee');
+require('../main.coffee');
