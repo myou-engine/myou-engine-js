@@ -11,6 +11,7 @@
 # Uniforms (in armature space) = parent uniform * base pose * local
 
 #UNIT_MAT4 = mat4.create()
+VECTOR_Y = new Float32Array([0, 1, 0]);
 
 class Bone extends GameObject
 

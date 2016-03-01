@@ -637,10 +637,10 @@ class XhrLoader extends Loader
 
         worker_code = """
         COMPRESSED_TEXTURE_SUPPORT = """ + ext? + "\n" + """
-        importScripts('"""+@crunch_url+"""')\n
         """
         if process.browser
-            worker_code += require 'raw!./load_worker.coffee'
+            crunch_code = require 'raw!../myou_bl_plugin/build/crunch.js'
+            worker_code += crunch_code + require 'raw!./load_worker.coffee'
         else
             #Electron code only
             fs = require('fs')
@@ -648,7 +648,9 @@ class XhrLoader extends Loader
             coffee_compile = require('coffee-script').compile
             dir = path.dirname __filename
             cs_load_worker= fs.readFileSync dir + '/load_worker.coffee', 'utf8'
-            worker_code += coffee_compile(cs_load_worker, {bare: true})
+            crunch_code = fs.readFileSync path.join(__dirname, './libs/crunch.js'), 'utf8'
+
+            worker_code += crunch_code + coffee_compile(cs_load_worker, {bare: true})
 
 
 

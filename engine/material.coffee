@@ -209,7 +209,7 @@ class Material
             for i in [0...num_shapes]
                 shape_key_code += """
                 n = shapenor"""+i+""" * 0.007874;
-                normal += n * Math.max(0.0, shapef["""+i+"""]);
+                normal += n * max(0.0, shapef["""+i+"""]);
                 """
             # TODO: interleave fors for efficency, adding an uniform with the sum?
             #       saving all uniforms in a single matrix?
