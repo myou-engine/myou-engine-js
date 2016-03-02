@@ -1,5 +1,5 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
-{PhysicsWorld, set_gravity} = require './physics'
+{PhysicsWorld, set_gravity} = require './physics.coffee'
 
 _collision_seq = 0
 

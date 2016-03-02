@@ -1,4 +1,4 @@
-{Filter} = require './filters'
+{Filter} = require './filters.coffee'
 
 class Framebuffer
 

@@ -1,5 +1,5 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
-{Animation} = require './animation'
+{Animation} = require './animation.coffee'
 {
     update_ob_physics,
 
@@ -13,7 +13,7 @@
     allow_sleeping, make_ghost,
     set_linear_factor, set_angular_factor
 
-} = require './physics'
+} = require './physics.coffee'
 
 
 NO_MIRROR = 1

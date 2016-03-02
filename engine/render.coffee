@@ -1,8 +1,8 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
-{Filter, box_filter_code} = require './filters'
-{Framebuffer, MainFramebuffer} = require './framebuffer'
-{Mesh} = require './mesh'
-{Material} = require './material'
+{Filter, box_filter_code} = require './filters.coffee'
+{Framebuffer, MainFramebuffer} = require './framebuffer.coffee'
+{Mesh} = require './mesh.coffee'
+{Material} = require './material.coffee'
 MIRROR_MASK_X = 2|16|32|128 #178
 MIRROR_MASK_Y = 4|16|64|128 #212
 MIRROR_MASK_Z = 8|32|64|128 #232
