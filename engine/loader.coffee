@@ -1,15 +1,15 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
-{Action} = require './animation'
-{Group} = require './group'
-{Viewport} = require './viewport'
-{Camera} = require './camera'
-{Lamp} = require './lamp'
-{Mesh} = require './mesh'
-{Scene, get_scene} = require './scene'
-{Curve} = require './curve'
-{GameObject} = require './gameobject'
-{Armature} = require './armature'
-{@physics_engine_url, physics_engine_init} = require './physics'
+{Action} = require './animation.coffee'
+{Group} = require './group.coffee'
+{Viewport} = require './viewport.coffee'
+{Camera} = require './camera.coffee'
+{Lamp} = require './lamp.coffee'
+{Mesh} = require './mesh.coffee'
+{Scene, get_scene} = require './scene.coffee'
+{Curve} = require './curve.coffee'
+{GameObject} = require './gameobject.coffee'
+{Armature} = require './armature.coffee'
+{@physics_engine_url, physics_engine_init} = require './physics.coffee'
 
 NUM_WORKERS_64 = 2
 NUM_WORKERS_32 = 1
@@ -640,12 +640,14 @@ class XhrLoader extends Loader
         importScripts('"""+@crunch_url+"""')\n
         """
         if process.browser
-            worker_code += require 'raw!./load_worker.coffee'
+            # Using noco-loader instead of coffee-loader to avoid double
+            # compilation when coffee is already configured in webpack
+            worker_code += require 'raw!../noco-loader.js!./load_worker.coffee'
         else
             #Electron code only
-            fs = require('fs')
-            path = require('path')
-            coffee_compile = require('coffee-script').compile
+            fs = eval('require')('fs')
+            path = eval('require')('path')
+            coffee_compile = eval('require')('coffee-script').compile
             dir = path.dirname __filename
             cs_load_worker= fs.readFileSync dir + '/load_worker.coffee', 'utf8'
             worker_code += coffee_compile(cs_load_worker, {bare: true})

@@ -1,4 +1,4 @@
-require './stdlib'
+require './stdlib.coffee'
 
 # Browser prefix management
 window.requestAnimationFrame =

@@ -1,7 +1,7 @@
-{RenderManager} = require './render'
-{XhrLoader} = require './loader'
-{Events} = require './events'
-{MainLoop} = require './main_loop'
+{RenderManager} = require './render.coffee'
+{XhrLoader} = require './loader.coffee'
+{Events} = require './events.coffee'
+{MainLoop} = require './main_loop.coffee'
 
 class Myou
 

@@ -1,6 +1,6 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
-phy = require './physics'
-{LogicBlock} = require './logic_block'
+phy = require './physics.coffee'
+{LogicBlock} = require './logic_block.coffee'
 
 # Capture all the multitouch gestures over the objects in a collision mask
 

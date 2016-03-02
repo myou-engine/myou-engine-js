@@ -1,4 +1,4 @@
-{GameObject} = require './gameobject'
+{GameObject} = require './gameobject.coffee'
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 
 # FUTURE OPTIMIZATION STRATEGIES

@@ -1,7 +1,7 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
-{GameObject} = require './gameobject'
-{Framebuffer} = require './framebuffer'
-{Material} = require './material'
+{GameObject} = require './gameobject.coffee'
+{Framebuffer} = require './framebuffer.coffee'
+{Material} = require './material.coffee'
 
 class Lamp extends GameObject
     type : 'LAMP'

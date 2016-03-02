@@ -1,5 +1,5 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
-{LogicBlock} = require './logic_block'
+{LogicBlock} = require './logic_block.coffee'
 SIGNED_AXES = {'X': 1, 'Y': 2, 'Z': 3, '-X': -1, '-Y': -2, '-Z': -3}
 
 #rotate objet around target

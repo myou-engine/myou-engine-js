@@ -66,7 +66,6 @@ module.exports = {
         ].join('\n'), {
             raw: true
         }),
-        new webpack.IgnorePlugin(/^(fs|path|coffee-script)$/)
     ],
     resolve: {
         extensions: ['', '.webpack.js', '.web.js', '.js', '.coffee', '.json']

@@ -1,7 +1,7 @@
 actions = {}
 animations = {}
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
-{update_ob_physics} = require './physics'
+{update_ob_physics} = require './physics.coffee'
 
 # An action is a bunch of animation splines, without specific start, end
 # or any other setting

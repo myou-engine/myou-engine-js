@@ -15,19 +15,9 @@ module.exports = {
             {
                 test: /\.coffee$/,
                 loaders: [
-                    'coffee-loader',
                     'source-map-loader',
                 ]
             },
-            {
-                test: /\.(png|jpe?g|gif)$/i,
-                loader: 'url-loader?limit=18000&name=[path][name].[ext]',
-            },
-            {test: /\.svg$/, loader: 'url-loader?mimetype=image/svg+xml'},
-            {test: /\.woff2?$/, loader: 'url-loader?mimetype=application/font-woff'},
-            {test: /\.eot$/, loader: 'url-loader?mimetype=application/font-woff'},
-            {test: /\.ttf$/, loader: 'url-loader?mimetype=application/font-woff'},
-            {test: /\.json$/, loader: 'json-loader'}
         ]
     },
     output: {
@@ -68,7 +58,6 @@ module.exports = {
         ].join('\n'), {
             raw: true
         }),
-        new webpack.IgnorePlugin(/^(fs|path|coffee-script)$/)
     ],
     resolve: {
         extensions: ['', '.webpack.js', '.web.js', '.js', '.coffee', '.json']

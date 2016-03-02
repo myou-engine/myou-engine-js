@@ -1,4 +1,4 @@
-{Material} = require './material'
+{Material} = require './material.coffee'
 
 box_filter_code = """
     return (get(-1,-1)+get(0,-1)+get(1,-1)+

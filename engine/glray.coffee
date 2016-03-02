@@ -1,6 +1,6 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
-{Framebuffer} = require './framebuffer'
-{Material} = require './material'
+{Framebuffer} = require './framebuffer.coffee'
+{Material} = require './material.coffee'
 
 MIN_PICK = new Float32Array([-0.434, -0.126, -0.948])
 MAX_PICK = new Float32Array([0.434, 0.164, 0.931])
