@@ -12,6 +12,7 @@ class MainLoop
         @last_frame_durations = [16, 16, 16, 16, 16, 16, 16, 16, 16, 16]
         @_fdi = 0
         @timeout_time = context.MYOU_PARAMS.timeout
+        @reset_timeout()
         @last_time = 0
         @enabled = false
         @stopped = false
@@ -58,7 +59,8 @@ class MainLoop
         @timeout_id = setTimeout((=>@enabled = false), time)
 
     reset_timeout: =>
-        @timeout(@timeout_time)
+        if @timeout_time
+            @timeout(@timeout_time)
 
     tick: ->
         @req_tick = requestAnimationFrame @_bound_tick
