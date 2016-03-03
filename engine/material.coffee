@@ -360,6 +360,7 @@ class Material
             ])
 
         @_program = prog
+        @context.render_manager.compiled_shaders_this_frame += 1
 
 
     use: ->

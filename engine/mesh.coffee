@@ -128,11 +128,14 @@ class Mesh extends GameObject
         offset = @pack_offset or 0
         va = new Float32Array data, offset, vlen
         ia = new Uint16Array data, offset + vlen * 4, ilen
-        @load_from_va_ia va, ia
+        @context.main_loop.add_frame_callback =>
+            @load_from_va_ia va, ia
+
 
     load_from_lists: (vertices, indices)->
         @offsets = [0, 0, vertices.length, indices.length]
-        @load_from_va_ia new Float32Array(vertices), new Uint16Array(indices)
+        @context.main_loop.add_frame_callback =>
+            @load_from_va_ia new Float32Array(vertices), new Uint16Array(indices)
 
     load_from_va_ia: (va, ia)->
         if @data?
@@ -206,26 +209,28 @@ class Mesh extends GameObject
 
     configure_materials: (materials=[])->
 
-        if materials.length == 0
+        if materials.length != @material_names.lenght
             # If frame is too long, it was compiling other materials, exit early.
             # console.log render_manager.frame_start, performance.now()
-            if (@context.render_manager.frame_start + 3000) < performance.now()
-                return false
             scene = @scene
             for mname in @material_names
+                if (@context.render_manager.frame_start + 33) < performance.now() or @context.render_manager.compiled_shaders_this_frame > 1
+                    break
                 if mname == 'UNDEFINED_MATERIAL'
                     console.warn 'Mesh '+@name+' has undefined material'
                 if scene
                     data = scene.unloaded_material_data[mname]
                     if data
+                        time = performance.now()
                         load_material scene, data
+                        # @context.log.push 'material loaded: ' + mname + ' in ' +( performance.now() - time)*0.001
                         delete scene.unloaded_material_data[mname]
                 mat = scene.materials[mname]
                 if mat
                     materials.push mat
                 else
                     # Abort
-                    return true
+                    break
 
         for m in materials
             m.users.remove @

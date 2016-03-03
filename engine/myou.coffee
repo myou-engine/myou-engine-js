@@ -12,6 +12,7 @@ class Myou
         @objects= {}
         @actions= {}
         @groups= {}
+        @log = []
         @debug_loader= null
         @canvas= null
         @root= null
@@ -30,7 +31,7 @@ class Myou
         #The canvas could be inside other element (root) used to get the mouse events
         if canvas.tagName != 'CANVAS'
             canvas = @canvas = root.querySelector 'canvas'
-
+        @main_loop = new MainLoop @
         render_manager = new RenderManager(
             @,
             canvas,
@@ -50,7 +51,6 @@ class Myou
         size = MYOU_PARAMS.total_size or 0
         initial_scene = MYOU_PARAMS.initial_scene or 'Scene'
         data_dir = MYOU_PARAMS.data_dir or './data'
-
         loader = new XhrLoader @, data_dir
         loader.total += size
         loader.debug = if MYOU_PARAMS.live_server then true else false
@@ -59,7 +59,6 @@ class Myou
             loader.load_physics_engine()
 
         @events = new Events root
-        @main_loop = new MainLoop @
         @main_loop.run()
 
     on_scene_ready_queue: {}
