@@ -19,6 +19,8 @@ class MainLoop
         @_bound_tick = @tick.bind @
         @_bound_run = @run.bind @
         @_bound_stop = @stop.bind @
+        @_frame_callbacks = []
+        @_frame_callbacks_ids = []
 
     run: ->
         @stopped = false
@@ -43,6 +45,9 @@ class MainLoop
         if @enabled
             @stop()
         @sleep_timeout_id = setTimeout(@_bound_run, time)
+
+    add_frame_callback: (callback)->
+        @_frame_callbacks.push callback
 
     timeout: (time)->
         if @timeout_id?
@@ -84,6 +89,8 @@ class MainLoop
                 get_last_char_phy scene.kinematic_characters
                 step_world scene.world, frame_duration * 0.001
                 phy_to_ob scene.rigid_bodies
+
+        @_frame_callbacks.shift()?()
 
         evaluate_all_animations @context, frame_duration
         # for s in @context.active_sprites

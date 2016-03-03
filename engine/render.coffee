@@ -49,6 +49,7 @@ class RenderManager
         @no_s3tc = no_s3tc
         ba = @context.MYOU_PARAMS.background_alpha
         @background_alpha = if ba? then ba else 1
+        @compiled_shaders_this_frame = 0
 
         # Temporary variables
         @_cam2world = mat4.create()
@@ -249,7 +250,7 @@ class RenderManager
 
         #@gl.flush()
         @debug.vectors.clear() # TODO: have them per scene?
-
+        @compiled_shaders_this_frame = 0
     # Returns: whether the frame should countinue
     draw_mesh: (mesh, mesh2world, pass_=-1)->
         gl = @gl
@@ -291,10 +292,8 @@ class RenderManager
             return true
 
         # Reconfigure materials of mesh if they're missing
-        if amesh.materials.length == 0
-            if amesh.configure_materials() == false
-                # This means frame is too long
-                return false
+        if amesh.materials.length != amesh.material_names.lenght
+            amesh.configure_materials()
 
         # Main routine for each submesh
         submesh_idx = -1
@@ -461,7 +460,6 @@ class RenderManager
         return true
 
     draw_viewport: (viewport, rect, dest_buffer, passes)->
-
         gl = @gl
         if gl.isContextLost()
             return
@@ -593,16 +591,14 @@ class RenderManager
         if scene.bg_pass and scene.bg_pass.length
             for ob in scene.bg_pass
                 if ob.visible == true
-                    if @draw_mesh(ob, ob.world_matrix, 0) == false
-                        return
+                    @draw_mesh(ob, ob.world_matrix, 0)
             gl.clear gl.DEPTH_BUFFER_BIT
 
         # PASS 0  (solid objects)
         if passes.indexOf(0) >= 0
             for ob in scene.mesh_passes[0]
                 if ob.visible == true and not ob.bg and not ob.fg
-                    if @draw_mesh(ob, ob.world_matrix, 0) == false
-                        return
+                    @draw_mesh(ob, ob.world_matrix, 0)
                 #else
                     #print ob.name, ob.loaded
 
@@ -623,8 +619,7 @@ class RenderManager
 
         for ob in scene.mesh_passes[1]
             if ob.visible == true
-                if @draw_mesh(ob, ob.world_matrix, 1) == false
-                    return
+                @draw_mesh(ob, ob.world_matrix, 1)
 
                 #if ob.dupli_group?
                     #for sphere in groups[ob.dupli_group]
@@ -640,8 +635,7 @@ class RenderManager
             gl.clear gl.DEPTH_BUFFER_BIT
             for ob in scene.fg_pass
                 if ob.visible == true
-                    if @draw_mesh(ob, ob.world_matrix, 0) == false
-                        return
+                    @draw_mesh(ob, ob.world_matrix, 0)
 
         # PASS 2  (translucent)
         # Currently it uses the filter FB, so this has to be drawn unfiltered

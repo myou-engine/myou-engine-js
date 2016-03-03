@@ -175,7 +175,8 @@ class Loader
                         ob.data = @context.mesh_datas[ob.hash]
                         ob.data.users.push ob
                         # NOTE: cached physics mesh hash is not checked!
-                        ob.instance_physics()
+                        @context.main_loop.add_frame_callback ->
+                            ob.instance_physics()
 
                     else if data.visible
                         scene.loader.load_mesh_data ob
@@ -335,7 +336,8 @@ class Loader
             ob.jump_force = data.jump_force
             ob.max_fall_speed = data.max_fall_speed
             if scene.world
-                ob.instance_physics()
+                @context.main_loop.add_frame_callback ->
+                    ob.instance_physics()
         if ob.static
             ob._update_matrices()
 
@@ -447,6 +449,7 @@ class Loader
             add_level_buffer = (width, height, format, buffer) ->
                 if @context.render_manager.context_lost_count
                     return
+
                 gl.deleteTexture tex.tex
                 tex.tex = gl.createTexture()
                 buffers = tex.level_buffers
@@ -489,28 +492,30 @@ class Loader
                 tex.tex = gl.createTexture()
                 img.onload()
             img.onload = =>
-                gl.bindTexture gl.TEXTURE_2D, tex.tex
-                gl.pixelStorei gl.UNPACK_FLIP_Y_WEBGL, true
-                gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img
-                gl_linear_nearest = if filter then gl.LINEAR else gl.NEAREST
-                gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl_linear_nearest
-                # TODO: add mipmap options to the GUI
-                gl_linear_nearest_mipmap = if filter then gl.LINEAR_MIPMAP_LINEAR else gl.NEAREST_MIPMAP_NEAREST
-                gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl_linear_nearest_mipmap
-                gl.generateMipmap gl.TEXTURE_2D
-                # TODO: detect which textures need this (mostly walls, floors...)
-                # and add a global switch
-                ext = @context.render_manager.extensions.texture_filter_anisotropic
-                if @context.MYOU_PARAMS.anisotropic_filter and ext
-                    gl.texParameterf gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, 4
-                gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap_const
-                gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap_const
-                gl.bindTexture gl.TEXTURE_2D, null
-                tex.loaded = true
-                # TODO
-                #@loaded += size
-                #self_.pending_operations -= 1
-                #self_.may_have_loaded_all()
+                @context.main_loop.add_frame_callback =>
+                    gl.bindTexture gl.TEXTURE_2D, tex.tex
+                    gl.pixelStorei gl.UNPACK_FLIP_Y_WEBGL, true
+                    gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img
+                    gl_linear_nearest = if filter then gl.LINEAR else gl.NEAREST
+                    gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl_linear_nearest
+                    # TODO: add mipmap options to the GUI
+                    gl_linear_nearest_mipmap = if filter then gl.LINEAR_MIPMAP_LINEAR else gl.NEAREST_MIPMAP_NEAREST
+                    gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl_linear_nearest_mipmap
+                    gl.generateMipmap gl.TEXTURE_2D
+                    # TODO: detect which textures need this (mostly walls, floors...)
+                    # and add a global switch
+                    ext = @context.render_manager.extensions.texture_filter_anisotropic
+                    if @context.MYOU_PARAMS.anisotropic_filter and ext
+                        gl.texParameterf gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, 4
+                    gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap_const
+                    gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap_const
+                    gl.bindTexture gl.TEXTURE_2D, null
+                    tex.loaded = true
+                    # TODO
+
+                    #@loaded += size
+                    #self_.pending_operations -= 1
+                    #self_.may_have_loaded_all()
             img.onerror = ->
                 #self_.loaded += size
                 #self_.pending_operations -= 1
@@ -871,18 +876,20 @@ class XhrLoader extends Loader
                     m = others.pop()
                 delete pending_meshes[file_name]
                 return true
-            non_packed = (data) ->
+            non_packed = (data) =>
                 mesh_object.load_from_arraybuffer(data)
-                for m in pending_meshes[file_name]
-                    # TODO: equal meshes with different materials fail?
-                    m.data and m.data.remove m
-                    m.data = mesh_object.data
-                    m.data.users.push m
-                    if not m.body
-                        # TODO: remove this from load_from_va_ia
-                        # and leave only this?
-                        m.instance_physics()
-                delete pending_meshes[file_name]
+                @context.main_loop.add_frame_callback =>
+                    for m in pending_meshes[file_name]
+                        # TODO: equal meshes with different materials fail?
+                        m.data and m.data.remove m
+                        m.data = mesh_object.data
+                        m.data.users.push m
+                        if not m.body
+                            # TODO: remove this from load_from_va_ia
+                            # and leave only this?
+                            @context.main_loop.add_frame_callback ->
+                                m.instance_physics()
+                    delete pending_meshes[file_name]
                 return true
             if mesh_object.packed_file
                 #console.log 'packed'
