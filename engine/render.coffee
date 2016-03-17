@@ -14,7 +14,7 @@ class RenderManager
         try
             gl = canvas.getContext("webgl", glflags) or canvas.getContext("experimental-webgl", glflags)
         catch e
-            pass
+            null
 
         if not gl
             # MSIE <= 10 with the ActiveX WebGL plugin
