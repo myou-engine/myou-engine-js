@@ -168,12 +168,12 @@ class Mesh extends GameObject
             if offsets[i2+1] != offsets[i2+3]
                 gl.bindBuffer gl.ELEMENT_ARRAY_BUFFER, ib
                 gl.bufferData gl.ELEMENT_ARRAY_BUFFER, ia.subarray(offsets[i2+1], offsets[i2+3]), gl.STATIC_DRAW
-            else
+            # else
                 # If it's empty it means it will assigned from the parent mesh
-                pass #TODO
-            for m in @altmeshes
-                # TODO: set the ib of the altmeshes without it
-                pass #TODO
+                # pass #TODO
+            # for m in @altmeshes
+            #     # TODO: set the ib of the altmeshes without it
+            #     pass #TODO
             data.index_buffers.push ib
             data.num_indices.push offsets[i2+3] - offsets[i2+1]
         data.stride = @stride
