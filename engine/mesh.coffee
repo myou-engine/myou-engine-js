@@ -134,8 +134,7 @@ class Mesh extends GameObject
 
     load_from_lists: (vertices, indices)->
         @offsets = [0, 0, vertices.length, indices.length]
-        @context.main_loop.add_frame_callback =>
-            @load_from_va_ia new Float32Array(vertices), new Uint16Array(indices)
+        @load_from_va_ia new Float32Array(vertices), new Uint16Array(indices)
 
     load_from_va_ia: (va, ia)->
         if @data?
@@ -209,7 +208,7 @@ class Mesh extends GameObject
 
     configure_materials: (materials=[])->
 
-        if materials.length != @material_names.lenght
+        if materials.length < @material_names.length
             # If frame is too long, it was compiling other materials, exit early.
             # console.log render_manager.frame_start, performance.now()
             scene = @scene
@@ -231,6 +230,8 @@ class Mesh extends GameObject
                 else
                     # Abort
                     break
+        else if materials.length > @material_names.length
+            @material_names = for m in materials then m.name
 
         for m in materials
             m.users.remove @
@@ -298,10 +299,10 @@ class Mesh extends GameObject
         if o_colors.length
             o_colors.push ['0', o_colors[0][1]]
 
-        attrib_pointers = []
-        attrib_bitmasks = []
+        {attrib_pointers} = @data
+        {attrib_bitmasks} = @data
         mi = 0
-        for mat in materials
+        for mat,mat_idx in materials
             # vertexAttribPointers:
             # [location, number of components, type, offset]
             attribs = [[mat.a_vertex, 3, GL_FLOAT, 0]]
@@ -357,12 +358,16 @@ class Mesh extends GameObject
                     bitmask |= 1<<attr[0]
                 else
                     attribs.pop attribs.indexOf attr
-            attrib_pointers.push attribs
-            attrib_bitmasks.push bitmask
+            if not attrib_pointers[mat_idx]
+                attrib_pointers.push attribs
+                attrib_bitmasks.push bitmask
+            else
+                # We do it this way because the same data may be shared
+                # between meshes with different materials
+                # (we're assuming they're compatible)
+                attrib_pointers[mat_idx] = attribs
+                attrib_bitmasks[mat_idx] = bitmask
             mi += 1
-
-        @data.attrib_pointers = attrib_pointers
-        @data.attrib_bitmasks = attrib_bitmasks
 
         num_values = 0
         for m in @materials
