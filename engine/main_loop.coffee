@@ -15,13 +15,15 @@ class MainLoop
         @reset_timeout()
         @last_time = 0
         @enabled = false
-        @stopped = false
+        @stopped = true
         @context = context
         @_bound_tick = @tick.bind @
         @_bound_run = @run.bind @
         @_bound_stop = @stop.bind @
         @_frame_callbacks = []
         @_frame_callbacks_ids = []
+        @frame_number = 0
+        @loading = true
 
     run: ->
         @stopped = false
@@ -51,10 +53,11 @@ class MainLoop
         @_frame_callbacks.push callback
 
     timeout: (time)->
+        if @stopped
+            return
         if @timeout_id?
             clearTimeout(@timeout_id)
             @timeout_id = null
-
         @enabled = true
         @timeout_id = setTimeout((=>@enabled = false), time)
 
@@ -70,29 +73,30 @@ class MainLoop
 
         if not @enabled
             return
-
         @last_frame_durations[@_fdi] = frame_duration
         @_fdi = (@_fdi+1) % @last_frame_durations.length
 
-        for scene in @context.loaded_scenes
-            if not scene.enabled
-                continue
-
-            for f in scene.pre_draw_callbacks
-                f scene, frame_duration
-
-            for f in scene.logic_ticks
-                f frame_duration
-
-            for p in scene.active_particle_systems
-                p._eval()
-
-            if scene.rigid_bodies.length or scene.kinematic_characters.length
-                get_last_char_phy scene.kinematic_characters
-                step_world scene.world, frame_duration * 0.001
-                phy_to_ob scene.rigid_bodies
-
         @_frame_callbacks.shift()?()
+
+        if not @_frame_callbacks.length
+            for scene in @context.loaded_scenes
+                if scene.loader.remaining_tasks[0] != 0 or not scene.enabled
+                    continue
+
+                for callback in scene.pre_draw_callbacks
+                    callback scene, frame_duration
+
+                for logic_tick in scene.logic_ticks
+                    logic_tick frame_duration
+
+                for p in scene.active_particle_systems
+                    p._eval()
+
+                if scene.rigid_bodies.length or scene.kinematic_characters.length
+                    get_last_char_phy scene.kinematic_characters
+                    step_world scene.world, frame_duration * 0.001
+                    phy_to_ob scene.rigid_bodies
+
 
         evaluate_all_animations @context, frame_duration
         # for s in @context.active_sprites
@@ -104,6 +108,7 @@ class MainLoop
                 f scene, frame_duration
 
         @context.events.reset_frame_events()
+        @frame_number += 1
 
 
 

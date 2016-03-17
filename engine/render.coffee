@@ -292,11 +292,12 @@ class RenderManager
             return true
 
         # Reconfigure materials of mesh if they're missing
-        if amesh.materials.length != amesh.material_names.lenght
+        if amesh.materials.length != amesh.material_names.length
             amesh.configure_materials()
-
+            return
         # Main routine for each submesh
         submesh_idx = -1
+            
         for mat in amesh.materials
             submesh_idx += 1
             if not (pass_ == -1 or mesh.passes[submesh_idx] == pass_)
@@ -552,8 +553,13 @@ class RenderManager
                         for i in [0...data.vertex_buffers.length]
                             gl.bindBuffer gl.ARRAY_BUFFER, data.vertex_buffers[i]
                             @change_enabled_attributes 1
-                            attr = data.attrib_pointers[i][0] # Vertex attribute
-                            gl.vertexAttribPointer attr[0], attr[1], attr[2], false, data.stride, attr[3]
+                            # Vertex attributes are always the same (3 floats)
+                            # change this if this is no longer true
+                            # (done this way to avoid unconfigured materials,
+                            # alternatively we may continue the loop)
+                            # attr = data.attrib_pointers[i][0] # Vertex attribute
+                            # gl.vertexAttribPointer attr[0], attr[1], attr[2], false, data.stride, attr[3]
+                            gl.vertexAttribPointer 0, 3, 5126, false, data.stride, 0
                             gl.bindBuffer gl.ELEMENT_ARRAY_BUFFER, data.index_buffers[i]
                             gl.drawElements data.draw_method, data.num_indices[i], gl.UNSIGNED_SHORT, 0
 
@@ -647,7 +653,6 @@ class RenderManager
 
         # Debug physics and vectors (TODO: move vector to debug properties?)
         if scene.debug_physics
-
             for ob in scene.children
                 dob = ob.phy_debug_mesh
                 if dob
@@ -660,10 +665,13 @@ class RenderManager
                         # TODO: It's better to have a separate debug mesh
                         # than recalculating the matrices of the same mesh
 
+                    # occluded pass
                     dob.color=vec4.clone [1,1,1,0.2]
                     gl.enable gl.BLEND
                     gl.disable gl.DEPTH_TEST
                     @draw_mesh dob, dob.world_matrix
+
+                    # visible pass
                     gl.disable gl.BLEND
                     gl.enable gl.DEPTH_TEST
                     dob.color=vec4.clone [1,1,1,1]
@@ -856,8 +864,6 @@ class Debug
 
 
     debug_mesh_from_va_ia: (va, ia)->
-        # Disabled temporary to enable debug vectors
-        return
         mesh = new Mesh @context
         mesh.stride = 3*4
         mesh.offsets = [0, 0, va.length, ia.length]
