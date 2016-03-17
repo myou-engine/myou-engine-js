@@ -7,7 +7,7 @@ var path = __filename.replace(/\\/g,'/');
 var exp = RegExp(/require([\(,',",\s]*)(.*\.coffee[\),',",\s]*)/g)
 var has_coffee_config = false;
 
-module.exports = function(source) {
+module.exports = function(source, map) {
     var matches = source.match(exp);
     if(matches != null){
         for (i = 0; i < matches.length; i++) {
@@ -23,6 +23,5 @@ module.exports = function(source) {
 
     if(!has_coffee_config)
         source = coffee.compile(source);
-
-    return source;
+    this.callback(null, source, map);
 };
