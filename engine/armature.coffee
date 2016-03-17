@@ -11,13 +11,14 @@
 # Uniforms (in armature space) = parent uniform * base pose * local
 
 #UNIT_MAT4 = mat4.create()
+VECTOR_Y = [0, 1, 0]
 
 class Bone extends GameObject
 
     constructor: (@context)->
         # Base pose position and rotation in PARENT space
-        @base_position = new(Float32Array)(3)
-        @base_rotation = new(Float32Array)(4)
+        @base_position = new Float32Array 3
+        @base_rotation = new Float32Array 4
         # Position and rotation in LOCAL (base) space
         @position = [0, 0, 0]
         @rotation = [0, 0, 0, 1]
