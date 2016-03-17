@@ -24,9 +24,7 @@ class Framebuffer
         if tex_type == @render_manager.gl.FLOAT
             if not @render_manager.extensions['texture_float']
                 tex_type == @render_manager.gl.UNSIGNED_BYTE
-            else if @context.MYOU_PARAMS.nodejs
-                # TODO: improve node-webgl to do this
-                internal_format = 0x8814 # RGBA32F_ARB
+            
         gl.texImage2D gl.TEXTURE_2D, 0, internal_format, size_x, size_y, 0, tex_format, tex_type, null
 
         @render_buffer= rb = gl.createRenderbuffer()
