@@ -335,7 +335,14 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
 
     t=perf_t(t)
 
-    print('wasting time:')
+    print('Getting average polygon area:')
+    areas = [0] * len(ob.data.polygons)
+    ob.data.polygons.foreach_get('area', areas)
+    avg_poly_area = sum(areas)/len(ob.data.polygons)
+    print(avg_poly_area)
+
+
+
     # Make a map of vertices before and after seaming
     # TODO: use it in transfer_normals(), uv and tangents
     indices = [0,0,0] * len(ob.data.polygons)
@@ -647,13 +654,13 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
                 vertices[j] = uv[i2]
                 vertices[j+1] = uv[i2+1]
                 j += 2
-        
+
         for color in colors:
             vertices[j] = int(round(color[i3]*255))
             vertices[j+1] = int(round(color[i3+1]*255))
             vertices[j+2] = int(round(color[i3+2]*255))
             j += 3
-            
+
         if weights:
             w = weights[i]
             bi = bindices[i]
@@ -742,6 +749,7 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
         'all_f': all_floats,
         'shape_multiplier': 1/shape_multiplier,
         'uv_multiplier': 1/uv_multiplier,
+        'avg_poly_area': avg_poly_area,
     })
 
     ob.data['exported_name'] = ob.data.name

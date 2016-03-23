@@ -130,8 +130,6 @@ def calc_curve_nodes(curves, resolution):
 
     return calculated_nodes
 
-
-
 def ob_to_json(ob, scn=None, check_cache=False):
     scn = scn or [scn for scn in bpy.data.scenes if ob.name in scn.objects][0]
     scn['game_tmp_path'] = get_scene_tmp_path(scn) # TODO: have a changed_scene function
@@ -158,6 +156,10 @@ def ob_to_json(ob, scn=None, check_cache=False):
                         split_parts += 1
 
             if check_cache:
+                #Checking incompatibilities:
+                if 'avg_poly_area' not in loads(o.data['export_data']):
+                    raise Exception("Invalid cache in: " + ob.name + "\nPlease remove the cached data from object.data custom properties")
+
                 scn['exported_meshes'][o.data['hash']] = o.data['cached_file']
 
             d = loads(o.data['export_data'])
@@ -201,10 +203,22 @@ def ob_to_json(ob, scn=None, check_cache=False):
                 #         hash: 'abcdef',
                 #         offsets, uv_multiplier, shape_multiplier}, ...
                 #    ]
+
                 lod_level_data = []
                 lod_exported_meshes = {}
-                ob['lod_levels'] = ob.get('lod_levels', '[0.20]')
-                for factor in loads(ob['lod_levels']):
+
+                lod_levels = ob.get('lod_levels',0)
+                if type(lod_levels) != 'int':
+                    try:
+                        lod_levels = int(lod_levels)
+                    except:
+                        print('WARNING: Invalid lod_levels type. Using lod_levels = 0')
+                        lod_levels = 0
+
+                print('Generating LoD levels: ',  lod_levels)
+                for lod_level in range(lod_levels):
+                    factor = 1/pow(2,lod_level)
+                    print('factor:', factor)
                     orig_data = ob.data
                     ob.data = ob.data.copy()
                     scn.objects.active = ob
@@ -214,14 +228,17 @@ def ob_to_json(ob, scn=None, check_cache=False):
                     try:
                         if not convert_mesh(ob, scn, 1, True):
                             raise Exception("Decimated LoD mesh is too big")
+
                         lod_exported_meshes[ob.data['hash']] = ob.data['cached_file']
                         lod_data = loads(ob.data['export_data'])
+
                         lod_level_data.append({
                             'factor': factor,
                             'hash': lod_data['hash'],
                             'offsets': lod_data['offsets'],
                             'uv_multiplier': lod_data['uv_multiplier'],
                             'shape_multiplier': lod_data['shape_multiplier'],
+                            'avg_poly_area': lod_data.get('avg_poly_area', None),
                         })
                     finally:
                         bpy.ops.object.modifier_remove(modifier=ob.modifiers[-1].name)

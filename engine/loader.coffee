@@ -218,7 +218,7 @@ class Loader
                     load_mesh_properties lod_ob, lod_data
                     ob.lod_objects.push
                         factor: lod_data.factor,
-                        distance: 1/lod_data.factor,
+                        avg_poly_area: lod_data.avg_poly_area,
                         object: lod_ob
 
 
