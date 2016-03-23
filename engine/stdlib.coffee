@@ -41,27 +41,33 @@ window.reversed = (x) ->
 # Add a few base functions, so we don't have a hard time switching
 # from Python.
 
-Object.defineProperty(Array.prototype, 'insert',
-    {value: (index, item) ->
-        @splice index, 0, item
-    })
-Object.defineProperty(Array.prototype, 'extend',
-    {value: (items)->
-        for item in items
-            @append item
-        return
-    })
-Object.defineProperty(Array.prototype, 'remove',
-    {value: (i) ->
-        i = @indexOf i
-        if i != -1
-            @splice i,1
-    })
+if not Array::insert?
+    Object.defineProperty(Array.prototype, 'insert',
+        {value: (index, item) ->
+            @splice index, 0, item
+        })
 
-Object.defineProperty(Array.prototype, 'clear',
-    {value: () ->
-        @splice 0
-    })
+if not Array::extend?
+    Object.defineProperty(Array.prototype, 'extend',
+        {value: (items)->
+            for item in items
+                @append item
+            return
+        })
+
+if not Array::remove?
+    Object.defineProperty(Array.prototype, 'remove',
+        {value: (i) ->
+            i = @indexOf i
+            if i != -1
+                @splice i,1
+        })
+
+if not Array::clear?
+    Object.defineProperty(Array.prototype, 'clear',
+        {value: () ->
+            @splice 0
+        })
 
 window.range = (start, stop, step=1) ->
     if not stop?
