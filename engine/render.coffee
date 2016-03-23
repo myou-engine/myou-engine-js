@@ -282,11 +282,16 @@ class RenderManager
             amesh = mesh.altmeshes[mesh.active_mesh_index] or mesh
         else if mesh.lod_objects
             mesh.last_lod_object = null
-            dist = distance_to_camera + @lod_factor
+            winner = Infinity
+
             for lod_ob in mesh.lod_objects
-                if dist > lod_ob.distance or not amesh.data
+                target_poly_area = mesh.lod_objects[0].avg_poly_area * 0.25
+                scale = (mesh.scale[0] + mesh.scale[1] + mesh.scale[2])/3
+                screen_avg_poly_area = lod_ob.avg_poly_area * Math.sin(cam.field_of_view) * scale / distance_to_camera
+                poly_area_dif = Math.abs(screen_avg_poly_area - target_poly_area)
+                if poly_area_dif < winner
+                    winner = poly_area_dif
                     mesh.last_lod_object = amesh = lod_ob.object
-                    break
 
         if not amesh.data
             return true
@@ -297,7 +302,7 @@ class RenderManager
             return
         # Main routine for each submesh
         submesh_idx = -1
-            
+
         for mat in amesh.materials
             submesh_idx += 1
             if not (pass_ == -1 or mesh.passes[submesh_idx] == pass_)
