@@ -6,21 +6,21 @@
 class Myou
 
     constructor: (root, MYOU_PARAMS)->
-        @scenes= {}
-        @loaded_scenes= []
-        @active_sprites= []
-        @objects= {}
-        @actions= {}
-        @groups= {}
+        @scenes = {}
+        @loaded_scenes = []
+        @active_sprites = []
+        @objects = {}
+        @actions = {}
+        @groups = {}
         @log = []
-        @debug_loader= null
-        @canvas= null
-        @root= null
-        @all_materials= []
-        @mesh_datas= []
-        @SHADER_LIB= ''
-        @all_anim_objects= []
-        @root = @canvas = canvas = root
+        @debug_loader = null
+        @canvas = null
+        @root = null
+        @all_materials = []
+        @mesh_datas = []
+        @SHADER_LIB = ''
+        @all_anim_objects = []
+        @root = root
         @MYOU_PARAMS = MYOU_PARAMS
         @hash = Math.random()
         # The root element needs to be positioned, so the mouse events (layerX/Y) are
@@ -29,8 +29,10 @@ class Myou
             root.style.position = 'relative'
 
         #The canvas could be inside other element (root) used to get the mouse events
-        if canvas.tagName != 'CANVAS'
-            canvas = @canvas = root.querySelector 'canvas'
+        canvas = @canvas = if root.tagName == 'CANVAS'
+            root
+        else
+            root.querySelector 'canvas'
         @main_loop = new MainLoop @
         render_manager = new RenderManager(
             @,
@@ -65,21 +67,20 @@ class Myou
 
     on_scene_ready: (scene_name, callback)->
         scene_ready = @scenes[scene_name]? and (not @MYOU_PARAMS.load_physics_engine or Ammo?)
+        queue = @on_scene_ready_queue[scene_name]
+        # If scene was ready, just call all callbacks
         if scene_ready
-            while @on_scene_ready_queue[scene_name].length
-                @on_scene_ready_queue[scene_name].shift()()
-            if callback?
-                callback()
+            while queue.length
+                queue.shift()()
+            callback?()
+        # otherwise, add this callback and keep checking on each frame
         else
             if callback?
-                if @on_scene_ready_queue[scene_name]?
-                        @on_scene_ready_queue[scene_name].push(callback)
+                if queue?
+                        queue.push(callback)
                 else
-                    @on_scene_ready_queue[scene_name] = [callback]
-
-            for k,s of @on_scene_ready_queue
-                if s.length
-                    window.requestAnimationFrame(=> @on_scene_ready(k))
+                    queue = [callback]
+            requestAnimationFrame(=> @on_scene_ready(scene_name))
 
     update_canvas_rect:  =>
         @canvas_rect = @canvas.getClientRects()[0]
