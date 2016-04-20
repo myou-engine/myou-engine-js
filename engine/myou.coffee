@@ -68,6 +68,8 @@ class Myou
     on_scene_ready: (scene_name, callback)->
         scene_ready = @scenes[scene_name]? and (not @MYOU_PARAMS.load_physics_engine or Ammo?)
         queue = @on_scene_ready_queue[scene_name]
+        if not queue
+            queue = @on_scene_ready_queue[scene_name] = []
         # If scene was ready, just call all callbacks
         if scene_ready
             while queue.length
@@ -76,10 +78,7 @@ class Myou
         # otherwise, add this callback and keep checking on each frame
         else
             if callback?
-                if queue?
-                        queue.push(callback)
-                else
-                    queue = [callback]
+                queue.push(callback)
             requestAnimationFrame(=> @on_scene_ready(scene_name))
 
     update_canvas_rect:  =>
