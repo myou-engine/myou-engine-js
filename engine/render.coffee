@@ -34,6 +34,7 @@ class RenderManager
         @canvas = canvas
         @gl = gl
         @textures = {}
+        @texture_promises = []
         @width = width
         @height = height
         @main_fb = new MainFramebuffer @
