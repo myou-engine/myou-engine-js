@@ -76,9 +76,13 @@ class MainLoop
         @last_frame_durations[@_fdi] = frame_duration
         @_fdi = (@_fdi+1) % @last_frame_durations.length
 
-        @_frame_callbacks.shift()?()
 
-        if not @_frame_callbacks.length
+        if @_frame_callbacks.length != 0
+            @_frame_callbacks.shift()()
+        else
+            # TODO: doesn't run logic or physics if there's stuff loading;
+            # instead, it should block this stuff only in the initial load;
+            # ideally, set explicitely
             for scene in @context.loaded_scenes
                 if scene.loader.remaining_tasks[0] != 0 or not scene.enabled
                     continue
