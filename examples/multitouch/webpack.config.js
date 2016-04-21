@@ -74,5 +74,5 @@ module.exports = {
 
 //Copy data to build
 require('shelljs/global');
-mkdir('build/data')
-exec('rsync -rv data/* build/data')
+rm('-rf', 'build/data');
+cp('-R', 'data', 'build/')
