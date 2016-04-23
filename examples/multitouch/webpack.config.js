@@ -74,5 +74,6 @@ module.exports = {
 
 //Copy data to build
 require('shelljs/global');
+mkdir('build')
 rm('-rf', 'build/data');
 cp('-R', 'data', 'build/')
