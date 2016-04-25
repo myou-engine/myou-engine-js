@@ -1,5 +1,6 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 
+{load_texture, material_promises} = require './new_loader.coffee'
 
 load_material = (scene, data)->
     name = data.name
@@ -11,12 +12,6 @@ load_material = (scene, data)->
     # make sure it's bool
     mat.double_sided = not not data.double_sided
 
-load_textures_of_material = (scene, data) ->
-    # When you only want to request textures to be loaded without compiling the shader
-    for u in data.uniforms
-        if u.type == 13 and scene # 2D image
-            scene.loader.load_texture u.image, u.filepath, u.filter, u.wrap, u.size
-    return
 # http://www.blender.org/documentation/blender_python_api_2_65_release/gpu.html
 
 _active_program = null
@@ -95,7 +90,7 @@ class Material
                     @textures.push {loaded: true, tex: @scene.objects[u.lamp].shadow_fb.texture}
                     tex_uniforms.push u.varname
             else if u.type == 13 and @scene # 2D image
-                tex = @scene.loader.load_texture u.image, u.filepath, u.filter, u.wrap, u.size
+                tex = load_texture(u.image, u.filepath, u.filter, u.wrap, u.size, @scene.context).texture
                 @textures.push tex
                 tex.users.push @
                 tex_uniforms.push u.varname
@@ -262,12 +257,13 @@ class Material
 
         if not gl.getShaderParameter(vertex_shader, gl.COMPILE_STATUS) and not gl.isContextLost()
             #console.log vs
-            console.log "Error compiling vertex shader of material", name
-            console.log gl.getShaderInfoLog vertex_shader
+            error_msg = """Error compiling vertex shader of material #{@name}
+            #{gl.getShaderInfoLog vertex_shader}"""
             # ext = gl.getExtension "WEBGL_debug_shaders"
             # if ext
             #     console.log  '\n' + ext.getTranslatedShaderSource(vertex_shader)).split('\n')
             gl.deleteShader vertex_shader
+            material_promises[@name]?.functions.reject(error_msg)
             return
 
         @fs_code = fs
@@ -277,12 +273,13 @@ class Material
         gl.compileShader fragment_shader
 
         if not gl.getShaderParameter(fragment_shader, gl.COMPILE_STATUS) and not gl.isContextLost()
-            console.log "Error compiling fragment shader of material", name
-            console.log gl.getShaderInfoLog fragment_shader
+            error_msg = """Error compiling fragment shader of material #{@name}
+            #{gl.getShaderInfoLog fragment_shader}"""
             # ext = gl.getExtension "WEBGL_debug_shaders"
             # if ext
             #     console.log  '\n' + ext.getTranslatedShaderSource(fragment_shader)).split('\n')
             gl.deleteShader fragment_shader
+            material_promises[@name]?.functions.reject(error_msg)
             return
 
 
@@ -293,14 +290,15 @@ class Material
         gl.linkProgram prog
 
         if not gl.getProgramParameter(prog, gl.LINK_STATUS) and not gl.isContextLost()
-            console.log "Error linking shader of material", name
-            console.log attributes
-            console.log gl.getProgramInfoLog prog
+            error_msg = """Error linking shader of material #{@name}
+            #{JSON.stringify attributes}
+            #{gl.getProgramInfoLog prog}"""
             #ext = gl.getExtension "WEBGL_debug_shaders"
             #if ext console.log ext.getTranslatedShaderSource vertex_shader
             gl.deleteProgram prog
             gl.deleteShader vertex_shader
             gl.deleteShader fragment_shader
+            material_promises[@name]?.functions.reject(error_msg)
             return
 
         gl.useProgram prog
@@ -360,6 +358,7 @@ class Material
             ])
 
         @_program = prog
+        material_promises[@name]?.functions.resolve(@)
         @context.render_manager.compiled_shaders_this_frame += 1
 
 
@@ -412,4 +411,4 @@ class Material
 
         return cloned
 
-module.exports = {load_material, load_textures_of_material, Material}
+module.exports = {load_material, Material}

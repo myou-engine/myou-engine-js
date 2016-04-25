@@ -180,12 +180,6 @@ class Mesh extends GameObject
             # If it has materials (some mesh was already loaded), configure again
             if @materials.length !=0
                 @configure_materials()
-            else if not (@scene.enabled and @scene.loaded)
-                # Request loading textures of unloaded materials
-                for matname in @material_names
-                    mat = @scene.unloaded_material_data[matname]
-                    if mat
-                        load_textures_of_material @scene, mat
 
         #@phy_mesh = null # only necessary for live server, otherwise it may cause bugs
         if @scene and @scene.world

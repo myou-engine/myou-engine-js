@@ -3,22 +3,33 @@
 fetch_promises = {}  # {file_name: promise}
 material_promises = {} # {mat_name: promise}
 
-exports.load_texture = load_texture = (name, path, filter, wrap='R', size=0, context) ->
-    tex = null
-    promise = new Promise (resolve, reject) ->
 
-        tex = context.render_manager.textures[name] or null
-        if tex?
-            return tex.promise
+## Uncomment this to find out why a politician lies
+# Promise._all = Promise.all
+# Promise.all = (list) ->
+#     for l in list
+#         if not l
+#             debugger
+#     politician = Promise._all list
+#     politician.list = list
+#     politician
+
+
+# Creates a texture and returns a promise for when the source is loaded
+load_texture = (name, path, filter, wrap='R', size=0, context) ->
+    tex = context.render_manager.textures[name] or null
+    if tex?
+        return tex.promise
+
+    promise = new Promise (resolve, reject) ->
         gl = context.render_manager.gl
         wrap_const = {'C': gl.CLAMP_TO_EDGE, 'R': gl.REPEAT, 'M': gl.MIRRORED_REPEAT}[wrap]
         if name.startswith 'special:'
-            resolve {name, promise}
-            return promise
-
-        tex = {tex: gl.createTexture(), size, path, promise}
+            tex = {name}
+            resolve tex
+            return
+        tex = {tex: gl.createTexture(), size, path}
         context.render_manager.textures[name] = tex
-        context.render_manager.texture_promises.push promise
         tex.name = name
         tex.users = [] # materials
         tex.loaded = false
@@ -62,28 +73,30 @@ exports.load_texture = load_texture = (name, path, filter, wrap='R', size=0, con
             base = context.MYOU_PARAMS.data_dir + '/textures/'
             img.src = base + path
         return
-    return tex
+    context.render_manager.texture_promises.push promise
+    promise.texture = tex
+    tex.promise = promise
+    return promise
 
-# This returns a list of all promises necessary to display the objects
-# (meshes, textures, materials)
-exports.load_objects = load_objects = (object_list) ->
-    promises = []
-    for ob in object_list
-        promises.push load_mesh(ob)
-        # for mat_name in ob.material_names
-        #     mat = scene.materials[name]
-        #     if not mat
-        #     promise = material_promises[mat_name]
-        #     if not promise
-        #         promise = material_promises[mat_name] = []
-        #         # Check if material was already loaded
-        #         # (we'll assume it was rendered at this point, even though it may not)
-        #         if scene.materials[name]
-        #             promise.resolve()
+# Loads textures of material (given a name), return a promise
+load_textures_of_material = (scene, mat_name) ->
+    mat = scene.materials[mat_name]
+    if mat
+        Promise.all [texture.promise for texture in mat.textures]
+    else
+        # Useful when you only want to request textures to be loaded without compiling the shader
+        data = scene.unloaded_material_data[mat_name]
+        if data
+            Promise.all(for u in data.uniforms \
+                when u.type == 13 and scene # 2D image
+                    load_texture u.image, u.filepath, u.filter, u.wrap, u.size, scene.context
+            )
+        else
+            Promise.reject "Couldn't find material '#{mat_name}'"
 
-
-exports.load_mesh = load_mesh = (mesh_object, min_lod=1) ->
-    new Promise (resolve, reject) ->
+# Load a mesh of a mesh type object, return a promise
+load_mesh = (mesh_object, min_lod=1) ->
+    promise = new Promise (resolve, reject) ->
         if mesh_object.type != 'MESH'
             reject 'object is not a mesh'
         {context} = mesh_object
@@ -107,14 +120,14 @@ exports.load_mesh = load_mesh = (mesh_object, min_lod=1) ->
         if min_lod < 1 or mesh_object.data
             return any_loaded
 
-        promise = if file_name of fetch_promises
+        fetch_promise = if file_name of fetch_promises
             fetch_promises[file_name]
         else
             base = context.MYOU_PARAMS.data_dir + '/scenes/'
             uri = base + mesh_object.scene.name + '/' + file_name + '.mesh'
             fetch(uri).then((data)->data.arrayBuffer())
 
-        promise.then (data) ->
+        fetch_promise.then (data) ->
             new Promise (resolve, reject) ->
                 mesh_data = context.mesh_datas[mesh_object.hash]
                 if mesh_data
@@ -135,3 +148,42 @@ exports.load_mesh = load_mesh = (mesh_object, min_lod=1) ->
                                 resolve(mesh_object)
                         else
                             resolve(mesh_object)
+        .then ->
+            resolve(mesh_object)
+    promise.mesh_object = mesh_object
+    return promise
+
+# This returns a promise of all things necessary to display the object
+# (meshes, textures, materials)
+load_objects = (object_list) ->
+    promises = []
+    for ob in object_list
+        if ob.type == 'MESH'
+            {scene} = ob
+            ob.visible = true
+            promises.push load_mesh(ob)
+            for mat_name in ob.material_names
+                mat = scene.materials[mat_name]
+                # Check if material was already loaded; if it was, we'll assume
+                # it was rendered at this point, even though it may not
+                if not mat
+                    promise = material_promises[mat_name]
+                    if not promise
+                        container = {}
+                        promise = material_promises[mat_name] = new Promise (resolve, reject) ->
+                            container =
+                                resolve: do (mat_name) -> ->
+                                    resolve()
+                                reject: do (mat_name) -> ->
+                                    reject()
+                        promise.functions = container
+                    promises.push promise
+                    promises.push load_textures_of_material scene, mat_name
+
+    Promise.all promises
+
+module.exports = {
+    material_promises,
+    load_texture, load_textures_of_material,
+    load_mesh, load_objects
+}
