@@ -62,19 +62,29 @@ The blender plugin is currently supported in __Blender 2.71__.
 Only the exporter is available on the blender plugin but the live server and other
 tools will be added soon.
 
-To install the blender plugin just copy the __myou_bl_plugin__ folder to the __blender addons__ folder.
+To install the blender plugin just copy or link the __myou_bl_plugin__ folder to the __blender addons__ folder.
 
-Windows 7,8,10
+#### Blender addons folders####
+
+Windows
 ```
 C:\Users\%username%\AppData\Roaming\Blender Foundation\Blender\2.71\scripts\addons
 ```
-Windows XP
-```
-C:\Documents and Settings\%username%\Application Data\Blender Foundation\Blender\2.71\scripts\addons
-```
+
 Linux
 ```
 /home/$user/.config/blender/$version/scripts/addons
+```
+
+#### Linking myou_bl_plugin to blender addons folder (optional)
+Windows (cmd or cygwin)
+```
+ cmd /c mklink /j "%APPDATA%/Blender Foundation/Blender/2.71/scripts/addons/myou_bl_plugin" "[Path to myou_engine]/myou_bl_plugin"
+```
+
+Linux
+```
+ln -s "[path to myou_engine]/myou_bl_plugin" "/home/$user/.config/blender/$version/scripts/addons" 
 ```
 
 ### Export your blender scene
