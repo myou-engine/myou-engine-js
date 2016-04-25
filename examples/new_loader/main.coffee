@@ -38,7 +38,6 @@ debug = (msgs)->
 
 phy = myou_engine.physics
 
-window.new_loader = require '../../engine/new_loader.coffee'
 ###
 class new_loader extends LogicBlock
     init: (@scene)=>

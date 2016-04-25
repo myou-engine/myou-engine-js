@@ -1,4 +1,5 @@
 require './engine/init.coffee'
+loader = require './engine/new_loader.coffee'
 {Myou, create_canvas} = require './engine/myou.coffee'
 physics = require './engine/physics.coffee'
 particles = require './engine/particles.coffee'
@@ -10,7 +11,7 @@ actuators = require './engine/actuators.coffee'
 
 module.exports = {
     #myou engine
-    Myou, create_canvas,
+    Myou, create_canvas, loader,
     #Game logic
     LogicBlock, sensors, actuators, glm
     #Extras
