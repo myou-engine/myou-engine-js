@@ -101,7 +101,7 @@ where you will export the scene and export using the same name of the \*.blend f
 ### Use the package in your code
 The example code in this page was written in coffee-script:
 ```coffee-script
-myou = require 'myou-engine'
+MyouEngine = require 'myou-engine'
 ```
 
 #### Define the root element
@@ -119,7 +119,7 @@ You can create a canvas by yourself, but this function creates and configures
 the canvas directly to be used on myou.
 
 ```coffee-script
-myou.create_canvas root
+MyouEngine.create_canvas root
 ```
 The "create_canvas" function returns a canvas, but if you set the root element
 as parameter the canvas will also be inserted on it.
@@ -143,7 +143,7 @@ The boolean options are optional, false by default.
 #### Create a myou instance
 The myou object contains the scenes, game objects, MYOU_PARAMS, render manager, etc.
 ```coffee-script
-myou_instance = new myou.Myou root, MYOU_PARAMS
+myou = new myou.Myou root, MYOU_PARAMS
 ```
 You can create any number of myou engine instances in your project but you will
 need to create a root element for each of the instances.
