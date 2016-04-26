@@ -193,7 +193,6 @@ class RenderManager
         if @common_filter_fb
             @common_filter_fb.destroy()
         if not @common_filter_fb or @common_filter_fb.width!=minx or @common_filter_fb.height!=miny
-            #print "remaking filter fb", minx, miny
             @common_filter_fb = new Framebuffer @context.render_manager, minx, miny, @gl.UNSIGNED_BYTE
 
         # Write fb_size to all materials that require it
@@ -611,8 +610,7 @@ class RenderManager
             for ob in scene.mesh_passes[0]
                 if ob.visible == true and not ob.bg and not ob.fg
                     @draw_mesh(ob, ob.world_matrix, 0)
-                #else
-                    #print ob.name, ob.loaded
+
 
         # PASS 1  (alpha)
         if passes.indexOf(1)>=0 and scene.mesh_passes[1].length

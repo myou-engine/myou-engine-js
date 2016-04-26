@@ -148,7 +148,6 @@ TriangleMeshShape = (vertices, indices, vstride, scale, margin, name)->
     _tmp_Vector3.setValue scale[0], scale[1], scale[2]
     shape.setLocalScaling _tmp_Vector3
     shape.setMargin margin
-    #print performance.now() - pn, name
     return shape
 
 CompoundShape = ->
