@@ -46,6 +46,7 @@ load_scene = (name, filter, fetch_assets='VISIBLE', context) ->
         Promise.all(promises).then ->
             scene.loaded = true
             scene.context.loaded_scenes.push(scene)
+            scene.load_promise.functions.resolve()
             return Promise.resolve(scene)
 
 
