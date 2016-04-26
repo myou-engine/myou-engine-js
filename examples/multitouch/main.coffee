@@ -9,7 +9,7 @@ MYOU_PARAMS =
     # debug: true
     debug_physics: true
     #if browser then ./data -- If electron ../data
-    data_dir: if process.browser then "./data" else "../data"
+    data_dir: if process.browser then "./data" else __dirname+"/./data"
     inital_scene: "Scene"
     load_physics_engine: true
     no_mipmaps: false
