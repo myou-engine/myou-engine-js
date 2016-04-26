@@ -175,7 +175,7 @@ class Scene
 
     load: ->
         if not @loaded
-            load_scene @name, null, true, @context
+            load_scene @name, null, 'VISIBLE', @context
         # TODO: detect if it's already being loaded
 
     unload: ->
@@ -204,7 +204,7 @@ class Scene
 
     reload: ->
         @unload()
-        load_scene @name, null, true, @context
+        load_scene @name, null, 'VISIBLE', @context
 
     increment_task_count: ->
         @_pending_tasks += 1
