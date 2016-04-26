@@ -215,7 +215,7 @@ class GameObject
                             data.phy_mesh = shape
                 vec3.copy he, @scale
             else
-                print "Warning: Unknown shape", @collision_shape
+                console.log "Warning: Unknown shape", @collision_shape
 
             #TODO: changing compunds live don't work well unless they're reinstanced in order
             if @collision_compound and shape
@@ -277,7 +277,7 @@ class GameObject
 
                     @scene.rigid_bodies.push @
                 else
-                    print "Warning: Type not handled", @physics_type
+                    console.log "Warning: Type not handled", @physics_type
                 @shape = shape
             else
                 body = null
@@ -486,7 +486,7 @@ class GameObject
         return anim
 
     del_animation: (anim_id) ->
-        #print 'removing',anim_id
+        #console.log 'removing',anim_id
         delete @animations[anim_id]
         if Object.keys @animations.length == 0
             @scene.context.all_anim_objects.remove @
