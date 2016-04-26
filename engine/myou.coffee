@@ -4,9 +4,6 @@
 {MainLoop} = require './main_loop.coffee'
 loader = require './loader.coffee'
 
-if not process.browser
-    require './node_fetch_file'
-
 class Myou
 
     constructor: (root, MYOU_PARAMS)->
