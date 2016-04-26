@@ -3,7 +3,8 @@ if(process.browser){
     module.exports = require('./noco-loader!./pack.coffee');
 }else {
     //Electron code
-    var req = eval('require')
+    var req = eval('require');
     req('coffee-script/register');
+    req('./engine/node_fetch_file.coffee');
     module.exports = req('./pack.coffee');
 }
