@@ -1,6 +1,6 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 
-{load_texture, material_promises} = require './new_loader.coffee'
+{fetch_texture, material_promises} = require './fetch_assets.coffee'
 
 load_material = (scene, data)->
     name = data.name
@@ -90,7 +90,7 @@ class Material
                     @textures.push {loaded: true, tex: @scene.objects[u.lamp].shadow_fb.texture}
                     tex_uniforms.push u.varname
             else if u.type == 13 and @scene # 2D image
-                tex = load_texture(u.image, u.filepath, u.filter, u.wrap, u.size, @scene.context).texture
+                tex = fetch_texture(u.image, u.filepath, u.filter, u.wrap, u.size, @scene.context).texture
                 @textures.push tex
                 tex.users.push @
                 tex_uniforms.push u.varname

@@ -1,11 +1,9 @@
-
-
 fetch_promises = {}  # {file_name: promise}
 material_promises = {} # {mat_name: promise}
 
 
 ## Uncomment this to find out why a politician lies
-# Promise._all = Promise.all
+# Promise._all = Promise._all or Promise.all
 # Promise.all = (list) ->
 #     for l in list
 #         if not l
@@ -16,7 +14,7 @@ material_promises = {} # {mat_name: promise}
 
 
 # Creates a texture and returns a promise for when the source is loaded
-load_texture = (name, path, filter, wrap='R', size=0, context) ->
+fetch_texture = (name, path, filter, wrap='R', size=0, context) ->
     tex = context.render_manager.textures[name] or null
     if tex?
         return tex.promise
@@ -79,7 +77,7 @@ load_texture = (name, path, filter, wrap='R', size=0, context) ->
     return promise
 
 # Loads textures of material (given a name), return a promise
-load_textures_of_material = (scene, mat_name) ->
+fetch_textures_of_material = (scene, mat_name) ->
     mat = scene.materials[mat_name]
     if mat
         Promise.all [texture.promise for texture in mat.textures]
@@ -89,13 +87,13 @@ load_textures_of_material = (scene, mat_name) ->
         if data
             Promise.all(for u in data.uniforms \
                 when u.type == 13 and scene # 2D image
-                    load_texture u.image, u.filepath, u.filter, u.wrap, u.size, scene.context
+                    fetch_texture u.image, u.filepath, u.filter, u.wrap, u.size, scene.context
             )
         else
             Promise.reject "Couldn't find material '#{mat_name}'"
 
 # Load a mesh of a mesh type object, return a promise
-load_mesh = (mesh_object, min_lod=1) ->
+fetch_mesh = (mesh_object, min_lod=1) ->
     promise = new Promise (resolve, reject) ->
         if mesh_object.type != 'MESH'
             reject 'object is not a mesh'
@@ -104,7 +102,7 @@ load_mesh = (mesh_object, min_lod=1) ->
 
         for alt in mesh_object.altmeshes
             if alt != mesh_object
-                load_mesh alt
+                fetch_mesh alt
 
         # Load LoD
         any_loaded = false
@@ -114,7 +112,7 @@ load_mesh = (mesh_object, min_lod=1) ->
             min_lod = Math.max min_lod, last_lod.factor
         for lod_ob in lod_objects
             if lod_ob.factor <= min_lod
-                any_loaded = load_mesh(lod_ob.object) or any_loaded
+                any_loaded = fetch_mesh(lod_ob.object) or any_loaded
 
         # Not load self if only lower LoDs were loaded, or it was already loaded.
         if min_lod < 1 or mesh_object.data
@@ -153,37 +151,48 @@ load_mesh = (mesh_object, min_lod=1) ->
     promise.mesh_object = mesh_object
     return promise
 
+
 # This returns a promise of all things necessary to display the object
 # (meshes, textures, materials)
-load_objects = (object_list) ->
+fetch_objects = (object_list) ->
     promises = []
     for ob in object_list
         if ob.type == 'MESH'
             {scene} = ob
             ob.visible = true
-            promises.push load_mesh(ob)
+            promises.push fetch_mesh(ob)
             for mat_name in ob.material_names
                 mat = scene.materials[mat_name]
                 # Check if material was already loaded; if it was, we'll assume
                 # it was rendered at this point, even though it may not
                 if not mat
-                    promise = material_promises[mat_name]
-                    if not promise
-                        container = {}
-                        promise = material_promises[mat_name] = new Promise (resolve, reject) ->
-                            container =
-                                resolve: do (mat_name) -> ->
-                                    resolve()
-                                reject: do (mat_name) -> ->
-                                    reject()
-                        promise.functions = container
-                    promises.push promise
-                    promises.push load_textures_of_material scene, mat_name
+                    if scene.enabled
+                        # TODO: compile material even though is not
+                        # going to be used
+                        promise = material_promises[mat_name]
+                        if not promise
+                            container = {}
+                            promise = material_promises[mat_name] = new Promise (resolve, reject) ->
+                                container =
+                                    resolve: do (mat_name) -> ->
+                                        resolve()
+                                    reject: do (mat_name) -> ->
+                                        reject()
+                            promise.functions = container
+                        promises.push promise
+                    promises.push fetch_textures_of_material scene, mat_name
 
     Promise.all promises
 
+
+
+
+set_altmesh = (ob,i) ->
+    ob.active_mesh_index = i
+
+
 module.exports = {
     material_promises,
-    load_texture, load_textures_of_material,
-    load_mesh, load_objects
+    fetch_texture, fetch_textures_of_material,
+    fetch_mesh, fetch_objects
 }

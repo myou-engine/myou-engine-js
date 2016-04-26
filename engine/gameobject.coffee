@@ -1,5 +1,6 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 {Animation} = require './animation.coffee'
+fetch_assets = require './fetch_assets.coffee'
 {
     update_ob_physics,
 
@@ -163,12 +164,9 @@ class GameObject
                     ob = @
                 data = ob.data
 
-                if not data
-                    if @visible
-                        @scene.loader.load_mesh_data ob
-                    # This will be called in mesh.load_from_va_ia
-                    # or in loader.load_mesh_data
-                    # after it has been loaded
+                if not data?
+                    fetch_assets.fetch_mesh(ob).then =>
+                        @instance_physics()
                     return
 
                 if is_hull

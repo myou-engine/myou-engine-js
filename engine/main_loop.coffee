@@ -19,11 +19,8 @@ class MainLoop
         @context = context
         @_bound_tick = @tick.bind @
         @_bound_run = @run.bind @
-        @_bound_stop = @stop.bind @
         @_frame_callbacks = []
-        @_frame_callbacks_ids = []
         @frame_number = 0
-        @loading = true
 
     run: ->
         @stopped = false
@@ -79,27 +76,22 @@ class MainLoop
 
         if @_frame_callbacks.length != 0
             @_frame_callbacks.shift()()
-        else
-            # TODO: doesn't run logic or physics if there's stuff loading;
-            # instead, it should block this stuff only in the initial load;
-            # ideally, set explicitely
-            for scene in @context.loaded_scenes
-                if scene.loader.remaining_tasks[0] != 0 or not scene.enabled
-                    continue
 
-                for callback in scene.pre_draw_callbacks
-                    callback scene, frame_duration
+        for scene in @context.loaded_scenes
 
-                for logic_tick in scene.logic_ticks
-                    logic_tick frame_duration
+            for callback in scene.pre_draw_callbacks
+                callback scene, frame_duration
 
-                for p in scene.active_particle_systems
-                    p._eval()
+            for logic_tick in scene.logic_ticks
+                logic_tick frame_duration
 
-                if scene.rigid_bodies.length or scene.kinematic_characters.length
-                    get_last_char_phy scene.kinematic_characters
-                    step_world scene.world, frame_duration * 0.001
-                    phy_to_ob scene.rigid_bodies
+            for p in scene.active_particle_systems
+                p._eval()
+
+            if scene.rigid_bodies.length or scene.kinematic_characters.length
+                get_last_char_phy scene.kinematic_characters
+                step_world scene.world, frame_duration * 0.001
+                phy_to_ob scene.rigid_bodies
 
 
         evaluate_all_animations @context, frame_duration
@@ -113,7 +105,5 @@ class MainLoop
 
         @context.events.reset_frame_events()
         @frame_number += 1
-
-
 
 module.exports = {MainLoop}
