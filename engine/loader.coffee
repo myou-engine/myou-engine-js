@@ -13,7 +13,8 @@
 {fetch_objects} = require './fetch_assets.coffee'
 
 
-load_scene = (name, filter, fetch_assets=true, context) ->
+
+load_scene = (name, filter, fetch_assets='VISIBLE', context) ->
     scene = context.scenes[name]
     if scene
         return Promise.resolve(scene)
@@ -31,11 +32,13 @@ load_scene = (name, filter, fetch_assets=true, context) ->
         if context.MYOU_PARAMS.load_physics_engine
             promises.push load_physics_engine()
 
-        #TODO: NONE, VISIBLE, ALL
         if fetch_assets
             objects_to_fetch = for ob in scene.children
-                if ob.type == 'MESH' and ob.visible
-                    ob
+                if ob.type == 'MESH'
+                    if fetch_assets == 'ALL' or (fetch_assets == 'VISIBLE' and ob.visible)
+                        ob
+                    else
+                        continue
                 else
                     continue
             promises.push fetch_objects(objects_to_fetch)

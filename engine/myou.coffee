@@ -57,7 +57,7 @@ class Myou
         data_dir = MYOU_PARAMS.data_dir or './data'
         MYOU_PARAMS.data_dir = data_dir
 
-        loader.load_scene(initial_scene, MYOU_PARAMS.initial_scene_filter, true, @).then (scene) =>
+        loader.load_scene(initial_scene, MYOU_PARAMS.initial_scene_filter, 'VISIBLE', @).then (scene) =>
             scene.enabled = true
 
         @events = new Events root
