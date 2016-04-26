@@ -1,7 +1,8 @@
 {RenderManager} = require './render.coffee'
-{XhrLoader} = require './loader.coffee'
+{Loader} = require './loader.coffee'
 {Events} = require './events.coffee'
 {MainLoop} = require './main_loop.coffee'
+loader = require './loader.coffee'
 
 class Myou
 
@@ -23,6 +24,7 @@ class Myou
         @root = root
         @MYOU_PARAMS = MYOU_PARAMS
         @hash = Math.random()
+        @initial_scene_loaded = false
         # The root element needs to be positioned, so the mouse events (layerX/Y) are
         # registered correctly, and the canvas is scaled inside
         if getComputedStyle(root).position == 'static'
@@ -54,33 +56,13 @@ class Myou
         initial_scene = MYOU_PARAMS.initial_scene or 'Scene'
         data_dir = MYOU_PARAMS.data_dir or './data'
         MYOU_PARAMS.data_dir = data_dir
-        loader = new XhrLoader @, data_dir
-        loader.total += size
-        loader.debug = if MYOU_PARAMS.live_server then true else false
-        loader.load_scene initial_scene, MYOU_PARAMS.initial_scene_filter
-        if MYOU_PARAMS.load_physics_engine
-            loader.load_physics_engine()
+
+        loader.load_scene(initial_scene, MYOU_PARAMS.initial_scene_filter, true, @).then (scene) =>
+            scene.enabled = true
 
         @events = new Events root
         @main_loop.run()
 
-    on_scene_ready_queue: {}
-
-    on_scene_ready: (scene_name, callback)->
-        scene_ready = @scenes[scene_name]? and (not @MYOU_PARAMS.load_physics_engine or Ammo?)
-        queue = @on_scene_ready_queue[scene_name]
-        if not queue
-            queue = @on_scene_ready_queue[scene_name] = []
-        # If scene was ready, just call all callbacks
-        if scene_ready
-            while queue.length
-                queue.shift()()
-            callback?()
-        # otherwise, add this callback and keep checking on each frame
-        else
-            if callback?
-                queue.push(callback)
-            requestAnimationFrame(=> @on_scene_ready(scene_name))
 
     update_canvas_rect:  =>
         @canvas_rect = @canvas.getClientRects()[0]

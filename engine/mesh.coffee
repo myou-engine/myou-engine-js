@@ -1,6 +1,6 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 {GameObject} = require './gameobject.coffee'
-{load_material, load_textures_of_material} = require './material.coffee'
+{load_material} = require './material.coffee'
 #   Mesh format:
 #
 #   Vertex array:

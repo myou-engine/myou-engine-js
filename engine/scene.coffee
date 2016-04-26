@@ -1,23 +1,16 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 {PhysicsWorld, set_gravity} = require './physics.coffee'
+{load_scene} = require './loader.coffee'
 
 _collision_seq = 0
 
-get_scene = (context, name)->
-    # This returns a scene with the supplied name
-    # and if it doesn't exist yet, it creates a stub
-    # to which can be assigned callbacks
-    # and can call .load()
-    scene = context.scenes[name] = context.scenes[name] or new Scene context
-    scene.name = name
-    return scene
-
-
 class Scene
-
-    constructor: (context)->
+    constructor: (context, name)->
+        existing = context.scenes[name]
+        return existing if existing
         @context = context
-        @name = ''
+        @name = name
+        context.scenes[name] = @
         @loaded = false
         @enabled = false
         @children = []
@@ -35,7 +28,6 @@ class Scene
         @materials = {}
         @unloaded_material_data = {}
         @active_camera = null
-        @loader = null
         @world = null
         @gravity = vec3.create()
         @tree_name = null
@@ -48,14 +40,11 @@ class Scene
         @post_draw_callbacks = []
         @_pending_tasks = 0
         @active_particle_systems = []
+        functions = null
+        @load_promise = new Promise (resolve, reject) =>
+            functions = {resolve, reject}
+        @load_promise.functions = functions
 
-    on_physics_engine_loaded: ->
-        @world = new PhysicsWorld
-        g = @gravity
-        set_gravity @world, g[0],g[1],g[2]
-        for ob in @children
-            ob.instance_physics()
-        return
 
     set_gravity: (gravity)->
         g = @gravity
@@ -185,10 +174,8 @@ class Scene
         @_children_are_ordered = true
 
     load: ->
-        # TODO: get the loader in some other way
         if not @loaded
-            loader = scene.loader
-            loader.load_scene @name
+            load_scene @name, null, true, @context
         # TODO: detect if it's already being loaded
 
     unload: ->
@@ -217,7 +204,7 @@ class Scene
 
     reload: ->
         @unload()
-        @loader.load_scene @name
+        load_scene @name, null, true, @context
 
     increment_task_count: ->
         @_pending_tasks += 1
@@ -231,4 +218,4 @@ class Scene
                 for f in @load_callbacks
                     f @
 
-module.exports = {Scene, get_scene}
+module.exports = {Scene}

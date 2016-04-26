@@ -1,5 +1,5 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
-
+{fetch_mesh} = require './fetch_assets'
 FLOW = 0
 FOLLOW = 1
 
@@ -92,7 +92,7 @@ class ParticleSystem
         if not @particle
             return console.error 'Error: no particle found "'+@properties.particle+'" for tracker "'+@properties.tracker+'"'
         if @particle.type == 'MESH' and not @particle.data
-            p_scn.loader.load_mesh_data @particle
+            fetch_mesh @particle
         if not 'unused_clones' in @particle
             @particle.unused_clones = []
 

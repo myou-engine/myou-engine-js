@@ -1,5 +1,4 @@
 require './engine/init.coffee'
-loader = require './engine/new_loader.coffee'
 {Myou, create_canvas} = require './engine/myou.coffee'
 physics = require './engine/physics.coffee'
 particles = require './engine/particles.coffee'
@@ -8,12 +7,13 @@ particles = require './engine/particles.coffee'
 glm = {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 sensors = require './engine/sensors.coffee'
 actuators = require './engine/actuators.coffee'
-
+{load_scene} = require './engine/loader.coffee'
+{fetch_objects} = require './engine/fetch_assets.coffee'
 module.exports = {
     #myou engine
-    Myou, create_canvas, loader,
+    Myou, create_canvas, load_scene, fetch_objects,
     #Game logic
-    LogicBlock, sensors, actuators, glm
+    LogicBlock, sensors, actuators, glm,
     #Extras
     physics, particles, GLRay,
 }

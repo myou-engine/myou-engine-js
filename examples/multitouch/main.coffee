@@ -1,8 +1,8 @@
 if process.browser
     require 'file?name=index.html!./static_files/myou.html'
 {create_canvas, Myou, LogicBlock, sensors, actuators} =
-    window.myou_engine = require '../../main' # 'myou-engine'
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = myou_engine.glm
+    MyouEngine = require '../../main' # 'myou-engine'
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = MyouEngine.glm
 
 MYOU_PARAMS =
     total_size: 26775095
@@ -19,13 +19,18 @@ MYOU_PARAMS =
     no_s3tc: navigator.userAgent.toString().indexOf('Edge/12.')!=-1
 
 canvas = document.getElementById('myou')
-window.myou_instance = new Myou canvas, MYOU_PARAMS
+myou = new Myou canvas, MYOU_PARAMS
+
+# optional, to access from console
+console.log 'MyouEngine and myou accesible from console.'
+window.myou = myou
+window.MyouEngine = MyouEngine
 
 #resume main_loop
-canvas.onmousemove = myou_instance.main_loop.reset_timeout
-canvas.ontouchstart = myou_instance.main_loop.reset_timeout
-canvas.ontouchmove = myou_instance.main_loop.reset_timeout
-canvas.onkeydown = myou_instance.main_loop.reset_timeout
+canvas.onmousemove = myou.main_loop.reset_timeout
+canvas.ontouchstart = myou.main_loop.reset_timeout
+canvas.ontouchmove = myou.main_loop.reset_timeout
+canvas.onkeydown = myou.main_loop.reset_timeout
 
 window.create_second_instance = ->
     #creating 2nd instance and canvas2
@@ -64,7 +69,7 @@ debug = (msgs)->
         db.innerHTML += msg + '</br>'
 
 
-phy = myou_engine.physics
+phy = MyouEngine.physics
 class TouchDemo extends LogicBlock
     init: (@scene)=>
         #finger collisions with the scene objects
@@ -187,4 +192,4 @@ class TouchDemo extends LogicBlock
         debug msgs
 
 
-window.td = new TouchDemo myou_instance, 'Scene'
+window.td = new TouchDemo myou, 'Scene'
