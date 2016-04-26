@@ -6,8 +6,7 @@ _tmp_ClosestRayResultCallback = destroy = null
 
 physical_scenes = []
 
-init_scene_physics = (scene)->
-    console.log 'initing physics in ', scene.name
+init_scene_physics = (scene) ->
     context = scene.context
     scene.world = new PhysicsWorld
     g = scene.gravity
