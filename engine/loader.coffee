@@ -25,6 +25,8 @@ load_scene = (name, filter, fetch_assets='VISIBLE', context) ->
     return fetch(url).then((data)->data.json()).then (data)=>
         if filter
             data = filter(data)
+        
+        # Parse all the actual scene data
         for d in data
             load_datablock d, context
 
@@ -32,16 +34,10 @@ load_scene = (name, filter, fetch_assets='VISIBLE', context) ->
         if context.MYOU_PARAMS.load_physics_engine
             promises.push load_physics_engine()
 
-        if fetch_assets
-            objects_to_fetch = for ob in scene.children
-                if ob.type == 'MESH'
-                    if fetch_assets == 'ALL' or (fetch_assets == 'VISIBLE' and ob.visible)
-                        ob
-                    else
-                        continue
-                else
-                    continue
-            promises.push fetch_objects(objects_to_fetch)
+        if fetch_assets == 'VISIBLE'
+            promises.push scene.load_visible_objects()
+        else if fetch_assets == 'ALL'
+            promises.push scene.load_all_objects()
 
         Promise.all(promises).then ->
             scene.loaded = true
