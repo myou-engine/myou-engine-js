@@ -53,16 +53,21 @@ class Myou
         window.addEventListener 'resize', resize_canvas
 
         size = MYOU_PARAMS.total_size or 0
-        initial_scene = MYOU_PARAMS.initial_scene or 'Scene'
+        initial_scene = MYOU_PARAMS.initial_scene or ''
         data_dir = MYOU_PARAMS.data_dir or './data'
         MYOU_PARAMS.data_dir = data_dir
-
-        loader.load_scene(initial_scene, MYOU_PARAMS.initial_scene_filter, 'VISIBLE', @).then (scene) =>
-            scene.enabled = true
+        
+        if initial_scene
+            loader.load_scene(initial_scene, MYOU_PARAMS.initial_scene_filter, 'VISIBLE', @).then (scene) =>
+                scene.enabled = true
 
         @events = new Events root
         @main_loop.run()
-
+    
+    load_scene: (name) ->
+        return loader.load_scene(name, null, '', @).then (scene) =>
+            scene.enabled = true
+            return scene
 
     update_canvas_rect:  =>
         @canvas_rect = @canvas.getClientRects()[0]

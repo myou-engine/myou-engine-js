@@ -1,6 +1,7 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 {PhysicsWorld, set_gravity} = require './physics.coffee'
 {load_scene} = require './loader.coffee'
+{fetch_objects} = require './fetch_assets.coffee'
 
 _collision_seq = 0
 
@@ -174,9 +175,7 @@ class Scene
         @_children_are_ordered = true
 
     load: ->
-        if not @loaded
-            load_scene @name, null, 'VISIBLE', @context
-        # TODO: detect if it's already being loaded
+        load_scene @name, null, 'VISIBLE', @context
 
     unload: ->
         for ob in @children[...]
@@ -204,18 +203,15 @@ class Scene
 
     reload: ->
         @unload()
-        load_scene @name, null, 'VISIBLE', @context
+        @load()
 
-    increment_task_count: ->
-        @_pending_tasks += 1
+    load_visible_objects: ->
+        visible_objects = for ob in @children when ob.visible and not ob.data then ob
+        return fetch_objects(visible_objects)
 
-    decrement_task_count: ->
-        if @_pending_tasks != 0
-            @_pending_tasks -= 1
-            if @_pending_tasks == 0 and not @loaded
-                @context.loaded_scenes.push @
-                @loaded = true
-                for f in @load_callbacks
-                    f @
+    load_all_objects: ->
+        # TODO: This may not work the second time is not called.
+        # Meshes should always return data's promises
+        return fetch_objects(@children)
 
 module.exports = {Scene}

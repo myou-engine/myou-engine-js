@@ -2,11 +2,13 @@
 #only tick must write in the scene
 class LogicBlock
     constructor: (@context, scene_name)->
-        scene = new Scene(@context, scene_name)
-        scene.load_promise.then =>
-            @init @context.scenes[scene_name]
-            if @tick?
-                @context.scenes[scene_name].logic_ticks.push(@tick.bind(@))
+        @context.load_scene(scene_name).then (scene) =>
+            scene.enabled = false
+            scene.load_visible_objects().then =>
+                scene.enabled = true
+                @init scene
+                if @tick?
+                    scene.logic_ticks.push(@tick.bind(@))
     init: (@scene)->
 
 module.exports = {LogicBlock}
