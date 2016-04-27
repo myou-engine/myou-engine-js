@@ -62,7 +62,7 @@ The blender plugin is currently supported in __Blender 2.71__.
 Only the exporter is available on the blender plugin but the live server and other
 tools will be added soon.
 
-To install the blender plugin just copy or link the __myou_bl_plugin__ folder to the __blender addons__ folder.
+To install the blender plugin just copy or link the __myou_bl_plugin__ folder to the __blender addons__ folder (or link it, see below).
 
 #### Blender addons folders####
 
@@ -76,19 +76,25 @@ Linux
 /home/$user/.config/blender/$version/scripts/addons
 ```
 
-#### Linking myou_bl_plugin to blender addons folder (optional)
-Windows (cmd or cygwin)
+#### (optional) Linking myou_bl_plugin to blender addons folder instead of copying
+
+Windows (cmd)
+```
+mklink /j "%APPDATA%/Blender Foundation/Blender/2.71/scripts/addons/myou_bl_plugin" "[Path to myou_engine]/myou_bl_plugin"
+```
+
+Windows (cygwin)
 ```
  cmd /c mklink /j "%APPDATA%/Blender Foundation/Blender/2.71/scripts/addons/myou_bl_plugin" "[Path to myou_engine]/myou_bl_plugin"
 ```
 
 Linux
 ```
-ln -s "[path to myou_engine]/myou_bl_plugin" "/home/$user/.config/blender/$version/scripts/addons" 
+ln -s "[path to myou_engine]/myou_bl_plugin" "/home/$user/.config/blender/2.71/scripts/addons"
 ```
 
 ### Export your blender scene
-The exporter is placed here: *__File > Export > Myou engine__*
+The exporter is available here: *__File > Export > Myou engine__*
 
 #### WARNING:
 Currently the blender export interface only supports exporting to file but the
@@ -129,24 +135,36 @@ You can set some parameters to configure myou's behaviour.
 
 ```coffee-script
 MYOU_PARAMS =
-    total_size: 26775095 #Total size of the app to be used on the loading progress bar.
     debug: false # If true, it enables the debug features
-    data_dir: "./data" # Path to the folder exported from blender that contains <scenes> and <texture> and <scripts> folders
-    inital_scene: "Scene" # "Scene" by default. It is the name of the scene that will be loaded at the beginning.
-    load_physics_engine: true # if true, it allows to load the physic engine.
+    data_dir: "./data" # Path to the folder exported from blender that contains <scenes> and <texture> folders
+    inital_scene: "" # If present, it will load this scene at the beginning. (deprecated option)
+    load_physics_engine: true # if true, it will load the physic engine (Ammo.js).
     no_mipmaps: false # If true, it disables the mipmaps
-    no_s3tc: navigator.userAgent.toString().indexOf('Edge/12.')!=-1
-    #This code disables s3tc only if you are using Edge.
+    no_s3tc: true # Disable s3tc support
 ```
 The boolean options are optional, false by default.
 
-#### Create a myou instance
+#### Create a myou instance and load the scene and objects
 The myou object contains the scenes, game objects, MYOU_PARAMS, render manager, etc.
 ```coffee-script
 myou = new myou.Myou root, MYOU_PARAMS
 ```
 You can create any number of myou engine instances in your project but you will
 need to create a root element for each of the instances.
+
+We now proceed to load the scene and objects. The load_* functions returns a promise,
+so we need to chain them in order to ensure they're available
+
+```coffee-script
+myou.load_scene('Scene').then (scene) ->
+    console.log 'Scene has loaded and all objects exist, but meshes are not loaded'
+    scene.load_visible_objects().then ->
+        console.log 'All visible objects have loaded'
+    # You can instead load all objects
+    scene.load_all_objects().then ->
+    # or you can load specific objects ->
+    scene.load_objects([scene.objects.Cube]).then ->
+```
 
 ## Documentation
 We are working on the documentation. It will be added soon.
