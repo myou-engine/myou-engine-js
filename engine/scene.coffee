@@ -214,4 +214,11 @@ class Scene
         # Meshes should always return data's promises
         return fetch_objects(@children)
 
+    load_objects: (list)->
+        if not list
+            throw "No list supplied. Did you mean 'load_all_objects()'?"
+        # TODO: This may not work the second time is not called.
+        # Meshes should always return data's promises
+        return fetch_objects(list)
+
 module.exports = {Scene}
