@@ -62,7 +62,7 @@ The blender plugin is currently supported in __Blender 2.71__.
 Only the exporter is available on the blender plugin but the live server and other
 tools will be added soon.
 
-To install the blender plugin just copy or link the __myou_bl_plugin__ folder to the __blender addons__ folder (or link it, see below).
+To install the blender plugin just copy the __myou_bl_plugin__ folder to the __blender addons__ folder (or link it, see below).
 
 #### Blender addons folders####
 
