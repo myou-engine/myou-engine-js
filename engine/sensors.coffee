@@ -13,8 +13,10 @@ class TouchGesturesOver extends LogicBlock
         #hits by touch_event.id
         @hits_by_touch_id = {}
 
-    eval: (int_mask)->
+    eval: (int_mask, use_mouse_events=true)->
         new_touches = @context.events.get_touch_events()
+        if use_mouse_events and @context.events.mouse.any_button
+            new_touches.push @context.events.mouse
         touch_ids = []
         cam = @scene.active_camera
         {width, height} = @context.canvas_rect
@@ -105,6 +107,9 @@ class TouchGesturesOver extends LogicBlock
                 if fingers.length > 1
                     {pinch, rel_pinch} = hit.pinch_gesture.eval(touch_events_3D)
                     {rot, rel_rot, angular_velocity} = hit.rot_gesture.eval(touch_events)
+                else if use_mouse_events and @context.events.mouse.any_button
+                    pinch = 0
+                    rel_pinch =  @context.events.mouse.wheel * 0.1
                 else
                     # Reseting rotation/pinch  gestures
                     hit.pinch_gesture.init()
