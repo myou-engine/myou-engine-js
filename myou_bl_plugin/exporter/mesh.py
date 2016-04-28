@@ -93,8 +93,8 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
             scn.objects.active = ob
             break
 
-    if m.type == 'ARMATURE' and m.object and m.object == ob.parent:
-        armature = m.object
+        if m.type == 'ARMATURE' and m.object and m.object == ob.parent:
+            armature = m.object
 
     has_armature_deform = \
         armature and not ob.parent_type == 'BONE' \
@@ -234,7 +234,7 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
     face_uv_winding = []
     verts = ob.data.vertices
     polys = ob.data.polygons
-    for uv_layer in ob.data.uv_layers[-1]:
+    for uv_layer in ob.data.uv_layers[-1:]:
         uv_data = uv_layer.data
         tangents = []
         for i in range(len(uv_layer.data)//3):
@@ -440,6 +440,7 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
     # Max 4 per vertex, normalized
     weights = []
     bindices = []
+    numgroups = 4
     if has_armature_deform:
         if ob.get('weights6'):
             numgroups = 6
