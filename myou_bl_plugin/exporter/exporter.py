@@ -147,7 +147,8 @@ def ob_to_json(ob, scn=None, check_cache=False):
             nonlocal cache_was_invalidated
             if (check_cache and not os.path.exists(o.data.get('cached_file', ''))\
                 or o.data.get('exported_name') != o.data.name)\
-                or 'export_data' not in o.data:
+                or 'export_data' not in o.data\
+                or 'avg_poly_area' not in loads(o.data.get('export_data','{}')):
                     cache_was_invalidated = True
                     split_parts = 1
                     while not convert_mesh(o, scn, split_parts, sort):
@@ -156,10 +157,6 @@ def ob_to_json(ob, scn=None, check_cache=False):
                         split_parts += 1
 
             if check_cache:
-                #Checking incompatibilities:
-                if 'avg_poly_area' not in loads(o.data['export_data']):
-                    raise Exception("Invalid cache in: " + ob.name + "\nPlease remove the cached data from object.data custom properties")
-
                 scn['exported_meshes'][o.data['hash']] = o.data['cached_file']
 
             d = loads(o.data['export_data'])
@@ -621,7 +618,7 @@ def whole_scene_to_json(scn, extra_data=[]):
             continue
         ret += ob_to_json_recursive(ob, scn, True)
         materials += ob_materials_recursive(ob)
-    for ob in scn.objects
+    for ob in scn.objects:
         if 'actions' in ob:
             for action in ob['actions']:
                 actions[action] = ob
@@ -656,7 +653,7 @@ def whole_scene_to_json(scn, extra_data=[]):
         bpy.ops.object.editmode_toggle()
     if previous_scn:
         bpy.context.screen.scene = previous_scn
-    return retb
+    return [retb, retb_gz]
 
 
 
@@ -671,7 +668,7 @@ def get_scene_tmp_path(scn):
 
 def save_tmp_scene(scn):
     dir = get_scene_tmp_path(scn)
-    d = whole_scene_to_json(
+    d, d_gz = whole_scene_to_json(
         scn,
         #extra_data=[{
         #'type':
@@ -684,7 +681,7 @@ def save_tmp_scene(scn):
         )
 
     open(dir + 'all.json', 'wb').write(d)
-    open(dir + 'all.json.gz', 'wb').write(gzip.compress(d))
+    open(dir + 'all.json.gz', 'wb').write(d_gz)
 
 # TODO: Export all scenes:
 #       switch with bpy.context.screen.scene
@@ -756,9 +753,11 @@ def export_myou(path, scn):
         scn_dir = join(full_dir, 'scenes', scene.name)
         try: os.mkdir(scn_dir)
         except FileExistsError: pass
-        scene_json = whole_scene_to_json(scene,
+        scene_json, scene_json_gz = whole_scene_to_json(scene,
             #extra_data = [{'type':'JSFILE', 'uri': 'logic.js'}]
         )
         open(join(scn_dir, 'all.json'), 'wb').write(scene_json)
+        open(join(scn_dir, 'all.json.gz'), 'wb').write(scene_json_gz)
         for mesh_file in scene['exported_meshes'].values():
             shutil.copy(mesh_file, scn_dir)
+            shutil.copy(mesh_file+'.gz', scn_dir)
