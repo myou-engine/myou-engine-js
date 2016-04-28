@@ -6,7 +6,7 @@ if process.browser
 
 MYOU_PARAMS =
     total_size: 26775095
-    # debug: true
+    debug: true
     debug_physics: true
     #if browser then ./data -- If electron ../data
     data_dir: if process.browser then "./data" else __dirname+"/./data"

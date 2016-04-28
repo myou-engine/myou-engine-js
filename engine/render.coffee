@@ -656,7 +656,8 @@ class RenderManager
 
 
         # Debug physics and vectors (TODO: move vector to debug properties?)
-        if scene.debug_physics
+        if scene.debug_physics and @context.MYOU_PARAMS.debug
+            mm4 = mat4.create()
             for ob in scene.children
                 dob = ob.phy_debug_mesh
                 if dob
@@ -788,7 +789,7 @@ class Debug
         cos=Math.cos
 
         # Generate and save generic shapes for debug_physics
-        box = new Mesh @context, scene.use_physics
+        box = new Mesh @context
         d=[1,1,1,
             1,-1,1,
             -1,-1,1,
@@ -800,7 +801,7 @@ class Debug
         box.load_from_lists(d, [0,1,1,2,2,3,3,0,4,5,5,6,6,7,7,4,
                     0,4,1,5,2,6,3,7])
 
-        cylinder = new Mesh @context, scene.use_physics
+        cylinder = new Mesh @context
         d=[]
         idx=[]
         a=(3.1416*2)/16
@@ -812,7 +813,7 @@ class Debug
                 idx=idx.concat [i*2,i*2+1,]
         cylinder.load_from_lists d, idx
 
-        sphere = new Mesh @context, scene.use_physics
+        sphere = new Mesh @context
         d = []
         idx = []
         for i in [0...16]
@@ -828,11 +829,11 @@ class Debug
 
         mat = new Material @context,'_debug', plain_fs, [{'type':5,'varname':'color'}], [], plain_vs
 
-        arrow = new Mesh @context, scene.use_physics
+        arrow = new Mesh @context
         d = [0,0,0,  0,0,1,  0,0.07,0.7,  0,-0.07,0.7,]
         arrow.load_from_lists d, [0,1,1,2,1,3]
 
-        bone = new Mesh @context, scene.use_physics
+        bone = new Mesh @context
         d = [0,0,0,
              -0.1, 0.1, -0.1,
               0.1, 0.1, -0.1,
@@ -865,7 +866,7 @@ class Debug
 
 
     debug_mesh_from_va_ia: (va, ia)->
-        mesh = new Mesh @context, scene.use_physics
+        mesh = new Mesh @context
         mesh.stride = 3*4
         mesh.offsets = [0, 0, va.length, ia.length]
         mesh.load_from_va_ia va, ia
