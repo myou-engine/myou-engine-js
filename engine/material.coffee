@@ -204,7 +204,7 @@ class Material
             for i in [0...num_shapes]
                 shape_key_code += """
                 n = shapenor"""+i+""" * 0.007874;
-                normal += n * Math.max(0.0, shapef["""+i+"""]);
+                normal += n * max(0.0, shapef["""+i+"""]);
                 """
             # TODO: interleave fors for efficency, adding an uniform with the sum?
             #       saving all uniforms in a single matrix?
@@ -263,7 +263,7 @@ class Material
             # if ext
             #     console.log  '\n' + ext.getTranslatedShaderSource(vertex_shader)).split('\n')
             gl.deleteShader vertex_shader
-            material_promises[@name]?.functions.reject(error_msg)
+            (material_promises[@name]?.functions.reject or console.error)(error_msg)
             return
 
         @fs_code = fs
@@ -279,7 +279,7 @@ class Material
             # if ext
             #     console.log  '\n' + ext.getTranslatedShaderSource(fragment_shader)).split('\n')
             gl.deleteShader fragment_shader
-            material_promises[@name]?.functions.reject(error_msg)
+            (material_promises[@name]?.functions.reject or console.error)(error_msg)
             return
 
 
@@ -298,7 +298,7 @@ class Material
             gl.deleteProgram prog
             gl.deleteShader vertex_shader
             gl.deleteShader fragment_shader
-            material_promises[@name]?.functions.reject(error_msg)
+            (material_promises[@name]?.functions.reject or console.error)(error_msg)
             return
 
         gl.useProgram prog
