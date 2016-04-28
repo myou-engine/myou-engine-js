@@ -291,7 +291,7 @@ load_object = (data, scene) ->
     ob.properties = data.properties or {}
     ob.actions = data.actions or []
     ob.physics_type = data.phy_type
-    if scene.use_physics
+    if context.use_physics
         ob.physical_radius = data.radius
         ob.anisotropic_friction = data.use_anisotropic_friction
         ob.friction_coefficients = data.friction_coefficients
