@@ -313,8 +313,7 @@ load_object = (data, scene) ->
         ob.max_fall_speed = data.max_fall_speed
         if scene.world
             ob.instance_physics()
-    if ob.static
-        ob._update_matrices()
+    ob._update_matrices()
 
     ob.dupli_group = data.dupli_group
 

@@ -701,14 +701,11 @@ class RenderManager
                     dob.position[0], dob.position[1], dob.position[2], 1]
                 @draw_mesh dob, ma
 
-            #TODO: Fix bone debug shapes
-            # dob = @debug.bone
-            # for ob in scene.armatures
-            #     for b in ob._bone_list
-            #         dob.scale[0] = b.blength
-            #         dob.scale[1] = b.blength
-            #         dob.scale[2] = b.blength
-            #         @draw_mesh dob, b.matrix
+            dob = @debug.bone
+            for ob in scene.armatures
+                for b in ob._bone_list
+                    mat4.scale(mm4, b.matrix, [b.blength,b.blength,b.blength])
+                    @draw_mesh dob, mm4
 
             gl.enable gl.DEPTH_TEST
 

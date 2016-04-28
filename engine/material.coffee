@@ -176,6 +176,36 @@ class Material
                 # holds mesh -> armature transformation and use that in the code above
                 # but add an optimization pass at export to apply mesh transformations
                 # where possible.
+            else if a.type == 86 # armature deform, 6 weights
+                num_bones = a.count
+                @num_bone_uniforms = num_bones
+                attribute_decl += "attribute vec4 weights;\n"
+                attribute_decl += "attribute vec4 weights2;\n"
+                attribute_decl += "attribute vec4 b_indices;\n"
+                attribute_decl += "attribute vec4 b_indices2;\n"
+                @attrib_locs["weights"] = -1
+                @attrib_locs["weights2"] = -1
+                @attrib_locs["b_indices"] = -1
+                @attrib_locs["b_indices2"] = -1
+                uniform_decl += "uniform mat4 bones["+@num_bone_uniforms+"];\n"
+                armature_deform_code = ("""
+                vec4 blendco = vec4(0);
+                vec3 blendnor = vec3(0);
+                mat4 m;
+                ivec4 inds = ivec4(b_indices);
+                for(int i=0; i<4; ++i){
+                    m = bones[inds[i]];
+                    blendco += m * co4 * weights[i];
+                    blendnor += mat3(m[0].xyz, m[1].xyz, m[2].xyz) * normal * weights[i];
+                }
+                inds = ivec4(b_indices2);
+                for(int i=0; i<2; ++i){
+                    m = bones[inds[i]];
+                    blendco += m * co4 * weights2[i];
+                    blendnor += mat3(m[0].xyz, m[1].xyz, m[2].xyz) * normal * weights2[i];
+                }
+                co4 = blendco; normal = blendnor;
+                """)
             else if a.type == 77 # particle hair
                 if var_strand == ""
                     var_strand = "strand"

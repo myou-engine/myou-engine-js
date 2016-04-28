@@ -183,6 +183,12 @@ def ob_to_json(ob, scn=None, check_cache=False):
             return d
 
         data = convert(ob, sort=True)
+        
+        # copying conditions in mesh.py
+        # because of linked meshes
+        modifiers_were_applied = ob.get('modifiers_were_applied',
+            not ob.data.shape_keys and \
+            not ob.particle_systems)
 
         if 'alternative_meshes' in ob:
             orig_mesh = ob.data
@@ -195,7 +201,7 @@ def ob_to_json(ob, scn=None, check_cache=False):
                 ob.data['uv_short'] = orig_mesh.get('uv_short')
                 data['alternative_meshes'].append(convert(ob, sort=False))
             ob.data = bpy.data.meshes[ob['alternative_meshes'][ob['active_mesh_index']]]
-        elif ob['modifiers_were_applied']: # No LoD for alt meshes, meshes with keys, etc
+        elif modifiers_were_applied: # No LoD for alt meshes, meshes with keys, etc
             if cache_was_invalidated or 'lod_level_data' not in ob.data:
                 # Contains:  (TODO: sorted?)
                 #    [
@@ -385,7 +391,7 @@ def ob_to_json(ob, scn=None, check_cache=False):
         pose = {}
         for bone in ob.pose.bones:
             pose[bone.name] = {
-                'position': list(bone.location),
+                'position': list(bone.location) if not ob.data.bones[bone.name].use_connect else [0,0,0],
                 'rotation': bone.rotation_quaternion[1:]+bone.rotation_quaternion[0:1],
                 'scale': list(bone.scale),
             }
@@ -439,6 +445,10 @@ def ob_to_json(ob, scn=None, check_cache=False):
     game_properties = {}
     for k,v in ob.game.properties.items():
         game_properties[k] = v.value
+    
+    parent = ob.parent.name if ob.parent else None
+    if parent and ob.parent.proxy:
+        parent = ob.parent.proxy.name
 
     obj = {
         'scene': scn.name,
@@ -452,8 +462,8 @@ def ob_to_json(ob, scn=None, check_cache=False):
         'offset_scale': list(hidden_matrix.to_scale()),
         'dimensions': list(ob.dimensions),
         'color' : list(ob.color),
-        'parent': ob.parent.name if ob.parent else None,
-        'parent_bone': ob.parent_bone,
+        'parent': parent,
+        'parent_bone': ob.parent_bone if parent and ob.parent.type == 'ARMATURE' and ob.parent_type == 'BONE' else '',
         'actions': ob['actions'] if 'actions' in ob else [],
         'dupli_group': ob.dupli_group.name
             if ob.dupli_type=='GROUP' and ob.dupli_group else None,
@@ -493,6 +503,7 @@ def ob_to_json(ob, scn=None, check_cache=False):
 
 
 def action_to_json(action):
+    # ob is any object which uses this, to check for use_connect
     # TYPE, NAME, CHANNEL, list of keys for each element
     # 'object', '', 'location', [[x keys], [y keys], [z keys]]
     # 'pose', bone_name, 'location', [...]
@@ -524,6 +535,11 @@ def action_to_json(action):
             type, name, _ = path[0].split('"')
             if type.startswith('pose.'):
                 type = 'pose'
+                bone = ob.data.bones[name]
+                if chan == 'position' and bone.parent and bone.use_connect:
+                    # don't animate this channel
+                    print("Skipping channel "+fcurve.data_path)
+                    continue
             elif type.startswith('key_blocks'):
                 type = 'shape'
             else:
@@ -599,14 +615,16 @@ def whole_scene_to_json(scn, extra_data=[]):
     tex_sizes.clear()
     ret = [scene_data_to_json(scn)]
     materials = []
-    actions = []
+    actions = {} # {'action': any object that uses it}
     for ob in scn.objects:
         if ob.parent or not ob_in_layers(scn, ob):
             continue
         ret += ob_to_json_recursive(ob, scn, True)
         materials += ob_materials_recursive(ob)
+    for ob in scn.objects
         if 'actions' in ob:
-            actions += ob['actions']
+            for action in ob['actions']:
+                actions[action] = ob
     for group in bpy.data.groups:
         ret.append(dumps(
                 {'type': 'GROUP',
@@ -617,7 +635,8 @@ def whole_scene_to_json(scn, extra_data=[]):
                 }).encode())
     mat_json = [mat_to_json(mat, scn) for mat in set(materials)]
     ret += [dumps({"type":"SHADER_LIB","code": get_shader_lib()}).encode()] + mat_json\
-    +[action_to_json(action) for action in bpy.data.actions if not action.name.startswith('ConvData_Action') and action.name in actions]
+    +[action_to_json(action, actions[action.name])
+        for action in bpy.data.actions if not action.name.startswith('ConvData_Action') and action.name in actions]
     ret += [dumps(d).encode() for d in extra_data]
     retb = b'['+b','.join(ret)+b']'
     retb_gz = gzip.compress(retb)

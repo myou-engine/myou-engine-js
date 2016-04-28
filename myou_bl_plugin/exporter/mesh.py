@@ -74,6 +74,7 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
     # Extract particle system as mesh
     ps = None
     ps_data = None
+    armature = None
     for m in ob.modifiers:
         if (m.type=='PARTICLE_SYSTEM' and
             m.particle_system.settings.type == 'HAIR' and
@@ -92,18 +93,18 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
             scn.objects.active = ob
             break
 
-    apply_armature = ob.get('apply_armature')
+    if m.type == 'ARMATURE' and m.object and m.object == ob.parent:
+        armature = m.object
 
     has_armature_deform = \
-        ob.parent and ob.parent.type=='ARMATURE' and not ob.parent_bone \
-            and not apply_armature
+        armature and not ob.parent_type == 'BONE' \
+            and not ob.get('apply_armature')
 
     is_bone_child = \
-        ob.parent and ob.parent.type=='ARMATURE' and ob.parent_bone
+        ob.parent and ob.parent.type=='ARMATURE' and ob.parent_type == 'BONE' and ob.parent_bone
 
     apply_modifiers = ob['modifiers_were_applied'] = \
         not ob.data.shape_keys and \
-        not is_bone_child and\
         not ob.particle_systems
 
     if apply_modifiers:
@@ -233,7 +234,7 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
     face_uv_winding = []
     verts = ob.data.vertices
     polys = ob.data.polygons
-    for uv_layer in ob.data.uv_layers:
+    for uv_layer in ob.data.uv_layers[-1]:
         uv_data = uv_layer.data
         tangents = []
         for i in range(len(uv_layer.data)//3):
@@ -440,6 +441,8 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
     weights = []
     bindices = []
     if has_armature_deform:
+        if ob.get('weights6'):
+            numgroups = 6
         b_names = ob.parent.data['ordered_deform_names']
         # dict for getting deform bone index from name
         b_ids_from_name = dict(zip(b_names, range(len(b_names))))
@@ -450,13 +453,13 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
             groups = [g for g in v.groups if group_is_in_armature[g.group]]
             # Sort by weight to get the 4 most influential bones
             groups.sort(key=lambda x: x.weight, reverse=True)
-            groups = groups[:4]
+            groups = groups[:numgroups]
             tot = sum(g.weight for g in groups) or 1
             for g in groups:
                 w.append(g.weight/tot) # normalization
                 bi.append(b_ids_from_name[ob.vertex_groups[g.group].name])
-            weights.append((w+[0,0,0,0])[:4])
-            bindices.append((bi+[0,0,0,0])[:4])
+            weights.append((w+[0,0,0,0,0,0])[:numgroups])
+            bindices.append((bi+[0,0,0,0,0,0])[:numgroups])
     #t=perf_t(t)
 
     # Hair particles
@@ -556,8 +559,12 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
     vformat += 'BBBx' * len(colors)
     compress_mask += '0' * len(colors)
     if weights:
-        vformat += 'ffffBBBB'
-        compress_mask += '00000'
+        if numgroups == 6:
+            vformat += 'ffffffBBBBBBxx'
+            compress_mask += '00000000'
+        else:
+            vformat += 'ffffBBBB'
+            compress_mask += '00000'
         # Note: the first weight can be removed,
         # calculated implicitely and the rest
         # compressed.
@@ -569,7 +576,7 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
 
     # If we need to store all numbers as floats for debugging
     # or for compatibility (IE11?)
-    all_floats = False
+    all_floats = bool(ob.get('all_f'))
     if all_floats:
         vformat = 'f' * stride
         compress_mask = '1' * stride
@@ -662,17 +669,35 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
             j += 3
 
         if weights:
-            w = weights[i]
-            bi = bindices[i]
-            vertices[j] = w[0]
-            vertices[j+1] = w[1]
-            vertices[j+2] = w[2]
-            vertices[j+3] = w[3]
-            vertices[j+4] = bi[0]
-            vertices[j+5] = bi[1]
-            vertices[j+6] = bi[2]
-            vertices[j+7] = bi[3]
-            j += 8
+            if numgroups == 6:
+                w = weights[i]
+                bi = bindices[i]
+                vertices[j] = w[0]
+                vertices[j+1] = w[1]
+                vertices[j+2] = w[2]
+                vertices[j+3] = w[3]
+                vertices[j+4] = w[4]
+                vertices[j+5] = w[5]
+                vertices[j+6] = bi[0]
+                vertices[j+7] = bi[1]
+                vertices[j+8] = bi[2]
+                vertices[j+9] = bi[3]
+                vertices[j+10] = bi[4]
+                vertices[j+11] = bi[5]
+                j += 12
+            else:
+                w = weights[i]
+                bi = bindices[i]
+                vertices[j] = w[0]
+                vertices[j+1] = w[1]
+                vertices[j+2] = w[2]
+                vertices[j+3] = w[3]
+                vertices[j+4] = bi[0]
+                vertices[j+5] = bi[1]
+                vertices[j+6] = bi[2]
+                vertices[j+7] = bi[3]
+                j += 8
+
     #t=perf_t(t)
 
     indices = sum(sep_indices, [])
@@ -731,7 +756,10 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
     for color_name in color_names:
         elements.append(['color', color_name])
     if weights:
-        elements.append(['weights'])
+        if numgroups == 6:
+            elements.append(['weights6'])
+        else:
+            elements.append(['weights'])
 
     ob.hide = hide
     ob.data = orig_data
