@@ -10,12 +10,10 @@ MYOU_PARAMS =
     debug_physics: true
     #if browser then ./data -- If electron ../data
     data_dir: if process.browser then "./data" else __dirname+"/./data"
-    inital_scene: "Scene"
-    load_physics_engine: true
     no_mipmaps: false
     timeout: 5000 #time to pause the main_loop
     # background_alpha: 0
-    # gl_options: {alpha:true, antialias:true}
+    gl_options: {alpha:false, antialias:true}
     no_s3tc: navigator.userAgent.toString().indexOf('Edge/12.')!=-1
 
 canvas = document.getElementById('myou')
@@ -31,34 +29,6 @@ canvas.onmousemove = myou.main_loop.reset_timeout
 canvas.ontouchstart = myou.main_loop.reset_timeout
 canvas.ontouchmove = myou.main_loop.reset_timeout
 canvas.onkeydown = myou.main_loop.reset_timeout
-
-window.create_second_instance = ->
-    #creating 2nd instance and canvas2
-    canvas2 = document.getElementById('myou2')
-    canvas2.style.display = 'inline-block'
-    window.myou_instance2 = new Myou canvas2, MYOU_PARAMS
-
-    #2nd instance logic
-    new TouchDemo myou_instance2, 'Scene'
-
-    canvas2.onmousemove = myou_instance2.main_loop.reset_timeout
-    canvas2.ontouchstart = myou_instance2.main_loop.reset_timeout
-    canvas2.ontouchmove = myou_instance2.main_loop.reset_timeout
-    canvas2.onkeydown = myou_instance2.main_loop.reset_timeout
-
-    #Resizing canvas1
-    canvas.style.height = '50vh'
-    myou_instance.update_canvas_rect()
-    myou_instance.render_manager.resize myou_instance.canvas.rect.width, myou_instance.canvas.rect.height
-
-
-window.enable_gl_ray = ->
-    gl_ray_canvas = document.getElementById('glray')
-    gl_ray_canvas.style.display = 'inline-block'
-    gl_ray_canvas.style.transform = 'scale(-1)'
-
-    window.glray = new myou_engine.GLRay myou_instance, document.getElementById('glray')
-    glray.init myou_instance.scenes['Scene'], myou_instance.objects['Camera']
 
 # Debug info:
 db = document.getElementById 'debug'
@@ -76,7 +46,7 @@ class TouchDemo extends LogicBlock
         @collisions = []
         @touches = []
         @events = @context.events
-        @touch_gestures_over = new sensors.TouchGesturesOver @context, @scene.name
+        @touch_gestures_over = new sensors.TouchGesturesOver @scene
         @touching_objects = []
 
     tick: (frame_duration)->
@@ -89,7 +59,7 @@ class TouchDemo extends LogicBlock
 
         # Releasing objects when the gesture ends
         # and appliying last linear_velocity (actuator)
-        for ob_name of @tgo
+        for ob_name of @old_tgo
             # if the gesture ends in the object.
             if not tgo[ob_name]?
                 ob = @scene.objects[ob_name]
@@ -97,7 +67,7 @@ class TouchDemo extends LogicBlock
                 ob.touching = false
                 ob.instance_physics()
                 phy.set_linear_velocity(ob.body,vec3.scale(ob.linear_velocity,ob.linear_velocity,1000))
-        @tgo = tgo
+        @old_tgo = tgo
 
         # Appliying gestures over objects (actuator)
         @events.mouse.cancel_wheel = false
@@ -124,16 +94,13 @@ class TouchDemo extends LogicBlock
                     #rot_from = Y axis transformed with cam.rotation
                     rot_from = [0,1,0]
                     vec3.transformQuat rot_from, rot_from,cam.rotation
-
                     #rot_to = Y axis rotated angle in the Z axis
                     rot_to = [0,1,0]
                     vec3.rotateZ rot_to, rot_to, [0,0,0], -angle
                     # Transform rot_to with the cam_rotation
                     vec3.transformQuat rot_to, rot_to, cam.rotation
-
                     # q = quat from rot_from to rot_to
                     q = quat.rotationTo [], rot_from, rot_to
-
                     # Applying q to the object rotation.
                     quat.mul ob.rotation, q, ob.rotation
 
@@ -142,7 +109,6 @@ class TouchDemo extends LogicBlock
                 if rel_pos
                     #adding relative position to the object.
                     vec3.add ob.position, ob.position, rel_pos
-
                     #saving linear velocity to be applied in the gesture ending.
                     ob.linear_velocity = ob.linear_velocity or [0,0,0]
                     vec3.copy ob.linear_velocity, gestures.linear_velocity
@@ -171,6 +137,7 @@ class TouchDemo extends LogicBlock
 
             # Collecting multitouch info to be printed in the debug info area.
             @touches = @events.get_touch_events()
+            @touches.push @events.mouse
             @collisions = []
 
             for touch in @touches
@@ -193,5 +160,8 @@ class TouchDemo extends LogicBlock
                     msgs.push c[3].id + ':' + c[0].owner.name
         debug msgs
 
-
-window.td = new TouchDemo myou, 'Scene'
+myou.load_scene('Scene', true).then (scene)->
+    scene.load_visible_objects().then ->
+        scene.enable_render()
+        scene.enable_physics()
+        new TouchDemo scene

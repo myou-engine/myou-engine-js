@@ -4,17 +4,6 @@ _phy_obs_ptrs = {} # used in body creation/destruction, colliding_bodies and ray
 _tmp_Vector3 = _tmp_Vector3b = _tmp_Vector3c = _tmp_Quaternion = _tmp_Transform = \
 _tmp_ClosestRayResultCallback = destroy = null
 
-physical_scenes = []
-
-init_scene_physics = (scene) ->
-    context = scene.context
-    scene.world = new PhysicsWorld
-    g = scene.gravity
-    set_gravity scene.world, g[0],g[1],g[2]
-    for ob in scene.children
-        ob.instance_physics()
-    return
-
 physics_engine_init = ->
     # avoiding allocations
     _tmp_Vector3 = new Ammo.btVector3 0, 0, 0
@@ -24,9 +13,6 @@ physics_engine_init = ->
     _tmp_Transform = new Ammo.btTransform
     _tmp_ClosestRayResultCallback = new Ammo.ClosestRayResultCallback new Ammo.btVector3(0, 0, 0), new Ammo.btVector3(0, 0, 0)
     destroy = Ammo.destroy or (o)-> o.destroy()
-
-    for scene in physical_scenes
-        init_scene_physics scene
 
 xyz = (v)->
     p = v.ptr>>2
@@ -394,7 +380,6 @@ get_mass = (body)->
 set_mass = (body)->
     console.log 'set_mass not implemented'
 
-
 apply_force = (body, force, rel_pos)->
     #f = 1/frame_factor
     # TODO: Find out why is this necesary and how to fix it
@@ -574,7 +559,7 @@ ray_intersect_body_bool_not_target = (scene, rayfrom, rayto, mask, target_body)-
 
 
 module.exports = {
-    physical_scenes, physics_engine_init, init_scene_physics,
+    physics_engine_init,
     PhysicsWorld, destroy_world, set_gravity,
     step_world, update_ob_physics, set_phy_scale,
     ob_to_phy, phy_to_ob, get_last_char_phy,
