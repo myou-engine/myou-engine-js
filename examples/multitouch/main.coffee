@@ -100,7 +100,9 @@ class TouchDemo extends LogicBlock
         @tgo = tgo
 
         # Appliying gestures over objects (actuator)
-        if @events.touch.touches
+        @events.mouse.cancel_wheel = false
+        if @events.touch.touches or @events.mouse.any_button
+            @events.mouse.cancel_wheel = true
             for ob_name, gestures of tgo
                 ob = @scene.objects[ob_name]
 
@@ -147,7 +149,7 @@ class TouchDemo extends LogicBlock
 
 
                 #Pinch gesture moves the object back/forth
-                rel_pinch = gestures.rel_pinch * gesture_offset
+                rel_pinch = (gestures.rel_pinch) * gesture_offset
                 if rel_pinch
                     # v = Position relative to camera
                     v = vec3.sub ob.position, ob.position, cam.position
