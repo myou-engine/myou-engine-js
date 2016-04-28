@@ -77,8 +77,8 @@ class MainLoop
         if @_frame_callbacks.length != 0
             @_frame_callbacks.shift()()
 
-        for scene in @context.loaded_scenes
-
+        for scene_name in @context.loaded_scenes
+            scene = @context.scenes[scene_name]
             for callback in scene.pre_draw_callbacks
                 callback scene, frame_duration
 
@@ -88,7 +88,7 @@ class MainLoop
             for p in scene.active_particle_systems
                 p._eval()
 
-            if scene.rigid_bodies.length or scene.kinematic_characters.length
+            if scene.physics_enabled and (scene.rigid_bodies.length or scene.kinematic_characters.length)
                 get_last_char_phy scene.kinematic_characters
                 step_world scene.world, frame_duration * 0.001
                 phy_to_ob scene.rigid_bodies
@@ -99,7 +99,8 @@ class MainLoop
         #     s.evaluate_sprite frame_duration
         @context.render_manager.draw_all()
 
-        for scene in @context.loaded_scenes
+        for scene_name in @context.loaded_scenes
+            scene = @context.scenes[scene_name]
             for f in scene.post_draw_callbacks
                 f scene, frame_duration
 

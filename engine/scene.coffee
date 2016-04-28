@@ -12,7 +12,6 @@ class Scene
         @context = context
         @name = name
         context.scenes[name] = @
-        @loaded = false
         @enabled = false
         @children = []
         @auto_updated_children = []
@@ -29,6 +28,7 @@ class Scene
         @materials = {}
         @unloaded_material_data = {}
         @active_camera = null
+        @physics_enabled = false
         @world = null
         @gravity = vec3.create()
         @tree_name = null
@@ -41,11 +41,7 @@ class Scene
         @post_draw_callbacks = []
         @_pending_tasks = 0
         @active_particle_systems = []
-        functions = null
-        @load_promise = new Promise (resolve, reject) =>
-            functions = {resolve, reject}
-        @load_promise.functions = functions
-
+        @use_physics = true
 
     set_gravity: (gravity)->
         g = @gravity
@@ -175,7 +171,7 @@ class Scene
         @_children_are_ordered = true
 
     load: ->
-        load_scene @name, null, 'VISIBLE', @context
+        load_scene @name, null, @use_physics, @context
 
     unload: ->
         for ob in @children[...]
@@ -207,18 +203,35 @@ class Scene
 
     load_visible_objects: ->
         visible_objects = for ob in @children when ob.visible and not ob.data then ob
-        return fetch_objects(visible_objects)
+        return fetch_objects(visible_objects).then(=>@)
 
     load_all_objects: ->
         # TODO: This may not work the second time is not called.
         # Meshes should always return data's promises
-        return fetch_objects(@children)
+        return fetch_objects(@children).then(=>@)
 
     load_objects: (list)->
         if not list
             throw "No list supplied. Did you mean 'load_all_objects()'?"
         # TODO: This may not work the second time is not called.
         # Meshes should always return data's promises
-        return fetch_objects(list)
+        return fetch_objects(list).then(=>@)
+
+    enable_render: ->
+        @enabled = true
+        return @
+
+    disable_render: ->
+        @enabled = false
+        return @
+
+    enable_physics: ->
+        @physics_enabled = true
+        return @
+
+    disable_physics: ->
+        @physics_enabled = false
+        return @
+
 
 module.exports = {Scene}

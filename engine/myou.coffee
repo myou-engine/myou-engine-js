@@ -23,6 +23,7 @@ class Myou
         @all_anim_objects = []
         @root = root
         @MYOU_PARAMS = MYOU_PARAMS
+        @use_physics = not MYOU_PARAMS.disable_physics
         @hash = Math.random()
         @initial_scene_loaded = false
         # The root element needs to be positioned, so the mouse events (layerX/Y) are
@@ -53,21 +54,14 @@ class Myou
         window.addEventListener 'resize', resize_canvas
 
         size = MYOU_PARAMS.total_size or 0
-        initial_scene = MYOU_PARAMS.initial_scene or ''
         data_dir = MYOU_PARAMS.data_dir or './data'
         MYOU_PARAMS.data_dir = data_dir
-        
-        if initial_scene
-            loader.load_scene(initial_scene, MYOU_PARAMS.initial_scene_filter, 'VISIBLE', @).then (scene) =>
-                scene.enabled = true
 
         @events = new Events root
         @main_loop.run()
-    
-    load_scene: (name) ->
-        return loader.load_scene(name, null, '', @).then (scene) =>
-            scene.enabled = true
-            return scene
+
+    load_scene: (name, load_physics=true) ->
+        return loader.load_scene(name, null, load_physics, @)
 
     update_canvas_rect:  =>
         @canvas_rect = @canvas.getClientRects()[0]

@@ -159,9 +159,13 @@ so we need to chain them in order to ensure they're available
 myou.load_scene('Scene').then (scene) ->
     console.log 'Scene has loaded and all objects exist, but meshes are not loaded'
     scene.load_visible_objects().then ->
-        console.log 'All visible objects have loaded'
-    # You can instead load all objects
+        console.log 'All visible objects have loaded, now we enable the scene'
+        scene.enable_render()
+        scene.enable_physics()
+
+    # Instead of load_visible_objects(), you can load all objects
     scene.load_all_objects().then ->
+
     # or you can load specific objects ->
     scene.load_objects([scene.objects.Cube]).then ->
 ```

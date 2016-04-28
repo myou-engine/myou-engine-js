@@ -48,9 +48,9 @@ class TouchGesturesOver extends LogicBlock
                     touch_events:{}
                     init_ratio: null
                     # Gesture sensors:
-                    pinch_gesture: new PinchGesture @context, @scene.name
-                    rot_gesture: new RotationGesture @context, @scene.name
-                    drag_gesture: new DragGesture @context, @scene.name
+                    pinch_gesture: new PinchGesture @scene
+                    rot_gesture: new RotationGesture @scene
+                    drag_gesture: new DragGesture @scene
                     ob: ob
                     }
 

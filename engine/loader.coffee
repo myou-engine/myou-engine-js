@@ -9,50 +9,49 @@
 {Curve} = require './curve.coffee'
 {GameObject} = require './gameobject.coffee'
 {Armature} = require './armature.coffee'
-{@physics_engine_url, physics_engine_init, physical_scenes} = require './physics.coffee'
+{physics_engine_url, physics_engine_init, PhysicsWorld, set_gravity} = require './physics.coffee'
 {fetch_objects} = require './fetch_assets.coffee'
 
 
 
-load_scene = (name, filter, fetch_assets='VISIBLE', context) ->
+load_scene = (name, filter, use_physics, context) ->
     scene = context.scenes[name]
     if scene
         return Promise.resolve(scene)
     scene = new Scene context, name
     #TODO: check if scene has some physic object
-    physical_scenes.push(scene)
     url = "#{context.MYOU_PARAMS.data_dir}/scenes/#{name}/all.json"
     return fetch(url).then((data)->data.json()).then (data)=>
         if filter
             data = filter(data)
-        
+
+        use_physics = use_physics and context.use_physics
+        if use_physics
+            scene.use_physics = true
         # Parse all the actual scene data
         for d in data
-            load_datablock d, context
+            load_datablock scene, d, context
 
-        promises = []
-        if context.MYOU_PARAMS.load_physics_engine
-            promises.push load_physics_engine()
+        context.loaded_scenes.push name
 
-        if fetch_assets == 'VISIBLE'
-            promises.push scene.load_visible_objects()
-        else if fetch_assets == 'ALL'
-            promises.push scene.load_all_objects()
-
-        Promise.all(promises).then ->
-            scene.loaded = true
-            scene.context.loaded_scenes.push(scene)
-            scene.load_promise.functions.resolve()
+        if use_physics
+            load_physics_engine().then ->
+                scene.world = new PhysicsWorld
+                g = scene.gravity
+                set_gravity scene.world, g[0],g[1],g[2]
+                for ob in scene.children
+                    ob.instance_physics()
+                console.log 'physics world generated'
+                return Promise.resolve(scene)
+        else
             return Promise.resolve(scene)
 
 
-load_datablock = (data, context) ->
+
+load_datablock = (scene, data, context) ->
     # TODO: This has grown a little too much
     # We should use a map with functions instead of so many ifs...
-    if data.scene
-        scene = context.scenes[data.scene]
     if data.type=='SCENE'
-        scene = context.scenes[data.name]
         scene.set_gravity data.gravity
         scene.background_color = data.background_color
         scene.debug_physics = context.MYOU_PARAMS.debug_physics or data.debug_physics
@@ -292,7 +291,7 @@ load_object = (data, scene) ->
     ob.properties = data.properties or {}
     ob.actions = data.actions or []
     ob.physics_type = data.phy_type
-    if context.MYOU_PARAMS.load_physics_engine
+    if scene.use_physics
         ob.physical_radius = data.radius
         ob.anisotropic_friction = data.use_anisotropic_friction
         ob.friction_coefficients = data.friction_coefficients
@@ -348,10 +347,10 @@ load_physics_engine = ()->
 
     # Callback for when the engine has loaded
     # (will be executed immediately if the promise was already resolved)
-    window.global_ammo_promise = global_ammo_promise.then =>
+    return window.global_ammo_promise.then ->
+        console.log 'Physics engine loaded'
         physics_engine_init()
         return
-    return window.global_ammo_promise
 
 module.exports = {
     load_scene

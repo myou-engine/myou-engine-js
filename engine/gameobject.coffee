@@ -27,11 +27,8 @@ MIRROR_YZ = 64
 MIRROR_XYZ = 128
 
 class GameObject
-    constructor: (@context)->
-        @use_physics=false
+    constructor: (@context, use_physics)->
         @debug=false
-        if @context?
-            @use_physics = @context.MYOU_PARAMS.load_physics_engine
         @position = vec3.create()
         @rotation = quat.create()
         @radius = 0
@@ -64,7 +61,7 @@ class GameObject
         @body = null
         @shape = null
         @physics_type = 'NO_COLLISION'
-        if @use_physics
+        if @context.use_physics
             @physical_radius = 1
             @anisotropic_friction = false
             @friction_coefficients = vec3.set vec3.create(), 1, 1, 1

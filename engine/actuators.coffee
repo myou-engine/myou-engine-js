@@ -121,7 +121,7 @@ class SnapToCurve extends LogicBlock
         @antifilter = vec3.create()
         @pre_filtered = vec3.create()
         @v_one = [1,1,1]
-        @look_at = new LookAt @context, @scene.name
+        @look_at = new LookAt @scene
 
     eval: (ob, curve, pos_axes=[1,1,1], front='-Y', up='Z', position_factor=1, rotation_factor=1, frame_duration)->
         {antifilter, pre_filtered} = @

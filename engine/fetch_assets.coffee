@@ -141,6 +141,7 @@ fetch_mesh = (mesh_object, min_lod=1) ->
                     context.main_loop.add_frame_callback =>
                         mesh_object.load_from_arraybuffer data
                         if mesh_object.physics_type != 'NO_COLLISION' and mesh_object.scene.world
+                            #TODO: Remove without resolving the promise too early
                             context.main_loop.add_frame_callback =>
                                 mesh_object.instance_physics()
                                 resolve(mesh_object)
