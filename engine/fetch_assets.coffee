@@ -173,11 +173,7 @@ fetch_objects = (object_list) ->
                         if not promise
                             container = {}
                             promise = material_promises[mat_name] = new Promise (resolve, reject) ->
-                                container =
-                                    resolve: do (mat_name) -> ->
-                                        resolve()
-                                    reject: do (mat_name) -> ->
-                                        reject()
+                                do (mat_name) -> container = {resolve, reject}
                             promise.functions = container
                         promises.push promise
                     promises.push fetch_textures_of_material scene, mat_name
