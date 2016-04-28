@@ -75,6 +75,7 @@ def mat_to_json(mat, scn):
         .replace('gl_ModelViewMatrixInverse','mat4(1)')\
         .replace('gl_ModelViewMatrix','mat4(1)')\
         .replace('gl_ProjectionMatrixInverse','mat4(1)')\
+        .replace('gl_ProjectionMatrix[3][3]','0.0')\
         .replace('gl_ProjectionMatrix','mat4(1)')\
         .replace('gl_NormalMatrixInverse','mat3(1)')\
         .replace('gl_NormalMatrix','mat3(1)')\
@@ -192,6 +193,7 @@ def mat_to_json(mat, scn):
     num_shapes = 0
     num_bones = 0
     num_partsegments = 0
+    weights6 = False
     for ob in scn.objects:
         if ob.type == 'MESH':
             # TODO: manage materials attached to object
@@ -200,14 +202,16 @@ def mat_to_json(mat, scn):
                     num_shapes = max(num_shapes, len(ob.data.shape_keys.key_blocks) - 1)
                 if ob.particle_systems:
                     num_partsegments = 1  # TODO check correct p systems and segments
-                if ob.parent and ob.parent.type == 'ARMATURE' and not ob.parent_bone and not ob.get('apply_armature'):
+                if ob.parent and ob.parent.type == 'ARMATURE' and ob.parent_type != 'BONE' and not ob.get('apply_armature'):
                     num_bones = max(num_bones, len([b for b in ob.parent.data.bones if b.use_deform]))
+                    if ob.get('weights6'): weights6 = True
     if num_shapes:
         shader['attributes'].append({'type':99, 'count': num_shapes, 'varname': ''})
     if num_partsegments:
         shader['attributes'].append({'type':77, 'count': num_partsegments, 'varname': ''})
     if num_bones:
-        shader['attributes'].append({'type':88, 'count': num_bones, 'varname': ''})
+        t = 86 if weights6 else 88
+        shader['attributes'].append({'type':t, 'count': num_bones, 'varname': ''})
     
     last_lamp = ""
     for u in shader['uniforms']:

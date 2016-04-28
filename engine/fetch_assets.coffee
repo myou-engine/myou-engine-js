@@ -105,18 +105,18 @@ fetch_mesh = (mesh_object, min_lod=1) ->
                 fetch_mesh alt
 
         # Load LoD
-        any_loaded = false
+        lod_promises = []
         lod_objects = mesh_object.lod_objects
         last_lod = lod_objects[lod_objects.length-1]
         if last_lod
             min_lod = Math.max min_lod, last_lod.factor
         for lod_ob in lod_objects
             if lod_ob.factor <= min_lod
-                any_loaded = fetch_mesh(lod_ob.object) or any_loaded
+                lod_promises.push fetch_mesh(lod_ob.object)
 
         # Not load self if only lower LoDs were loaded, or it was already loaded.
-        if min_lod < 1 or mesh_object.data
-            return any_loaded
+        if (min_lod < 1 and lod_promises.length != 0) or mesh_object.data
+            return Promise.all lod_promises
 
         fetch_promise = if file_name of fetch_promises
             fetch_promises[file_name]

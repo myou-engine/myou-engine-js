@@ -49,6 +49,7 @@ class GameObject
         @world_matrix = mat4.create()
         @rotation_matrix = mat3.create() # not used elsewhere
         @normal_matrix = mat3.create()
+        @_m3 = mat3.create()
         @custom_uniform_values = []
         @properties = {}
         @animations = {}
@@ -379,11 +380,12 @@ class GameObject
 
         if @parent
             bi = @parent_bone_index
-            # if bi >= 0
-            #     bone = @parent._bone_list[bi]
-            #     # mat3.mul rm, @parent.rotation_matrix, rm
-            #     # mat3.mul nm, @parent.normal_matrix, nm
-            #     mat4.mul @world_matrix, bone.ol_matrix, @world_matrix
+            if bi >= 0
+                bone = @parent._bone_list[bi]
+                m3 = mat3.fromMat4(@_m3, bone.ol_matrix)
+                mat3.mul(rm, m3, rm)
+                mat3.mul(nm, m3, nm)
+                mat4.mul(@world_matrix, bone.ol_matrix, @world_matrix)
 
             ## TODO: make this more efficient, etc
             mat3.mul rm, @parent.rotation_matrix, rm

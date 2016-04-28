@@ -246,6 +246,7 @@ class Mesh extends GameObject
         o_weights = 0
         o_b_indices = 0
         stride = 3 * 4  # 4 floats * 4 bytes per float
+        weights6 = false
         for e in @elements
             etype = e[0]
             if etype == 'normal'
@@ -282,8 +283,19 @@ class Mesh extends GameObject
                 stride += 4 * 4
                 o_b_indices = stride
                 stride += if @all_f then  4*4  else 4  # 4 byte indices
+            else if etype == 'weights6' and not @parent_bone
+                weights6 = true
+                @armature = @parent
+                o_weights = stride
+                stride += 4 * 4
+                o_weights2 = stride
+                stride += 2 * 4
+                o_b_indices = stride
+                stride += if @all_f then  4*4  else 4  # 4 byte indices
+                o_b_indices2 = stride
+                stride += if @all_f then  4*4  else 4  # 4 byte indices
             else
-                print "Unknown element" + etype
+                console.log "Unknown element" + etype
         # Special case of no named UV layer in texture
         # (The first layer can be used named and unnamed at the same time)
         # TODO: active layer instead of first?
@@ -342,9 +354,12 @@ class Mesh extends GameObject
                     attribs.push [mat.attrib_locs[varname], 4, GL_UNSIGNED_BYTE, color[1]]
 
             if @armature
-                attribs.push [mat.attrib_locs['weights'], 4, GL_FLOAT, o_weights]
-                attribs.push([mat.attrib_locs['b_indices'], 4,
-                                gl_float_unsigned_byte, o_b_indices])
+                attribs.push([mat.attrib_locs['weights'], 4, GL_FLOAT, o_weights])
+                if weights6
+                    attribs.push([mat.attrib_locs['weights2'], 2, GL_FLOAT, o_weights2])
+                attribs.push([mat.attrib_locs['b_indices'], 4, gl_float_unsigned_byte, o_b_indices])
+                if weights6
+                    attribs.push([mat.attrib_locs['b_indices2'], 2, gl_float_unsigned_byte, o_b_indices2])
 
             bitmask = 0
             for attr in reversed attribs
