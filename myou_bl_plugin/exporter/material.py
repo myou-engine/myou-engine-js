@@ -103,14 +103,14 @@ def mat_to_json(mat, scn):
     
     # Stuff for debugging shaders
     # TODO write only when they have changed
-    if os.name != 'nt':
-        SHM = "/run/shm/"
-        open(SHM + mat.name+'.v','w').write(shader['vertex'])
-        open(SHM + mat.name+'.f','w').write(shader['fragment'])
-        try:
-            shader['fragment']=open(SHM + mat.name+'.f2').read()
-        except:
-            pass
+    # if os.name != 'nt':
+    #     SHM = "/run/shm/"
+    #     open(SHM + mat.name+'.v','w').write(shader['vertex'])
+    #     open(SHM + mat.name+'.f','w').write(shader['fragment'])
+    #     try:
+    #         shader['fragment']=open(SHM + mat.name+'.f2').read()
+    #     except:
+    #         pass
     #from pprint import pprint
     #pprint(shader['attributes'])
     # ---------------------------
