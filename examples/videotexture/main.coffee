@@ -42,7 +42,7 @@ debug = (msgs)->
 
 class VideoTextureDemo extends LogicBlock
      init: ->
-         @context.video_textures.Firefox.play()
+         @context.video_textures.video.play()
 
      tick: (frame_duration)->
          cube = @context.objects.cube
