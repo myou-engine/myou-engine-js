@@ -67,14 +67,14 @@ fetch_video_texture = (name, path, filter, wrap='R', size=0, context) ->
         # that it can be played without interruption
         video.addEventListener 'canplaythrough', ->
             configure_texture(tex, video, filter, wrap, context).then (tex)->
+
                 # update_texture will be called on each game engine frame (in main_loop)
                 # but it only will update the texture if video.currentTime has been changed.
                 update_texture = ->
                     if video.currentTime != video.lastTime
                         video.lastTime = video.currentTime
-                        gl.bindTexture gl.TEXTURE_2D, tex.tex
-                        gl.pixelStorei gl.UNPACK_FLIP_Y_WEBGL, true
-                        gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video
+                        #TODO: Optimize
+                        configure_texture(tex, video, filter, wrap, context)
 
                 video.update_texture = update_texture
                 resolve tex
