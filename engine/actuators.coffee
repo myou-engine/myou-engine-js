@@ -36,7 +36,7 @@ class RotateAround extends LogicBlock
 
 #rotate object to look at target.
 class LookAt extends LogicBlock
-    init:->
+    init: ->
         #TODO: Optimization: tup, side and front as mat3 subarrays
         @tup = [0,0,1]
         @side = vec3.create()
