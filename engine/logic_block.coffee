@@ -4,10 +4,10 @@ class LogicBlock
     constructor: (@scene)->
         scene = @scene
         @context = context = scene.context
-        @init scene
+        @init()
         if @tick?
             scene.logic_ticks.push(@tick.bind @)
 
-    init: (@scene)->
+    init: ()->
 
 module.exports = {LogicBlock}

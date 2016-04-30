@@ -41,7 +41,7 @@ debug = (msgs)->
 
 
 # class ArmatureDemo extends LogicBlock
-#     init: (@scene)=>
+#     init: ->
 #
 #     tick: (frame_duration)->
 

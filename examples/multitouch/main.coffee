@@ -41,7 +41,7 @@ debug = (msgs)->
 
 phy = MyouEngine.physics
 class TouchDemo extends LogicBlock
-    init: (@scene)=>
+    init: ->
         #finger collisions with the scene objects
         @collisions = []
         @touches = []

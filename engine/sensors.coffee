@@ -7,7 +7,7 @@ phy = require './physics.coffee'
 # input: int_mask (binary collision mask as integer)
 # output:  {objet_name: {pos, rel_pos, pinch, rel_pinch, rot, rel_rot}, ...}
 class TouchGesturesOver extends LogicBlock
-    init: (@scene)->
+    init: ->
         #hits by object_name
         @hits = {}
         #hits by touch_event.id
@@ -129,12 +129,13 @@ class TouchGesturesOver extends LogicBlock
 # Input: pointer_event (It accepts 2D/3D pointer_event as input).
 # output: {pos, rel_pos}
 class DragGesture extends LogicBlock
-    init: (@scene)->
+    init: ->
         @pos = []
         @last_pos = null
         @rel_pos = [0,0,0]
         @id = null
         @linear_velocity = [0,0,0]
+
     eval: (pointer_events)->
         frame_duration = @context.main_loop.frame_duration
         new_id = ''
