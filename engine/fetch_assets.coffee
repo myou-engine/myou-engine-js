@@ -40,7 +40,6 @@ configure_texture = (tex, img, filter, wrap, context) ->
 
 # Creates a video texture and returns a promise for when the source is loaded
 fetch_video_texture = (name, path, filter, wrap='R', size=0, context) ->
-    console.log 'Video texture', name + '.ogv'
     tex = context.render_manager.textures[name] or null
     if tex?
         return tex.promise
@@ -150,7 +149,9 @@ fetch_textures_of_material = (scene, mat_name) ->
         if data
             Promise.all(for u in data.uniforms \
                 when u.type == 13 and scene # 2D image
-                    if u.filepath.endswith '.ogv'
+                    extension = u.filepath.toLowerCase()[u.filepath.length - 3...]
+                    #TODO: detect texture format better
+                    if extension in ['mp4', 'ogv']
                         fetch_video_texture u.image, u.filepath, u.filter, u.wrap, u.size, scene.context
                     else
                         fetch_texture u.image, u.filepath, u.filter, u.wrap, u.size, scene.context
