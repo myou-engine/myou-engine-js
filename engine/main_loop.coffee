@@ -93,6 +93,9 @@ class MainLoop
                 step_world scene.world, frame_duration * 0.001
                 phy_to_ob scene.rigid_bodies
 
+        for name, video_texture of @context.video_textures
+            #TODO: Optimize updating only the video_textures whose video is being played
+            video_texture.update_texture?()
 
         evaluate_all_animations @context, frame_duration
         # for s in @context.active_sprites

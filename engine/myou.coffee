@@ -14,6 +14,7 @@ class Myou
         @actions = {}
         @groups = {}
         @log = []
+        @video_textures = {}
         @debug_loader = null
         @canvas = null
         @root = null
