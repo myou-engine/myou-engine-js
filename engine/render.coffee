@@ -364,6 +364,7 @@ class RenderManager
                     #gl.activeTexture(gl.TEXTURE0 + i)
                     #active_texture = i
                     #gl.bindTexture(gl.TEXTURE_2D, filter_fb.texture)
+                    
                 #else
                 if bound_textures[i] != tex
                     if active_texture != i
