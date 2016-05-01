@@ -3,6 +3,7 @@
 {Events} = require './events.coffee'
 {MainLoop} = require './main_loop.coffee'
 loader = require './loader.coffee'
+vr = require './webvr.coffee'
 
 class Myou
 
@@ -27,6 +28,10 @@ class Myou
         @use_physics = not MYOU_PARAMS.disable_physics
         @hash = Math.random()
         @initial_scene_loaded = false
+        
+        # VR
+        @_HMD = @_vrscene = null
+        
         # The root element needs to be positioned, so the mouse events (layerX/Y) are
         # registered correctly, and the canvas is scaled inside
         if getComputedStyle(root).position == 'static'
@@ -49,14 +54,15 @@ class Myou
         @update_canvas_rect()
 
         resize_canvas = =>
-            render_manager.resize canvas.clientWidth, canvas.clientHeight
+            if not @_HMD?
+                render_manager.resize canvas.clientWidth, canvas.clientHeight
             @update_canvas_rect()
 
         window.addEventListener 'resize', resize_canvas
 
         size = MYOU_PARAMS.total_size or 0
         data_dir = MYOU_PARAMS.data_dir or './data'
-        MYOU_PARAMS.data_dir = data_dir
+        data_dir = MYOU_PARAMS.data_dir = data_dir.replace(/\/$/g, '')
 
         @events = new Events root
         @main_loop.run()
@@ -67,6 +73,9 @@ class Myou
     update_canvas_rect:  =>
         @canvas_rect = @canvas.getClientRects()[0]
         @canvas.rect = @canvas_rect
+    
+    initVR: vr.init
+
 
 create_canvas = (root)->
     canvas = document.createElement 'canvas'

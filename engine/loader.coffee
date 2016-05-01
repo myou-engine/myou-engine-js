@@ -56,8 +56,6 @@ load_datablock = (scene, data, context) ->
         scene.background_color = data.background_color
         scene.debug_physics = context.MYOU_PARAMS.debug_physics or data.debug_physics
         scene.active_camera_name = data.active_camera
-        scene.stereo = data.stereo
-        scene.stereo_eye_separation = data.stereo_eye_separation
         scene.tree_name = data.tree_name
 
     else if data.type=='MATERIAL'
@@ -220,8 +218,6 @@ load_object = (data, scene) ->
                 scene.active_camera = ob
                 if context.render_manager.viewports.length == 0
                     v = new Viewport context.render_manager, ob
-                if scene.stereo
-                    stereo_manager.enable v
         ob.near_plane = data.clip_start
         ob.far_plane = data.clip_end
         if not context.render_manager.vrstate

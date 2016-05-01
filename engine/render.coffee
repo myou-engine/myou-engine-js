@@ -51,6 +51,7 @@ class RenderManager
         ba = @context.MYOU_PARAMS.background_alpha
         @background_alpha = if ba? then ba else 1
         @compiled_shaders_this_frame = 0
+        @use_frustum_culling = true
 
         # Temporary variables
         @_cam2world = mat4.create()
@@ -229,6 +230,15 @@ class RenderManager
         @render_tick += 1
         @triangles_drawn = 0
         @meshes_drawn = 0
+        {_HMD} = @context
+        if _HMD?
+            pose = _HMD.getPose()
+            vec3.copy @viewports[0].camera.position, pose.position
+            vec3.copy @viewports[1].camera.position, pose.position
+            quat.copy @viewports[0].camera.rotation, pose.orientation
+            quat.copy @viewports[1].camera.rotation, pose.orientation
+            
+        
         for viewport in @viewports
             #if viewport.post_processing_enabled:
                 #if not @common_filter_fb:  # TODO: may have a race condition?
@@ -247,7 +257,10 @@ class RenderManager
             #else
             if viewport.camera.scene.enabled
                 @draw_viewport viewport, viewport.rect_pix, viewport.dest_buffer, [0, 1]
-
+        
+        if pose?
+            _HMD.submitFrame pose
+        
         #@gl.flush()
         @debug.vectors.clear() # TODO: have them per scene?
         @compiled_shaders_this_frame = 0
@@ -267,7 +280,8 @@ class RenderManager
         vec3.sub pos, pos, cam.position
         r = mesh.radius
         distance_to_camera = vec3.dot pos, @camera_z
-        if ((distance_to_camera+r) *
+        
+        if @use_frustum_culling and ((distance_to_camera+r) *
             (vec3.dot(pos, @_cull_top)+r) *
             (vec3.dot(pos, @_cull_left)+r) *
             (vec3.dot(pos, @_cull_right)+r) *
