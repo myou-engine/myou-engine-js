@@ -234,7 +234,7 @@ fetch_objects = (object_list) ->
                 # Check if material was already loaded; if it was, we'll assume
                 # it was rendered at this point, even though it may not
                 if not mat
-                    if scene.enabled
+                    if scene.enabled and scene.context.main_loop.enabled
                         # TODO: compile material even though is not
                         # going to be used
                         promise = material_promises[mat_name]
