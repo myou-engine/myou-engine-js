@@ -28,7 +28,8 @@ myou.load_scene('Scene', true).then (scene)->
     scene.load_visible_objects().then ->
         scene.enable_render()
         scene.enable_physics()
-        myou.initVR(scene)
+        myou.initVR(scene).catch (msg) ->
+            alert "Error when initializing VR:\n"+msg
         v = vec3.create()
         q = quat.create()
         scene.pre_draw_callbacks.push (scene, frame_duration) ->

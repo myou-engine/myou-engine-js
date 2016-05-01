@@ -5,6 +5,9 @@ exports.init = (scene) ->
     ctx = scene.context
     new Promise (resolve, reject) ->
         if not navigator.getVRDisplays
+            if navigator.getVRDevices
+                return reject "This browser only supports an old version of WebVR.
+                Use a browser with WebVR 1.0 support"
             return reject "This browser doesn't support WebVR or is not enabled."
         navigator.getVRDisplays().then (displays) ->
             HMD = null
