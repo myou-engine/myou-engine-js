@@ -405,7 +405,7 @@ class GameObject
 
 
     # TODO: make property
-    get_world_position:  ->
+    get_world_position: (out) ->
         p = @parent
         pos = vec3.copy @_world_position, @position
         while p
@@ -416,15 +416,15 @@ class GameObject
         return pos
 
     # TODO: make property
-    get_world_rotation:  ->
+    get_world_rotation: (out)  ->
         p = @parent
-        rot = quat.clone @rotation
+        rot = quat.copy(out or quat.create(), @rotation)
         while p
             quat.mul rot, p.rotation, rot
             p = p.parent
         return rot
 
-    get_world_pos_rot:  ->
+    get_world_pos_rot: ->
         p = @parent
         pos = vec3.clone @position
         rot = quat.clone @rotation

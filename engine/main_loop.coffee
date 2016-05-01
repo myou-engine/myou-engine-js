@@ -63,7 +63,11 @@ class MainLoop
             @timeout(@timeout_time)
 
     tick: ->
-        @req_tick = requestAnimationFrame @_bound_tick
+        {_HMD} = @context
+        if _HMD?
+            @req_tick = _HMD.requestAnimationFrame @_bound_tick
+        else
+            @req_tick = requestAnimationFrame @_bound_tick
         time = performance.now()
         @frame_duration = frame_duration = Math.min(time - @last_time, MAX_FRAME_DURATION)
         @last_time = time
