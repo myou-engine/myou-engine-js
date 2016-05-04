@@ -439,6 +439,7 @@ class GameObject
 
     clone: (scene=this.scene) ->
         n = Object.create @
+        n.children = @children[...]
         n.position = vec3.clone @position
         n.rotation = vec4.clone @rotation
         n.scale = vec3.clone @scale

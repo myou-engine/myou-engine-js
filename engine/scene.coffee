@@ -127,46 +127,37 @@ class Scene
             vec3.transformQuat pos, pos, p_rot
             quat.mul rot, p_rot, rot
         child.parent = parent
+        parent.children.push child
         if @children.indexOf(parent) > @children.indexOf(child)
             # When this is set to false, reorder_children() is called
             # in render_manager.draw_viewport
             @_children_are_ordered = false
 
-    clear_parent: (child, keep_transform=true, reorder=true)->
+    clear_parent: (child, keep_transform=true)->
         parent = child.parent
         if parent
             if keep_transform
-                # assuming get_world_* always give a clone
                 vec3.copy child.position, child.get_world_position()
                 quat.copy child.rotation, child.get_world_rotation()
-            s = parent.first_child
-            if s == child
-                parent.first_child = child.next_sibling
-            else
-                ns = s.next_sibling
-                while ns != child
-                    s = ns
-                    ns = s.next_sibling
-                s.next_sibling = child.next_sibling
-            child.parent = child.next_sibling = null
+            parent.children.remove child
+        child.parent = null
 
     reorder_children: ->
         '''Makes sure all scene children are in order for correct matrix calculations'''
         # TODO: Only the objects marked as unordered need to be resolved here!
         #       (make a new list and append to children)
         children = @children
-
+        
         reorder = (ob,index)->
-            children[index] = ob
+            children[index++] = ob
             for c in ob.children
-                reorder c,index
+                reorder c, index
 
         index = 0
         objects = @objects
         for name, ob of objects
             if not ob.parent
-                reorder ob,index
-                index += 1
+                reorder ob, index
 
         @_children_are_ordered = true
 
