@@ -295,48 +295,16 @@ class GameObject
 
     _update_matrices:  ->
         rm = @rotation_matrix
-
-        if @rotation_order == 'Q'
-            x = @rotation[0]
-            y = @rotation[1]
-            z = @rotation[2]
-            w = @rotation[3]
-
-            rm[0] = w*w + x*x - y*y - z*z
-            rm[1] = 2 * (x * y + z * w)
-            rm[2] = 2 * (x * z - y * w)
-            rm[3] = 2 * (x * y - z * w)
-            rm[4] = w*w - x*x + y*y - z*z
-            rm[5] = 2 * (z * y + x * w)
-            rm[6] = 2 * (x * z + y * w)
-            rm[7] = 2 * (y * z - x * w)
-            rm[8] = w*w - x*x - y*y + z*z
-
-        else
-            for axisn in [0...3]
-                axis = @rotation_order[axisn]
-                mat3.identity rm
-                a = @rotation[{'X':0,'Y':1,'Z':2}[axis]]# * 0.017453 # PI/180
-
-                cosa = Math.cos a
-                sina = Math.sin a
-                if axis=='X'
-                    rm[4]=cosa
-                    rm[5]=sina
-                    rm[7]=-sina
-                    rm[8]=cosa
-                else if axis=='Y'
-                    rm[0]=cosa
-                    rm[2]=-sina
-                    rm[6]=sina
-                    rm[8]=cosa
-                else if axis=='Z'
-                    rm[0]=cosa
-                    rm[1]=sina
-                    rm[3]=-sina
-                    rm[4]=cosa
-
-                mat3.multiply m,rm,m
+        [x, y, z, w] = @rotation
+        rm[0] = w*w + x*x - y*y - z*z
+        rm[1] = 2 * (x * y + z * w)
+        rm[2] = 2 * (x * z - y * w)
+        rm[3] = 2 * (x * y - z * w)
+        rm[4] = w*w - x*x + y*y - z*z
+        rm[5] = 2 * (z * y + x * w)
+        rm[6] = 2 * (x * z + y * w)
+        rm[7] = 2 * (y * z - x * w)
+        rm[8] = w*w - x*x - y*y + z*z
 
         pos = @position
         ox = @offset_scale[0]
