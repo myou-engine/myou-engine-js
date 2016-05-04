@@ -1,7 +1,7 @@
 
 {vec3, vec4} = require 'gl-matrix'
 
-exports.init = (scene) ->
+exports.init = (scene, options={}) ->
     ctx = scene.context
     new Promise (resolve, reject) ->
         if not navigator.getVRDisplays
@@ -51,6 +51,9 @@ exports.init = (scene) ->
                 fieldOfView.leftDegrees
             vec3.copy viewport2.eye_shift, rightEye.offset
             viewport2.rect = [0.5, 0, 0.5, 1]
+            if options.ipd_mm
+                viewport1.eye_shift[0] = -options.ipd_mm * 0.001 * 0.5
+                viewport2.eye_shift[0] = options.ipd_mm * 0.001 * 0.5
             ctx.render_manager.resize(
                 Math.max(leftEye.renderWidth, rightEye.renderWidth) * 2
                 Math.max(leftEye.renderHeight, rightEye.renderHeight))
@@ -58,4 +61,6 @@ exports.init = (scene) ->
             ctx.render_manager.use_frustum_culling = false
             if myou._HMD.capabilities.canPresent
                 HMD.requestPresent [{source: ctx.canvas}]
+            resolve()
+        .catch reject
             
