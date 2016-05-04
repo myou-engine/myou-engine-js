@@ -19,8 +19,12 @@ configure_texture = (tex, img, filter, wrap, context) ->
             gl = context.render_manager.gl
             wrap_const = {'C': gl.CLAMP_TO_EDGE, 'R': gl.REPEAT, 'M': gl.MIRRORED_REPEAT}[wrap]
             gl.bindTexture gl.TEXTURE_2D, tex.tex
-            gl.pixelStorei gl.UNPACK_FLIP_Y_WEBGL, true
-            gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img
+            if img.type == 'rgb565'
+                {width, height, buffer} = img
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, width, height, 0, gl.RGB, gl.UNSIGNED_SHORT_5_6_5, new Uint16Array(buffer))
+            else
+                gl.pixelStorei gl.UNPACK_FLIP_Y_WEBGL, true
+                gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img
             gl_linear_nearest = if filter then gl.LINEAR else gl.NEAREST
             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl_linear_nearest
             # TODO: add mipmap options to the GUI
@@ -107,30 +111,37 @@ fetch_texture = (name, path, filter, wrap='R', size=0, context) ->
         tex.name = name
         tex.users = [] # materials
         tex.loaded = false
-
-
-        #Non crn or dds textures:
-        img = new Image
-        tex.reupload = ->
-            if tex.tex
-                gl.deleteTexture tex.tex
-            tex.tex = gl.createTexture()
-            img.onload()
-
-        img.onload = ->
-            configure_texture(tex, img, filter, wrap, context).then (tex)->
-                resolve tex
-
-
-        img.onerror = ->
-            reject "Image not found: " + path
-
-        if path[...5]=='data:'
-            img.src = path
-
+        base = context.MYOU_PARAMS.data_dir + '/textures/'
+        extension = path[-4...]
+        if extension == '.crn'
+            # TODO: crunch support
+            path += (extension = '.565')
+        if extension == '.565'
+            # Assuming they're all square and with alternative rgb565 for now
+            fetch(base+path).then((data)->data.arrayBuffer()).then (buffer) ->
+                width = height = Math.sqrt(buffer.byteLength>>1)
+                img = {type: 'rgb565', width, height, buffer}
+                configure_texture(tex, img, filter, wrap, context).then (tex)->
+                    resolve tex
+            .catch reject
         else
-            base = context.MYOU_PARAMS.data_dir + '/textures/'
-            img.src = base + path
+            # Non crn, rgb565 or dds textures:
+            img = new Image
+            tex.reupload = ->
+                if tex.tex
+                    gl.deleteTexture tex.tex
+                tex.tex = gl.createTexture()
+                img.onload()
+            img.onload = ->
+                configure_texture(tex, img, filter, wrap, context).then (tex)->
+                    resolve tex
+            img.onerror = ->
+                reject "Image not found: " + path
+            
+            if path[...5]=='data:'
+                img.src = path
+            else
+                img.src = base + path
 
         return
     context.render_manager.texture_promises.push promise

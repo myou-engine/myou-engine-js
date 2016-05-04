@@ -47,6 +47,8 @@ class MainLoop
         @sleep_timeout_id = setTimeout(@_bound_run, time)
 
     add_frame_callback: (callback)->
+        # Uncomment next line to debug trackebacks involving frame callbacks
+        # return callback()
         @_frame_callbacks.push callback
 
     timeout: (time)->
