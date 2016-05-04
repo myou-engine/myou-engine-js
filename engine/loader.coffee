@@ -41,7 +41,6 @@ load_scene = (name, filter, use_physics, context) ->
                 set_gravity scene.world, g[0],g[1],g[2]
                 for ob in scene.children
                     ob.instance_physics()
-                console.log 'physics world generated'
                 return Promise.resolve(scene)
         else
             return Promise.resolve(scene)
@@ -276,7 +275,7 @@ load_object = (data, scene) ->
 
     vec3.copy ob.position, data.pos
     r = data.rot
-    quat.copy ob.rotation, [r[1], r[2], r[3], r[0]]
+    quat.set ob.rotation, r[1], r[2], r[3], r[0]
     ob.rotation_order = data.rot_mode
     vec3.copy ob.scale, data.scale
     vec3.copy ob.offset_scale, data.offset_scale
@@ -343,7 +342,6 @@ load_physics_engine = ()->
     # Callback for when the engine has loaded
     # (will be executed immediately if the promise was already resolved)
     return window.global_ammo_promise.then ->
-        console.log 'Physics engine loaded'
         physics_engine_init()
         return
 

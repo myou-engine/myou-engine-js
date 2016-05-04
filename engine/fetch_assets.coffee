@@ -151,7 +151,6 @@ fetch_textures_of_material = (scene, mat_name) ->
                 when u.type == 13 and scene # 2D image
                     extension = u.filepath.toLowerCase().split('.')[-1..][0]
                     #TODO: detect texture format better
-                    console.log name, extension
                     if extension in ['mp4', 'ogv', 'webm', 'ogg']
                         fetch_video_texture u.image, u.filepath, u.filter, u.wrap, u.size, scene.context
                     else
