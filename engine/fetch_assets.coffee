@@ -203,7 +203,7 @@ fetch_mesh = (mesh_object, min_lod=1) ->
             uri = base + mesh_object.scene.name + '/' + file_name + '.mesh'
             fetch(uri).then((data)->data.arrayBuffer())
 
-        fetch_promises[name] = fetch_promise
+        fetch_promises[file_name] = fetch_promise
 
         fetch_promise.then (data) ->
             new Promise (resolve, reject) ->
