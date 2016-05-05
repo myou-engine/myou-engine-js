@@ -137,7 +137,7 @@ fetch_texture = (name, path, filter, wrap='R', size=0, context) ->
                     resolve tex
             img.onerror = ->
                 reject "Image not found: " + path
-            
+
             if path[...5]=='data:'
                 img.src = path
             else
@@ -202,6 +202,8 @@ fetch_mesh = (mesh_object, min_lod=1) ->
             base = context.MYOU_PARAMS.data_dir + '/scenes/'
             uri = base + mesh_object.scene.name + '/' + file_name + '.mesh'
             fetch(uri).then((data)->data.arrayBuffer())
+
+        fetch_promises[name] = fetch_promise
 
         fetch_promise.then (data) ->
             new Promise (resolve, reject) ->
