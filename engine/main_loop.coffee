@@ -3,6 +3,7 @@
 # Logic assumes a frame won't be longer than this
 # Below that point, things go slow motion
 MAX_FRAME_DURATION = 167  # 6 fps
+MAX_TASK_DURATION = MAX_FRAME_DURATION * 0.5
 
 class MainLoop
 
@@ -80,11 +81,11 @@ class MainLoop
         @last_frame_durations[@_fdi] = frame_duration
         @_fdi = (@_fdi+1) % @last_frame_durations.length
 
-
-        runs = @tasks_per_tick
-        while runs and (@_frame_callbacks.length != 0)
+        task_time = time
+        max_task_time = MAX_TASK_DURATION + time
+        while (task_time < max_task_time) and (@_frame_callbacks.length != 0)
             @_frame_callbacks.shift()()
-            runs -= 1
+            task_time = performance.now()
 
         for scene_name in @context.loaded_scenes
             scene = @context.scenes[scene_name]
