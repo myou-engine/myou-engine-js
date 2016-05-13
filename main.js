@@ -1,5 +1,8 @@
 if(process.browser){
     //Webpack code
+    if(!window.fetch){
+        require('whatwg-fetch');
+    }
     module.exports = require('./noco-loader!./pack.coffee');
 }else {
     //Electron code
