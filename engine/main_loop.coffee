@@ -12,6 +12,7 @@ class MainLoop
         @last_frame_durations = [16, 16, 16, 16, 16, 16, 16, 16, 16, 16]
         @_fdi = 0
         @timeout_time = context.MYOU_PARAMS.timeout
+        @tasks_per_tick = context.MYOU_PARAMS.tasks_per_tick || 1
         @reset_timeout()
         @last_time = 0
         @enabled = false
@@ -80,8 +81,10 @@ class MainLoop
         @_fdi = (@_fdi+1) % @last_frame_durations.length
 
 
-        if @_frame_callbacks.length != 0
+        runs = @tasks_per_tick
+        while runs and (@_frame_callbacks.length != 0)
             @_frame_callbacks.shift()()
+            runs -= 1
 
         for scene_name in @context.loaded_scenes
             scene = @context.scenes[scene_name]
