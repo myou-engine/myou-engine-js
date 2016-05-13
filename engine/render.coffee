@@ -233,10 +233,12 @@ class RenderManager
         {_HMD} = @context
         if _HMD?
             pose = _HMD.getPose()
-            vec3.copy @viewports[0].camera.position, pose.position
-            vec3.copy @viewports[1].camera.position, pose.position
-            quat.copy @viewports[0].camera.rotation, pose.orientation
-            quat.copy @viewports[1].camera.rotation, pose.orientation
+            if pose.position
+                vec3.copy @viewports[0].camera.position, pose.position
+                vec3.copy @viewports[1].camera.position, pose.position
+            if pose.orientation
+                quat.copy @viewports[0].camera.rotation, pose.orientation
+                quat.copy @viewports[1].camera.rotation, pose.orientation
             
         
         for viewport in @viewports
