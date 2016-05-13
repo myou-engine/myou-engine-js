@@ -32,7 +32,10 @@ class Camera extends GameObject
         clone.near_plane = @near_plane
         clone.far_plane = @far_plane
         clone.field_of_view = @field_of_view
-        vec4.copy clone.fov_4, @fov_4
+        clone.fov_4 = vec4.clone @fov_4
+        clone.projection_matrix = mat4.clone @projection_matrix
+        clone.projection_matrix_inv = mat4.clone @projection_matrix_inv
+        clone.world_to_screen_matrix = mat4.clone @world_to_screen_matrix
         clone.aspect_ratio = @aspect_ratio
         clone.cam_type = @cam_type
         clone.sensor_fit = @sensor_fit
