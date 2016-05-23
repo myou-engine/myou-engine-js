@@ -99,6 +99,22 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
     has_armature_deform = \
         armature and not ob.parent_type == 'BONE' \
             and not ob.get('apply_armature')
+    
+    if has_armature_deform:
+        # THIS MODIFIES THE ORIGINAL MESH!
+        parent = ob.parent
+        bpy.ops.object.select_all(action='DESELECT')
+        ob.select = 1
+        bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
+        ob.matrix_world = parent.matrix_world.inverted() * ob.matrix_world
+        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+        ob.matrix_parent_inverse = Matrix()
+        ob.parent = parent
+        scn.update()
+        ob.location = orig_pos = [0,0,0]
+        ob.rotation_euler = [0,0,0]
+        ob.rotation_quaternion = [1,0,0,0]
+        ob.scale = [1,1,1]
 
     is_bone_child = \
         ob.parent and ob.parent.type=='ARMATURE' and ob.parent_type == 'BONE' and ob.parent_bone
