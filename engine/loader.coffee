@@ -45,8 +45,6 @@ load_scene = (name, filter, use_physics, context) ->
         else
             return Promise.resolve(scene)
 
-
-
 load_datablock = (scene, data, context) ->
     # TODO: This has grown a little too much
     # We should use a map with functions instead of so many ifs...
@@ -56,6 +54,9 @@ load_datablock = (scene, data, context) ->
         scene.debug_physics = context.MYOU_PARAMS.debug_physics or data.debug_physics
         scene.active_camera_name = data.active_camera
         scene.tree_name = data.tree_name
+        scene.frame_start = data.frame_start if data.frame_start?
+        scene.frame_end = data.frame_end if data.frame_end?
+        scene.anim_fps = data.fps if data.fps?
 
     else if data.type=='MATERIAL'
         scene.unloaded_material_data[data.name] = data
