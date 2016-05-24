@@ -72,11 +72,7 @@ class Animation
     owner : null
 
 evaluate_all_animations = (context, frame_duration_ms)->
-    # TODO each animation will have a FPS setting
-    # until then, we assume 60 fps animations,
-    # and frame_factor adjusts the speed for that
-    frame_factor = frame_duration_ms * 0.06
-
+    
     for ob in context.all_anim_objects
 
         blended = []  # [orig_chan, final blend, total weight]
@@ -133,7 +129,7 @@ evaluate_all_animations = (context, frame_duration_ms)->
 
         for anim_id of ob.animations
             anim = ob.animations[anim_id]
-            s = anim.speed * frame_factor
+            s = anim.speed * frame_duration_ms * 0.001 * (anim.fps or ob.scene.anim_fps)
             anim.pos += s
             if s == 0
                 #ob.del_animation(anim_id)

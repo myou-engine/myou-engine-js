@@ -42,6 +42,9 @@ class Scene
         @_pending_tasks = 0
         @active_particle_systems = []
         @use_physics = true
+        @frame_start = 0
+        @frame_end = 0
+        @anim_fps = 30
 
     set_gravity: (gravity)->
         g = @gravity

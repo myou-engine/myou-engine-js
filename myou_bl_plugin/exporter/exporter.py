@@ -27,6 +27,9 @@ def scene_data_to_json(scn=None):
         'active_camera': scn.camera.name if scn.camera else 'Camera',
         'stereo': scn.game_settings.stereo == 'STEREO',
         'stereo_eye_separation': scn.game_settings.stereo_eye_separation,
+        'frame_start': scn.frame_start,
+        'frame_end': scn.frame_end,
+        'fps': scn.render.fps,
         }
     return dumps(scene_data).encode('utf8')
 
@@ -446,7 +449,11 @@ def ob_to_json(ob, scn=None, check_cache=False):
     parent = ob.parent.name if ob.parent else None
     if parent and ob.parent.proxy:
         parent = ob.parent.proxy.name
-
+    
+    implicit_actions = []
+    if ob.animation_data and ob.animation_data.action and ob.animation_data.action.fcurves:
+        implicit_actions = [ob.animation_data.action.name]
+    
     obj = {
         'scene': scn.name,
         'type': obtype,
@@ -461,7 +468,7 @@ def ob_to_json(ob, scn=None, check_cache=False):
         'color' : list(ob.color),
         'parent': parent,
         'parent_bone': ob.parent_bone if parent and ob.parent.type == 'ARMATURE' and ob.parent_type == 'BONE' else '',
-        'actions': ob['actions'] if 'actions' in ob else [],
+        'actions': ob['actions'] if 'actions' in ob else implicit_actions,
         'dupli_group': ob.dupli_group.name
             if ob.dupli_type=='GROUP' and ob.dupli_group else None,
 
@@ -499,7 +506,7 @@ def ob_to_json(ob, scn=None, check_cache=False):
 
 
 
-def action_to_json(action):
+def action_to_json(action, ob):
     # ob is any object which uses this, to check for use_connect
     # TYPE, NAME, CHANNEL, list of keys for each element
     # 'object', '', 'location', [[x keys], [y keys], [z keys]]
@@ -622,6 +629,8 @@ def whole_scene_to_json(scn, extra_data=[]):
         if 'actions' in ob:
             for action in ob['actions']:
                 actions[action] = ob
+        if ob.animation_data and ob.animation_data.action and ob.animation_data.action.fcurves:
+            actions[ob.animation_data.action.name] = ob
     for group in bpy.data.groups:
         ret.append(dumps(
                 {'type': 'GROUP',
