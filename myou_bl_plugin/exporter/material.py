@@ -17,7 +17,7 @@ def get_dynamic_constants(mat, scn, paths):
         #'node_tree.nodes["slicep"].outputs[0].default_value',
         #'node_tree.nodes["slicen"].outputs[0].default_value',
     #]
-    
+
     shader = gpu.export_shader(scn, mat)
     code = shader['fragment'].rsplit('}', 2)[1]
     sentinel = 0.406198 # random()
@@ -25,10 +25,10 @@ def get_dynamic_constants(mat, scn, paths):
         sentinel = random.random()
     # We're assuming "%f"%sentinel yelds exactly the same string
     # as the code generator (sprintf is used in both cases)
-    
+
     # Possible optimization: use a different sentinel per path
     # and call export_shader and update() only once
-    
+
     varnames = []
     for p in paths:
         try:
@@ -61,8 +61,6 @@ def get_dynamic_constants(mat, scn, paths):
     if any(varnames):
         scn.update()
     return varnames
-
-
 
 def mat_to_json(mat, scn):
     global SHADER_LIB
@@ -99,9 +97,9 @@ def mat_to_json(mat, scn):
             SHADER_LIB = shader_lib_filter.shader_lib_filter(SHADER_LIB)
         except:
             pass
-        
+
     shader['fragment'] = (parts[1]+'}').replace('sampler2DShadow','sampler2D')
-    
+
     # Stuff for debugging shaders
     # TODO write only when they have changed
     # if os.name != 'nt':
@@ -115,15 +113,15 @@ def mat_to_json(mat, scn):
     #from pprint import pprint
     #pprint(shader['attributes'])
     # ---------------------------
-    
+
     dyn_consts = loads(mat.get('dyn_consts') or '[]')
     replacements = loads(mat.get('replacements') or '[]')
-    
+
     # Checking hash of main() is not enough
     code_hash = hash(shader['fragment']) % 2147483648
     #print(shader['fragment'].split('{')[0])
     premain, main = shader['fragment'].split('{')
-    
+
     if mat.get('code_hash') != code_hash:
         # Dynamic uniforms (for animation, per object variables,
         #                   particle layers or other custom stuff)
@@ -151,7 +149,7 @@ def mat_to_json(mat, scn):
                 replacements.append((' '.join(v),
                     'const {t} {n} = {t}(0.0)'.format(t=v[1], n=v[2])))
         mat['replacements'] = dumps(replacements)
-    
+
     if any(dyn_consts):
         # Separate constants from the rest
         lines = premain.split('\n')
@@ -161,9 +159,9 @@ def mat_to_json(mat, scn):
         consts = dict([(c[2], c[3].split('(')[1][:-2]) for c in
                 [l.split(' ', 3) for l in lines]
                 if c[0]=='const'])
-        
+
         premain = '\n'.join(l for l in lines if not l.startswith('cons'))
-        
+
         # Convert them back to constants, except for dynamic ones
         lines = []
         TYPES = ['float', 'vec2', 'vec3', 'vec4', '','','','','mat3','','','','','','','mat4']
@@ -176,18 +174,18 @@ def mat_to_json(mat, scn):
                 types[dyn_consts.index(k)] = t
             else:
                 lines.append('const {0} {1} = {0}({2});'.format(t, k, v))
-        
+
         shader['fragment'] = '\n'.join(lines) + '\n' + premain + '{' + main
-        
+
         shader['uniforms'] += [
             {'type': -1, 'varname': c, 'gltype': types[i], 'index': i}
             for i,c in enumerate(dyn_consts)]
-        
+
     mat['code_hash'] = code_hash
-    
+
     for a,b in replacements:
         shader['fragment'] = shader['fragment'].replace(a, b)
-    
+
     # Find number of required shape attributes (excluding basis)
     # And number of bones
     num_shapes = 0
@@ -212,7 +210,7 @@ def mat_to_json(mat, scn):
     if num_bones:
         t = 86 if weights6 else 88
         shader['attributes'].append({'type':t, 'count': num_bones, 'varname': ''})
-    
+
     last_lamp = ""
     for u in shader['uniforms']:
         if 'lamp' in u:
@@ -237,7 +235,7 @@ def mat_to_json(mat, scn):
             fpath = bpy.path.abspath(u['image'].filepath)
             if os.path.exists(fpath):
                 u['size'] = os.path.getsize(fpath)
-            u['filepath'] = u['image'].name + '.' + u['image'].filepath.rsplit('.',1)[1]
+            u['filepath'] = u['image'].name + '.' + u['image']['exported_extension']
             u['image'] = u['image'].name
             tex_sizes[u['image']] = u['size']
         if 'texpixels' in u:
@@ -256,7 +254,7 @@ def mat_to_json(mat, scn):
                 def png_chunk(ty, data):
                     return struct.pack('>I',len(data)) + ty + data +\
                         struct.pack('>I',zlib.crc32(ty + data))
-                
+
                 u['filepath'] = 'data:image/png;base64,' + base64.b64encode(
                     b'\x89PNG\r\n\x1a\n'+png_chunk(b'IHDR',
                     struct.pack('>IIBBBBB', 256, 1, 8, 6, 0, 0, 0))+
@@ -264,7 +262,7 @@ def mat_to_json(mat, scn):
                     b'\x00'+u['texpixels'][:1024])) + png_chunk(b'IEND', b'')
                     #for some reason is 257px?
                 ).decode()
-                
+
                 u['image'] = hex(hash(u['filepath']))[-10:]
                 u['wrap'] = 'C' # clamp to edge
                 u['type'] = gpu.GPU_DYNAMIC_SAMPLER_2DIMAGE
@@ -277,7 +275,7 @@ def mat_to_json(mat, scn):
     shader['type'] = 'MATERIAL'
     shader['name'] = mat.name
     shader['scene'] = scn.name
-    
+
     ret = dumps(shader).encode('utf8')
     mat['hash'] = hash(ret) % 2147483648
     return ret

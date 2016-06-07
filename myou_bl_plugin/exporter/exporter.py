@@ -15,6 +15,107 @@ GE_PATH = os.path.realpath(__file__).rsplit(os.sep,2)[0]
 if os.name=='nt':
     TEMPDIR = os.environ['TEMP']+'\\' # This may not work, use plugin dir as fallback
 
+def search_scene_used_data(scene):
+
+    used_data = {
+        'objects': [],
+        'materials': [],
+        'textures': [],
+        'images': [],
+        'meshes': [],
+        'actions': [],
+        'action_users': {}
+        }
+
+    #recursive search methods for each data type:
+    def add_ob(ob, i=0):
+        if ob not in used_data['objects']:
+            print('    '*i+'Ob:', ob.name)
+            used_data['objects'].append(ob)
+            if ob.type == 'MESH':
+                add_mesh(ob.data, i+1)
+            if 'alternative_meshes' in ob:
+                for m in ob['alternative_meshes']:
+                    add_mesh(bpy.data.meshes[m], i+1)
+
+            if 'phy_mesh' in ob and ob['phy_mesh']['name'] in bpy.data.meshes:
+                add_mesh(bpy.data.meshes[ob['phy_mesh']['name']], i+1)
+
+            for s in ob.material_slots:
+                if hasattr(s,'material') and s.material:
+                    add_material(s.material, i+1)
+
+            if 'actions' in ob:
+                for action in ob['actions']:
+                    if action in bpy.data.actions:
+                        add_action(bpy.data.actions[action], i+1)
+                        action_users[action] = ob
+
+        for ob in ob.children:
+            add_ob(ob, i+1)
+
+    def add_action(action, i=0):
+        if not action in used_data['actions']:
+            print('    '*i+'Act:', action.name)
+            used_data['actions'].append(action)
+
+    def add_material(m,i=0):
+        if not m in used_data['materials']:
+            print('    '*i+'Mat:', m.name)
+            used_data['materials'].append(m)
+            for s in m.texture_slots:
+                if hasattr(s, 'texture') and s.texture:
+                    add_texture(s.texture,i+1)
+            if m.use_nodes and m.node_tree:
+                search_in_node_tree(m.node_tree, i-1)
+
+    #It assumes that there aren't ciclic dependencies on the node groups.
+    def search_in_node_tree(tree,i=0):
+        for n in tree.nodes:
+            if (n.bl_idname == 'ShaderNodeMaterial' or n.bl_idname == 'ShaderNodeExtendedMaterial') and n.material:
+                add_material(n.material,i+1)
+            elif n.bl_idname == 'ShaderNodeTexture' and n.texture:
+                add_texture(n.texture,i+1)
+            elif n.bl_idname == 'ShaderNodeGroup':
+                if n.node_tree:
+                    search_in_node_tree(n.node_tree,i+1)
+
+    def add_texture(t,i=0):
+        if not t in used_data['textures']:
+            print('    '*i+'Tex:', t.name)
+            used_data['textures'].append(t)
+            if t.image:
+                add_image(t.image,i+1)
+
+    def add_image(i,indent=0):
+        if not i in used_data['images']:
+            print('    '*indent+'Img:', i.name)
+            used_data['images'].append(i)
+
+    def add_mesh(m,i=0):
+        if not m in used_data['meshes']:
+            print('    '*i+'Mes:', m.name)
+            used_data['meshes'].append(m)
+
+    #Searching and storing stuff in use:
+    print('\nSearching used data in the scene: ' + scene.name + '\n')
+
+
+
+    for ob in scene.objects:
+        if not ob.parent:
+            add_ob(ob)
+
+    print("\nObjects:", len(used_data['objects']), "Meshes:", \
+        len(used_data['meshes']), "Materials:", len(used_data['materials']), \
+        "Textures:", len(used_data['textures']), "Images:", len(used_data['images']), \
+        "Actions:", len(used_data['actions']))
+
+    print ('\n')
+
+    return used_data
+
+
 def scene_data_to_json(scn=None):
     scn = scn or bpy.context.scene
     world = scn.world or bpy.data.scenes['Scene'].world
@@ -499,8 +600,6 @@ def ob_to_json(ob, scn=None, check_cache=False):
             'max_fall_speed': ob.game.fall_speed
         })
     obj.update(data)
-    #if 'extra_data' in obj:
-        #obj.update(loads(obj['extra_data']))
     s = dumps(obj).encode('utf8')
     return s
 
@@ -539,11 +638,19 @@ def action_to_json(action, ob):
             type, name, _ = path[0].split('"')
             if type.startswith('pose.'):
                 type = 'pose'
+
+                if not hasattr(ob.data, 'bones'):
+                    # TODO: Should this happen???
+                    # don't animate this channel
+                    print("Skipping channel "+fcurve.data_path + " because the bone " + name + " doesn't exists in the object " + ob.name)
+                    continue
+
                 bone = ob.data.bones[name]
                 if chan == 'position' and bone.parent and bone.use_connect:
                     # don't animate this channel
-                    print("Skipping channel "+fcurve.data_path)
+                    print("Skipping channel " + fcurve.data_path)
                     continue
+
             elif type.startswith('key_blocks'):
                 type = 'shape'
             else:
@@ -580,17 +687,6 @@ def ob_in_layers(scn, ob):
     return any(a and b for a,b in zip(scn.layers, ob.layers))
 
 
-def ob_materials_recursive(ob):
-    r = []
-    if ob.type == 'MESH':
-        for m in ob.material_slots:
-            if m.material:
-                r.append(m.material)
-    for c in ob.children:
-        r += ob_materials_recursive(c)
-    return r
-
-
 def ob_to_json_recursive(ob, scn=None, check_cache=False):
     d = [ob_to_json(ob, scn, check_cache)]
     for c in ob.children:
@@ -599,7 +695,7 @@ def ob_to_json_recursive(ob, scn=None, check_cache=False):
     return d
 
 
-def whole_scene_to_json(scn, extra_data=[]):
+def whole_scene_to_json(scn, used_data):
     previous_scn = None
     if scn != bpy.context.screen.scene:
         previous_scn = bpy.context.screen.scene
@@ -618,19 +714,12 @@ def whole_scene_to_json(scn, extra_data=[]):
     scn['game_tmp_path'] = get_scene_tmp_path(scn) # TODO: have a changed_scene function
     tex_sizes.clear()
     ret = [scene_data_to_json(scn)]
-    materials = []
-    actions = {} # {'action': any object that uses it}
-    for ob in scn.objects:
-        if ob.parent or not ob_in_layers(scn, ob):
+
+    for ob in used_data['objects']:
+        if ob.parent:
             continue
         ret += ob_to_json_recursive(ob, scn, True)
-        materials += ob_materials_recursive(ob)
-    for ob in scn.objects:
-        if 'actions' in ob:
-            for action in ob['actions']:
-                actions[action] = ob
-        if ob.animation_data and ob.animation_data.action and ob.animation_data.action.fcurves:
-            actions[ob.animation_data.action.name] = ob
+
     for group in bpy.data.groups:
         ret.append(dumps(
                 {'type': 'GROUP',
@@ -639,11 +728,11 @@ def whole_scene_to_json(scn, extra_data=[]):
                 'offset': list(group.dupli_offset),
                 'objects': [o.name for o in group.objects],
                 }).encode())
-    mat_json = [mat_to_json(mat, scn) for mat in set(materials)]
-    ret += [dumps({"type":"SHADER_LIB","code": get_shader_lib()}).encode()] + mat_json\
-    +[action_to_json(action, actions[action.name])
-        for action in bpy.data.actions if not action.name.startswith('ConvData_Action') and action.name in actions]
-    ret += [dumps(d).encode() for d in extra_data]
+
+    mat_json = [mat_to_json(mat, scn) for mat in set(used_data['materials'])]
+    act_json = [action_to_json(action, action_users[action.name]) for action in used_data['actions']]
+
+    ret += [dumps({"type":"SHADER_LIB","code": get_shader_lib()}).encode()] + mat_json + act_json
     retb = b'['+b','.join(ret)+b']'
     retb_gz = gzip.compress(retb)
     total_textures = get_total_size_of_textures()
@@ -664,8 +753,6 @@ def whole_scene_to_json(scn, extra_data=[]):
         bpy.context.screen.scene = previous_scn
     return [retb, retb_gz]
 
-
-
 def get_scene_tmp_path(scn):
     dir = (TEMPDIR + 'scenes' + os.sep + scn.name + os.sep)
     for p in (TEMPDIR + 'scenes', dir):
@@ -675,47 +762,86 @@ def get_scene_tmp_path(scn):
             pass
     return dir
 
-def save_tmp_scene(scn):
-    dir = get_scene_tmp_path(scn)
-    d, d_gz = whole_scene_to_json(
-        scn,
-        #extra_data=[{
-        #'type':
-            #'JSCODE',
-        #'code':
-            #'external_literals={};\n' + compiler.get_all_literals_code()
-        #}]+
-        #[{'type': 'JSFILE', 'uri':'logic/'+name+'.js'} for name in compiler.all_tree_names()] +
-        #[{'type': 'JSFILE', 'uri':'logic/'+t.name[:-3]+'.js'} for t in bpy.data.texts if 'NodeConf' in t]
-        )
+def save_image(image, path, format, pack=False):
+    image.filepath_raw = path
+    image.file_format = format
+    image.save()
 
-    open(dir + 'all.json', 'wb').write(d)
-    open(dir + 'all.json.gz', 'wb').write(d_gz)
-
-# TODO: Export all scenes:
-#       switch with bpy.context.screen.scene
-#       save to /tmp/$random/scene_name.json
-
-def save_textures(dest_path):
+def save_images(dest_path, used_data):
     if not os.path.exists(dest_path):
         os.mkdir(dest_path)
-    for image in bpy.data.images:
+
+    non_alpha_images = get_non_alpha_images(used_data)
+
+    for image in used_data['images']:
         real_path = bpy.path.abspath(image.filepath)
-        #print(image.name, image.filepath)
-        if os.path.exists(real_path) and real_path[-1] != '/':
-            ext = image.filepath.rsplit('.',1)[1]
-            exported_path = os.path.join(dest_path, image.name + '.' + ext)
-            shutil.copy(real_path, exported_path)
-            # crunch additional levels
-            if ext == 'crn':
-                real_path += '.'
-                exported_path += '.'
-                i = 0
-                while os.path.exists(real_path + str(i)):
-                    shutil.copy(real_path + str(i), exported_path + str(i))
-                    i += 1
+        path_exists = os.path.exists(real_path)
+        print('IMAGE:', image.name, 'path:', image.filepath)
+        if not image.users:
+            continue
+        if image.source in ['FILE' or 'MOVIE'] and not image.packed_file:
+            if path_exists:
+                if real_path[-1] != '/': #Avoiding directories
+                    ext = image.filepath.rsplit('.',1)[1].lower()
 
+                    if image in non_alpha_images and ext not in ['jpg', 'jpeg']:
+                        print('Saving in jpg format')
+                        file_format = 'JPEG'
+                        image['exported_extension'] = ext = 'jpg'
+                        save_image(image, dest_path + '/' + image.name + '.' + ext, file_format)
+                        # restauring original path
+                        image.filepath_raw = real_path
 
+                    elif image not in non_alpha_images and ext != 'png':
+                        print('Saving in png format')
+                        file_format = 'PNG'
+                        image['exported_extension'] = ext = 'png'
+                        save_image(image, dest_path + '/' + image.name + '.' + ext, file_format)
+                        # restauring original path
+                        image.filepath_raw = real_path
+
+                    else:
+                        print('Copiying original image')
+                        exported_path = os.path.join(dest_path, image.name + '.' + ext)
+                        image['exported_extension'] = ext
+                        shutil.copy(real_path, exported_path)
+                else:
+                    print ('WARNING: ' + image.name + ' image path is not a file. path: ' + real_path)
+            else:
+                print ('WARNING: image not found: ' + image.name + ' path: ' + real_path)
+
+        elif image.source == 'GENERATED' or (image.source in ['FILE' or 'MOVIE'] and image.packed_file): # image generated or packed in blender
+            if image in non_alpha_images:
+                print('Saving generated or packed image in jpg format')
+                file_format = 'JPEG'
+                ext = 'jpg'
+
+            else:
+                print('Saving generated or packed in png format')
+                file_format = 'PNG'
+                ext = 'png'
+
+            save_image(image, dest_path + '/' + image.name + '.' + ext, file_format)
+            image['exported_extension'] = ext
+            # Packing generated texture in the blender file
+            image.pack()
+            image.filepath_raw = ''
+
+            print("Saving image generated in blender")
+
+def get_non_alpha_images(used_data):
+    non_alpha_images = []
+    for material in used_data['materials']:
+        if not material.users:
+            continue
+        for texture_slot in material.texture_slots:
+            if not texture_slot: continue
+            texture = texture_slot.texture
+            image = getattr(texture, 'image', 'false')
+            if not image: continue
+            if texture_slot.alpha_factor and texture.use_alpha:
+                non_alpha_images.append(image)
+    return non_alpha_images
 
 def get_total_size_of_textures():
     t = 0
@@ -756,15 +882,18 @@ def export_myou(path, scn):
     os.mkdir(full_dir)
     os.mkdir(join(full_dir, 'scenes'))
     os.mkdir(join(full_dir, 'textures'))
-    save_textures(join(full_dir, 'textures'))
-
     for scene in bpy.data.scenes:
+        used_data = search_scene_used_data(scene)
+        save_images(join(full_dir, 'textures'), used_data)
+
         scn_dir = join(full_dir, 'scenes', scene.name)
         try: os.mkdir(scn_dir)
         except FileExistsError: pass
-        scene_json, scene_json_gz = whole_scene_to_json(scene,
-            #extra_data = [{'type':'JSFILE', 'uri': 'logic.js'}]
-        )
+
+
+
+        scene_json, scene_json_gz = whole_scene_to_json(scene, used_data)
+
         open(join(scn_dir, 'all.json'), 'wb').write(scene_json)
         open(join(scn_dir, 'all.json.gz'), 'wb').write(scene_json_gz)
         for mesh_file in scene['exported_meshes'].values():
