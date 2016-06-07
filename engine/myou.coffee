@@ -74,7 +74,9 @@ class Myou
         @canvas_rect = @canvas.getClientRects()[0]
         @canvas.rect = @canvas_rect
     
+    hasVR: vr.has_HMD
     initVR: vr.init
+    exitVR: vr.exit
 
 
 create_canvas = (root)->

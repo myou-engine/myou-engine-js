@@ -1,8 +1,8 @@
 
 {vec3, vec4} = require 'gl-matrix'
 
-exports.init = (scene, options={}) ->
-    ctx = scene.context
+exports.has_HMD = ->
+    ctx = this
     new Promise (resolve, reject) ->
         if not navigator.getVRDisplays
             if navigator.getVRDevices
@@ -12,7 +12,27 @@ exports.init = (scene, options={}) ->
         navigator.getVRDisplays().then (displays) ->
             HMD = null
             for display in displays
-                if display instanceof VRDisplay
+                if display instanceof VRDisplay and display.capabilities.canPresent
+                    HMD = display
+                    break
+            if not HMD?
+                return reject "No HMDs detected. Conect an HMD, turn it on and try again."
+            resolve true
+
+exports.init = (scene, options={}) ->
+    ctx = scene.context
+    if ctx._HMD
+        return Promise.resolve()
+    new Promise (resolve, reject) ->
+        if not navigator.getVRDisplays
+            if navigator.getVRDevices
+                return reject "This browser only supports an old version of WebVR.
+                Use a browser with WebVR 1.0 support"
+            return reject "This browser doesn't support WebVR or is not enabled."
+        navigator.getVRDisplays().then (displays) ->
+            HMD = null
+            for display in displays
+                if display instanceof VRDisplay and display.capabilities.canPresent
                     HMD = display
                     break
             if not HMD?
@@ -61,6 +81,20 @@ exports.init = (scene, options={}) ->
             ctx.render_manager.use_frustum_culling = false
             if myou._HMD.capabilities.canPresent
                 HMD.requestPresent [{source: ctx.canvas}]
+                window.addEventListener 'vrdisplaypresentchange', ->
+                    if not display.isPresenting
+                        exit(ctx)
             resolve()
         .catch reject
             
+exports.exit = exit = (ctx=this) ->
+    if ctx._HMD
+        # TODO: detect the proper viewport, undo changes
+        ctx.render_manager.viewports.pop()
+        v = ctx.render_manager.viewports[0]
+        v.rect = [0, 0, 1, 1]
+        vec3.set v.eye_shift, 0,0,0
+        v.camera = v.camera.scene.active_camera
+        ctx.render_manager.resize(window.innerWidth, window.innerHeight)
+        ctx._HMD = null
+    
