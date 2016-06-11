@@ -1,6 +1,6 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 {GameObject} = require './gameobject.coffee'
-{load_material} = require './material.coffee'
+{Material} = require './material.coffee'
 #   Mesh format:
 #
 #   Vertex array:
@@ -211,13 +211,12 @@ class Mesh extends GameObject
                     break
                 if mname == 'UNDEFINED_MATERIAL'
                     console.warn 'Mesh '+@name+' has undefined material'
-                if scene
-                    data = scene.unloaded_material_data[mname]
-                    if data
-                        time = performance.now()
-                        load_material scene, data
-                        # @context.log.push 'material loaded: ' + mname + ' in ' +( performance.now() - time)*0.001
-                        delete scene.unloaded_material_data[mname]
+                data = scene.unloaded_material_data[mname]
+                if data
+                    # time = performance.now()
+                    scene.materials[mname] = new Material @context, data, scene
+                    # @context.log.push 'material loaded: ' + mname + ' in ' +( performance.now() - time)*0.001
+                    delete scene.unloaded_material_data[mname]
                 mat = scene.materials[mname]
                 if mat
                     materials.push mat

@@ -85,11 +85,12 @@ def mat_to_json(mat, scn):
         .replace('gl_LightSource[i].specular','vec3(0,0,0)')\
         .replace('gl_LightSource[i].halfVector','vec3(0,0,0)')\
         .replace('float rad[4], fac;', 'float rad[4];float fac;')\
+        .replace('(normalize(vec).z + 1)', '(normalize(vec).z + 1.0)') \
         .replace('''/* These are needed for high quality bump mapping */
 #version 130
 #extension GL_ARB_texture_query_lod: enable
-#define BUMP_BICUBIC''','')
         #open('/tmp/shader_lib','w').write(SHADER_LIB)
+#define BUMP_BICUBIC''','').replace('\r','')
         try:
             import shader_lib_filter, imp
             imp.reload(shader_lib_filter)
@@ -98,7 +99,8 @@ def mat_to_json(mat, scn):
         except:
             pass
 
-    shader['fragment'] = (parts[1]+'}').replace('sampler2DShadow','sampler2D')
+    shader['fragment'] = ('\n'+parts[1]+'}').replace('sampler2DShadow','sampler2D')\
+        .replace('\nin ', '\nvarying ')
 
     # Stuff for debugging shaders
     # TODO write only when they have changed
@@ -275,6 +277,17 @@ def mat_to_json(mat, scn):
     shader['type'] = 'MATERIAL'
     shader['name'] = mat.name
     shader['scene'] = scn.name
+    
+    shader['params'] = [
+        {
+            'diffuse_color': list(mat.diffuse_color),
+            'diffuse_intensity': mat.diffuse_intensity,
+            'specular_color': list(mat.specular_color),
+            'specular_intensity': mat.specular_intensity,
+            'specular_hardness': mat.specular_hardness,
+            'emit': mat.emit,
+        }
+    ]
 
     ret = dumps(shader).encode('utf8')
     mat['hash'] = hash(ret) % 2147483648

@@ -45,7 +45,7 @@ class Lamp extends GameObject
             gl_FragColor = vec4(depth, pow(depth, 2.0) + 0.25*(dx*dx + dy*dy), 0.0, 1.0);
         }"""
 
-        mat = new Material @context, @name+'_shadow', fs,[],[],vs
+        mat = new Material @context, {name: @name+'_shadow', fragment: fs, vertex: vs}
         mat.is_shadow_material = true
         @_shadow_material = mat
 

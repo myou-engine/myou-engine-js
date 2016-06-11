@@ -291,6 +291,8 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
             bpy.ops.mesh.select_mode(type='EDGE', action='TOGGLE') # for multiple selection mode
             bpy.ops.mesh.select_mode(type='EDGE', action='ENABLE')
             bpy.ops.mesh.select_all(action='DESELECT')
+            if hasattr(bm.edges, 'ensure_lookup_table'):
+                bm.edges.ensure_lookup_table()
             bm.edges[0].select=1
             bpy.ops.mesh.select_similar(type='SEAM', compare='EQUAL', threshold=0.01)
             if not bm.edges[0].seam:

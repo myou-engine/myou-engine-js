@@ -107,7 +107,7 @@ class Filter extends Material
 
 
         gl = render_manager.gl
-        super render_manager.context, name, fs, [], [], vs
+        super render_manager.context, {name, vertex: vs, fragment: fs}
 
         prog = @._program
         gl.uniform1i gl.getUniformLocation(prog, 'source'), 0

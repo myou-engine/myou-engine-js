@@ -132,6 +132,7 @@ def scene_data_to_json(scn=None):
         'name': scn.name,
         'gravity' : [0,0,-scn.game_settings.physics_gravity], #list(scn.gravity),
         'background_color' : list(world.horizon_color),
+        'ambient_color': list(world.ambient_color),
         'debug_physics': scn.game_settings.show_physics_visualization,
         'active_camera': scn.camera.name if scn.camera else 'Camera',
         'stereo': scn.game_settings.stereo == 'STEREO',

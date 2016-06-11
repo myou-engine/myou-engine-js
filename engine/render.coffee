@@ -349,6 +349,23 @@ class RenderManager
 
             if mat.u_color?
                 gl.uniform4fv mat.u_color, mesh.color
+            
+            if mat.u_ambient?
+                gl.uniform4fv mat.u_ambient, mesh.scene.ambient_color
+            
+            shading_params = mat.shading_params[0]
+            if mat.u_diffcol?
+                gl.uniform3fv mat.u_diffcol, shading_params.diffuse_color
+            if mat.u_diffint?
+                gl.uniform1f mat.u_diffint, shading_params.diffuse_intensity
+            if mat.u_speccol?
+                gl.uniform3fv mat.u_speccol, shading_params.specular_color
+            if mat.u_specint?
+                gl.uniform1f mat.u_specint, shading_params.specular_intensity
+            if mat.u_hardness?
+                gl.uniform1f mat.u_hardness, shading_params.specular_hardness
+            if mat.u_emit?
+                gl.uniform1f mat.u_emit, shading_params.emit
 
             if mat.u_custom[2]
                 gl.uniform1f(mat.u_custom[2], mesh.alpha)
@@ -844,8 +861,6 @@ class Debug
             idx = idx.concat i+32, (i+1)%16+32
         sphere.load_from_lists d, idx
 
-        mat = new Material @context,'_debug', plain_fs, [{'type':5,'varname':'color'}], [], plain_vs
-
         arrow = new Mesh @context
         d = [0,0,0,  0,0,1,  0,0.07,0.7,  0,-0.07,0.7,]
         arrow.load_from_lists d, [0,1,1,2,1,3]
@@ -861,8 +876,12 @@ class Debug
         bone.load_from_lists(d, [0,1,0,2,0,3,0,4,1,2,2,3,3,4,4,1,
                            5,1,5,2,5,3,5,4])
 
-        @material = mat = new Material(@context, '_debug', plain_fs, [{'type':5,'varname':'color'}],
-            [], plain_vs)
+        @material = mat = new Material @context, {
+            name: '_debug',
+            vertex: plain_vs,
+            fragment: plain_fs,
+            uniforms: [{'type':5,'varname':'color'}],
+        }
 
         for ob in [box, cylinder, sphere, arrow, bone]
             ob.elements = []

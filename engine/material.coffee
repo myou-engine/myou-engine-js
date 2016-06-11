@@ -2,26 +2,140 @@
 
 {fetch_texture, material_promises} = require './fetch_assets.coffee'
 
-load_material = (scene, data)->
-    name = data.name
-    mat = scene.materials[name] = \
-        new Material(
-            scene.context, name, [scene.context.SHADER_LIB, data['fragment']],
-            data.uniforms, data.attributes, "", scene
-            )
-    # make sure it's bool
-    mat.double_sided = not not data.double_sided
-
 # http://www.blender.org/documentation/blender_python_api_2_65_release/gpu.html
 
 _active_program = null
 
-class Material
+console_error = console.error.bind(console)
 
-    constructor: (@context, @name, fs, uniforms, attributes, vs="", @scene)->
+gpu_constants =
+ '0': 'GPU_DYNAMIC_NONE',
+ '131072': 'GPU_DYNAMIC_GROUP_LAMP',
+ '131073': 'GPU_DYNAMIC_LAMP_DYNVEC',
+ '131074': 'GPU_DYNAMIC_LAMP_DYNCO',
+ '131075': 'GPU_DYNAMIC_LAMP_DYNIMAT',
+ '131076': 'GPU_DYNAMIC_LAMP_DYNPERSMAT',
+ '131077': 'GPU_DYNAMIC_LAMP_DYNENERGY',
+ '131078': 'GPU_DYNAMIC_LAMP_DYNCOL',
+ '131079': 'GPU_DYNAMIC_LAMP_DISTANCE',
+ '131080': 'GPU_DYNAMIC_LAMP_ATT1',
+ '131081': 'GPU_DYNAMIC_LAMP_ATT2',
+ '131082': 'GPU_DYNAMIC_LAMP_SPOTSIZE',
+ '131083': 'GPU_DYNAMIC_LAMP_SPOTBLEND',
+ '131084': 'GPU_DYNAMIC_LAMP_SPOTSCALE',
+ '196608': 'GPU_DYNAMIC_GROUP_OBJECT',
+ '196609': 'GPU_DYNAMIC_OBJECT_VIEWMAT',
+ '196610': 'GPU_DYNAMIC_OBJECT_MAT',
+ '196611': 'GPU_DYNAMIC_OBJECT_VIEWIMAT',
+ '196612': 'GPU_DYNAMIC_OBJECT_IMAT',
+ '196613': 'GPU_DYNAMIC_OBJECT_COLOR',
+ '196614': 'GPU_DYNAMIC_OBJECT_AUTOBUMPSCALE',
+ '196615': 'GPU_DYNAMIC_OBJECT_LOCTOVIEWMAT',
+ '196616': 'GPU_DYNAMIC_OBJECT_LOCTOVIEWIMAT',
+ '262144': 'GPU_DYNAMIC_GROUP_SAMPLER',
+ '262145': 'GPU_DYNAMIC_SAMPLER_2DBUFFER',
+ '262146': 'GPU_DYNAMIC_SAMPLER_2DIMAGE',
+ '262147': 'GPU_DYNAMIC_SAMPLER_2DSHADOW',
+ '327680': 'GPU_DYNAMIC_GROUP_MIST',
+ '327681': 'GPU_DYNAMIC_MIST_ENABLE',
+ '327682': 'GPU_DYNAMIC_MIST_START',
+ '327683': 'GPU_DYNAMIC_MIST_DISTANCE',
+ '327684': 'GPU_DYNAMIC_MIST_INTENSITY',
+ '327685': 'GPU_DYNAMIC_MIST_TYPE',
+ '327686': 'GPU_DYNAMIC_MIST_COLOR',
+ '393216': 'GPU_DYNAMIC_GROUP_WORLD',
+ '393217': 'GPU_DYNAMIC_HORIZON_COLOR',
+ '393218': 'GPU_DYNAMIC_AMBIENT_COLOR',
+ '393219': 'GPU_DYNAMIC_ZENITH_COLOR',
+ '458752': 'GPU_DYNAMIC_GROUP_MAT',
+ '458753': 'GPU_DYNAMIC_MAT_DIFFRGB',
+ '458754': 'GPU_DYNAMIC_MAT_REF',
+ '458755': 'GPU_DYNAMIC_MAT_SPECRGB',
+ '458756': 'GPU_DYNAMIC_MAT_SPEC',
+ '458757': 'GPU_DYNAMIC_MAT_HARD',
+ '458758': 'GPU_DYNAMIC_MAT_EMIT',
+ '458759': 'GPU_DYNAMIC_MAT_AMB',
+ '458760': 'GPU_DYNAMIC_MAT_ALPHA',
+ '65536': 'GPU_DYNAMIC_GROUP_MISC',
+
+CD_MCOL = 6
+CD_MTFACE = 5
+CD_ORCO = 14
+CD_TANGENT = 18
+GPU_DATA_1I = 1
+GPU_DATA_1F = 2
+GPU_DATA_2F = 3
+GPU_DATA_3F = 4
+GPU_DATA_4F = 5
+GPU_DATA_9F = 6
+GPU_DATA_16F = 7
+GPU_DATA_4UB = 8
+GPU_DYNAMIC_AMBIENT_COLOR = 393218
+GPU_DYNAMIC_GROUP_LAMP = 131072
+GPU_DYNAMIC_GROUP_MAT = 458752
+GPU_DYNAMIC_GROUP_MISC = 65536
+GPU_DYNAMIC_GROUP_MIST = 327680
+GPU_DYNAMIC_GROUP_OBJECT = 196608
+GPU_DYNAMIC_GROUP_SAMPLER = 262144
+GPU_DYNAMIC_GROUP_WORLD = 393216
+GPU_DYNAMIC_HORIZON_COLOR = 393217
+#                                            point   sun    spot   hemi   area
+GPU_DYNAMIC_LAMP_ATT1 = 131080          #
+GPU_DYNAMIC_LAMP_ATT2 = 131081          #
+GPU_DYNAMIC_LAMP_DISTANCE = 131079      #      X             X
+GPU_DYNAMIC_LAMP_DYNCO = 131074         #      X             X             X
+GPU_DYNAMIC_LAMP_DYNCOL = 131078        #      X      X      X      X      X
+GPU_DYNAMIC_LAMP_DYNENERGY = 131077     #      X      X      X      X      X
+GPU_DYNAMIC_LAMP_DYNIMAT = 131075       #                    X
+GPU_DYNAMIC_LAMP_DYNPERSMAT = 131076    #             X      X
+GPU_DYNAMIC_LAMP_DYNVEC = 131073        #             X      X      X      X
+GPU_DYNAMIC_LAMP_SPOTBLEND = 131083     #                 missing?
+GPU_DYNAMIC_LAMP_SPOTSCALE = 131084     #                    X
+GPU_DYNAMIC_LAMP_SPOTSIZE = 131082      #                    X
+GPU_DYNAMIC_MAT_ALPHA = 458760
+GPU_DYNAMIC_MAT_AMB = 458759
+GPU_DYNAMIC_MAT_DIFFRGB = 458753
+GPU_DYNAMIC_MAT_EMIT = 458758
+GPU_DYNAMIC_MAT_HARD = 458757
+GPU_DYNAMIC_MAT_REF = 458754
+GPU_DYNAMIC_MAT_SPEC = 458756
+GPU_DYNAMIC_MAT_SPECRGB = 458755
+GPU_DYNAMIC_MIST_COLOR = 327686
+GPU_DYNAMIC_MIST_DISTANCE = 327683
+GPU_DYNAMIC_MIST_ENABLE = 327681
+GPU_DYNAMIC_MIST_INTENSITY = 327684
+GPU_DYNAMIC_MIST_START = 327682
+GPU_DYNAMIC_MIST_TYPE = 327685
+GPU_DYNAMIC_NONE = 0
+GPU_DYNAMIC_OBJECT_AUTOBUMPSCALE = 196614
+GPU_DYNAMIC_OBJECT_COLOR = 196613
+GPU_DYNAMIC_OBJECT_IMAT = 196612
+GPU_DYNAMIC_OBJECT_LOCTOVIEWIMAT = 196616
+GPU_DYNAMIC_OBJECT_LOCTOVIEWMAT = 196615
+GPU_DYNAMIC_OBJECT_MAT = 196610
+GPU_DYNAMIC_OBJECT_VIEWIMAT = 196611
+GPU_DYNAMIC_OBJECT_VIEWMAT = 196609
+GPU_DYNAMIC_SAMPLER_2DBUFFER = 262145
+GPU_DYNAMIC_SAMPLER_2DIMAGE = 262146
+GPU_DYNAMIC_SAMPLER_2DSHADOW = 262147
+GPU_DYNAMIC_ZENITH_COLOR = 393219
+
+class ShadingParams
+    constructor: (params) ->
+        @diffuse_color = vec3.clone(params.diffuse_color)
+        @diffuse_intensity = params.diffuse_intensity
+        @specular_color = vec3.clone(params.specular_color)
+        @specular_intensity = params.specular_intensity
+        @specular_hardness = params.specular_hardness
+        @emit = params.emit
+
+class Material
+    constructor: (@context, data, @scene) ->
         if @context.all_materials.indexOf(@) == -1
             @context.all_materials.push @
-
+        {@name, uniforms, attributes, params=[]} = data
+        @shading_params = for p in params
+            new ShadingParams p
         gl = @context.render_manager.gl
         @textures = []
         @uv_layer_attribs = {} #name of attribute for each uv layer
@@ -37,6 +151,7 @@ class Material
         @uv_multiplier = 1
         @shape_multiplier = 1
         @group_id = -1
+        @double_sided = not not data.double_sided
 
         var_model_view_matrix = "model_view_matrix"
         var_inv_model_view_matrix = ""
@@ -45,64 +160,111 @@ class Material
         var_color = ""
         var_strand = ""
         var_strand_type = "float"
+        var_ambient = ""
+        var_diffcol = ""
+        var_diffint = ""
+        var_speccol = ""
+        var_specint = ""
+        var_hardness = ""
+        var_emit = ""
+        var_mistcol = ""
+        var_mistdist = ""
+        var_mistenable = ""
+        var_mistint = ""
+        var_miststart = ""
+        var_misttype = ""
         var_custom = []
 
-        for u in uniforms
-            if u.type == 6 or u.type == 7 or u.type == 11 or u.type == 15
-                l = lamps[u.lamp] or {
-                    vardir:'', varpos:'', varmat:''
-                    varcolor3:'', varcolor4:'', dist:''
-                    }
-                lamps[u.lamp] = l
-
-            if u.type == 1 # model_view_matrix
-                var_model_view_matrix = u.varname
-            else if u.type == 2 # object_matrix
-                var_object_matrix = u.varname
-            else if u.type == 3 # inverse model_view_matrix
-                var_inv_model_view_matrix = u.varname
-            else if u.type == 4 # inverse object_matrix
-                var_inv_object_matrix = u.varname
-            else if u.type == 5 # object color
-                var_color = u.varname
-            else if u.type == 6 # lamp direction in camera space
-                l.vardir = u.varname
-            else if u.type == 7 # lamp position in camera space
-                l.varpos = u.varname
-            else if u.type == 9 # camera to lamp matrix
-                l.varmat = u.varname
-            else if u.type == 10 # lamp energy
-                l.varenergy = u.varname
-            else if u.type == 11 # lamp color
-                if u.datatype == 4 # vec3
-                    l.varcolor3 = u.varname
-                else # vec4
-                    l.varcolor4 = u.varname
-            else if u.type == 16 # lamp falloff distance
-                l.dist = u.varname
-            # MISSING:
-            # GPU_DYNAMIC_LAMP_SPOTSIZE = 19,
-            # GPU_DYNAMIC_LAMP_SPOTBLEND = 20,
-            # GPU_DYNAMIC_SAMPLER_2DBUFFER = 12,
-            # And 15 was distance wrongly, it's GPU_DYNAMIC_OBJECT_AUTOBUMPSCALE
-            else if u.type == 14
-                if @context.render_manager.extensions.texture_float_linear?# shadow texture
-                    @textures.push {loaded: true, tex: @scene.objects[u.lamp].shadow_fb.texture}
-                    tex_uniforms.push u.varname
-            else if u.type == 13 and @scene # 2D image
-                tex = fetch_texture(u.image, u.filepath, u.filter, u.wrap, u.size, @scene.context).texture
-                @textures.push tex
-                tex.users.push @
-                tex_uniforms.push u.varname
-            else if u.type == 77 # position in strand (0-1)
-                var_strand = u.varname
-                var_strand_type = u.gltype
-            else if u.type == -1 # custom
-                var_custom.push u.varname
-            else
-                console.log u
-                console.log "Warning: unknown uniform", u.varname, u.type, "of data type", \
-                    ['0','1i','1f','2f','3f','4f','m3','m4','4ub'][u.datatype]
+        for u in uniforms or []
+            # Magic numbers correspond to the old values of blender constants
+            switch u.type
+                # when it's a lamp, have "l" ready
+                when 6, 7, 9, 10, 11, 16, \
+                    GPU_DYNAMIC_LAMP_DYNVEC, GPU_DYNAMIC_LAMP_DYNCO, \
+                    GPU_DYNAMIC_LAMP_DYNPERSMAT, GPU_DYNAMIC_LAMP_DYNENERGY, \
+                    GPU_DYNAMIC_LAMP_DYNCOL, GPU_DYNAMIC_LAMP_DISTANCE, \
+                    l = lamps[u.lamp] or {
+                        vardir:'', varpos:'', varmat:''
+                        varcolor3:'', varcolor4:'', dist:''
+                        }
+                    lamps[u.lamp] = l
+            switch u.type
+                when 1, GPU_DYNAMIC_OBJECT_VIEWMAT # model_view_matrix
+                    var_model_view_matrix = u.varname
+                when 2, GPU_DYNAMIC_OBJECT_MAT # object_matrix
+                    var_object_matrix = u.varname
+                when 3, GPU_DYNAMIC_OBJECT_VIEWIMAT # inverse model_view_matrix
+                    var_inv_model_view_matrix = u.varname
+                when 4, GPU_DYNAMIC_OBJECT_IMAT # inverse object_matrix
+                    var_inv_object_matrix = u.varname
+                when 5, GPU_DYNAMIC_OBJECT_COLOR # object color
+                    var_color = u.varname
+                when 6, GPU_DYNAMIC_LAMP_DYNVEC # lamp direction in camera space
+                    l.vardir = u.varname
+                when 7, GPU_DYNAMIC_LAMP_DYNCO # lamp position in camera space
+                    l.varpos = u.varname
+                when 9, GPU_DYNAMIC_LAMP_DYNPERSMAT # camera to lamp shadow matrix
+                    l.varmat = u.varname
+                when 10, GPU_DYNAMIC_LAMP_DYNENERGY # lamp energy
+                    l.varenergy = u.varname
+                when 11, GPU_DYNAMIC_LAMP_DYNCOL # lamp color
+                    if u.datatype == 4 # vec3
+                        l.varcolor3 = u.varname
+                    else # vec4
+                        l.varcolor4 = u.varname
+                when 16, GPU_DYNAMIC_LAMP_DISTANCE # lamp falloff distance
+                    l.dist = u.varname
+                # MISSING:
+                # GPU_DYNAMIC_LAMP_SPOTSIZE = 19,
+                # GPU_DYNAMIC_LAMP_SPOTBLEND = 20,
+                # GPU_DYNAMIC_SAMPLER_2DBUFFER = 12,
+                # And 15 was distance wrongly, it's GPU_DYNAMIC_OBJECT_AUTOBUMPSCALE
+                when 14, GPU_DYNAMIC_SAMPLER_2DSHADOW
+                    if @context.render_manager.extensions.texture_float_linear?# shadow texture
+                        @textures.push {loaded: true, tex: @scene.objects[u.lamp].shadow_fb.texture}
+                        tex_uniforms.push u.varname
+                when 13, GPU_DYNAMIC_SAMPLER_2DIMAGE, GPU_DYNAMIC_SAMPLER_2DBUFFER # 2D image
+                    if @scene
+                        tex = fetch_texture(u.image, u.filepath, u.filter, u.wrap, u.size, @scene.context).texture
+                        @textures.push tex
+                        tex.users.push @
+                        tex_uniforms.push u.varname
+                when GPU_DYNAMIC_AMBIENT_COLOR
+                    var_ambient = u.varname
+                when GPU_DYNAMIC_MAT_DIFFRGB
+                    var_diffcol = u.varname
+                when GPU_DYNAMIC_MAT_REF
+                    var_diffint = u.varname
+                when GPU_DYNAMIC_MAT_SPECRGB
+                    var_speccol = u.varname
+                when GPU_DYNAMIC_MAT_SPEC
+                    var_specint = u.varname
+                when GPU_DYNAMIC_MAT_HARD
+                    var_hardness = u.varname
+                when GPU_DYNAMIC_MAT_EMIT
+                    var_emit = u.varname
+                when GPU_DYNAMIC_MIST_COLOR
+                    var_mistcol = u.varname
+                when GPU_DYNAMIC_MIST_DISTANCE
+                    var_mistdist = u.varname
+                when GPU_DYNAMIC_MIST_ENABLE
+                    var_mistenable = u.varname
+                when GPU_DYNAMIC_MIST_INTENSITY
+                    var_mistint = u.varname
+                when GPU_DYNAMIC_MIST_START
+                    var_miststart = u.varname
+                when GPU_DYNAMIC_MIST_TYPE
+                    var_misttype = u.varname
+                when 77 # position in strand (0-1)
+                    var_strand = u.varname
+                    var_strand_type = u.gltype
+                when -1 # custom
+                    var_custom.push u.varname
+                else
+                    console.log u
+                    console.log "Warning: unknown uniform", u.varname, \
+                        gpu_constants[u.type] or u.type, "of data type", \
+                        ['0','1i','1f','2f','3f','4f','m3','m4','4ub'][u.datatype]
 
         uniform_decl = ""
         attribute_decl = ""
@@ -114,110 +276,107 @@ class Material
         num_particles = 0
         @num_bone_uniforms = 0
 
-        for a in attributes
+        for a in attributes or []
             v = 'var' + a.varname[3...]
-            if a.type < 14
-                vtype = "vec3"
-                multiplier = ""
-                if a.type == 5 # UV layer
+            switch a.type
+                when CD_MTFACE # UV layer
                     @uv_layer_attribs[a.name] = a.varname
-                    vtype = "vec2"
-                    multiplier = "*uv_multiplier"
-                else if a.type == 6 # color layer
+                    attribute_decl += "attribute vec2 "+a.varname+";\n"\
+                        +"varying vec2 "+v+";\n"
+                    attribute_asgn += v+"="+a.varname+"*uv_multiplier;\n"
+                    @attrib_locs[a.varname] = -1
+                when CD_MCOL # Vertex color
                     @color_attribs[a.name] = a.varname
-                    vtype = "vec4"
+                    attribute_decl += "attribute vec4 "+a.varname+";\n"\
+                        +"varying vec4 "+v+";\n"
+                    attribute_asgn += v+"="+a.varname+";\n"
+                    @attrib_locs[a.varname] = -1
+                when CD_TANGENT # tangent vectors
+                    attribute_decl += "attribute vec4 tangent;\n"\
+                        +"varying vec4 "+v+";\n"
+                    #attribute_asgn += v+".xyz = normalize("\
+                        #+var_model_view_matrix+"*vec4("+a.varname+",0.0)).xyz;\n"
+                    attribute_asgn += v+".xyz = normalize(("+var_model_view_matrix+"*vec4(tangent.xyz,0)).xyz);\n"
+                    attribute_asgn += v+".w = tangent.w;\n"
+                    @attrib_locs["tangent"] = -1
+                when 99 # shape key
+                    num_shapes = a.count
+                    for i in [0...num_shapes]
+                        attribute_decl += "attribute vec3 shape"+i+";\n"
+                        attribute_decl += "attribute vec3 shapenor"+i+";\n"
+                        @attrib_locs["shape"+i] = -1
+                        @attrib_locs["shapenor"+i] = -1
+                    uniform_decl += "uniform float shapef["+num_shapes+"];"
+                when 88 # armature deform
+                    num_bones = a.count
+                    @num_bone_uniforms = num_bones
+                    attribute_decl += "attribute vec4 weights;\n"
+                    attribute_decl += "attribute vec4 b_indices;\n"
+                    @attrib_locs["weights"] = -1
+                    @attrib_locs["b_indices"] = -1
+                    uniform_decl += "uniform mat4 bones["+@num_bone_uniforms+"];\n"
+                    armature_deform_code = ("""
+                    vec4 blendco = vec4(0);
+                    vec3 blendnor = vec3(0);
+                    mat4 m;
+                    ivec4 inds = ivec4(b_indices);
+                    int idx;
+                    for(int i=0; i<4; ++i){
+                        m = bones[inds[i]];
+                        blendco += m * co4 * weights[i];
+                        blendnor += mat3(m[0].xyz, m[1].xyz, m[2].xyz) * normal * weights[i];
+                    }
+                    co4 = blendco; normal = blendnor;
+                    """)
+                    # TODO: Allowing deformed mesh transformation in an efficient manner
+                    # When mesh local transformation is not zero, add a matrix uniform that
+                    # holds mesh -> armature transformation and use that in the code above
+                    # but add an optimization pass at export to apply mesh transformations
+                    # where possible.
+                when 86 # armature deform, 6 weights
+                    num_bones = a.count
+                    @num_bone_uniforms = num_bones
+                    attribute_decl += "attribute vec4 weights;\n"
+                    attribute_decl += "attribute vec4 weights2;\n"
+                    attribute_decl += "attribute vec4 b_indices;\n"
+                    attribute_decl += "attribute vec4 b_indices2;\n"
+                    @attrib_locs["weights"] = -1
+                    @attrib_locs["weights2"] = -1
+                    @attrib_locs["b_indices"] = -1
+                    @attrib_locs["b_indices2"] = -1
+                    uniform_decl += "uniform mat4 bones["+@num_bone_uniforms+"];\n"
+                    armature_deform_code = ("""
+                    vec4 blendco = vec4(0);
+                    vec3 blendnor = vec3(0);
+                    mat4 m;
+                    ivec4 inds = ivec4(b_indices);
+                    for(int i=0; i<4; ++i){
+                        m = bones[inds[i]];
+                        blendco += m * co4 * weights[i];
+                        blendnor += mat3(m[0].xyz, m[1].xyz, m[2].xyz) * normal * weights[i];
+                    }
+                    inds = ivec4(b_indices2);
+                    for(int i=0; i<2; ++i){
+                        m = bones[inds[i]];
+                        blendco += m * co4 * weights2[i];
+                        blendnor += mat3(m[0].xyz, m[1].xyz, m[2].xyz) * normal * weights2[i];
+                    }
+                    co4 = blendco; normal = blendnor;
+                    """)
+                when 77 # particle hair
+                    if var_strand == ""
+                        var_strand = "strand"
+                    uniform_decl += "uniform "+var_strand_type+" "+var_strand+";\n"
+                    num_particles = a.count
+                    for i in [0...num_particles]
+                        attribute_decl += "attribute vec3 particle"+i+";\n"
+                        @attrib_locs["particle"+i] = -1
+                when CD_ORCO
+                    # original coordinates (TODO: divide by dimensions)
+                    attribute_decl += "varying vec3 "+v+";\n"
+                    attribute_asgn += v+" = co;\n"
                 else
-                    console.log "Warning: unknown attribute type", a.type
-
-                attribute_decl += "attribute "+vtype+" "+a.varname+";\n"\
-                    +"varying "+vtype+" "+v+";\n"
-                attribute_asgn += v+"="+a.varname+multiplier+";\n"
-                @attrib_locs[a.varname] = -1
-
-            else if a.type == 18 # tangent vectors
-                attribute_decl += "attribute vec4 tangent;\n"\
-                    +"varying vec4 "+v+";\n"
-                #attribute_asgn += v+".xyz = normalize("\
-                    #+var_model_view_matrix+"*vec4("+a.varname+",0.0)).xyz;\n"
-                attribute_asgn += v+".xyz = normalize(("+var_model_view_matrix+"*vec4(tangent.xyz,0)).xyz);\n"
-                attribute_asgn += v+".w = tangent.w;\n"
-                @attrib_locs["tangent"] = -1
-            else if a.type == 99 # shape key
-                num_shapes = a.count
-                for i in [0...num_shapes]
-                    attribute_decl += "attribute vec3 shape"+i+";\n"
-                    attribute_decl += "attribute vec3 shapenor"+i+";\n"
-                    @attrib_locs["shape"+i] = -1
-                    @attrib_locs["shapenor"+i] = -1
-                uniform_decl += "uniform float shapef["+num_shapes+"];"
-            else if a.type == 88 # armature deform
-                num_bones = a.count
-                @num_bone_uniforms = num_bones
-                attribute_decl += "attribute vec4 weights;\n"
-                attribute_decl += "attribute vec4 b_indices;\n"
-                @attrib_locs["weights"] = -1
-                @attrib_locs["b_indices"] = -1
-                uniform_decl += "uniform mat4 bones["+@num_bone_uniforms+"];\n"
-                armature_deform_code = ("""
-                vec4 blendco = vec4(0);
-                vec3 blendnor = vec3(0);
-                mat4 m;
-                ivec4 inds = ivec4(b_indices);
-                int idx;
-                for(int i=0; i<4; ++i){
-                    m = bones[inds[i]];
-                    blendco += m * co4 * weights[i];
-                    blendnor += mat3(m[0].xyz, m[1].xyz, m[2].xyz) * normal * weights[i];
-                }
-                co4 = blendco; normal = blendnor;
-                """)
-                # TODO: Allowing deformed mesh transformation in an efficient manner
-                # When mesh local transformation is not zero, add a matrix uniform that
-                # holds mesh -> armature transformation and use that in the code above
-                # but add an optimization pass at export to apply mesh transformations
-                # where possible.
-            else if a.type == 86 # armature deform, 6 weights
-                num_bones = a.count
-                @num_bone_uniforms = num_bones
-                attribute_decl += "attribute vec4 weights;\n"
-                attribute_decl += "attribute vec4 weights2;\n"
-                attribute_decl += "attribute vec4 b_indices;\n"
-                attribute_decl += "attribute vec4 b_indices2;\n"
-                @attrib_locs["weights"] = -1
-                @attrib_locs["weights2"] = -1
-                @attrib_locs["b_indices"] = -1
-                @attrib_locs["b_indices2"] = -1
-                uniform_decl += "uniform mat4 bones["+@num_bone_uniforms+"];\n"
-                armature_deform_code = ("""
-                vec4 blendco = vec4(0);
-                vec3 blendnor = vec3(0);
-                mat4 m;
-                ivec4 inds = ivec4(b_indices);
-                for(int i=0; i<4; ++i){
-                    m = bones[inds[i]];
-                    blendco += m * co4 * weights[i];
-                    blendnor += mat3(m[0].xyz, m[1].xyz, m[2].xyz) * normal * weights[i];
-                }
-                inds = ivec4(b_indices2);
-                for(int i=0; i<2; ++i){
-                    m = bones[inds[i]];
-                    blendco += m * co4 * weights2[i];
-                    blendnor += mat3(m[0].xyz, m[1].xyz, m[2].xyz) * normal * weights2[i];
-                }
-                co4 = blendco; normal = blendnor;
-                """)
-            else if a.type == 77 # particle hair
-                if var_strand == ""
-                    var_strand = "strand"
-                uniform_decl += "uniform "+var_strand_type+" "+var_strand+";\n"
-                num_particles = a.count
-                for i in [0...num_particles]
-                    attribute_decl += "attribute vec3 particle"+i+";\n"
-                    @attrib_locs["particle"+i] = -1
-            else
-                # original coordinates (TODO: divide by dimensions)
-                attribute_decl += "varying vec3 "+v+";\n"
-                attribute_asgn += v+" = co;\n"
+                    console.warn "Warning: unknown attribute type", a.type
 
         shape_key_code = ""
         if num_shapes
@@ -253,7 +412,7 @@ class Material
 
         # TODO: find which uniform
         # has conflicting precision between VS and FS in ANGLE/win32
-        @vs_code = vs = vs or """
+        @vs_code = vs = data.vertex or """
         precision highp float;
         precision highp int;
         uniform mat4 """+var_model_view_matrix+""";
@@ -293,12 +452,12 @@ class Material
             # if ext
             #     console.log  '\n' + ext.getTranslatedShaderSource(vertex_shader)).split('\n')
             gl.deleteShader vertex_shader
-            (material_promises[@name]?.functions.reject or console.error)(error_msg)
+            (material_promises[@name]?.functions.reject or console_error)(error_msg)
             return
 
-        @fs_code = fs
+        @fs_code = data.fragment
         fragment_shader = gl.createShader gl.FRAGMENT_SHADER
-        fs = if fs.splice then fs.join('') else fs
+        fs = if @fs_code.splice then @fs_code.join('') else @fs_code
         gl.shaderSource fragment_shader, fs
         gl.compileShader fragment_shader
 
@@ -309,7 +468,7 @@ class Material
             # if ext
             #     console.log  '\n' + ext.getTranslatedShaderSource(fragment_shader)).split('\n')
             gl.deleteShader fragment_shader
-            (material_promises[@name]?.functions.reject or console.error)(error_msg)
+            (material_promises[@name]?.functions.reject or console_error)(error_msg)
             return
 
 
@@ -325,10 +484,15 @@ class Material
             #{gl.getProgramInfoLog prog}"""
             #ext = gl.getExtension "WEBGL_debug_shaders"
             #if ext console.log ext.getTranslatedShaderSource vertex_shader
+            console.log 'VS ============='
+            console.log vs
+            # console.log 'FS ============='
+            # console.log fs
+            console.log '================'
             gl.deleteProgram prog
             gl.deleteShader vertex_shader
             gl.deleteShader fragment_shader
-            (material_promises[@name]?.functions.reject or console.error)(error_msg)
+            (material_promises[@name]?.functions.reject or console_error)(error_msg)
             return
 
         gl.useProgram prog
@@ -349,6 +513,21 @@ class Material
         @u_color = gl.getUniformLocation prog, var_color
         @u_fb_size = gl.getUniformLocation prog, "fb_size"
         @u_strand = gl.getUniformLocation prog, var_strand
+        @u_ambient = gl.getUniformLocation prog, var_ambient
+        @u_diffcol = gl.getUniformLocation prog, var_diffcol
+        @u_diffint = gl.getUniformLocation prog, var_diffint
+        @u_speccol = gl.getUniformLocation prog, var_speccol
+        @u_specint = gl.getUniformLocation prog, var_specint
+        @u_hardness = gl.getUniformLocation prog, var_hardness
+        @u_emit = gl.getUniformLocation prog, var_emit
+        @u_mistcol = gl.getUniformLocation prog, var_mistcol
+        @u_mistdist = gl.getUniformLocation prog, var_mistdist
+        @u_mistenable = gl.getUniformLocation prog, var_mistenable
+        @u_mistint = gl.getUniformLocation prog, var_mistint
+        @u_miststart = gl.getUniformLocation prog, var_miststart
+        @u_misttype = gl.getUniformLocation prog, var_misttype
+        if @u_mistenable?
+            gl.uniform1f @u_mistenable, 0
         @u_shapef = []
         for i in [0...num_shapes]
             @u_shapef[i] = gl.getUniformLocation prog, "shapef["+i+"]"
@@ -441,4 +620,4 @@ class Material
 
         return cloned
 
-module.exports = {load_material, Material}
+module.exports = {Material}

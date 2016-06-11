@@ -31,6 +31,10 @@ class Scene
         @physics_enabled = false
         @world = null
         @gravity = vec3.create()
+        @background_color = vec4.create()
+        @background_color[3] = 1
+        @ambient_color = vec4.create()
+        @ambient_color[3] = 1
         @tree_name = null
         @tree = null
         @_children_are_ordered = true
