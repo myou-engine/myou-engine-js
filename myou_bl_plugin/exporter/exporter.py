@@ -30,26 +30,36 @@ def search_scene_used_data(scene):
     #recursive search methods for each data type:
     def add_ob(ob, i=0):
         if ob not in used_data['objects']:
-            print('    '*i+'Ob:', ob.name)
-            used_data['objects'].append(ob)
-            if ob.type == 'MESH':
-                add_mesh(ob.data, i+1)
-            if 'alternative_meshes' in ob:
-                for m in ob['alternative_meshes']:
-                    add_mesh(bpy.data.meshes[m], i+1)
+            is_in_layers = ob_in_layers(scene, ob)
+            print('    '*i+'Ob:', ob.name if is_in_layers else '('+ob.name+' not exported)')
+            
+            if is_in_layers:
+                used_data['objects'].append(ob)
+                if ob.type == 'MESH':
+                    add_mesh(ob.data, i+1)
+                if 'alternative_meshes' in ob:
+                    for m in ob['alternative_meshes']:
+                        add_mesh(bpy.data.meshes[m], i+1)
 
-            if 'phy_mesh' in ob and ob['phy_mesh']['name'] in bpy.data.meshes:
-                add_mesh(bpy.data.meshes[ob['phy_mesh']['name']], i+1)
+                if 'phy_mesh' in ob and ob['phy_mesh']['name'] in bpy.data.meshes:
+                    add_mesh(bpy.data.meshes[ob['phy_mesh']['name']], i+1)
 
-            for s in ob.material_slots:
-                if hasattr(s,'material') and s.material:
-                    add_material(s.material, i+1)
+                for s in ob.material_slots:
+                    if hasattr(s,'material') and s.material:
+                        add_material(s.material, i+1)
 
-            if 'actions' in ob:
-                for action in ob['actions']:
-                    if action in bpy.data.actions:
-                        add_action(bpy.data.actions[action], i+1)
-                        action_users[action] = ob
+                if 'actions' in ob:
+                    for action_name in ob['actions']:
+                        if action_name in bpy.data.actions:
+                            add_action(bpy.data.actions[action_name], i+1)
+                            used_data['action_users'][action_name] = ob
+                else:
+                    # see implicit_actions in ob_to_json
+                    if ob.animation_data and ob.animation_data.action and ob.animation_data.action.fcurves:
+                        action = ob.animation_data.action
+                        add_action(action, i+1)
+                        used_data['action_users'][action.name] = ob
+                        
 
         for ob in ob.children:
             add_ob(ob, i+1)
@@ -69,7 +79,7 @@ def search_scene_used_data(scene):
             if m.use_nodes and m.node_tree:
                 search_in_node_tree(m.node_tree, i-1)
 
-    #It assumes that there aren't ciclic dependencies on the node groups.
+    # NOTE: It assumes that there is no cyclic dependencies in node groups.
     def search_in_node_tree(tree,i=0):
         for n in tree.nodes:
             if (n.bl_idname == 'ShaderNodeMaterial' or n.bl_idname == 'ShaderNodeExtendedMaterial') and n.material:
@@ -97,10 +107,8 @@ def search_scene_used_data(scene):
             print('    '*i+'Mes:', m.name)
             used_data['meshes'].append(m)
 
-    #Searching and storing stuff in use:
+    # Searching and storing stuff in use:
     print('\nSearching used data in the scene: ' + scene.name + '\n')
-
-
 
     for ob in scene.objects:
         if not ob.parent:
@@ -313,18 +321,28 @@ def ob_to_json(ob, scn=None, check_cache=False):
 
                 lod_level_data = []
                 lod_exported_meshes = {}
-
-                lod_levels = ob.get('lod_levels',0)
-                if type(lod_levels) != 'int':
-                    try:
-                        lod_levels = int(lod_levels)
-                    except:
-                        print('WARNING: Invalid lod_levels type. Using lod_levels = 0')
-                        lod_levels = 0
-
+                
+                # Support two formats of "lod_levels":
+                # - If you put an integer (or string with a number) you'll
+                #   generate as many decimated levels, each half of the previous one
+                #   e.g. 3 generates 3 levels with these factors:
+                #   [0.50, 0.25, 0.125]
+                # - If you put a list of numbers in a string, it will generate
+                #   levels with those factors
+                #   e.g. "[0.2, 0.08]"
+                # In both cases, the level of factor 1 is implicit.
+                
+                lod_levels = loads(str(ob.get('lod_levels',0)))
+                if not isinstance(lod_levels, (int, list)):
+                    print('WARNING: Invalid lod_levels type. Using lod_levels = 0')
+                    lod_levels = 0
+                
+                if not isinstance(lod_levels, list):
+                    lod_levels = [1/pow(2,lod_level+1)
+                        for lod_level in range(lod_levels)]
+                    
                 print('Generating LoD levels: ',  lod_levels)
-                for lod_level in range(lod_levels):
-                    factor = 1/pow(2,lod_level)
+                for factor in lod_levels:
                     print('factor:', factor)
                     orig_data = ob.data
                     ob.data = ob.data.copy()
@@ -640,15 +658,13 @@ def action_to_json(action, ob):
                 type = 'pose'
 
                 if not hasattr(ob.data, 'bones'):
-                    # TODO: Should this happen???
-                    # don't animate this channel
-                    print("Skipping channel "+fcurve.data_path + " because the bone " + name + " doesn't exists in the object " + ob.name)
+                    # don't animate this channel (a bone that no longer exists was animated)
                     continue
 
                 bone = ob.data.bones[name]
                 if chan == 'position' and bone.parent and bone.use_connect:
-                    # don't animate this channel
-                    print("Skipping channel " + fcurve.data_path)
+                    # don't animate this channel, in blender it doesn't affect
+                    # but in the engine it produces undesired results
                     continue
 
             elif type.startswith('key_blocks'):
@@ -730,7 +746,7 @@ def whole_scene_to_json(scn, used_data):
                 }).encode())
 
     mat_json = [mat_to_json(mat, scn) for mat in set(used_data['materials'])]
-    act_json = [action_to_json(action, action_users[action.name]) for action in used_data['actions']]
+    act_json = [action_to_json(action, used_data['action_users'][action.name]) for action in used_data['actions']]
 
     ret += [dumps({"type":"SHADER_LIB","code": get_shader_lib()}).encode()] + mat_json + act_json
     retb = b'['+b','.join(ret)+b']'
@@ -783,8 +799,11 @@ def save_images(dest_path, used_data):
             if path_exists:
                 if real_path[-1] != '/': #Avoiding directories
                     ext = image.filepath.rsplit('.',1)[1].lower()
+                    # For compatibility with old .blends you need to add
+                    # 'skip_texture_conversion' to the active scene
+                    skip_conversion = bpy.context.scene.get('skip_texture_conversion')
 
-                    if image in non_alpha_images and ext not in ['jpg', 'jpeg']:
+                    if image in non_alpha_images and ext not in ['jpg', 'jpeg'] and not skip_conversion:
                         print('Saving in jpg format')
                         file_format = 'JPEG'
                         image['exported_extension'] = ext = 'jpg'
@@ -792,7 +811,7 @@ def save_images(dest_path, used_data):
                         # restauring original path
                         image.filepath_raw = real_path
 
-                    elif image not in non_alpha_images and ext != 'png':
+                    elif image not in non_alpha_images and ext != 'png' and not skip_conversion:
                         print('Saving in png format')
                         file_format = 'PNG'
                         image['exported_extension'] = ext = 'png'
@@ -801,7 +820,7 @@ def save_images(dest_path, used_data):
                         image.filepath_raw = real_path
 
                     else:
-                        print('Copiying original image')
+                        print('Copying original image')
                         exported_path = os.path.join(dest_path, image.name + '.' + ext)
                         image['exported_extension'] = ext
                         shutil.copy(real_path, exported_path)
@@ -835,9 +854,9 @@ def get_non_alpha_images(used_data):
         if not material.users:
             continue
         for texture_slot in material.texture_slots:
-            if not texture_slot: continue
+            if not texture_slot or not texture_slot.texture: continue
             texture = texture_slot.texture
-            image = getattr(texture, 'image', 'false')
+            image = getattr(texture, 'image')
             if not image: continue
             if texture_slot.alpha_factor and texture.use_alpha:
                 non_alpha_images.append(image)
