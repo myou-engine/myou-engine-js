@@ -50,7 +50,9 @@ load_datablock = (scene, data, context) ->
     # We should use a map with functions instead of so many ifs...
     if data.type=='SCENE'
         scene.set_gravity data.gravity
-        scene.background_color = data.background_color
+        vec3.copy(scene.background_color, data.background_color)
+        if data.ambient_color
+            vec3.copy(scene.ambient_color, data.ambient_color)
         scene.debug_physics = context.MYOU_PARAMS.debug_physics or data.debug_physics
         scene.active_camera_name = data.active_camera
         scene.tree_name = data.tree_name
@@ -59,6 +61,8 @@ load_datablock = (scene, data, context) ->
         scene.anim_fps = data.fps if data.fps?
 
     else if data.type=='MATERIAL'
+        if not data.fragment.splice?
+            data.fragment = [context.SHADER_LIB, data.fragment]
         scene.unloaded_material_data[data.name] = data
         # only necessary when live updating a material
         old_mat = scene.materials[data.name]

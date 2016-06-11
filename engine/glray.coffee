@@ -75,7 +75,8 @@ class GLRay
         @distance = 0
         @step = 0
         @rounds = 0
-        @mat = new Material(@context, 'gl_ray', gl_ray_fs(@max_distance), [], [], gl_ray_vs(@max_distance))
+        @mat = new Material(@context, {
+            name: 'gl_ray', vertex: gl_ray_vs(@max_distance), fragment: gl_ray_fs(@max_distance)})
         @m4 = mat4.create()
         @world2cam = mat4.create()
         @world2cam_mx = mat4.create()
