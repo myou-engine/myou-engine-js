@@ -388,6 +388,7 @@ class RenderManager
                 gl.uniform1f lavars[4], lamp.falloff_distance
                 gl.uniform3fv lavars[5], lamp._dir
                 gl.uniformMatrix4fv lavars[6], false, lamp._cam2depth
+                gl.uniform1f lavars[7], lamp.energy
 
             for i in [0...mat.textures.length]
                 tex = mat.textures[i]

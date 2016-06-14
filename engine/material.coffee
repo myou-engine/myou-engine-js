@@ -182,12 +182,12 @@ class Material
                 when 6, 7, 9, 10, 11, 16, \
                     GPU_DYNAMIC_LAMP_DYNVEC, GPU_DYNAMIC_LAMP_DYNCO, \
                     GPU_DYNAMIC_LAMP_DYNPERSMAT, GPU_DYNAMIC_LAMP_DYNENERGY, \
-                    GPU_DYNAMIC_LAMP_DYNCOL, GPU_DYNAMIC_LAMP_DISTANCE, \
-                    l = lamps[u.lamp] or {
-                        vardir:'', varpos:'', varmat:''
-                        varcolor3:'', varcolor4:'', dist:''
-                        }
-                    lamps[u.lamp] = l
+                    GPU_DYNAMIC_LAMP_DYNCOL, GPU_DYNAMIC_LAMP_DISTANCE
+                        l = lamps[u.lamp] or {
+                            vardir:'', varpos:'', varmat:''
+                            varcolor3:'', varcolor4:'', dist:''
+                            }
+                        lamps[u.lamp] = l
             switch u.type
                 when 1, GPU_DYNAMIC_OBJECT_VIEWMAT # model_view_matrix
                     var_model_view_matrix = u.varname
