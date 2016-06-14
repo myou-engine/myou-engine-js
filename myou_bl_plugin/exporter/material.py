@@ -278,6 +278,8 @@ def mat_to_json(mat, scn):
     shader['name'] = mat.name
     shader['scene'] = scn.name
     
+    # TODO: modify blender to get all uniforms?
+    
     shader['params'] = [
         {
             'diffuse_color': list(mat.diffuse_color),

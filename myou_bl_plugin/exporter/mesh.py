@@ -303,6 +303,8 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
         # Split faces by material
         print("Splitting faces by material:")
         faces = bm.faces
+        if hasattr(faces, 'ensure_lookup_table'):
+            faces.ensure_lookup_table()
         for i in range(len(ob.material_slots)-1):
             bpy.ops.mesh.select_all(action='DESELECT')
             ob.active_material_index = i
@@ -328,6 +330,8 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
             if i != 0:
                 bpy.ops.mesh.select_all(action='DESELECT')
             # Select part
+            if hasattr(faces, 'ensure_lookup_table'):
+                faces.ensure_lookup_table()
             for f in range(numfaces_per_part * i, numfaces_per_part * (i+1)):
                 face = faces[f]
                 face.select = 1
