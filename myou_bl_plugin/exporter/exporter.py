@@ -32,7 +32,7 @@ def search_scene_used_data(scene):
         if ob not in used_data['objects']:
             is_in_layers = ob_in_layers(scene, ob)
             print('    '*i+'Ob:', ob.name if is_in_layers else '('+ob.name+' not exported)')
-            
+
             if is_in_layers:
                 used_data['objects'].append(ob)
                 if ob.type == 'MESH':
@@ -59,7 +59,7 @@ def search_scene_used_data(scene):
                         action = ob.animation_data.action
                         add_action(action, i+1)
                         used_data['action_users'][action.name] = ob
-                        
+
 
         for ob in ob.children:
             add_ob(ob, i+1)
@@ -293,7 +293,7 @@ def ob_to_json(ob, scn=None, check_cache=False):
             return d
 
         data = convert(ob, sort=True)
-        
+
         # copying conditions in mesh.py
         # because of linked meshes
         modifiers_were_applied = ob.get('modifiers_were_applied',
@@ -322,7 +322,7 @@ def ob_to_json(ob, scn=None, check_cache=False):
 
                 lod_level_data = []
                 lod_exported_meshes = {}
-                
+
                 # Support two formats of "lod_levels":
                 # - If you put an integer (or string with a number) you'll
                 #   generate as many decimated levels, each half of the previous one
@@ -332,16 +332,16 @@ def ob_to_json(ob, scn=None, check_cache=False):
                 #   levels with those factors
                 #   e.g. "[0.2, 0.08]"
                 # In both cases, the level of factor 1 is implicit.
-                
+
                 lod_levels = loads(str(ob.get('lod_levels',0)))
                 if not isinstance(lod_levels, (int, list)):
                     print('WARNING: Invalid lod_levels type. Using lod_levels = 0')
                     lod_levels = 0
-                
+
                 if not isinstance(lod_levels, list):
                     lod_levels = [1/pow(2,lod_level+1)
                         for lod_level in range(lod_levels)]
-                    
+
                 print('Generating LoD levels: ',  lod_levels)
                 for factor in lod_levels:
                     print('factor:', factor)
@@ -565,15 +565,15 @@ def ob_to_json(ob, scn=None, check_cache=False):
     game_properties = {}
     for k,v in ob.game.properties.items():
         game_properties[k] = v.value
-    
+
     parent = ob.parent.name if ob.parent else None
     if parent and ob.parent.proxy:
         parent = ob.parent.proxy.name
-    
+
     implicit_actions = []
     if ob.animation_data and ob.animation_data.action and ob.animation_data.action.fcurves:
         implicit_actions = [ob.animation_data.action.name]
-    
+
     obj = {
         'scene': scn.name,
         'type': obtype,
@@ -892,6 +892,7 @@ def menu_export(self, context):
 
 def export_myou(path, scn):
     # assuming exec_custom_build_command() has executed successfully
+
     join = os.path.join
 
     data_dir = os.path.basename(path.rstrip('/'))
@@ -919,3 +920,5 @@ def export_myou(path, scn):
         for mesh_file in scene['exported_meshes'].values():
             shutil.copy(mesh_file, scn_dir)
             shutil.copy(mesh_file+'.gz', scn_dir)
+
+    bpy.ops.file.make_paths_relative()
