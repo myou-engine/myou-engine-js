@@ -239,8 +239,8 @@ class RenderManager
             if pose.orientation
                 quat.copy @viewports[0].camera.rotation, pose.orientation
                 quat.copy @viewports[1].camera.rotation, pose.orientation
-            
-        
+
+
         for viewport in @viewports
             #if viewport.post_processing_enabled:
                 #if not @common_filter_fb:  # TODO: may have a race condition?
@@ -259,10 +259,10 @@ class RenderManager
             #else
             if viewport.camera.scene.enabled
                 @draw_viewport viewport, viewport.rect_pix, viewport.dest_buffer, [0, 1]
-        
+
         if pose?
             _HMD.submitFrame pose
-        
+
         #@gl.flush()
         @debug.vectors.clear() # TODO: have them per scene?
         @compiled_shaders_this_frame = 0
@@ -282,7 +282,7 @@ class RenderManager
         vec3.sub pos, pos, cam.position
         r = mesh.radius
         distance_to_camera = vec3.dot pos, @camera_z
-        
+
         if @use_frustum_culling and ((distance_to_camera+r) *
             (vec3.dot(pos, @_cull_top)+r) *
             (vec3.dot(pos, @_cull_left)+r) *
@@ -297,25 +297,34 @@ class RenderManager
         if mesh.altmeshes.length
             amesh = mesh.altmeshes[mesh.active_mesh_index] or mesh
         else if mesh.lod_objects
-            min_area = 0.25 # px #TODO set it configurable
+            # Min polygon length in px
+            min_length = 2 #TODO
+            # Set it configurable and FPS
+            # dependent and customizable on each object
 
-            scale = (mesh.scale[0] + mesh.scale[1] + mesh.scale[2])/3
+            # Bigger side of the screen in px
             screen_res = Math.max(@screen_size[0], @screen_size[1])
-            #Average polygon area in pixels:
-            orig_area = (mesh.avg_poly_area * Math.sin(cam.field_of_view) * scale / distance_to_camera) * screen_res
 
-            # winner area is the max area of the areas minor than min_area
-            winner_area = 0
+            # The scale of the object affects to the polygon length
+            scale_factor = (mesh.scale[0] + mesh.scale[1] + mesh.scale[2])/3
+
+            # Average polygon length in pixels:
+            dist_factor = screen_res * scale_factor * (0.5 / Math.tan(cam.field_of_view / 2)) / distance_to_camera
+            orig_length =  mesh.avg_poly_length * dist_factor
+
+            # winner length is the max length of the lengths minor than min_length
+            winner_length = 0
 
             for lod_ob in mesh.lod_objects
-                #Average polygon area in pixels:
-                area = (lod_ob.avg_poly_area * Math.sin(cam.field_of_view) * scale / distance_to_camera) * screen_res
-                if area < min_area and area > winner_area
-                    winner_area = area
-                    mesh.last_lod_object = amesh = lod_ob.object
+                lod = lod_ob.object
+                #Average polygon length in pixels:
+                length = lod.avg_poly_length * dist_factor
+                if length < min_length and length > winner_length
+                    winner_length = length
+                    mesh.last_lod_object = amesh = lod
 
             # checking original object
-            if not winner_area or (orig_area < min_area and orig_area > winner_area)
+            if not winner_length or (orig_length < min_length and orig_length > winner_length)
                 mesh.last_lod_object = amesh = mesh
 
         if not amesh.data
@@ -358,10 +367,10 @@ class RenderManager
 
             if mat.u_color?
                 gl.uniform4fv mat.u_color, mesh.color
-            
+
             if mat.u_ambient?
                 gl.uniform4fv mat.u_ambient, mesh.scene.ambient_color
-            
+
             shading_params = mat.shading_params[0]
             if mat.u_diffcol?
                 gl.uniform3fv mat.u_diffcol, shading_params.diffuse_color
@@ -407,7 +416,7 @@ class RenderManager
                     #gl.activeTexture(gl.TEXTURE0 + i)
                     #active_texture = i
                     #gl.bindTexture(gl.TEXTURE_2D, filter_fb.texture)
-                    
+
                 #else
                 if bound_textures[i] != tex
                     if active_texture != i
