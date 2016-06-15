@@ -82,8 +82,9 @@ class Scene
                 ob.parent_bone_index = p._bone_list.indexOf p.bones[parent_bone]
 
         if ob.type=='MESH'
-            for p in ob.passes
-                @mesh_passes[p].push ob
+            for p in [0..2]  # TODO: not having number of passes hardcoded
+                if p in ob.passes
+                    @mesh_passes[p].push ob
         if ob.type=='LAMP'
             @lamps.push ob
         if ob.type=='ARMATURE'
@@ -154,7 +155,7 @@ class Scene
         # TODO: Only the objects marked as unordered need to be resolved here!
         #       (make a new list and append to children)
         children = @children
-        
+
         reorder = (ob,index)->
             children[index++] = ob
             for c in ob.children
