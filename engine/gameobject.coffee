@@ -91,6 +91,9 @@ class GameObject
             @last_position = vec3.create()
         @actions = []
         @particle_systems = null
+        @avg_poly_area = 0
+        @avg_poly_length = 0
+
 
         # Remember to add any new mutable member to clone()
 
@@ -421,6 +424,8 @@ class GameObject
         n.properties = Object.create @properties
         n.actions = @actions[...]
         n.passes = @passes and @passes[...]
+        n.avg_poly_area = @avg_poly_area
+        n.avg_poly_length = @avg_poly_length
 
         #n.state_machines = Object.create @state_machines
         #n.friction_coefficients = @friction_coefficients[...]

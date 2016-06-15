@@ -158,6 +158,9 @@ load_object = (data, scene) ->
                 ob.uv_multiplier = data.uv_multiplier or 1
                 ob.pack_offset = data.pack_offset
                 ob.packed_file = data.packed_file
+                ob.avg_poly_area = data.avg_poly_area
+                ob.avg_poly_length = Math.pow(data.avg_poly_area,0.5)
+
         load_mesh_properties ob, data
 
         if 'alternative_meshes' of data
@@ -184,6 +187,7 @@ load_object = (data, scene) ->
 
         if data.avg_poly_area
             ob.avg_poly_area = data.avg_poly_area
+            ob.avg_poly_length = Math.pow(data.avg_poly_area,0.5)
 
         if data.lod_levels
             ob.lod_objects = []
@@ -199,7 +203,6 @@ load_object = (data, scene) ->
                 load_mesh_properties lod_ob, lod_data
                 ob.lod_objects.push
                     factor: lod_data.factor,
-                    avg_poly_area: lod_data.avg_poly_area,
                     object: lod_ob
 
 
