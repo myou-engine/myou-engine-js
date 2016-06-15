@@ -297,17 +297,26 @@ class RenderManager
         if mesh.altmeshes.length
             amesh = mesh.altmeshes[mesh.active_mesh_index] or mesh
         else if mesh.lod_objects
-            mesh.last_lod_object = null
-            winner = Infinity
+            min_area = 0.25 # px #TODO set it configurable
+
+            scale = (mesh.scale[0] + mesh.scale[1] + mesh.scale[2])/3
+            screen_res = Math.max(@screen_size[0], @screen_size[1])
+            #Average polygon area in pixels:
+            orig_area = (mesh.avg_poly_area * Math.sin(cam.field_of_view) * scale / distance_to_camera) * screen_res
+
+            # winner area is the max area of the areas minor than min_area
+            winner_area = 0
 
             for lod_ob in mesh.lod_objects
-                target_poly_area = mesh.lod_objects[0].avg_poly_area * 0.25
-                scale = (mesh.scale[0] + mesh.scale[1] + mesh.scale[2])/3
-                screen_avg_poly_area = lod_ob.avg_poly_area * Math.sin(cam.field_of_view) * scale / distance_to_camera
-                poly_area_dif = Math.abs(screen_avg_poly_area - target_poly_area)
-                if poly_area_dif < winner
-                    winner = poly_area_dif
+                #Average polygon area in pixels:
+                area = (lod_ob.avg_poly_area * Math.sin(cam.field_of_view) * scale / distance_to_camera) * screen_res
+                if area < min_area and area > winner_area
+                    winner_area = area
                     mesh.last_lod_object = amesh = lod_ob.object
+
+            # checking original object
+            if not winner_area or (orig_area < min_area and orig_area > winner_area)
+                mesh.last_lod_object = amesh = mesh
 
         if not amesh.data
             return true

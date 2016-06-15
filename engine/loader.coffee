@@ -182,6 +182,9 @@ load_object = (data, scene) ->
             m.scene = ob.scene
             load_mesh_properties m, data.phy_mesh
 
+        if data.avg_poly_area
+            ob.avg_poly_area = data.avg_poly_area
+
         if data.lod_levels
             ob.lod_objects = []
             for lod_data in data.lod_levels
