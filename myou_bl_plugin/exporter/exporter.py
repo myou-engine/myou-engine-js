@@ -798,7 +798,7 @@ def save_images(dest_path, used_data):
             continue
         if image.source in ['FILE' or 'MOVIE'] and not image.packed_file:
             if path_exists:
-                if real_path[-1] != '/': #Avoiding directories
+                if real_path[-1] != '/': #Avoiding directories (TODO: does this ever happen??!)
                     ext = image.filepath.rsplit('.',1)[1].lower()
                     # For compatibility with old .blends you need to add
                     # 'skip_texture_conversion' to the active scene
@@ -829,6 +829,8 @@ def save_images(dest_path, used_data):
                     print ('WARNING: ' + image.name + ' image path is not a file. path: ' + real_path)
             else:
                 print ('WARNING: image not found: ' + image.name + ' path: ' + real_path)
+                ext = image.filepath.rsplit('.',1)[1].lower()
+                image['exported_extension'] = ext
 
         elif image.source == 'GENERATED' or (image.source in ['FILE' or 'MOVIE'] and image.packed_file): # image generated or packed in blender
             if image in non_alpha_images:
