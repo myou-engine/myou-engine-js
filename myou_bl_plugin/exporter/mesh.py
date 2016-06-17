@@ -385,6 +385,15 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
             shapes.append(co)
     vcoords = [0.0,0.0,0.0] * len(ob.data.vertices)
     basis.foreach_get('co', vcoords)
+    min_v = [float('inf')]*3
+    max_v = [float('-inf')]*3
+    for i in range(0,len(vcoords),3):
+        min_v[0] = min(min_v[0], vcoords[i])
+        min_v[1] = min(min_v[1], vcoords[i+1])
+        min_v[2] = min(min_v[2], vcoords[i+2])
+        max_v[0] = max(max_v[0], vcoords[i])
+        max_v[1] = max(max_v[1], vcoords[i+1])
+        max_v[2] = max(max_v[2], vcoords[i+2])
     #t=perf_t(t)
 
     # Get normals from pre-seaming
@@ -801,6 +810,7 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
         'shape_multiplier': 1/shape_multiplier,
         'uv_multiplier': 1/uv_multiplier,
         'avg_poly_area': avg_poly_area,
+        'center': [(min_v[0]+max_v[0])*0.5, (min_v[1]+max_v[1])*0.5, (min_v[2]+max_v[2])*0.5],
     })
 
     ob.data['exported_name'] = ob.data.name
