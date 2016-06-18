@@ -72,20 +72,7 @@ load_datablock = (scene, data, context) ->
                 u.materials = []
 
     else if data.type=='SHADER_LIB'
-        if context.render_manager.extensions.compressed_texture_s3tc
-            context.SHADER_LIB = data.code.replace(
-                'normal = 2.0*(vec3(-color.r, color.g, color.b) - vec3(-0.5, 0.5, 0.5));',
-                'normal = 2.0*(vec3(-color.a, -color.g, color.b) - vec3(-0.5, -0.5, 0.5));'
-            )
-        else
-            context.SHADER_LIB = data.code.replace(
-                'normal = 2.0*(vec3(-color.r, color.g, color.b) - vec3(-0.5, 0.5, 0.5));',
-                'normal = 2.0*(vec3(-color.r, -color.g, color.b) - vec3(-0.5, -0.5, 0.5));'
-            ).replace(
-                # The version in packer
-                'normal = normalize(vec3(-color.a, -color.g, color.b) - vec3(-0.5, -0.5, 0.5));',
-                'normal = 2.0*(vec3(-color.r, -color.g, color.b) - vec3(-0.5, -0.5, 0.5));')
-
+        context.SHADER_LIB = data.code
     else if data.type=='JSCODE'
         window.eval data.code
 
