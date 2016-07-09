@@ -5,12 +5,9 @@
 MIN_PICK = new Float32Array([-0.434, -0.126, -0.948])
 MAX_PICK = new Float32Array([0.434, 0.164, 0.931])
 
-# TODO: assign different group_ids to mirrored meshes
-# TODO:
-# It may be better to extrude the meshes with a bit of the normal
-# (for that, set to signed byte and add 128 to vnormal.w)
-# TODO: substract a minimum distance calculated from
-# all meshes' radius
+# TODO: assign different group_ids to mirrored and linked meshes
+# TODO: use depth buffer instead of short depth when available
+# TODO: make alternate version for when depth buffers AND draw_buffers are available
 
 gl_ray_vs = (max_distance)->
     shader =  """
@@ -68,11 +65,14 @@ asign_group_and_mesh_id = (ob)->
     return id
 
 class GLRay
-    constructor: (@context,@debug_canvas,@w=512,@h=256,@max_distance=10,@render_steps=8,@wait_steps=3)->
+    constructor: (@context, options={}) ->
+        {@debug_canvas, @width=512, @height=256,
+            @max_distance=10, @render_steps=8, @wait_steps=3} = options
         @buffer = new Framebuffer(@context.render_manager, @w, @h, @context.render_manager.gl.UNSIGNED_BYTE)
         @pixels = new Uint8Array(@w * @h * 4)
         @pixels16 = new Uint16Array(@pixels.buffer)
         @distance = 0
+        @alpha_treshold = 0.5
         @step = 0
         @rounds = 0
         @mat = new Material(@context, {
@@ -90,6 +90,10 @@ class GLRay
         @debug_x = 0
         @debug_y = 0
         return
+    
+    resize: (@width, @height) ->
+        @pixels = new Uint8Array(@width * @height * 4)
+        @pixels16 = new Uint16Array(@pixels.buffer)
 
     init: (scene, camera) ->
         @add_scene(scene)
@@ -189,7 +193,7 @@ class GLRay
             @inv_proj_y = camera.projection_matrix_inv[5]
             @meshes = for m in scene.mesh_passes[0] when m.visible and m.physics_type != 'NO_COLLISION'
                 m
-            for m in scene.mesh_passes[1] when m.visible and m.alpha >= alpha_treshold and m.physics_type != 'NO_COLLISION'
+            for m in scene.mesh_passes[1] when m.visible and m.alpha >= @alpha_treshold and m.physics_type != 'NO_COLLISION'
                 @meshes.push (m)
 
         gl.uniformMatrix4fv(mat.u_projection_matrix, false, camera.projection_matrix)
