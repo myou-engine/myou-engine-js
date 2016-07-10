@@ -145,8 +145,8 @@ load_object = (data, scene) ->
                 ob.uv_multiplier = data.uv_multiplier or 1
                 ob.pack_offset = data.pack_offset
                 ob.packed_file = data.packed_file
-                ob.avg_poly_area = data.avg_poly_area
-                ob.avg_poly_length = Math.pow(data.avg_poly_area,0.5)
+                ob.avg_poly_area = data.avg_poly_area or 10
+                ob.avg_poly_length = Math.pow(ob.avg_poly_area,0.5)
 
         load_mesh_properties ob, data
 
