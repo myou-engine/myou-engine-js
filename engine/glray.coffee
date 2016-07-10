@@ -94,6 +94,11 @@ class GLRay
     resize: (@width, @height) ->
         @pixels = new Uint8Array(@width * @height * 4)
         @pixels16 = new Uint16Array(@pixels.buffer)
+        if @debug_canvas
+            @debug_canvas.width = @width
+            @debug_canvas.height = @height
+            @ctx = null
+        @step = 0
 
     init: (scene, camera) ->
         @add_scene(scene)
@@ -277,9 +282,6 @@ class GLRay
                         requestAnimationFrame(step)
                 step()
 
-        if @step == 1 and @sorted_meshes
-            @build_longest_rows()
-
         # Extract pixels (some time after render is queued, to avoid stalls)
         if @step == @render_steps + @wait_steps
             # t = performance.now()
@@ -291,10 +293,10 @@ class GLRay
             quat.copy(@last_cam_rot, @cam_rot)
         if @debug_canvas?
             if not @ctx
-                @debug_canvas.width = @w
-                @debug_canvas.height = @h
+                @debug_canvas.width = @width
+                @debug_canvas.height = @height
                 @ctx = @debug_canvas.getContext('2d', {alpha: false})
-                @imagedata = @ctx.createImageData(@w, @h)
+                @imagedata = @ctx.createImageData(@width, @height)
             @imagedata.data.set(@pixels)
             d = @imagedata.data
             i = 3
@@ -307,32 +309,23 @@ class GLRay
                     i += 4
             @ctx.putImageData(@imagedata, 0, 0)
         return
-
-    build_longest_rows: ->
-        @longest_rows_len = []
-        @longest_rows_x = []
-        @longest_rows_y = []
-        inv_w = 1/(@w-1)
-        inv_h = 1/(@h-1)
-        pixels16 = @pixels16
-        i = 0
-        for y in [0...@h]
-            current_id = pixels16[i]
-            rlen = 1
-            i += 2
-            for x in [1...@w]
-                id = pixels16[i]
-                if current_id == id
-                    rlen += 1
-                else
-                    if rlen > (@longest_rows_len[current_id]|0)
-                        @longest_rows_len[current_id] = rlen
-                        @longest_rows_x[current_id] = (x - (rlen>>1)) * inv_w
-                        @longest_rows_y[current_id] = 1 - (y*inv_h)
-                    current_id = id
-                    rlen = 1
-                i += 2
-        return
+        
+    create_debug_canvas: ->
+        if @debug_canvas?
+            @destroy_debug_canvas()
+        @debug_canvas = document.createElement 'canvas'
+        @debug_canvas.width = @width
+        @debug_canvas.height = @height
+        @debug_canvas.style.position = 'fixed'
+        @debug_canvas.style.top = '0'
+        @debug_canvas.style.left = '0'
+        @debug_canvas.style.transform = 'scaleY(-1)'
+        document.body.appendChild @debug_canvas
+        @ctx = null
+    
+    destroy_debug_canvas: ->
+        document.body.removeChild @debug_canvas
+        @ctx = null
 
     debug_random: ->
         for i in [0...1000]
