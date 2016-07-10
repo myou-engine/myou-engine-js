@@ -2,9 +2,6 @@
 {Framebuffer} = require './framebuffer.coffee'
 {Material} = require './material.coffee'
 
-MIN_PICK = new Float32Array([-0.434, -0.126, -0.948])
-MAX_PICK = new Float32Array([0.434, 0.164, 0.931])
-
 # TODO: assign different group_ids to mirrored and linked meshes
 # TODO: use depth buffer instead of short depth when available
 # TODO: make alternate version for when depth buffers AND draw_buffers are available
@@ -162,8 +159,6 @@ class GLRay
         # we do this instead of just passing depth to use the current camera position
         # TODO: move this out of this function to perform it only when it's used?
         distance = vec3.distance(point, cam.position)
-        vec3.min(point, point, MAX_PICK)
-        vec3.max(point, point, MIN_PICK)
         return {object, point, distance, normal: vec3.clone(point)}
 
     do_step: (scene, camera) ->

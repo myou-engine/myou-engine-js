@@ -264,7 +264,7 @@ class RenderManager
             _HMD.submitFrame pose
 
         #@gl.flush()
-        @debug.vectors.clear() # TODO: have them per scene?
+        @debug.vectors.clear() # TODO: have them per scene? preserve for a bunch of frames?
         @compiled_shaders_this_frame = 0
     # Returns: whether the frame should countinue
     draw_mesh: (mesh, mesh2world, pass_=-1)->
@@ -709,7 +709,7 @@ class RenderManager
 
 
         # Debug physics and vectors (TODO: move vector to debug properties?)
-        if scene.debug_physics and @context.MYOU_PARAMS.debug
+        if @context.MYOU_PARAMS.debug
             mm4 = mat4.create()
             for ob in scene.children
                 dob = ob.phy_debug_mesh
