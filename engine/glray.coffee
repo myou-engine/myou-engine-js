@@ -68,8 +68,8 @@ class GLRay
     constructor: (@context, options={}) ->
         {@debug_canvas, @width=512, @height=256,
             @max_distance=10, @render_steps=8, @wait_steps=3} = options
-        @buffer = new Framebuffer(@context.render_manager, @w, @h, @context.render_manager.gl.UNSIGNED_BYTE)
-        @pixels = new Uint8Array(@w * @h * 4)
+        @buffer = new Framebuffer(@context.render_manager, @width, @height, @context.render_manager.gl.UNSIGNED_BYTE)
+        @pixels = new Uint8Array(@width * @height * 4)
         @pixels16 = new Uint16Array(@pixels.buffer)
         @distance = 0
         @alpha_treshold = 0.5
@@ -117,8 +117,8 @@ class GLRay
                         @mesh_by_id[id] = alt
 
     debug_xy: (x, y) ->
-        x = (x*@w)|0
-        y = ((1-y)*@h)|0
+        x = (x*@width)|0
+        y = ((1-y)*@height)|0
         @debug_x = x
         @debug_y = y
 
@@ -127,9 +127,9 @@ class GLRay
         xf = (x*2-1)*@inv_proj_x
         yf = (y*-2+1)*@inv_proj_y
         # x/y in pixels
-        x = (x*(@w-1))|0
-        y = ((1-y)*(@h-1))|0
-        coord = (x + @w*y)<<2
+        x = (x*(@width-1))|0
+        y = ((1-y)*(@height-1))|0
+        coord = (x + @width*y)<<2
         coord16 = coord>>1
         # mesh_id = @pixels[coord]
         # group_id = @pixels[coord+1]
@@ -142,10 +142,10 @@ class GLRay
         if id == 65535 or depth == 0 or @rounds <= 1
             radius -= 1
             if radius > 0
-                return @pick_object((x+1) / @w, y / @h) or
-                    @pick_object((x-1) / @w, y / @h) or
-                    @pick_object(x / @w, (y+1) / @h) or
-                    @pick_object(x / @w, (y-1) / @h)
+                return @pick_object((x+1) / @width, y / @height) or
+                    @pick_object((x-1) / @width, y / @height) or
+                    @pick_object(x / @width, (y+1) / @height) or
+                    @pick_object(x / @width, (y-1) / @height)
             return null
         object = @mesh_by_id[id]
         if not object
@@ -285,7 +285,7 @@ class GLRay
         # Extract pixels (some time after render is queued, to avoid stalls)
         if @step == @render_steps + @wait_steps
             # t = performance.now()
-            gl.readPixels(0, 0, @w, @h, gl.RGBA, gl.UNSIGNED_BYTE, @pixels)
+            gl.readPixels(0, 0, @width, @height, gl.RGBA, gl.UNSIGNED_BYTE, @pixels)
             # console.log((performance.now() - t).toFixed(2) + ' ms')
             @step = 0
             @rounds += 1
@@ -300,8 +300,8 @@ class GLRay
             @imagedata.data.set(@pixels)
             d = @imagedata.data
             i = 3
-            for y in [0...@h]
-                for x in [0...@w]
+            for y in [0...@height]
+                for x in [0...@width]
                     d[i] = if x == @debug_x or y == @debug_y
                         0
                     else
