@@ -91,6 +91,8 @@ class GLRay
     resize: (@width, @height) ->
         @pixels = new Uint8Array(@width * @height * 4)
         @pixels16 = new Uint16Array(@pixels.buffer)
+        @buffer.destroy()
+        @buffer = new Framebuffer(@context.render_manager, @width, @height, @context.render_manager.gl.UNSIGNED_BYTE)
         if @debug_canvas
             @debug_canvas.width = @width
             @debug_canvas.height = @height
