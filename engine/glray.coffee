@@ -264,6 +264,10 @@ class GLRay
             @rounds += 1
             vec3.copy(@last_cam_pos, @cam_pos)
             quat.copy(@last_cam_rot, @cam_rot)
+            @draw_debug_canvas()
+        return
+    
+    draw_debug_canvas: ->
         if @debug_canvas?
             if not @ctx
                 @debug_canvas.width = @width
@@ -284,18 +288,24 @@ class GLRay
         return
 
     single_step_pick_object: (x, y) ->
+        # @pixels.fill(128)
         {gl} = @context.render_manager
         @step = 0
         coords = @get_byte_coords(x, y)
         @buffer.enable()
-        gl.scissor(coords.x, coords.y, 1, 1)
+        # TODO! TODO! Render only one pixel
+        # scissor is not scissoring and readPixels is off by one!!
+        # gl.scissor(coords.x, coords.y, 8, 8)
         @do_step()
         while @step != @render_steps + @wait_steps - 1
             @do_step()
         @step = 0
-        gl.readPixels(coords.x, coords.y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE,
-            @pixels.subarray(coords.index, coords.index+4))
-        gl.scissor(0, 0, @width, @height)
+        @rounds += 2
+        # gl.readPixels(coords.x, coords.y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE,
+        #     @pixels.subarray(coords.index, coords.index+4))
+        gl.readPixels(0, 0, @width, @height, gl.RGBA, gl.UNSIGNED_BYTE, @pixels)
+        # gl.scissor(0, 0, @width, @height)
+        @debug_xy x,y
         @pick_object(x, y)
 
     create_debug_canvas: ->
