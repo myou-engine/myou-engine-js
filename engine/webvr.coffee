@@ -16,7 +16,7 @@ exports.has_HMD = ->
                     HMD = display
                     break
             if not HMD?
-                return reject "No HMDs detected. Conect an HMD, turn it on and try again."
+                return reject "No HMDs detected."
             resolve true
 
 exports.init = (scene, options={}) ->
