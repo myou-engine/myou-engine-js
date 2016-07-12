@@ -99,8 +99,10 @@ class GLRay
 
     init: (scene, camera) ->
         @add_scene(scene)
+        @scene = scene
+        @camera = camera
         do_step_callback = (scene, frame_duration)=>
-            @do_step(scene, camera)
+            @do_step()
         scene.post_draw_callbacks.push do_step_callback
 
     add_scene: (scene) ->
@@ -119,7 +121,17 @@ class GLRay
         @debug_x = x
         @debug_y = y
 
-    pick_object: (x, y, radius=1) ->
+    get_byte_coords: (x, y) ->
+        # same as in the function below for getting x/y in pixels
+        # and then the array byte index
+        x = (x*(@width-1))|0
+        y = ((1-y)*(@height-1))|0
+        index = (x + @width*y)<<2
+        return {x,y,index}
+
+    pick_object: (x, y) ->
+        if @context._HMD
+            return null
         # x/y in camera space
         xf = (x*2-1)*@inv_proj_x
         yf = (y*-2+1)*@inv_proj_y
@@ -137,12 +149,6 @@ class GLRay
         depth = ((depth_h<<8)|depth_l) * @max_distance * 0.000015318627450980392 # 1/255/256
         # First round has wrong camera matrices
         if id == 65535 or depth == 0 or @rounds <= 1
-            radius -= 1
-            if radius > 0
-                return @pick_object((x+1) / @width, y / @height) or
-                    @pick_object((x-1) / @width, y / @height) or
-                    @pick_object(x / @width, (y+1) / @height) or
-                    @pick_object(x / @width, (y-1) / @height)
             return null
         object = @mesh_by_id[id]
         if not object
@@ -161,20 +167,19 @@ class GLRay
         distance = vec3.distance(point, cam.position)
         return {object, point, distance, normal: vec3.clone(point)}
 
-    do_step: (scene, camera) ->
+    do_step: ->
         gl = @context.render_manager.gl
-        m4 = @m4
-        mat = @mat
+        {scene, camera, m4, mat, world2cam, world2cam_mx} = @
         mat.use()
         attr_loc_vertex = mat.a_vertex
         attr_loc_normal = this.mat.attrib_locs.vnormal
-        world2cam = @world2cam
-        world2cam_mx = @world2cam_mx
         @buffer.enable()
         restore_near = false
 
         # Clear buffer, save camera matrices, calculate meshes to render
         if @step == 0
+            if @context._HMD
+                return
             # Change the far plane when it's too near
             if @pick_object(0.5,0.5)?.distance < 0.01
                 old_near = camera.near_plane
@@ -247,36 +252,6 @@ class GLRay
                             gl.frontFace(2305) # gl.CCW
         @step += 1
 
-        # One step before extracting pixels, we'll sort meshes by visual size
-        if @step == @render_steps + @wait_steps - 1
-            # Calculate visual size
-            mat = scene.active_camera.world_to_screen_matrix
-            bb_low = vec4.create()
-            bb_high = vec4.create()
-            for mesh in @meshes
-                if not mesh.bounding_box_low?
-                    mesh.calc_bounding_box()
-                vec4.transformMat4(bb_low, mesh.bounding_box_low, mat)
-                vec3.scale(bb_low, bb_low, 1/bb_low[3])
-                vec4.transformMat4(bb_high, mesh.bounding_box_high, mat)
-                vec3.scale(bb_high, bb_high, 1/bb_high[3])
-                mesh.visual_size = vec3.dist(bb_low, bb_high)
-            # Sort
-            sort_function = window.sort_function or ((a,b) -> a.visual_size - b.visual_size)
-            @meshes.sort sort_function
-            @sorted_meshes = @meshes[...]
-
-            window.sort_test = ->
-                for m in @sorted_meshes
-                    m.visible = false
-                step = ->
-                    m = test_meshes.pop()
-                    if m
-                        m.visible = true
-                        main_loop.reset_timeout()
-                        requestAnimationFrame(step)
-                step()
-
         # Extract pixels (some time after render is queued, to avoid stalls)
         if @step == @render_steps + @wait_steps
             # t = performance.now()
@@ -304,6 +279,21 @@ class GLRay
                     i += 4
             @ctx.putImageData(@imagedata, 0, 0)
         return
+        
+    single_step_pick_object: (x, y) ->
+        {gl} = @context.render_manager
+        @step = 0
+        coords = @get_byte_coords(x, y)
+        @buffer.enable()
+        gl.scissor(coords.x, coords.y, 1, 1)
+        @do_step()
+        while @step != @render_steps + @wait_steps - 1
+            @do_step()
+        @step = 0
+        gl.readPixels(coords.x, coords.y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE,
+            @pixels.subarray(coords.index, coords.index+4))
+        gl.scissor(0, 0, @width, @height)
+        @pick_object(x, y)
         
     create_debug_canvas: ->
         if @debug_canvas?
