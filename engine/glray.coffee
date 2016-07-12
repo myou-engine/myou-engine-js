@@ -87,7 +87,7 @@ class GLRay
         @debug_x = 0
         @debug_y = 0
         return
-    
+
     resize: (@width, @height) ->
         @pixels = new Uint8Array(@width * @height * 4)
         @pixels16 = new Uint16Array(@pixels.buffer)
@@ -99,13 +99,14 @@ class GLRay
             @ctx = null
         @step = 0
 
-    init: (scene, camera) ->
+    init: (scene, camera, add_callback=true) ->
         @add_scene(scene)
         @scene = scene
         @camera = camera
         do_step_callback = (scene, frame_duration)=>
             @do_step()
-        scene.post_draw_callbacks.push do_step_callback
+        if add_callback
+            scene.post_draw_callbacks.push do_step_callback
 
     add_scene: (scene) ->
         for ob in scene.children
@@ -281,7 +282,7 @@ class GLRay
                     i += 4
             @ctx.putImageData(@imagedata, 0, 0)
         return
-        
+
     single_step_pick_object: (x, y) ->
         {gl} = @context.render_manager
         @step = 0
@@ -296,7 +297,7 @@ class GLRay
             @pixels.subarray(coords.index, coords.index+4))
         gl.scissor(0, 0, @width, @height)
         @pick_object(x, y)
-        
+
     create_debug_canvas: ->
         if @debug_canvas?
             @destroy_debug_canvas()
@@ -309,7 +310,7 @@ class GLRay
         @debug_canvas.style.transform = 'scaleY(-1)'
         document.body.appendChild @debug_canvas
         @ctx = null
-    
+
     destroy_debug_canvas: ->
         document.body.removeChild @debug_canvas
         @ctx = null
