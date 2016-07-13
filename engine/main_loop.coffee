@@ -26,10 +26,9 @@ class MainLoop
 
     run: ->
         @stopped = false
-        if @enabled
-            return
-        @req_tick = requestAnimationFrame @_bound_tick
         @enabled = true
+        if not @req_tick
+            @req_tick = requestAnimationFrame @_bound_tick
         @last_time = performance.now()
 
 
@@ -65,7 +64,16 @@ class MainLoop
     reset_timeout: =>
         if @timeout_time
             @timeout(@timeout_time)
-
+        
+    tick_once: ->
+        if @req_tick?
+            cancelAnimationFrame @req_tick
+            @tick()
+        else
+            @tick()
+            cancelAnimationFrame @req_tick
+            @req_tick = null
+    
     tick: ->
         {_HMD} = @context
         if _HMD?
@@ -73,13 +81,16 @@ class MainLoop
         else
             @req_tick = requestAnimationFrame @_bound_tick
         time = performance.now()
-        @frame_duration = frame_duration = Math.min(time - @last_time, MAX_FRAME_DURATION)
+        @frame_duration = frame_duration = time - @last_time
         @last_time = time
 
         if not @enabled
             return
         @last_frame_durations[@_fdi] = frame_duration
         @_fdi = (@_fdi+1) % @last_frame_durations.length
+        
+        # Limit low speed of logic and physics
+        frame_duration = Math.min(frame_duration, MAX_FRAME_DURATION)
 
         task_time = time
         max_task_time = MAX_TASK_DURATION + time
