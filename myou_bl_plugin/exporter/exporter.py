@@ -861,8 +861,9 @@ def get_non_alpha_images(used_data):
             texture = texture_slot.texture
             image = getattr(texture, 'image')
             if not image: continue
-            if texture_slot.alpha_factor and texture.use_alpha:
+            if not (texture_slot.alpha_factor and texture.use_alpha):
                 non_alpha_images.append(image)
+
     return non_alpha_images
 
 def get_total_size_of_textures():
