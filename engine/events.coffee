@@ -1,7 +1,8 @@
 {vec2} = require 'gl-matrix'
 class Events
     # All are just 1 or 0
-    constructor: (root_element)->
+    constructor: (root_element, options={})->
+        {enable_touch=true} = options
         @keys_pressed = new Uint8Array 256
         @keys_just_pressed = new Uint8Array 256
         @keys_just_released = new Uint8Array 256
@@ -96,8 +97,9 @@ class Events
                 touch.touch_target = touch.target = t.target
                 @touch.touch_events[touch.id] = touch
             @touch.touches = event.touches.length
-
-        root_element.addEventListener 'touchstart', touch_start, false
+        
+        if enable_touch
+            root_element.addEventListener 'touchstart', touch_start, false
 
         touch_end = (event)=>
             event.preventDefault()
@@ -113,8 +115,9 @@ class Events
                 touch.rel_y = 0
             @touch.touches = event.touches.length
 
-        root_element.addEventListener 'touchend', touch_end, false
-        root_element.addEventListener 'touchcancel', touch_end, false
+        if enable_touch
+            root_element.addEventListener 'touchend', touch_end, false
+            root_element.addEventListener 'touchcancel', touch_end, false
 
         touch_move = (event)=>
             event.preventDefault()
@@ -145,7 +148,8 @@ class Events
                 @touch.touch_events[touch.id] = touch
             @touch.touches = event.touches.length
 
-        root_element.addEventListener 'touchmove', touch_move, false
+        if enable_touch
+            root_element.addEventListener 'touchmove', touch_move, false
 
         mouse = @mouse
         mousedown = (event)->
