@@ -385,9 +385,6 @@ class RenderManager
             if mat.u_emit?
                 gl.uniform1f mat.u_emit, shading_params.emit
 
-            if mat.u_custom[2]
-                gl.uniform1f(mat.u_custom[2], mesh.alpha)
-
             for i in [0...mat.u_custom.length]
                 cv = mesh.custom_uniform_values[i]
                 if cv
