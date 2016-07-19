@@ -64,7 +64,7 @@ class Myou
         data_dir = MYOU_PARAMS.data_dir or './data'
         data_dir = MYOU_PARAMS.data_dir = data_dir.replace(/\/$/g, '')
 
-        @events = new Events root
+        @events = new Events root, MYOU_PARAMS.event_options
         @main_loop.run()
 
     load_scene: (name, load_physics=true) ->
