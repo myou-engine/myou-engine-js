@@ -168,6 +168,9 @@ class GLRay
         # we do this instead of just passing depth to use the current camera position
         # TODO: move this out of this function to perform it only when it's used?
         distance = vec3.distance(point, cam.position)
+        # I don't know why does this happen
+        if isNaN distance
+            return null
         return {object, point, distance, normal: vec3.clone(point)}
 
     do_step: ->
@@ -183,13 +186,13 @@ class GLRay
         if @step == 0
             if @context._HMD
                 return
-            # Change the far plane when it's too near
-            if @pick_object(0.5,0.5)?.distance < 0.01
-                old_near = camera.near_plane
-                camera.near_plane = 0.00001
-                camera.recalculate_projection()
-                camera.near_plane = old_near
-                restore_near = true
+            # # Change the far plane when it's too near
+            # if @pick_object(0.5,0.5)?.distance < 0.01
+            #     old_near = camera.near_plane
+            #     camera.near_plane = 0.00001
+            #     camera.recalculate_projection()
+            #     camera.near_plane = old_near
+            #     restore_near = true
             gl.clearColor(1, 1, 1, 1)
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
             mat4.copy(world2cam, @context.render_manager._world2cam)
