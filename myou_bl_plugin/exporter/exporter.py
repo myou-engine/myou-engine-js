@@ -780,9 +780,13 @@ def get_scene_tmp_path(scn):
     return dir
 
 def save_image(image, path, format, pack=False):
+    old_path = image.filepath_raw
+    old_format = image.file_format
     image.filepath_raw = path
     image.file_format = format
     image.save()
+    image.filepath_raw = old_path
+    image.file_format = old_format
 
 def save_images(dest_path, used_data):
     if not os.path.exists(dest_path):
@@ -809,16 +813,12 @@ def save_images(dest_path, used_data):
                         file_format = 'JPEG'
                         image['exported_extension'] = ext = 'jpg'
                         save_image(image, dest_path + '/' + image.name + '.' + ext, file_format)
-                        # restauring original path
-                        image.filepath_raw = real_path
 
                     elif image not in non_alpha_images and ext != 'png' and not skip_conversion:
                         print('Saving in png format')
                         file_format = 'PNG'
                         image['exported_extension'] = ext = 'png'
                         save_image(image, dest_path + '/' + image.name + '.' + ext, file_format)
-                        # restauring original path
-                        image.filepath_raw = real_path
 
                     else:
                         print('Copying original image')
@@ -846,8 +846,9 @@ def save_images(dest_path, used_data):
             save_image(image, dest_path + '/' + image.name + '.' + ext, file_format)
             image['exported_extension'] = ext
             # Packing generated texture in the blender file
-            image.pack()
-            image.filepath_raw = ''
+            if not image.packed_file
+                image.pack()
+                image.filepath_raw = ''
 
             print("Saving image generated in blender")
 
