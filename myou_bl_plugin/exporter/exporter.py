@@ -7,6 +7,10 @@ from json import dumps, loads
 from collections import defaultdict
 import shutil
 
+import tempfile
+
+tempdir  = tempfile.gettempdir()
+
 from math import *
 
 import os
@@ -779,14 +783,17 @@ def get_scene_tmp_path(scn):
             pass
     return dir
 
-def save_image(image, path, format, pack=False):
+def save_image(image, path, new_format):
     old_path = image.filepath_raw
     old_format = image.file_format
+
     image.filepath_raw = path
-    image.file_format = format
+    image.file_format = new_format
     image.save()
+
     image.filepath_raw = old_path
     image.file_format = old_format
+
 
 def save_images(dest_path, used_data):
     if not os.path.exists(dest_path):
@@ -794,37 +801,56 @@ def save_images(dest_path, used_data):
 
     non_alpha_images = get_non_alpha_images(used_data)
 
+    # For compatibility with old .blends you need to add
+    # 'skip_texture_conversion' to the active scene
+    skip_conversion = bpy.context.scene.get('skip_texture_conversion')
+
     for image in used_data['images']:
+        if image.source == 'VIEWER':
+            raise ValueError('You are using a render result as texture, please save it as image first.')
+
+        if image.source == 'GENERATED': #generated or rendered
+            print('Generated image will be packed as png')
+            #The image must be saved in a temporal path before packing.
+            tmp_filepath  = tempdir + image.name + '.png'
+            save_image(image, tmp_filepath, 'PNG')
+            image.filepath = tmp_filepath
+            image.pack()
+
         real_path = bpy.path.abspath(image.filepath)
         path_exists = os.path.exists(real_path)
-        print('IMAGE:', image.name, 'path:', image.filepath)
-        if not image.users:
-            continue
+        uses_alpha = image not in non_alpha_images
+
+        print('Exporting image:', image.name)
+        if uses_alpha:
+            print('image:', image.name, 'is using alpha channel')
+
         if image.source in ['FILE' or 'MOVIE'] and not image.packed_file:
             if path_exists:
                 if real_path[-1] != '/': #Avoiding directories (TODO: does this ever happen??!)
-                    ext = image.filepath.rsplit('.',1)[1].lower()
-                    # For compatibility with old .blends you need to add
-                    # 'skip_texture_conversion' to the active scene
-                    skip_conversion = bpy.context.scene.get('skip_texture_conversion')
+                    print('original path:', real_path)
+                    ext = image.filepath.rsplit('.',1)[1].upper()
 
-                    if image in non_alpha_images and ext not in ['jpg', 'jpeg'] and not skip_conversion:
-                        print('Saving in jpg format')
+                    if not uses_alpha and ext not in ['JPEG', 'JPG'] and not skip_conversion:
                         file_format = 'JPEG'
-                        image['exported_extension'] = ext = 'jpg'
-                        save_image(image, dest_path + '/' + image.name + '.' + ext, file_format)
+                        image['exported_extension'] = ext = 'JPG'
+                        save_image(image, dest_path + '/' + image.name + '.' + ext.lower(), file_format)
+                        print('Exported as image as JPG')
 
-                    elif image not in non_alpha_images and ext != 'png' and not skip_conversion:
-                        print('Saving in png format')
+
+                    elif uses_alpha and ext not in ['JPEG', 'JPG', 'PNG'] and not skip_conversion:
                         file_format = 'PNG'
-                        image['exported_extension'] = ext = 'png'
-                        save_image(image, dest_path + '/' + image.name + '.' + ext, file_format)
+                        image['exported_extension'] = ext = 'PNG'
+                        save_image(image, dest_path + '/' + image.name + '.' + ext.lower(), file_format)
+                        print('Exported as image as PNG')
+
 
                     else:
-                        print('Copying original image')
-                        exported_path = os.path.join(dest_path, image.name + '.' + ext)
-                        image['exported_extension'] = ext
+                        exported_path = os.path.join(dest_path, image.name + '.' + ext.lower())
+                        image['exported_extension'] = ext.lower()
                         shutil.copy(real_path, exported_path)
+                        print('Copied original image')
+
                 else:
                     print ('WARNING: ' + image.name + ' image path is not a file. path: ' + real_path)
             else:
@@ -832,39 +858,26 @@ def save_images(dest_path, used_data):
                 ext = image.filepath.rsplit('.',1)[1].lower()
                 image['exported_extension'] = ext
 
-        elif image.source == 'GENERATED' or (image.source in ['FILE' or 'MOVIE'] and image.packed_file): # image generated or packed in blender
-            if image in non_alpha_images:
-                print('Saving generated or packed image in jpg format')
+        else: # packed
+            if uses_alpha:
+                print('Exporting packed image as PNG')
+                file_format = 'PNG'
+                ext = 'png'
+            else:
+                print('Exporting packed image as JPG')
                 file_format = 'JPEG'
                 ext = 'jpg'
 
-            else:
-                print('Saving generated or packed in png format')
-                file_format = 'PNG'
-                ext = 'png'
-
             save_image(image, dest_path + '/' + image.name + '.' + ext, file_format)
             image['exported_extension'] = ext
-            # Packing generated texture in the blender file
-            if not image.packed_file
-                image.pack()
-                image.filepath_raw = ''
 
-            print("Saving image generated in blender")
+        print()
 
 def get_non_alpha_images(used_data):
     non_alpha_images = []
-    for material in used_data['materials']:
-        if not material.users:
-            continue
-        for texture_slot in material.texture_slots:
-            if not texture_slot or not texture_slot.texture: continue
-            texture = texture_slot.texture
-            image = getattr(texture, 'image')
-            if not image: continue
-            if not (texture_slot.alpha_factor and texture.use_alpha):
-                non_alpha_images.append(image)
-
+    for image in used_data['images']:
+        if not image.use_alpha:
+            non_alpha_images.append(image)
     return non_alpha_images
 
 def get_total_size_of_textures():
