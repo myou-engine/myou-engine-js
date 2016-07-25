@@ -31,6 +31,7 @@ class Myou
         
         # VR
         @_HMD = @_vrscene = null
+        @use_VR_position = true
         
         # The root element needs to be positioned, so the mouse events (layerX/Y) are
         # registered correctly, and the canvas is scaled inside
