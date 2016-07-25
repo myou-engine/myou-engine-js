@@ -233,7 +233,7 @@ class RenderManager
         {_HMD} = @context
         if _HMD?
             pose = _HMD.getPose()
-            if pose.position
+            if pose.position and @context.use_VR_position
                 vec3.copy @viewports[0].camera.position, pose.position
                 vec3.copy @viewports[1].camera.position, pose.position
             if pose.orientation

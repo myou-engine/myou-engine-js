@@ -39,6 +39,8 @@ exports.init = (scene, options={}) ->
                 throw "No HMDs detected. Conect an HMD, turn it on and try again."
             ctx._vrscene = scene
             ctx._HMD = HMD
+            if options.use_VR_position?
+                ctx.use_VR_position = options.use_VR_position
             viewport1 = null
             for v,i in ctx.render_manager.viewports
                 if v.camera == scene.active_camera
@@ -53,8 +55,8 @@ exports.init = (scene, options={}) ->
             rightEye = HMD.getEyeParameters("right")
             viewport1.camera = viewport1.camera.clone()
             viewport2.camera = viewport2.camera.clone()
-            scene.make_parent scene.active_camera, viewport1.camera, false
-            scene.make_parent scene.active_camera, viewport2.camera, false
+            scene.make_parent scene.active_camera, viewport1.camera
+            scene.make_parent scene.active_camera, viewport2.camera
             {fieldOfView} = leftEye
             vec4.set viewport1.camera.fov_4,
                 fieldOfView.upDegrees
