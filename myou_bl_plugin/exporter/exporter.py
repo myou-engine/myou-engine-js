@@ -835,14 +835,14 @@ def save_images(dest_path, used_data):
                         file_format = 'JPEG'
                         image['exported_extension'] = ext = 'JPG'
                         save_image(image, dest_path + '/' + image.name + '.' + ext.lower(), file_format)
-                        print('Exported as image as JPG')
+                        print('Image exported as JPG')
 
 
                     elif uses_alpha and ext not in ['JPEG', 'JPG', 'PNG'] and not skip_conversion:
                         file_format = 'PNG'
                         image['exported_extension'] = ext = 'PNG'
                         save_image(image, dest_path + '/' + image.name + '.' + ext.lower(), file_format)
-                        print('Exported as image as PNG')
+                        print('Image exported as PNG')
 
 
                     else:
