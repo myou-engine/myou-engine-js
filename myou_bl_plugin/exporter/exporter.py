@@ -897,7 +897,7 @@ class MyouEngineExporter(bpy.types.Operator, ExportHelper):
     bl_idname = "export_scene.myou"
     bl_label = "Export Myou"
 
-    filename_ext = ""
+    filename_ext = ".myou"
     filter_glob = StringProperty(default="*", options={'HIDDEN'})
 
     def execute(self, context):
@@ -911,31 +911,43 @@ def export_myou(path, scn):
     # assuming exec_custom_build_command() has executed successfully
 
     join = os.path.join
-
+    
+    if path.endswith('.myou'):
+        path = path[:-5]
     data_dir = os.path.basename(path.rstrip('/'))
     if data_dir:
         data_dir += '/'
     full_dir = os.path.realpath(join(os.path.dirname(path), data_dir))
-    shutil.rmtree(full_dir, ignore_errors=True)
-    os.mkdir(full_dir)
-    os.mkdir(join(full_dir, 'scenes'))
-    os.mkdir(join(full_dir, 'textures'))
-    for scene in bpy.data.scenes:
-        used_data = search_scene_used_data(scene)
-        save_images(join(full_dir, 'textures'), used_data)
-
-        scn_dir = join(full_dir, 'scenes', scene.name)
-        try: os.mkdir(scn_dir)
-        except FileExistsError: pass
-
-
-
-        scene_json, scene_json_gz = whole_scene_to_json(scene, used_data)
-
-        open(join(scn_dir, 'all.json'), 'wb').write(scene_json)
-        open(join(scn_dir, 'all.json.gz'), 'wb').write(scene_json_gz)
-        for mesh_file in scene['exported_meshes'].values():
-            shutil.copy(mesh_file, scn_dir)
-            shutil.copy(mesh_file+'.gz', scn_dir)
+    old_export = ''
+    if os.path.exists(full_dir):
+        bak = 1
+        while os.path.exists(full_dir+str(bak)):
+            bak += 1
+        old_export = full_dir+str(bak)
+        shutil.move(full_dir, old_export)
+    try:
+        os.mkdir(full_dir)
+        os.mkdir(join(full_dir, 'scenes'))
+        os.mkdir(join(full_dir, 'textures'))
+        for scene in bpy.data.scenes:
+            used_data = search_scene_used_data(scene)
+            save_images(join(full_dir, 'textures'), used_data)
+            scn_dir = join(full_dir, 'scenes', scene.name)
+            try: os.mkdir(scn_dir)
+            except FileExistsError: pass
+            scene_json, scene_json_gz = whole_scene_to_json(scene, used_data)
+            open(join(scn_dir, 'all.json'), 'wb').write(scene_json)
+            open(join(scn_dir, 'all.json.gz'), 'wb').write(scene_json_gz)
+            for mesh_file in scene['exported_meshes'].values():
+                shutil.copy(mesh_file, scn_dir)
+                shutil.copy(mesh_file+'.gz', scn_dir)
+        if old_export:
+            shutil.rmtree(old_export, ignore_errors=False)
+    except:
+        import datetime
+        shutil.move(full_dir, full_dir+'_FAILED_'+str(datetime.datetime.now().replace(':','-').replace(' ','_')).split('.')[0])
+        shutil.move(old_export, full_dir)
+        print("EXPORT HAS FAILED, but old folder has been restored")
+        raise
 
     bpy.ops.file.make_paths_relative()
