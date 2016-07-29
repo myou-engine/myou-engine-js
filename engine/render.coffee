@@ -27,7 +27,7 @@ class RenderManager
 
         if not gl
             on_webgl_failed?()
-            raise "Error: Can't start WebGL"
+            throw "Error: Can't start WebGL"
 
         @context = context
         @context.render_manager = @
