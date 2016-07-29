@@ -1,24 +1,18 @@
 
 from .mesh import *
 from .material import *
-#from .. import compiler
-from . import util
+from . import image
 
 from json import dumps, loads
 from collections import defaultdict
 import shutil
-
 import tempfile
+import os
+from math import *
 
 tempdir  = tempfile.gettempdir()
 
-from math import *
-
-import os
-TEMPDIR = '/tmp/'
 GE_PATH = os.path.realpath(__file__).rsplit(os.sep,2)[0]
-if os.name=='nt':
-    TEMPDIR = os.environ['TEMP']+'\\' # This may not work, use plugin dir as fallback
 
 def search_scene_used_data(scene):
 
@@ -757,9 +751,8 @@ def whole_scene_to_json(scn, used_data):
     ret += [dumps({"type":"SHADER_LIB","code": get_shader_lib()}).encode()] + mat_json + act_json
     retb = b'['+b','.join(ret)+b']'
     retb_gz = gzip.compress(retb)
-    total_textures = get_total_size_of_textures()
-    size = len(retb) + total_textures
-    size_gz = len(retb_gz) + total_textures
+    size = len(retb)
+    size_gz = len(retb_gz)
     # TODO TODO TODO TODO TODO stop using scn['exported_meshes']
     # ADD OPTION FOR HIDDEN MESH PRELOADING
     for o in scn.objects:
@@ -776,120 +769,13 @@ def whole_scene_to_json(scn, used_data):
     return [retb, retb_gz]
 
 def get_scene_tmp_path(scn):
-    dir = (TEMPDIR + 'scenes' + os.sep + scn.name + os.sep)
-    for p in (TEMPDIR + 'scenes', dir):
+    dir = (tempdir + os.sep + 'scenes' + os.sep + scn.name + os.sep)
+    for p in (tempdir + os.sep + 'scenes', dir):
         try:
             os.mkdir(p)
         except FileExistsError:
             pass
     return dir
-
-def save_image(image, path, new_format):
-    old_path = image.filepath_raw
-    old_format = image.file_format
-
-    image.filepath_raw = path
-    image.file_format = new_format
-    image.save()
-
-    image.filepath_raw = old_path
-    image.file_format = old_format
-
-
-def save_images(dest_path, used_data):
-    if not os.path.exists(dest_path):
-        os.mkdir(dest_path)
-    
-    pack_generated_images(used_data)
-    non_alpha_images = get_non_alpha_images(used_data)
-
-    # For compatibility with old .blends you need to add
-    # 'skip_texture_conversion' to the active scene
-    skip_conversion = bpy.context.scene.get('skip_texture_conversion')
-
-    for image in used_data['images']:
-        if image.source == 'VIEWER':
-            raise ValueError('You are using a render result as texture, please save it as image first.')
-        
-        real_path = bpy.path.abspath(image.filepath)
-        path_exists = os.path.exists(real_path)
-        uses_alpha = image not in non_alpha_images
-
-        print('Exporting image:', image.name)
-        if uses_alpha:
-            print('image:', image.name, 'is using alpha channel')
-
-        if image.source == 'FILE':
-            out_format = 'JPEG'
-            out_ext = 'jpg'
-            if uses_alpha:
-                out_format = 'PNG'
-                out_ext = 'png'
-            if path_exists or image.packed_file:
-                exported_path = os.path.join(dest_path, image.name + '.' + out_ext)
-                image['exported_extension'] = out_ext
-                if path_exists and image.file_format == out_format:
-                    shutil.copy(real_path, exported_path)
-                    print('Copied original image')
-                else:
-                    save_image(image, exported_path, out_format)
-                    print('Image exported as '+out_format)
-            else:
-                raise Exception('Image not found: ' + image.name + ' path: ' + real_path)
-        elif image.source == 'MOVIE' and path_exists:
-            out_ext = image.filepath_raw.split('.')[-1]
-            exported_path = os.path.join(dest_path, image.name + '.' + out_ext)
-            image['exported_extension'] = out_ext
-            if path_exists and image.file_format == out_format:
-                shutil.copy(real_path, exported_path)
-                print('Copied original video')
-        else:
-            raise Exception('Image source not supported: ' + image.name + ' source: ' + image.source)
-        print()
-
-def pack_generated_images(used_data):
-    for image in used_data['images']:
-        if image.source == 'GENERATED': #generated or rendered
-            print('Generated image will be packed as png')
-            #The image must be saved in a temporal path before packing.
-            tmp_filepath = tempdir + image.name + '.png'
-            save_image(image, tmp_filepath, 'PNG')
-            image.filepath = tmp_filepath
-            image.file_format = 'PNG'
-            image.pack()
-            image.filepath = ''
-            os.unlink(tmp_filepath)
-
-def get_non_alpha_images(used_data):
-    non_alpha_images = []
-    for image in used_data['images']:
-        if not image.use_alpha:
-            non_alpha_images.append(image)
-        else:
-            # If it's not a format known to not have alpha channel,
-            # make sure it has an alpha channel at all
-            if image.file_format not in ['JPEG', 'TIFF']:
-                path = bpy.path.abspath(image.filepath)
-                if os.path.exists(path):
-                    if not util.png_file_has_alpha(path):
-                        non_alpha_images.append(image)
-                elif image.packed_file:
-                    tmp_filepath = tempdir + image.name + '.png'
-                    save_image(image, tmp_filepath, 'PNG')
-                    if not util.png_file_has_alpha(tmp_filepath):
-                        non_alpha_images.append(image)
-                    os.unlink(tmp_filepath)
-            else:
-                non_alpha_images.append(image)
-    return non_alpha_images
-
-def get_total_size_of_textures():
-    t = 0
-    for image in bpy.data.images:
-        real_path = bpy.path.abspath(image.filepath)
-        if os.path.exists(real_path):
-            t += os.path.getsize(real_path)
-    return t
 
 import bpy
 from bpy.props import StringProperty, BoolProperty
@@ -934,7 +820,7 @@ def export_myou(path, scn):
         os.mkdir(join(full_dir, 'textures'))
         for scene in bpy.data.scenes:
             used_data = search_scene_used_data(scene)
-            save_images(join(full_dir, 'textures'), used_data)
+            image.save_images(join(full_dir, 'textures'), used_data)
             scn_dir = join(full_dir, 'scenes', scene.name)
             try: os.mkdir(scn_dir)
             except FileExistsError: pass
