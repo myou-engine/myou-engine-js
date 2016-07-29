@@ -200,21 +200,21 @@ class Scene
         @unload()
         @load()
 
-    load_visible_objects: ->
+    load_visible_objects: (options) ->
         visible_objects = for ob in @children when ob.visible and not ob.data then ob
-        return fetch_objects(visible_objects).then(=>@)
+        return fetch_objects(visible_objects, options).then(=>@)
 
-    load_all_objects: ->
+    load_all_objects: (options) ->
         # TODO: This may not work the second time is not called.
         # Meshes should always return data's promises
-        return fetch_objects(@children).then(=>@)
+        return fetch_objects(@children, options).then(=>@)
 
-    load_objects: (list)->
+    load_objects: (list, options)->
         if not list
             throw "No list supplied. Did you mean 'load_all_objects()'?"
         # TODO: This may not work the second time is not called.
         # Meshes should always return data's promises
-        return fetch_objects(list).then(=>@)
+        return fetch_objects(list, options).then(=>@)
 
     enable_render: ->
         @enabled = true

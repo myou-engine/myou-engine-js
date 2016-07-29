@@ -185,6 +185,9 @@ class Mesh extends GameObject
         if @scene and @scene.world
             @instance_physics()
         @context.main_loop?.reset_timeout()
+        # This forces the mesh to be uploaded
+        # ZERO_MATRIX = mat4.set mat4.create(), 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,1
+        # @context.render_manager.draw_mesh(@, ZERO_MATRIX, -1, false)
         return data
 
     update_iarray: ->

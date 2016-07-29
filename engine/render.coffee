@@ -267,7 +267,7 @@ class RenderManager
         @debug.vectors.clear() # TODO: have them per scene? preserve for a bunch of frames?
         @compiled_shaders_this_frame = 0
     # Returns: whether the frame should countinue
-    draw_mesh: (mesh, mesh2world, pass_=-1)->
+    draw_mesh: (mesh, mesh2world, pass_=-1, use_lod=true)->
         gl = @gl
         bound_textures = @bound_textures
         m4 = @_m4
@@ -296,7 +296,7 @@ class RenderManager
         amesh = mesh
         if mesh.altmeshes.length
             amesh = mesh.altmeshes[mesh.active_mesh_index] or mesh
-        else if mesh.lod_objects
+        else if mesh.lod_objects and use_lod
             # Min polygon length in px
             min_length = 2 #TODO
             # Set it configurable and FPS
@@ -319,13 +319,16 @@ class RenderManager
                 lod = lod_ob.object
                 #Average polygon length in pixels:
                 length = lod.avg_poly_length * dist_factor
-                if length < min_length and length > winner_length
+                if length < min_length and length > winner_length and lod.data
                     winner_length = length
                     mesh.last_lod_object = amesh = lod
 
-            # checking original object
+            # checking original object, or the highest that is loaded
             if not winner_length or (orig_length < min_length and orig_length > winner_length)
                 mesh.last_lod_object = amesh = mesh
+                i = mesh.lod_objects.length
+                while not amesh.data and i > 0
+                    amesh = mesh.lod_objects[--i].object
 
         if not amesh.data
             return true
