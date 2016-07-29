@@ -890,7 +890,7 @@ def save_images(dest_path, used_data):
                 if not file_did_exist_before:
                     os.unlink(dest_file_path)
                 file_format = 'JPEG'
-                iext = 'jpg'
+                ext = 'jpg'
                 dest_file_path = dest_path + '/' + image.name + '.' + ext
                 save_image(image, dest_file_path, file_format)
             image['exported_extension'] = ext
