@@ -171,7 +171,8 @@ fetch_textures_of_material = (scene, mat_name) ->
             Promise.reject "Couldn't find material '#{mat_name}'"
 
 # Load a mesh of a mesh type object, return a promise
-fetch_mesh = (mesh_object, min_lod=1) ->
+fetch_mesh = (mesh_object, options={}) ->
+    {max_mesh_lod=1} = options
     promise = new Promise (resolve, reject) ->
         if mesh_object.type != 'MESH'
             reject 'object is not a mesh'
@@ -187,14 +188,14 @@ fetch_mesh = (mesh_object, min_lod=1) ->
         lod_objects = mesh_object.lod_objects
         last_lod = lod_objects[lod_objects.length-1]
         if last_lod
-            min_lod = Math.max min_lod, last_lod.factor
+            max_mesh_lod = Math.max max_mesh_lod, last_lod.factor
         for lod_ob in lod_objects
-            if lod_ob.factor <= min_lod
+            if lod_ob.factor <= max_mesh_lod
                 lod_promises.push fetch_mesh(lod_ob.object)
 
         # Not load self if only lower LoDs were loaded, or it was already loaded.
-        if (min_lod < 1 and lod_promises.length != 0) or mesh_object.data
-            return Promise.all lod_promises
+        if (max_mesh_lod < 1 and lod_promises.length != 0) or mesh_object.data
+            return resolve Promise.all(lod_promises)
 
         fetch_promise = if file_name of fetch_promises
             fetch_promises[file_name]
@@ -206,42 +207,43 @@ fetch_mesh = (mesh_object, min_lod=1) ->
         fetch_promises[file_name] = fetch_promise
 
         fetch_promise.then (data) ->
-            new Promise (resolve, reject) ->
-                mesh_data = context.mesh_datas[mesh_object.hash]
-                if mesh_data
-                    # It was loaded before, replace if not the same
-                    if mesh_object.data != mesh_data
-                        mesh_object.data.remove mesh_object
-                        mesh_object.data = mesh_data
-                        mesh_object.data.users.push mesh_object
-                    resolve(mesh_object)
-                else
-                    # If there was no mesh_data, actually load it
-                    # (load_from_arraybuffer will populate mesh_datas)
-                    context.main_loop.add_frame_callback =>
-                        mesh_object.load_from_arraybuffer data
-                        if mesh_object.physics_type != 'NO_COLLISION' and mesh_object.scene.world
-                            #TODO: Remove without resolving the promise too early
-                            context.main_loop.add_frame_callback =>
-                                mesh_object.instance_physics()
-                                resolve(mesh_object)
-                        else
+            mesh_data = context.mesh_datas[mesh_object.hash]
+            if mesh_data
+                # It was loaded before, replace if not the same
+                if mesh_object.data != mesh_data
+                    mesh_object.data.remove mesh_object
+                    mesh_object.data = mesh_data
+                    mesh_object.data.users.push mesh_object
+                resolve(mesh_object)
+            else
+                # If there was no mesh_data, actually load it
+                # (load_from_arraybuffer will populate mesh_datas)
+                context.main_loop.add_frame_callback =>
+                    mesh_object.load_from_arraybuffer data
+                    if mesh_object.physics_type != 'NO_COLLISION' and mesh_object.scene.world
+                        #TODO: Remove without resolving the promise too early
+                        context.main_loop.add_frame_callback =>
+                            mesh_object.instance_physics()
                             resolve(mesh_object)
-        .then ->
-            resolve(mesh_object)
+                    else
+                        resolve(mesh_object)
+            return
+        .catch (e) ->
+            reject e
+        return
     promise.mesh_object = mesh_object
     return promise
 
 
 # This returns a promise of all things necessary to display the object
 # (meshes, textures, materials)
-fetch_objects = (object_list) ->
+fetch_objects = (object_list, options) ->
     promises = []
     for ob in object_list
         if ob.type == 'MESH'
             {scene} = ob
             ob.visible = true
-            promises.push fetch_mesh(ob)
+            promises.push fetch_mesh(ob, options)
             for mat_name in ob.material_names
                 mat = scene.materials[mat_name]
                 # Check if material was already loaded; if it was, we'll assume
