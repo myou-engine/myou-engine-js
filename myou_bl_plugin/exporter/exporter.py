@@ -799,7 +799,8 @@ def save_image(image, path, new_format):
 def save_images(dest_path, used_data):
     if not os.path.exists(dest_path):
         os.mkdir(dest_path)
-
+    
+    pack_generated_images(used_data)
     non_alpha_images = get_non_alpha_images(used_data)
 
     # For compatibility with old .blends you need to add
@@ -809,15 +810,7 @@ def save_images(dest_path, used_data):
     for image in used_data['images']:
         if image.source == 'VIEWER':
             raise ValueError('You are using a render result as texture, please save it as image first.')
-
-        if image.source == 'GENERATED': #generated or rendered
-            print('Generated image will be packed as png')
-            #The image must be saved in a temporal path before packing.
-            tmp_filepath  = tempdir + image.name + '.png'
-            save_image(image, tmp_filepath, 'PNG')
-            image.filepath = tmp_filepath
-            image.pack()
-
+        
         real_path = bpy.path.abspath(image.filepath)
         path_exists = os.path.exists(real_path)
         uses_alpha = image not in non_alpha_images
@@ -826,82 +819,68 @@ def save_images(dest_path, used_data):
         if uses_alpha:
             print('image:', image.name, 'is using alpha channel')
 
-        if image.source in ['FILE' or 'MOVIE'] and not image.packed_file:
-            if path_exists:
-                if real_path[-1] != '/': #Avoiding directories (TODO: does this ever happen??!)
-                    print('original path:', real_path)
-                    ext = image.filepath.rsplit('.',1)[1].lower()
-                    
-                    if uses_alpha and ext == 'png':
-                        print("Actually, the PNG file doesn't have alpha channel")
-                        uses_alpha = util.png_file_has_alpha(real_path)
-
-                    if not uses_alpha and ext not in ['jpeg', 'jpg'] and not skip_conversion:
-                        file_format = 'JPEG'
-                        image['exported_extension'] = ext = 'jpg'
-                        save_image(image, dest_path + '/' + image.name + '.' + ext, file_format)
-                        print('Image exported as JPG')
-
-
-                    elif uses_alpha and ext not in ['jpeg', 'jpg', 'png'] and not skip_conversion:
-                        file_format = 'PNG'
-                        image['exported_extension'] = ext = 'png'
-                        dest_file_path = dest_path + '/' + image.name + '.' + ext
-                        file_did_exist_before = os.path.exists(dest_file_path)
-                        save_image(image, dest_file_path, file_format)
-                        if not util.png_file_has_alpha(dest_file_path):
-                            if not file_did_exist_before:
-                                os.unlink(dest_file_path)
-                            file_format = 'JPEG'
-                            image['exported_extension'] = ext = 'jpg'
-                            dest_file_path = dest_path + '/' + image.name + '.' + ext
-                            save_image(image, dest_file_path, file_format)
-                        print('Image exported as '+file_format)
-
-
-                    else:
-                        exported_path = os.path.join(dest_path, image.name + '.' + ext)
-                        image['exported_extension'] = ext
-                        shutil.copy(real_path, exported_path)
-                        print('Copied original image')
-
-                else:
-                    print ('WARNING: ' + image.name + ' image path is not a file. path: ' + real_path)
-            else:
-                print ('WARNING: image not found: ' + image.name + ' path: ' + real_path)
-                ext = image.filepath.rsplit('.',1)[1].lower()
-                image['exported_extension'] = ext
-
-        else: # packed
+        if image.source == 'FILE':
+            out_format = 'JPEG'
+            out_ext = 'jpg'
             if uses_alpha:
-                print('Exporting packed image as PNG')
-                file_format = 'PNG'
-                ext = 'png'
+                out_format = 'PNG'
+                out_ext = 'png'
+            if path_exists or image.packed_file:
+                exported_path = os.path.join(dest_path, image.name + '.' + out_ext)
+                image['exported_extension'] = out_ext
+                if path_exists and image.file_format == out_format:
+                    shutil.copy(real_path, exported_path)
+                    print('Copied original image')
+                else:
+                    save_image(image, exported_path, out_format)
+                    print('Image exported as '+out_format)
             else:
-                print('Exporting packed image as JPG')
-                file_format = 'JPEG'
-                ext = 'jpg'
-            
-            dest_file_path = dest_path + '/' + image.name + '.' + ext
-            file_did_exist_before = os.path.exists(dest_file_path)
-            save_image(image, dest_file_path, file_format)
-            if not util.png_file_has_alpha(dest_file_path):
-                print('Actually, exporting packed image as JPG')
-                if not file_did_exist_before:
-                    os.unlink(dest_file_path)
-                file_format = 'JPEG'
-                ext = 'jpg'
-                dest_file_path = dest_path + '/' + image.name + '.' + ext
-                save_image(image, dest_file_path, file_format)
-            image['exported_extension'] = ext
-
+                raise Exception('Image not found: ' + image.name + ' path: ' + real_path)
+        elif image.source == 'MOVIE' and path_exists:
+            out_ext = image.filepath_raw.split('.')[-1]
+            exported_path = os.path.join(dest_path, image.name + '.' + out_ext)
+            image['exported_extension'] = out_ext
+            if path_exists and image.file_format == out_format:
+                shutil.copy(real_path, exported_path)
+                print('Copied original video')
+        else:
+            raise Exception('Image source not supported: ' + image.name + ' source: ' + image.source)
         print()
+
+def pack_generated_images(used_data):
+    for image in used_data['images']:
+        if image.source == 'GENERATED': #generated or rendered
+            print('Generated image will be packed as png')
+            #The image must be saved in a temporal path before packing.
+            tmp_filepath = tempdir + image.name + '.png'
+            save_image(image, tmp_filepath, 'PNG')
+            image.filepath = tmp_filepath
+            image.file_format = 'PNG'
+            image.pack()
+            image.filepath = ''
+            os.unlink(tmp_filepath)
 
 def get_non_alpha_images(used_data):
     non_alpha_images = []
     for image in used_data['images']:
         if not image.use_alpha:
             non_alpha_images.append(image)
+        else:
+            # If it's not a format known to not have alpha channel,
+            # make sure it has an alpha channel at all
+            if image.file_format not in ['JPEG', 'TIFF']:
+                path = bpy.path.abspath(image.filepath)
+                if os.path.exists(path):
+                    if not util.png_file_has_alpha(path):
+                        non_alpha_images.append(image)
+                elif image.packed_file:
+                    tmp_filepath = tempdir + image.name + '.png'
+                    save_image(image, tmp_filepath, 'PNG')
+                    if not util.png_file_has_alpha(tmp_filepath):
+                        non_alpha_images.append(image)
+                    os.unlink(tmp_filepath)
+            else:
+                non_alpha_images.append(image)
     return non_alpha_images
 
 def get_total_size_of_textures():
