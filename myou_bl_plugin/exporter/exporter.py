@@ -834,7 +834,7 @@ def export_myou(path, scn):
             shutil.rmtree(old_export, ignore_errors=False)
     except:
         import datetime
-        shutil.move(full_dir, full_dir+'_FAILED_'+str(datetime.datetime.now().replace(':','-').replace(' ','_')).split('.')[0])
+        shutil.move(full_dir, full_dir+'_FAILED_'+str(datetime.datetime.now()).replace(':','-').replace(' ','_').split('.')[0])
         shutil.move(old_export, full_dir)
         print("EXPORT HAS FAILED, but old folder has been restored")
         raise
