@@ -2,6 +2,7 @@
 from .mesh import *
 from .material import *
 #from .. import compiler
+from . import util
 
 from json import dumps, loads
 from collections import defaultdict
@@ -829,25 +830,38 @@ def save_images(dest_path, used_data):
             if path_exists:
                 if real_path[-1] != '/': #Avoiding directories (TODO: does this ever happen??!)
                     print('original path:', real_path)
-                    ext = image.filepath.rsplit('.',1)[1].upper()
+                    ext = image.filepath.rsplit('.',1)[1].lower()
+                    
+                    if uses_alpha and ext == 'png':
+                        print("Actually, the PNG file doesn't have alpha channel")
+                        uses_alpha = util.png_file_has_alpha(real_path)
 
-                    if not uses_alpha and ext not in ['JPEG', 'JPG'] and not skip_conversion:
+                    if not uses_alpha and ext not in ['jpeg', 'jpg'] and not skip_conversion:
                         file_format = 'JPEG'
-                        image['exported_extension'] = ext = 'JPG'
-                        save_image(image, dest_path + '/' + image.name + '.' + ext.lower(), file_format)
+                        image['exported_extension'] = ext = 'jpg'
+                        save_image(image, dest_path + '/' + image.name + '.' + ext, file_format)
                         print('Image exported as JPG')
 
 
-                    elif uses_alpha and ext not in ['JPEG', 'JPG', 'PNG'] and not skip_conversion:
+                    elif uses_alpha and ext not in ['jpeg', 'jpg', 'png'] and not skip_conversion:
                         file_format = 'PNG'
-                        image['exported_extension'] = ext = 'PNG'
-                        save_image(image, dest_path + '/' + image.name + '.' + ext.lower(), file_format)
-                        print('Image exported as PNG')
+                        image['exported_extension'] = ext = 'png'
+                        dest_file_path = dest_path + '/' + image.name + '.' + ext
+                        file_did_exist_before = os.path.exists(dest_file_path)
+                        save_image(image, dest_file_path, file_format)
+                        if not util.png_file_has_alpha(dest_file_path):
+                            if not file_did_exist_before:
+                                os.unlink(dest_file_path)
+                            file_format = 'JPEG'
+                            image['exported_extension'] = ext = 'jpg'
+                            dest_file_path = dest_path + '/' + image.name + '.' + ext
+                            save_image(image, dest_file_path, file_format)
+                        print('Image exported as '+file_format)
 
 
                     else:
-                        exported_path = os.path.join(dest_path, image.name + '.' + ext.lower())
-                        image['exported_extension'] = ext.lower()
+                        exported_path = os.path.join(dest_path, image.name + '.' + ext)
+                        image['exported_extension'] = ext
                         shutil.copy(real_path, exported_path)
                         print('Copied original image')
 
@@ -867,8 +881,18 @@ def save_images(dest_path, used_data):
                 print('Exporting packed image as JPG')
                 file_format = 'JPEG'
                 ext = 'jpg'
-
-            save_image(image, dest_path + '/' + image.name + '.' + ext, file_format)
+            
+            dest_file_path = dest_path + '/' + image.name + '.' + ext
+            file_did_exist_before = os.path.exists(dest_file_path)
+            save_image(image, dest_file_path, file_format)
+            if not util.png_file_has_alpha(dest_file_path):
+                print('Actually, exporting packed image as JPG')
+                if not file_did_exist_before:
+                    os.unlink(dest_file_path)
+                file_format = 'JPEG'
+                iext = 'jpg'
+                dest_file_path = dest_path + '/' + image.name + '.' + ext
+                save_image(image, dest_file_path, file_format)
             image['exported_extension'] = ext
 
         print()
