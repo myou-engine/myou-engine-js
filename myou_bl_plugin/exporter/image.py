@@ -50,7 +50,11 @@ def save_images(dest_path, used_data):
             if path_exists or image.packed_file:
                 exported_path = os.path.join(dest_path, image.name + '.' + out_ext)
                 image['exported_extension'] = out_ext
-                if path_exists and image.file_format == out_format:
+                if path_exists and (image.file_format == out_format or skip_conversion):
+                    out_ext = image.filepath_raw.split('.')[-1]
+                    exported_path = os.path.join(dest_path, image.name + '.' + out_ext)
+                    image['exported_extension'] = out_ext
+                    # The previous lines are only necessary for skip_conversion
                     shutil.copy(real_path, exported_path)
                     print('Copied original image')
                 else:
@@ -87,7 +91,7 @@ def get_non_alpha_images(used_data):
     for image in used_data['images']:
         if not image.use_alpha:
             non_alpha_images.append(image)
-        else:
+        elif not bpy.context.scene.get('skip_texture_conversion'):
             # If it's not a format known to not have alpha channel,
             # make sure it has an alpha channel at all
             if image.file_format not in ['JPEG', 'TIFF']:
