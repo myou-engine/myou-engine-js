@@ -711,7 +711,7 @@ def ob_to_json_recursive(ob, scn=None, check_cache=False):
     return d
 
 
-def whole_scene_to_json(scn, used_data):
+def whole_scene_to_json(scn, used_data, textures_path):
     previous_scn = None
     if scn != bpy.context.screen.scene:
         previous_scn = bpy.context.screen.scene
@@ -745,10 +745,12 @@ def whole_scene_to_json(scn, used_data):
                 'objects': [o.name for o in group.objects],
                 }).encode())
 
-    mat_json = [mat_to_json(mat, scn) for mat in set(used_data['materials'])]
+    image_json = image.export_images(textures_path, used_data)
+    mat_json = [mat_to_json(mat, scn) for mat in used_data['materials']]
     act_json = [action_to_json(action, used_data['action_users'][action.name]) for action in used_data['actions']]
 
-    ret += [dumps({"type":"SHADER_LIB","code": get_shader_lib()}).encode()] + mat_json + act_json
+    ret.append(dumps({"type":"SHADER_LIB","code": get_shader_lib()}).encode())
+    ret += image_json + mat_json + act_json
     retb = b'['+b','.join(ret)+b']'
     retb_gz = gzip.compress(retb)
     size = len(retb)
@@ -820,11 +822,11 @@ def export_myou(path, scn):
         os.mkdir(join(full_dir, 'textures'))
         for scene in bpy.data.scenes:
             used_data = search_scene_used_data(scene)
-            image.save_images(join(full_dir, 'textures'), used_data)
+            textures_path = join(full_dir, 'textures')
             scn_dir = join(full_dir, 'scenes', scene.name)
             try: os.mkdir(scn_dir)
             except FileExistsError: pass
-            scene_json, scene_json_gz = whole_scene_to_json(scene, used_data)
+            scene_json, scene_json_gz = whole_scene_to_json(scene, used_data, textures_path)
             open(join(scn_dir, 'all.json'), 'wb').write(scene_json)
             open(join(scn_dir, 'all.json.gz'), 'wb').write(scene_json_gz)
             for mesh_file in scene['exported_meshes'].values():

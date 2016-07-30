@@ -4,6 +4,8 @@ import shutil
 import tempfile
 import os
 from math import *
+from json import dumps, loads
+from collections import defaultdict
 tempdir  = tempfile.gettempdir()
 
 def save_image(image, path, new_format):
@@ -18,7 +20,11 @@ def save_image(image, path, new_format):
     image.file_format = old_format
 
 
-def save_images(dest_path, used_data):
+def export_images(dest_path, used_data):
+    '''
+    This converts/copies all used images and returns encoded JSON with *textures*
+    '''
+    json_data = []
     if not os.path.exists(dest_path):
         os.mkdir(dest_path)
     
@@ -33,13 +39,47 @@ def save_images(dest_path, used_data):
         if image.source == 'VIEWER':
             raise ValueError('You are using a render result as texture, please save it as image first.')
         
+        # Find settings in textures. Since there's no UI in Blender for
+        # custom properties of images, we'll look at them in textures.
+        tex_with_settings = None
+        num_tex_users = 0
+        for tex in bpy.data.textures:
+            if tex.image == image:
+                num_tex_users += 1
+                if 'lod_levels' in tex:
+                    if not tex_with_settings:
+                        tex_with_settings = tex
+                    else:
+                        raise Exception('There are several textures with settings for image '+image.name+':\n'+
+                            tex_with_settings.name+' and '+tex.name+'. Please remove settings from one of them')
+        lod_levels = []
+        if tex_with_settings:
+            if isinstance(tex_with_settings['lod_levels'], str):
+                lod_levels = loads(tex_with_settings['lod_levels'])
+            else:
+                lod_levels = list(tex_with_settings['lod_levels'])
+        
         real_path = bpy.path.abspath(image.filepath)
         path_exists = os.path.exists(real_path)
         uses_alpha = image not in non_alpha_images
-
-        print('Exporting image:', image.name)
+        image_info = {
+            'type': 'TEXTURE',
+            'name': image.name,
+            'formats': defaultdict(list),
+            # 'formats': {
+            #     'png': [{path, width, height}, ...]
+            #     'jpeg':
+            #     'crunch':
+            #     'etc1':
+            #     'pvrtc':
+            # }
+        }
+        
+        print('Exporting image:', image.name, 'with', num_tex_users, 'texture users')
         if uses_alpha:
             print('image:', image.name, 'is using alpha channel')
+        if lod_levels:
+            print('image:', image.name, 'has lod_levels', lod_levels)
 
         if image.source == 'FILE':
             out_format = 'JPEG'
@@ -47,31 +87,73 @@ def save_images(dest_path, used_data):
             if uses_alpha:
                 out_format = 'PNG'
                 out_ext = 'png'
-            if path_exists or image.packed_file:
-                exported_path = os.path.join(dest_path, image.name + '.' + out_ext)
-                image['exported_extension'] = out_ext
-                if path_exists and (image.file_format == out_format or skip_conversion):
-                    out_ext = image.filepath_raw.split('.')[-1]
-                    exported_path = os.path.join(dest_path, image.name + '.' + out_ext)
+            for lod_level in lod_levels+[None]:
+                if path_exists or image.packed_file:
+                    # image['exported_extension'] is only used
+                    # for material.uniform['filepath'] which is only used
+                    # in old versions of the engine.
+                    # Current versions use the exported list of textures instead
                     image['exported_extension'] = out_ext
-                    # The previous lines are only necessary for skip_conversion
-                    shutil.copy(real_path, exported_path)
-                    print('Copied original image')
+                    
+                    # Cases in which we can or must skip conversion
+                    just_copy_file = \
+                        path_exists and \
+                        (image.file_format == out_format or skip_conversion) and \
+                        lod_level is None
+                    if just_copy_file:
+                        file_name = image.name + '.' + out_ext
+                        # The next 3 lines are only necessary for skip_conversion
+                        out_ext = image.filepath_raw.split('.')[-1]
+                        exported_path = os.path.join(dest_path, file_name)
+                        image['exported_extension'] = out_ext
+                        
+                        shutil.copy(real_path, exported_path)
+                        image_info['formats'][out_format.lower()].append({
+                            'path': file_name, 'width': image.size[0], 'height': image.size[1],
+                        })
+                        print('Copied original image')
+                    else:
+                        if lod_level is not None:
+                            if isinstance(lod_level, int):
+                                width = height = lod_level
+                            else:
+                                width, height = lod_level
+                            resized_image = image.copy()
+                            resized_image.scale(width, height)
+                            file_name = image.name + '-{w}x{h}.{e}'.format(w=width, h=height, e=out_ext)
+                            exported_path = os.path.join(dest_path, file_name)
+                            save_image(resized_image, exported_path, out_format)
+                            resized_image.user_clear()
+                            bpy.data.images.remove(resized_image)
+                            image_info['formats'][out_format.lower()].append({
+                                'path': file_name, 'width': width, 'height': height,
+                            })
+                            print('Image resized to '+str(lod_level)+' and exported as '+out_format)
+                        else:
+                            file_name = image.name + '.' + out_ext
+                            exported_path = os.path.join(dest_path, file_name)
+                            save_image(image, exported_path, out_format)
+                            image_info['formats'][out_format.lower()].append({
+                                'path': file_name, 'width': image.size[0], 'height': image.size[1],
+                            })
+                            print('Image exported as '+out_format)
                 else:
-                    save_image(image, exported_path, out_format)
-                    print('Image exported as '+out_format)
-            else:
-                raise Exception('Image not found: ' + image.name + ' path: ' + real_path)
+                    raise Exception('Image not found: ' + image.name + ' path: ' + real_path)
         elif image.source == 'MOVIE' and path_exists:
             out_ext = image.filepath_raw.split('.')[-1]
             exported_path = os.path.join(dest_path, image.name + '.' + out_ext)
             image['exported_extension'] = out_ext
-            if path_exists and image.file_format == out_format:
+            if path_exists:
                 shutil.copy(real_path, exported_path)
+                image_info['formats'][image.file_format.lower()].append({
+                    'path': file_name, 'width': image.size[0], 'height': image.size[1],
+                })
                 print('Copied original video')
         else:
             raise Exception('Image source not supported: ' + image.name + ' source: ' + image.source)
         print()
+        json_data.append(image_info)
+    return [dumps(img).encode('utf8') for img in json_data]
 
 def pack_generated_images(used_data):
     for image in used_data['images']:
