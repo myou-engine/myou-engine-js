@@ -237,6 +237,7 @@ def mat_to_json(mat, scn):
             fpath = bpy.path.abspath(u['image'].filepath)
             if os.path.exists(fpath):
                 u['size'] = os.path.getsize(fpath)
+            # u['filepath'] is only used in old versions of the engine
             u['filepath'] = u['image'].name + '.' + u['image']['exported_extension']
             u['image'] = u['image'].name
             tex_sizes[u['image']] = u['size']
