@@ -1,4 +1,4 @@
-import bpy, gpu, os, base64
+import bpy, gpu, os, base64, struct, zlib
 from json import loads, dumps
 
 SHADER_LIB = ""
@@ -235,7 +235,7 @@ def mat_to_json(mat, scn):
                 u['wrap'] = 'R' if texture_slot[0].texture.extension == 'REPEAT' else 'C'
             u['size'] = 0
             fpath = bpy.path.abspath(u['image'].filepath)
-            if os.path.exists(fpath):
+            if os.path.isfile(fpath):
                 u['size'] = os.path.getsize(fpath)
             # u['filepath'] is only used in old versions of the engine
             u['filepath'] = u['image'].name + '.' + u['image']['exported_extension']
@@ -253,7 +253,8 @@ def mat_to_json(mat, scn):
             else:
                 # It's a ramp
                 # encode as PNG data URI
-                import struct, zlib
+                # TODO: Store this in the JSON texture list when the old engine
+                # is no longer used
                 def png_chunk(ty, data):
                     return struct.pack('>I',len(data)) + ty + data +\
                         struct.pack('>I',zlib.crc32(ty + data))
@@ -265,8 +266,8 @@ def mat_to_json(mat, scn):
                     b'\x00'+u['texpixels'][:1024])) + png_chunk(b'IEND', b'')
                     #for some reason is 257px?
                 ).decode()
-
-                u['image'] = hex(hash(u['filepath']))[-10:]
+                
+                u['image'] = hex(hash(u['filepath']))[-15:]
                 u['wrap'] = 'C' # clamp to edge
                 u['type'] = gpu.GPU_DYNAMIC_SAMPLER_2DIMAGE
                 u['size'] = 0

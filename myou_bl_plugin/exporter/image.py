@@ -27,6 +27,8 @@ def export_images(dest_path, used_data):
     json_data = []
     if not os.path.exists(dest_path):
         os.mkdir(dest_path)
+    elif not os.path.isdir(dest_path):
+        raise Exception("Destination path is not a directory: "+dest_path)
     
     pack_generated_images(used_data)
     non_alpha_images = get_non_alpha_images(used_data)
@@ -42,16 +44,14 @@ def export_images(dest_path, used_data):
         # Find settings in textures. Since there's no UI in Blender for
         # custom properties of images, we'll look at them in textures.
         tex_with_settings = None
-        num_tex_users = 0
-        for tex in bpy.data.textures:
-            if tex.image == image:
-                num_tex_users += 1
-                if 'lod_levels' in tex:
-                    if not tex_with_settings:
-                        tex_with_settings = tex
-                    else:
-                        raise Exception('There are several textures with settings for image '+image.name+':\n'+
-                            tex_with_settings.name+' and '+tex.name+'. Please remove settings from one of them')
+        for tex in used_data['image_users'][image.name]:
+            if 'lod_levels' in tex:
+                if not tex_with_settings:
+                    tex_with_settings = tex
+                else:
+                    raise Exception('There are several textures with settings for image '+image.name+':\n'+
+                        tex_with_settings.name+' and '+tex.name+'. Please remove settings from one of them')
+            
         lod_levels = []
         if tex_with_settings:
             if isinstance(tex_with_settings['lod_levels'], str):
@@ -60,21 +60,26 @@ def export_images(dest_path, used_data):
                 lod_levels = list(tex_with_settings['lod_levels'])
         
         real_path = bpy.path.abspath(image.filepath)
-        path_exists = os.path.exists(real_path)
+        path_exists = os.path.isfile(real_path)
         uses_alpha = image not in non_alpha_images
         image_info = {
             'type': 'TEXTURE',
             'name': image.name,
             'formats': defaultdict(list),
             # 'formats': {
-            #     'png': [{path, width, height}, ...]
+            #     # The list is ordered from low quality to high quality
+            #     'png': [{width, height, file_size, file_name, data_uri}, ...]
             #     'jpeg':
             #     'crunch':
             #     'etc1':
             #     'pvrtc':
             # }
+            'wrap': None, # null on purpose = setting taken from material
+            'filter': None,
+            'use_mipmap': None,
         }
         
+        num_tex_users = len(used_data['image_users'][image.name])
         print('Exporting image:', image.name, 'with', num_tex_users, 'texture users')
         if uses_alpha:
             print('image:', image.name, 'is using alpha channel')
@@ -109,7 +114,8 @@ def export_images(dest_path, used_data):
                         
                         shutil.copy(real_path, exported_path)
                         image_info['formats'][out_format.lower()].append({
-                            'path': file_name, 'width': image.size[0], 'height': image.size[1],
+                            'width': image.size[0], 'height': image.size[1],
+                            'file_name': file_name, 'file_size': fsize(exported_path),
                         })
                         print('Copied original image')
                     else:
@@ -126,7 +132,8 @@ def export_images(dest_path, used_data):
                             resized_image.user_clear()
                             bpy.data.images.remove(resized_image)
                             image_info['formats'][out_format.lower()].append({
-                                'path': file_name, 'width': width, 'height': height,
+                                'width': width, 'height': height,
+                                'file_name': file_name, 'file_size': fsize(exported_path),
                             })
                             print('Image resized to '+str(lod_level)+' and exported as '+out_format)
                         else:
@@ -134,19 +141,22 @@ def export_images(dest_path, used_data):
                             exported_path = os.path.join(dest_path, file_name)
                             save_image(image, exported_path, out_format)
                             image_info['formats'][out_format.lower()].append({
-                                'path': file_name, 'width': image.size[0], 'height': image.size[1],
+                                'width': image.size[0], 'height': image.size[1],
+                                'file_name': file_name, 'file_size': fsize(exported_path),
                             })
                             print('Image exported as '+out_format)
                 else:
                     raise Exception('Image not found: ' + image.name + ' path: ' + real_path)
         elif image.source == 'MOVIE' and path_exists:
             out_ext = image.filepath_raw.split('.')[-1]
-            exported_path = os.path.join(dest_path, image.name + '.' + out_ext)
+            file_name = image.name + '.' + out_ext
+            exported_path = os.path.join(dest_path, file_name)
             image['exported_extension'] = out_ext
             if path_exists:
                 shutil.copy(real_path, exported_path)
                 image_info['formats'][image.file_format.lower()].append({
-                    'path': file_name, 'width': image.size[0], 'height': image.size[1],
+                    'width': image.size[0], 'height': image.size[1],
+                    'file_name': file_name, 'file_size': fsize(exported_path),
                 })
                 print('Copied original video')
         else:
@@ -171,14 +181,16 @@ def pack_generated_images(used_data):
 def get_non_alpha_images(used_data):
     non_alpha_images = []
     for image in used_data['images']:
+        # TODO: also check if any use_alpha of textures is enabled
         if not image.use_alpha:
             non_alpha_images.append(image)
         elif not bpy.context.scene.get('skip_texture_conversion'):
             # If it's not a format known to not have alpha channel,
             # make sure it has an alpha channel at all
+            # by saving it as PNG and parsing the meta data
             if image.file_format not in ['JPEG', 'TIFF']:
                 path = bpy.path.abspath(image.filepath)
-                if os.path.exists(path):
+                if os.path.isfile(path):
                     if not png_file_has_alpha(path):
                         non_alpha_images.append(image)
                 elif image.packed_file:
@@ -209,3 +221,6 @@ def png_file_has_alpha(file_path):
             has_transparency_chunk = True
         end = tag == b'IEND'
     return has_alpha_channel or has_transparency_chunk
+
+def fsize(path):
+    return os.stat(path).st_size

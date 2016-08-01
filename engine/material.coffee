@@ -1,6 +1,6 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 
-{fetch_texture, material_promises} = require './fetch_assets.coffee'
+{fetch_texture_legacy, material_promises} = require './fetch_assets.coffee'
 
 # http://www.blender.org/documentation/blender_python_api_2_65_release/gpu.html
 
@@ -230,14 +230,33 @@ class Material
                 # And 15 was distance wrongly, it's GPU_DYNAMIC_OBJECT_AUTOBUMPSCALE
                 when 14, GPU_DYNAMIC_SAMPLER_2DSHADOW
                     if @context.render_manager.extensions.texture_float_linear?# shadow texture
-                        @textures.push {loaded: true, tex: @scene.objects[u.lamp].shadow_fb.texture}
+                        @textures.push {loaded: true, gl_tex: @scene.objects[u.lamp].shadow_fb.texture}
                         tex_uniforms.push u.varname
                 when 13, GPU_DYNAMIC_SAMPLER_2DIMAGE, GPU_DYNAMIC_SAMPLER_2DBUFFER # 2D image
-                    if @scene
-                        tex = fetch_texture(u.image, u.filepath, u.filter, u.wrap, u.size, @scene.context).texture
-                        @textures.push tex
-                        tex.users.push @
-                        tex_uniforms.push u.varname
+                    tex = @context.textures[u.image]
+                    if not tex?
+                        if not u.filepath
+                            throw "Texture #{u.image} not found (in material #{@name})."
+                        tex = texture.get_texture_from_path_legacy u.image,
+                            u.filepath, u.filter, u.wrap, u.size, @context
+                    # Defaults to texture stored settings
+                    {wrap=tex.wrap, filter=tex.filter, use_mipmap=tex.use_mipmap} = u
+                    # Check for mismatch between material textures and warn about it
+                    if tex.users.length != 0 and \
+                            (tex.wrap != wrap or tex.filter != filter or
+                            tex.use_mipmap != use_mipmap)
+                        other_mat = tex.users[tex.users.length-1]
+                        console.warn "Texture #{u.image} have different settings
+                            in materials #{other_mat.name} and #{@name}"
+                    # Overwrite settings
+                    tex.wrap = wrap
+                    tex.filter = filter
+                    tex.use_mipmap = use_mipmap
+                    if not tex.loaded
+                        tex.load()
+                    @textures.push tex
+                    tex.users.push @
+                    tex_uniforms.push u.varname
                 when GPU_DYNAMIC_AMBIENT_COLOR
                     var_ambient = u.varname
                 when GPU_DYNAMIC_MAT_DIFFRGB

@@ -21,9 +21,10 @@ def search_scene_used_data(scene):
         'materials': [],
         'textures': [],
         'images': [],
+        'image_users': defaultdict(list),
         'meshes': [],
         'actions': [],
-        'action_users': {}
+        'action_users': {} # only one user of each, to get the channels
         }
 
     #recursive search methods for each data type:
@@ -95,6 +96,7 @@ def search_scene_used_data(scene):
             used_data['textures'].append(t)
             if t.image:
                 add_image(t.image,i+1)
+                used_data['image_users'][t.image.name].append(t)
 
     def add_image(i,indent=0):
         if not i in used_data['images']:
