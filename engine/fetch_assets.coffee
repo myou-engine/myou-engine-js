@@ -13,8 +13,6 @@ material_promises = {} # {mat_name: promise}
 #     politician.list = list
 #     politician
 
-#     add_things Promise._all list
-
 # Loads textures of material (given a name), return a promise
 fetch_textures_of_material = (scene, mat_name) ->
     mat = scene.materials[mat_name]
