@@ -66,10 +66,8 @@ class Texture
         if image_list?[0]
             if not @loaded
                 data = image_list[0] # Lowest quality
-                console.log 'Loading low quality of', @name
             else
                 data = image_list[image_list.length-1] # Highest quality
-                console.log 'Loading high quality of', @name
             if @promised_data == data
                 return @promise
             @promised_data = data
