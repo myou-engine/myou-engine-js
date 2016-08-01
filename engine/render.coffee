@@ -387,6 +387,8 @@ class RenderManager
                 gl.uniform1f mat.u_hardness, shading_params.specular_hardness
             if mat.u_emit?
                 gl.uniform1f mat.u_emit, shading_params.emit
+            if mat.u_alpha?
+                gl.uniform1f mat.u_alpha, shading_params.alpha
 
             for i in [0...mat.u_custom.length]
                 cv = mesh.custom_uniform_values[i]
