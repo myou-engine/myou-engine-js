@@ -11,7 +11,7 @@
 {Armature} = require './armature.coffee'
 {physics_engine_url, physics_engine_init, PhysicsWorld, set_gravity} = require './physics.coffee'
 {fetch_objects} = require './fetch_assets.coffee'
-
+{Texture} = require './texture.coffee'
 
 
 load_scene = (name, filter, use_physics, context) ->
@@ -60,6 +60,9 @@ load_datablock = (scene, data, context) ->
         scene.frame_end = data.frame_end if data.frame_end?
         scene.anim_fps = data.fps if data.fps?
 
+    else if data.type=='TEXTURE'
+        context.textures[data.name] = new Texture(context, data)
+        
     else if data.type=='MATERIAL'
         if not data.fragment.splice?
             data.fragment = [context.SHADER_LIB, data.fragment]
@@ -70,7 +73,6 @@ load_datablock = (scene, data, context) ->
             old_mat.destroy()
             for u in old_mat.users
                 u.materials = []
-
     else if data.type=='SHADER_LIB'
         context.SHADER_LIB = data.code
     else if data.type=='JSCODE'

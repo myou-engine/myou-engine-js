@@ -1,6 +1,7 @@
+texture = require './texture.coffee'
+
 fetch_promises = {}  # {file_name: promise}
 material_promises = {} # {mat_name: promise}
-
 
 ## Uncomment this to find out why a politician lies
 # Promise._all = Promise._all or Promise.all
@@ -12,142 +13,7 @@ material_promises = {} # {mat_name: promise}
 #     politician.list = list
 #     politician
 
-# Configures a texture and returns a promise for when it is executed from main_loop.frame_callback
-configure_texture = (tex, img, filter, wrap, context) ->
-    return new Promise (resolve, reject) ->
-        context.main_loop.add_frame_callback ->
-            gl = context.render_manager.gl
-            wrap_const = {'C': gl.CLAMP_TO_EDGE, 'R': gl.REPEAT, 'M': gl.MIRRORED_REPEAT}[wrap]
-            gl.bindTexture gl.TEXTURE_2D, tex.tex
-            if img.type == 'rgb565'
-                {width, height, buffer} = img
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, width, height, 0, gl.RGB, gl.UNSIGNED_SHORT_5_6_5, new Uint16Array(buffer))
-            else
-                gl.pixelStorei gl.UNPACK_FLIP_Y_WEBGL, true
-                gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img
-            gl_linear_nearest = if filter then gl.LINEAR else gl.NEAREST
-            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl_linear_nearest
-            # TODO: add mipmap options to the GUI
-            gl_linear_nearest_mipmap = if filter then gl.LINEAR_MIPMAP_LINEAR else gl.NEAREST_MIPMAP_NEAREST
-            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl_linear_nearest_mipmap
-            gl.generateMipmap gl.TEXTURE_2D
-            # TODO: detect which textures need this (mostly walls, floors...)
-            # and add a global switch
-            ext = context.render_manager.extensions.texture_filter_anisotropic
-            if context.MYOU_PARAMS.anisotropic_filter and ext
-                gl.texParameterf gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, 4
-            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap_const
-            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap_const
-            gl.bindTexture gl.TEXTURE_2D, null
-            tex.loaded = true
-            resolve tex
-
-# Creates a video texture and returns a promise for when the source is loaded
-fetch_video_texture = (name, path, filter, wrap='R', size=0, context) ->
-    tex = context.render_manager.textures[name] or null
-    if tex?
-        return tex.promise
-
-    video = null
-    promise = new Promise (resolve, reject) ->
-        gl = context.render_manager.gl
-        tex = {name, tex: gl.createTexture(), size, path, users: [], loaded: false, video: true, filter}
-
-        # Creating video element
-        context.render_manager.textures[name] = tex
-        video = document.createElement 'video'
-        video.id = name
-        video.preload = 'auto'
-        base = context.MYOU_PARAMS.data_dir + '/textures/'
-        video.src = base + path
-        video.lastTime = null
-
-        # You can access to the video from context.video_textures
-        # then you can play, pause, etc..
-        context.video_textures[name] = video
-
-        # This will be executed when enough of the video data has been buffered
-        # that it can be played without interruption
-        video.addEventListener 'canplaythrough', ->
-            configure_texture(tex, video, filter, wrap, context).then (tex)->
-
-                # update_texture will be called on each game engine frame (in main_loop)
-                # but it only will update the texture if video.currentTime has been changed.
-                update_texture = ->
-                    if video.currentTime != video.lastTime
-                        video.lastTime = video.currentTime
-                        #TODO: Optimize
-                        configure_texture(tex, video, filter, wrap, context)
-
-                video.update_texture = update_texture
-                resolve tex
-
-        video.onerror = ->
-            reject 'Video not found:' + path
-
-    context.render_manager.texture_promises.push promise
-    video.texture = promise.texture = tex
-    tex.promise = promise
-    return promise
-
-# Creates a texture and returns a promise for when the source is loaded
-fetch_texture = (name, path, filter, wrap='R', size=0, context) ->
-    tex = context.render_manager.textures[name] or null
-    if tex?
-        return tex.promise
-
-    promise = new Promise (resolve, reject) ->
-        gl = context.render_manager.gl
-        wrap_const = {'C': gl.CLAMP_TO_EDGE, 'R': gl.REPEAT, 'M': gl.MIRRORED_REPEAT}[wrap]
-
-        if name.startswith 'special:'
-            tex = {name}
-            resolve tex
-            return
-
-
-        tex = {tex: gl.createTexture(), size, path}
-        context.render_manager.textures[name] = tex
-        tex.name = name
-        tex.users = [] # materials
-        tex.loaded = false
-        base = context.MYOU_PARAMS.data_dir + '/textures/'
-        extension = path[-4...]
-        if extension == '.crn'
-            # TODO: crunch support
-            path += (extension = '.565')
-        if extension == '.565'
-            # Assuming they're all square and with alternative rgb565 for now
-            fetch(base+path).then((data)->data.arrayBuffer()).then (buffer) ->
-                width = height = Math.sqrt(buffer.byteLength>>1)
-                img = {type: 'rgb565', width, height, buffer}
-                configure_texture(tex, img, filter, wrap, context).then (tex)->
-                    resolve tex
-            .catch reject
-        else
-            # Non crn, rgb565 or dds textures:
-            img = new Image
-            tex.reupload = ->
-                if tex.tex
-                    gl.deleteTexture tex.tex
-                tex.tex = gl.createTexture()
-                img.onload()
-            img.onload = ->
-                configure_texture(tex, img, filter, wrap, context).then (tex)->
-                    resolve tex
-            img.onerror = ->
-                reject "Image not found: " + path
-
-            if path[...5]=='data:'
-                img.src = path
-            else
-                img.src = base + path
-
-        return
-    context.render_manager.texture_promises.push promise
-    promise.texture = tex
-    tex.promise = promise
-    return promise
+#     add_things Promise._all list
 
 # Loads textures of material (given a name), return a promise
 fetch_textures_of_material = (scene, mat_name) ->
@@ -156,16 +22,19 @@ fetch_textures_of_material = (scene, mat_name) ->
         Promise.all [texture.promise for texture in mat.textures]
     else
         # Useful when you only want to request textures to be loaded without compiling the shader
+        # TODO: Do we need to draw the texture with a dummy shader
+        # to force it to be actually loaded?
         data = scene.unloaded_material_data[mat_name]
         if data
             Promise.all(for u in data.uniforms \
-                when u.type == 13 and scene # 2D image
-                    extension = u.filepath.toLowerCase().split('.')[-1..][0]
-                    #TODO: detect texture format better
-                    if extension in ['mp4', 'ogv', 'webm', 'ogg']
-                        fetch_video_texture u.image, u.filepath, u.filter, u.wrap, u.size, scene.context
-                    else
-                        fetch_texture u.image, u.filepath, u.filter, u.wrap, u.size, scene.context
+                when (u.type == 13 or u.type == 262146 or u.type == 262145) and scene
+                    # 2D image, see constants in material.py
+                    tex = scene.context.textures[u.image]
+                    if not tex?
+                        if not u.filepath
+                            throw "Texture #{u.image} not found (in material #{mat_name})."
+                        tex = texture.get_texture_from_path_legacy u.image, u.filepath, u.filter, u.wrap, u.size, scene.context
+                    tex.load()
             )
         else
             Promise.reject "Couldn't find material '#{mat_name}'"
@@ -272,6 +141,6 @@ set_altmesh = (ob,i) ->
 
 module.exports = {
     material_promises,
-    fetch_texture, fetch_textures_of_material,
+    fetch_textures_of_material,
     fetch_mesh, fetch_objects
 }

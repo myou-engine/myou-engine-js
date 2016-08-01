@@ -6,7 +6,6 @@ loader = require './loader.coffee'
 vr = require './webvr.coffee'
 
 class Myou
-
     constructor: (root, MYOU_PARAMS)->
         @scenes = {}
         @loaded_scenes = []
@@ -15,6 +14,7 @@ class Myou
         @actions = {}
         @groups = {}
         @log = []
+        @textures = {}
         @video_textures = {}
         @debug_loader = null
         @canvas = null

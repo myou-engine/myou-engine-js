@@ -33,8 +33,6 @@ class RenderManager
         @context.render_manager = @
         @canvas = canvas
         @gl = gl
-        @textures = {}
-        @texture_promises = []
         @width = width
         @height = height
         @main_fb = new MainFramebuffer @
@@ -126,12 +124,12 @@ class RenderManager
     clear_context: ()->
         @context_lost_count += 1
         for k, t of @textures
-            t.tex = null
+            t.gl_tex = null
         return
 
     restore_context: ()->
         @initialize()
-        for k, t of @textures
+        for k, t of @context.textures
             t.reupload()
         for m in @context.all_materials
             m.reupload()
@@ -424,7 +422,7 @@ class RenderManager
                     if active_texture != i
                         gl.activeTexture gl.TEXTURE0 + i
                         active_texture = i
-                    gl.bindTexture gl.TEXTURE_2D, tex.tex
+                    gl.bindTexture gl.TEXTURE_2D, tex.gl_tex
                     bound_textures[i] = tex
 
             if mat.u_shapef.length != 0
