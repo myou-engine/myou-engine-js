@@ -176,6 +176,7 @@ class Material
         var_miststart = ""
         var_misttype = ""
         var_custom = []
+        last_lamp = null
 
         for u in uniforms or []
             # Magic numbers correspond to the old values of blender constants
@@ -185,6 +186,12 @@ class Material
                     GPU_DYNAMIC_LAMP_DYNVEC, GPU_DYNAMIC_LAMP_DYNCO, \
                     GPU_DYNAMIC_LAMP_DYNPERSMAT, GPU_DYNAMIC_LAMP_DYNENERGY, \
                     GPU_DYNAMIC_LAMP_DYNCOL, GPU_DYNAMIC_LAMP_DISTANCE
+                        if not u.lamp?
+                            # From a buggy Blender version
+                            if not last_lamp?
+                                throw "A too buggy version of Blender was used"
+                            u.lamp = last_lamp
+                        last_lamp = u.lamp
                         l = lamps[u.lamp] or {
                             vardir:'', varpos:'', varmat:''
                             varcolor3:'', varcolor4:'', dist:''
