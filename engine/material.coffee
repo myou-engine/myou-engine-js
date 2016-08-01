@@ -128,6 +128,7 @@ class ShadingParams
         @specular_intensity = params.specular_intensity
         @specular_hardness = params.specular_hardness
         @emit = params.emit
+        @alpha = params.alpha
 
 class Material
     constructor: (@context, data, @scene) ->
@@ -167,6 +168,7 @@ class Material
         var_specint = ""
         var_hardness = ""
         var_emit = ""
+        var_alpha = ""
         var_mistcol = ""
         var_mistdist = ""
         var_mistenable = ""
@@ -243,6 +245,8 @@ class Material
                     var_hardness = u.varname
                 when GPU_DYNAMIC_MAT_EMIT
                     var_emit = u.varname
+                when GPU_DYNAMIC_MAT_ALPHA
+                    var_alpha = u.varname
                 when GPU_DYNAMIC_MIST_COLOR
                     var_mistcol = u.varname
                 when GPU_DYNAMIC_MIST_DISTANCE
@@ -520,6 +524,7 @@ class Material
         @u_specint = gl.getUniformLocation prog, var_specint
         @u_hardness = gl.getUniformLocation prog, var_hardness
         @u_emit = gl.getUniformLocation prog, var_emit
+        @u_alpha = gl.getUniformLocation prog, var_alpha
         @u_mistcol = gl.getUniformLocation prog, var_mistcol
         @u_mistdist = gl.getUniformLocation prog, var_mistdist
         @u_mistenable = gl.getUniformLocation prog, var_mistenable

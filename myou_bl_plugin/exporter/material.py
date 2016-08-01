@@ -289,6 +289,7 @@ def mat_to_json(mat, scn):
             'specular_intensity': mat.specular_intensity,
             'specular_hardness': mat.specular_hardness,
             'emit': mat.emit,
+            'alpha': mat.alpha,
         }
     ]
 
