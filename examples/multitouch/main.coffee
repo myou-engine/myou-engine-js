@@ -11,7 +11,7 @@ MYOU_PARAMS =
     #if browser then ./data -- If electron ../data
     data_dir: if process.browser then "./data" else __dirname+"/./data"
     no_mipmaps: false
-    timeout: 5000 #time to pause the main_loop
+    timeout: null #time to pause the main_loop
     # background_alpha: 0
     gl_options: {alpha:false, antialias:true}
     no_s3tc: navigator.userAgent.toString().indexOf('Edge/12.')!=-1
@@ -161,7 +161,14 @@ class TouchDemo extends LogicBlock
         debug msgs
 
 myou.load_scene('Scene', true).then (scene)->
-    scene.load_visible_objects().then ->
-        scene.enable_render()
+    scene.enable_render()
+    scene.load_visible_objects({max_mesh_lod:0.3}).then ->
         scene.enable_physics()
         new TouchDemo scene
+        high_quality_textures_promises = for _,t of myou.textures when t.loaded
+            t.load()
+        high_quality_textures_promises.push scene.load_visible_objects()
+        console.log 'loading high_quality_textures_promises'
+        Promise.all(high_quality_textures_promises).then ->
+            console.log 'High quality textures loaded'
+            myou.main_loop.timeout_time = 5000
