@@ -1,6 +1,7 @@
 
 from .mesh import *
 from .material import *
+from .phy_mesh import *
 from . import image
 
 from json import dumps, loads
@@ -40,9 +41,6 @@ def search_scene_used_data(scene):
                 if 'alternative_meshes' in ob:
                     for m in ob['alternative_meshes']:
                         add_mesh(bpy.data.meshes[m], i+1)
-
-                if 'phy_mesh' in ob and ob['phy_mesh']['name'] in bpy.data.meshes:
-                    add_mesh(bpy.data.meshes[ob['phy_mesh']['name']], i+1)
 
                 for s in ob.material_slots:
                     if hasattr(s,'material') and s.material:
@@ -276,7 +274,9 @@ def ob_to_json(ob, scn=None, check_cache=False):
             d = loads(o.data['export_data'])
             materials = []
             passes = []
-            for i in o.data.get('material_indexes', []):
+
+            # material_indexes is only used to have retro compatibility.
+            for i in o.data.get('material_indices', o.data.get('material_indexes', [])):
                 n = 'Material'
                 pass_ = 0
                 mat = o.material_slots[i:i+1]
@@ -289,7 +289,7 @@ def ob_to_json(ob, scn=None, check_cache=False):
                         pass_ = 1
                 materials.append(n)
                 passes.append(pass_)
-            d['materials'] = materials or ['UNDEFINED_MATERIAL']
+            d['materials'] = materials or []
             d['passes'] = passes or [0]
             return d
 
@@ -343,7 +343,28 @@ def ob_to_json(ob, scn=None, check_cache=False):
                     lod_levels = [1/pow(2,lod_level+1)
                         for lod_level in range(lod_levels)]
 
-                print('Generating LoD levels: ',  lod_levels)
+                data['phy_mesh'] = None
+                phy_lod = ob.get('phy_lod', None)
+                if phy_lod and phy_lod not in lod_levels:
+                    print ('Exporting phy_mesh:', phy_lod)
+                    orig_data = ob.data
+                    ob.data = ob.data.copy()
+                    scn.objects.active = ob
+                    bpy.ops.object.modifier_add(type='DECIMATE')
+                    ob.modifiers[-1].ratio = phy_lod
+                    ob.modifiers[-1].use_collapse_triangulate = True
+                    try:
+                        phy_data = convert_phy_mesh(ob, scn)
+                        if not phy_data:
+                            raise Exception("Phy LoD mesh is too big")
+                        orig_data['phy_data'] = dumps(phy_data)
+
+                    finally:
+                        bpy.ops.object.modifier_remove(modifier=ob.modifiers[-1].name)
+                        ob.data = orig_data
+
+                print('Exporting LoD levels: ',  lod_levels)
+
                 for factor in lod_levels:
                     print('factor:', factor)
                     orig_data = ob.data
@@ -358,6 +379,13 @@ def ob_to_json(ob, scn=None, check_cache=False):
 
                         lod_exported_meshes[ob.data['hash']] = ob.data['cached_file']
                         lod_data = loads(ob.data['export_data'])
+
+                        if factor == phy_lod:
+                            print("This LoD mesh will be used as phy_mesh")
+                            orig_data['phy_data'] = dumps({
+                                'export_data': lod_data,
+                                'cached_file': ob.data['cached_file'],
+                            })
 
                         lod_level_data.append({
                             'factor': factor,
@@ -377,6 +405,11 @@ def ob_to_json(ob, scn=None, check_cache=False):
             data['lod_levels'] = loads(ob.data['lod_level_data'])
             for k,v in ob.data['lod_exported_meshes'].items():
                 scn['exported_meshes'][k] = v
+            if ob.data.get('phy_data', None):
+                phy_data = loads(ob.data['phy_data'])
+                print('EEEEEEEEEH', phy_data)
+                data['phy_mesh'] = phy_data['export_data']
+                scn['exported_meshes'][phy_data['export_data']['hash']] = phy_data['cached_file']
         # end if no alt meshes and modifiers_were_applied
 
         if not 'zindex' in ob:
@@ -804,7 +837,7 @@ def export_myou(path, scn):
     # assuming exec_custom_build_command() has executed successfully
 
     join = os.path.join
-    
+
     if path.endswith('.myou'):
         path = path[:-5]
     data_dir = os.path.basename(path.rstrip('/'))

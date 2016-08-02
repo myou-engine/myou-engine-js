@@ -62,7 +62,7 @@ load_datablock = (scene, data, context) ->
 
     else if data.type=='TEXTURE'
         context.textures[data.name] = new Texture(context, data)
-        
+
     else if data.type=='MATERIAL'
         if not data.fragment.splice?
             data.fragment = [context.SHADER_LIB, data.fragment]
@@ -125,6 +125,8 @@ load_object = (data, scene) ->
     ob = scene.objects[data.name]
     if data.type == 'MESH'
         if not ob
+            if data.materials.length == 0
+                console.warn "Mesh #{data.name} won't be rendered because it has no material."
             ob = new Mesh context
             ob.name = data.name
             ob.static = data.static or false
@@ -166,7 +168,8 @@ load_object = (data, scene) ->
 
             ob.active_mesh_index = data.active_mesh_index
 
-        if 'phy_mesh' of data
+        if data.phy_mesh?
+            # it will be used in the decision of whether this mesh must be loaded or not
             data.phy_mesh.visible = data.visible
             m = ob.physics_mesh = new Mesh context
             m.visible_mesh = ob
