@@ -77,9 +77,9 @@ def register():
 
 
 def reload_modules():
-    from .exporter import mesh, image, material
+    from .exporter import mesh, phy_mesh, image, material
     # For reloading changes in all modules when developing
-    for m in [mesh, image, material, exporter] + \
+    for m in [mesh, phy_mesh, image, material, exporter] + \
             auto_register_modules:
         imp.reload(m)
 

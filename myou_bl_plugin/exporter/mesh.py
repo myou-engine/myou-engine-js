@@ -767,10 +767,14 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
     file_hash = hashlib.sha1(bindata).hexdigest()
     fname = scn['game_tmp_path'] + file_hash + '.mesh'
     fname = fname.replace(os.sep, '/')
-    if not os.path.exists(fname) or os.name=='nt':
-        bingzip = gzip.compress(bindata)
-        open(fname,'wb').write(bindata)
-        open(fname+'.gz','wb').write(bingzip)
+
+    # writing mesh
+    open(fname,'wb').write(bindata)
+    
+    # writing compressed mesh
+    bingzip = gzip.compress(bindata)
+    open(fname+'.gz','wb').write(bingzip)
+
     # TODO: delete old file?
     #t=perf_t(t)
 
@@ -816,7 +820,7 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
     ob.data['exported_name'] = ob.data.name
     ob.data['cached_file'] = fname
     ob.data['hash'] = file_hash
-    ob.data['material_indexes'] = materials
+    ob.data['material_indices'] = materials
 
 
     MODE_OPS[orig_mode]()
