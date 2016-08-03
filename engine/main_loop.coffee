@@ -84,6 +84,12 @@ class MainLoop
         @frame_duration = frame_duration = time - @last_time
         @last_time = time
 
+        task_time = time
+        max_task_time = MAX_TASK_DURATION + time
+        while (task_time < max_task_time) and (@_frame_callbacks.length != 0)
+            @_frame_callbacks.shift()()
+            task_time = performance.now()
+            
         if not @enabled
             return
         @last_frame_durations[@_fdi] = frame_duration
@@ -91,12 +97,6 @@ class MainLoop
         
         # Limit low speed of logic and physics
         frame_duration = Math.min(frame_duration, MAX_FRAME_DURATION)
-
-        task_time = time
-        max_task_time = MAX_TASK_DURATION + time
-        while (task_time < max_task_time) and (@_frame_callbacks.length != 0)
-            @_frame_callbacks.shift()()
-            task_time = performance.now()
 
         for scene_name in @context.loaded_scenes
             scene = @context.scenes[scene_name]
