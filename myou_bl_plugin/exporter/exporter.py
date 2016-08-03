@@ -11,6 +11,8 @@ import tempfile
 import os
 from math import *
 
+import re
+
 tempdir  = tempfile.gettempdir()
 
 GE_PATH = os.path.realpath(__file__).rsplit(os.sep,2)[0]
@@ -293,8 +295,9 @@ def ob_to_json(ob, scn=None, check_cache=False):
             d['passes'] = passes or [0]
             return d
 
+        print('\nExporting object', ob.name)
         data = convert(ob, sort=True)
-
+        tris_count = loads(ob.data['export_data']).get('tris_count',0)
         # copying conditions in mesh.py
         # because of linked meshes
         modifiers_were_applied = ob.get('modifiers_were_applied',
@@ -324,6 +327,9 @@ def ob_to_json(ob, scn=None, check_cache=False):
                 lod_level_data = []
                 lod_exported_meshes = {}
 
+                data['phy_mesh'] = None
+                phy_lod = ob.get('phy_lod', None)
+
                 # Support two formats of "lod_levels":
                 # - If you put an integer (or string with a number) you'll
                 #   generate as many decimated levels, each half of the previous one
@@ -334,6 +340,104 @@ def ob_to_json(ob, scn=None, check_cache=False):
                 #   e.g. "[0.2, 0.08]"
                 # In both cases, the level of factor 1 is implicit.
 
+                def export_lod_mesh (ob, factor=0):
+                    orig_data = ob.data
+                    ob.data = lod_mesh = ob.data.copy()
+                    scn.objects.active = ob
+                    lod_data = None
+
+                    if factor:
+                        print('Exporting LoD mesh with factor:', factor)
+                        bpy.ops.object.modifier_add(type='DECIMATE')
+                        ob.modifiers[-1].ratio = factor
+                        ob.modifiers[-1].use_collapse_triangulate = True
+
+                    try:
+                        if not convert_mesh(ob, scn, 1, True):
+                            raise Exception("Decimated LoD mesh is too big")
+
+                        lod_exported_meshes[lod_mesh['hash']] = lod_mesh['cached_file']
+                        lod_data = loads(lod_mesh['export_data'])
+
+                        exported_factor = lod_data['tris_count']/tris_count
+                        print('Exported LoD mesh with factor:', exported_factor)
+
+                        lod_level_data.append({
+                            'factor': exported_factor,
+                            'hash': lod_data['hash'],
+                            'offsets': lod_data['offsets'],
+                            'uv_multiplier': lod_data['uv_multiplier'],
+                            'shape_multiplier': lod_data['shape_multiplier'],
+                            'avg_poly_area': lod_data.get('avg_poly_area', None),
+                        })
+                    finally:
+                        if factor:
+                            bpy.ops.object.modifier_remove(modifier=ob.modifiers[-1].name)
+                        ob.data = orig_data
+
+                    return [lod_mesh, lod_data]
+
+                def export_phy_mesh (ob, factor=0):
+                    orig_data = ob.data
+                    ob.data = ob.data.copy()
+                    scn.objects.active = ob
+
+                    if factor:
+                        print ('Exporting phy_mesh with factor:', factor)
+                        bpy.ops.object.modifier_add(type='DECIMATE')
+                        ob.modifiers[-1].ratio = factor
+                        ob.modifiers[-1].use_collapse_triangulate = True
+
+                    try:
+                        phy_data = convert_phy_mesh(ob, scn)
+                        if not phy_data:
+                            raise Exception("Phy LoD mesh is too big")
+                        orig_data['phy_data'] = dumps(phy_data)
+
+                        exported_factor = phy_data['export_data']['tris_count']/tris_count
+                        print('Exported phy mesh with factor:', exported_factor)
+
+                    finally:
+                        if factor:
+                            bpy.ops.object.modifier_remove(modifier=ob.modifiers[-1].name)
+                        ob.data = orig_data
+
+                #Exporting lod, phy, embed from modifiers
+
+                lod_modifiers = []
+                phy_modifier = None
+                #TODO: Use this
+                embed_modifier = None
+
+                for m in ob.modifiers:
+                    if m.type == 'DECIMATE':
+                        name = re.sub('[^a-zA-Z]', '.', m.name)
+                        name = name.split('.')
+                        if 'lod' in name:
+                            m.show_viewport = False
+                            lod_modifiers.append(m)
+                        if 'phy' in name:
+                            phy_modifier = m
+                        if 'embed' in name:
+                            embed_modifier = m
+
+                for m in lod_modifiers:
+                    m.show_viewport = True
+                    lod_mesh, lod_data = export_lod_mesh(ob)
+                    if m == phy_modifier:
+                        print("This LoD mesh will be used as phy_mesh")
+                        ob.data['phy_data'] = dumps({
+                            'export_data': lod_data,
+                            'cached_file': lod_mesh['cached_file'],
+                        })
+                    m.show_viewport = False
+
+                if phy_modifier and not phy_modifier in lod_modifiers:
+                    phy_modifier.show_viewport = True
+                    export_phy_mesh(ob)
+                    phy_modifier.show_viewport = False
+
+                #Exporting lod phy from object properties
                 lod_levels = loads(str(ob.get('lod_levels',0)))
                 if not isinstance(lod_levels, (int, list)):
                     print('WARNING: Invalid lod_levels type. Using lod_levels = 0')
@@ -343,71 +447,32 @@ def ob_to_json(ob, scn=None, check_cache=False):
                     lod_levels = [1/pow(2,lod_level+1)
                         for lod_level in range(lod_levels)]
 
-                data['phy_mesh'] = None
-                phy_lod = ob.get('phy_lod', None)
-                if phy_lod and phy_lod not in lod_levels:
-                    print ('Exporting phy_mesh:', phy_lod)
-                    orig_data = ob.data
-                    ob.data = ob.data.copy()
-                    scn.objects.active = ob
-                    bpy.ops.object.modifier_add(type='DECIMATE')
-                    ob.modifiers[-1].ratio = phy_lod
-                    ob.modifiers[-1].use_collapse_triangulate = True
-                    try:
-                        phy_data = convert_phy_mesh(ob, scn)
-                        if not phy_data:
-                            raise Exception("Phy LoD mesh is too big")
-                        orig_data['phy_data'] = dumps(phy_data)
-
-                    finally:
-                        bpy.ops.object.modifier_remove(modifier=ob.modifiers[-1].name)
-                        ob.data = orig_data
-
-                print('Exporting LoD levels: ',  lod_levels)
+                if phy_lod and phy_lod not in lod_levels and not phy_modifier:
+                    export_phy_mesh(ob, phy_lod)
+                    print()
 
                 for factor in lod_levels:
-                    print('factor:', factor)
-                    orig_data = ob.data
-                    ob.data = ob.data.copy()
-                    scn.objects.active = ob
-                    bpy.ops.object.modifier_add(type='DECIMATE')
-                    ob.modifiers[-1].ratio = factor
-                    ob.modifiers[-1].use_collapse_triangulate = True
-                    try:
-                        if not convert_mesh(ob, scn, 1, True):
-                            raise Exception("Decimated LoD mesh is too big")
-
-                        lod_exported_meshes[ob.data['hash']] = ob.data['cached_file']
-                        lod_data = loads(ob.data['export_data'])
-
-                        if factor == phy_lod:
-                            print("This LoD mesh will be used as phy_mesh")
-                            orig_data['phy_data'] = dumps({
-                                'export_data': lod_data,
-                                'cached_file': ob.data['cached_file'],
-                            })
-
-                        lod_level_data.append({
-                            'factor': factor,
-                            'hash': lod_data['hash'],
-                            'offsets': lod_data['offsets'],
-                            'uv_multiplier': lod_data['uv_multiplier'],
-                            'shape_multiplier': lod_data['shape_multiplier'],
-                            'avg_poly_area': lod_data.get('avg_poly_area', None),
+                    lod_mesh, lod_data = export_lod_mesh(ob, factor)
+                    if factor == phy_lod and not phy_modifier:
+                        print("This LoD mesh will be used as phy_mesh")
+                        ob.data['phy_data'] = dumps({
+                            'export_data': lod_data,
+                            'cached_file': lod_mesh['cached_file'],
                         })
-                    finally:
-                        bpy.ops.object.modifier_remove(modifier=ob.modifiers[-1].name)
-                        ob.data = orig_data
+                    print()
+
+                lod_level_data = sorted(lod_level_data, key=lambda e: e['factor'])
+
                 # end for
                 ob.data['lod_level_data'] = dumps(lod_level_data)
                 ob.data['lod_exported_meshes'] = lod_exported_meshes
+
             # end cache invalidated
             data['lod_levels'] = loads(ob.data['lod_level_data'])
             for k,v in ob.data['lod_exported_meshes'].items():
                 scn['exported_meshes'][k] = v
             if ob.data.get('phy_data', None):
                 phy_data = loads(ob.data['phy_data'])
-                print('EEEEEEEEEH', phy_data)
                 data['phy_mesh'] = phy_data['export_data']
                 scn['exported_meshes'][phy_data['export_data']['hash']] = phy_data['cached_file']
         # end if no alt meshes and modifiers_were_applied

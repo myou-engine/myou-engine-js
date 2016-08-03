@@ -6,8 +6,9 @@ from array import array
 
 def convert_phy_mesh(ob, scn):
     orig_data = ob.data
+    print("\n------------------------------")
     print("exporting:",ob.name)
-
+    print("------------------------------")
     # Force mesh triangulation
     old_active_object = scn.objects.active
     scn.objects.active = ob
@@ -16,7 +17,6 @@ def convert_phy_mesh(ob, scn):
     bpy.ops.object.modifier_remove(modifier=ob.modifiers[-1].name)
 
     vlen = len(ob.data.vertices)
-    print(vlen, len(ob.data.polygons))
     vertices = array('f', [0]) * (vlen*3)
     ob.data.vertices.foreach_get('co', vertices)
 
@@ -26,8 +26,6 @@ def convert_phy_mesh(ob, scn):
     num_indices = len(ob.data.polygons) * 3
     indices = array('I', [0]) * num_indices
     ob.data.polygons.foreach_get('vertices', indices)
-
-    print(len(vertices))
 
     try:
         mesh_bytes = (
@@ -53,6 +51,8 @@ def convert_phy_mesh(ob, scn):
     bingzip = gzip.compress(mesh_bytes)
     open(fname+'.gz','wb').write(bingzip)
 
+    tris_count = len(indices)/3
+
     #restoring original state
     ob.data = orig_data
     scn.objects.active = old_active_object
@@ -61,6 +61,7 @@ def convert_phy_mesh(ob, scn):
         'export_data' :{
             'stride': 16,
             'elements': [],
+            'tris_count': tris_count,
             'offsets': [0,0, vlen*4, len(indices)],
             'mesh_name': ob.data.name,
             'hash':file_hash,

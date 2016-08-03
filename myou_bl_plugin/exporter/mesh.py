@@ -48,7 +48,7 @@ def multiuser_apply_local_transform(ob):
 
 
 def convert_mesh(ob, scn, split_parts=1, sort=True):
-    print("------------------------------")
+    print("\n------------------------------")
     print("exporting:",ob.name)
     print("------------------------------")
 
@@ -99,7 +99,7 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
     has_armature_deform = \
         armature and not ob.parent_type == 'BONE' \
             and not ob.get('apply_armature')
-    
+
     if has_armature_deform:
         # THIS MODIFIES THE ORIGINAL MESH!
         parent = ob.parent
@@ -124,8 +124,8 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
         not ob.particle_systems
 
     if apply_modifiers:
-        print('Applying modifiers:')
-        t=perf_t(t,False)
+        # print('Applying modifiers:')
+        # t=perf_t(t,False)
         mods = [0] * len(ob.modifiers)
         ob.modifiers.foreach_get('show_viewport', mods)
         for m in ob.modifiers:
@@ -145,15 +145,14 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
         #         t=perf_t(t)
         ob.modifiers.foreach_set('show_viewport', mods)
         if ob.get('smooth'):
-            print('smooth')
             bpy.ops.object.shade_smooth()
-        t=perf_t(t)
+        # t=perf_t(t)
 
     else:
         ob.data = ob.data.copy()
 
-    print('Splitting non-smooth faces and converting to tris:')
-    t=perf_t(t,False)
+    # print('Splitting non-smooth faces and converting to tris:')
+    # t=perf_t(t,False)
     # Split non-smooth faces and convert to tris
     _ = [False]*max(len(ob.data.vertices), len(ob.data.edges))
     # t=perf_t(t)
@@ -180,32 +179,32 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
     bpy.ops.mesh.select_all(action='SELECT')
     # t=perf_t(t)
     bpy.ops.mesh.quads_convert_to_tris()
-    t=perf_t(t)
+    # t=perf_t(t)
 
     # sort faces to minimize cache misses
     # (not the best way, but way better than mesh after triangulation)
     if sort:
-        t=perf_t(t,False)
-        print("sorting faces:")
+        # t=perf_t(t,False)
+        # print("sorting faces:")
         c, scn.cursor_location = list(scn.cursor_location), [100000,100000,100000]
         m, ob.matrix_world = ob.matrix_world.copy(), Matrix()
         bpy.ops.mesh.sort_elements(type='CURSOR_DISTANCE', elements={'FACE'})
         ob.matrix_world = m
         scn.cursor_location = c
-        t=perf_t(t)
+        # t=perf_t(t)
 
-    print('Updating scene:')
+    # print('Updating scene:')
     bpy.ops.object.mode_set(mode='OBJECT')
     scn.update()
     ob.data.update()
-    t=perf_t(t)
+    # t=perf_t(t)
 
     # Save original indices, to map new vertices to original ones
     orig_indices = [0,0,0] * len(ob.data.polygons)
     ob.data.polygons.foreach_get('vertices', orig_indices)
 
-    print('Extracting normals:')
-    t=perf_t(t,False)
+    # print('Extracting normals:')
+    # t=perf_t(t,False)
     # Extract normals (must be done before seaming)
     orig_vnormals = [0.0,0.0,0.0] * len(ob.data.vertices)
     orig_shape_vnormals = []
@@ -239,9 +238,9 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
             s.value, s.slider_min, s.slider_max = values.pop(0)
         for m in ob.modifiers:
             m.show_viewport = modifiers.pop(0)
-    t=perf_t(t)
+    # t=perf_t(t)
 
-    print('Extracting tangent vectors:')
+    # print('Extracting tangent vectors:')
     # Tangent vectors
     # TODO: this is calculating tangents for every UV layer
     #       while there's only needed usually for one or none
@@ -273,7 +272,7 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
             tangents.append(tangent)
             face_uv_winding.append(w)
         orig_face_tangents.append(tangents)
-    t=perf_t(t)
+    # t=perf_t(t)
 
     # Split faces by UV islands, material and uv winding (for tangent vectors)
     if 1:
@@ -282,8 +281,8 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.reveal()
         bm = bmesh.from_edit_mesh(ob.data)
-        print("Splitting faces by UV islands:")
-        t=perf_t(t,False)
+        # print("Splitting faces by UV islands:")
+        # t=perf_t(t,False)
         # Split faces by UV islands
         for uv_tex in ob.data.uv_textures:
             uv_tex.active = True
@@ -298,7 +297,7 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
             if not bm.edges[0].seam:
                 bpy.ops.mesh.select_all(action='INVERT')
             bpy.ops.mesh.edge_split()
-        t=perf_t(t)
+        # t=perf_t(t)
 
         # Split faces by material
         print("Splitting faces by material:")
@@ -317,8 +316,8 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
             bpy.ops.mesh.region_to_loop()
             bpy.ops.mesh.edge_split()
 
-        t=perf_t(t)
-        print("Splitting faces by number of specified parts:("+str(split_parts)+')')
+        # t=perf_t(t)
+        # print("Splitting faces by number of specified parts:("+str(split_parts)+')')
         # Split by number of parts specified
         numfaces_per_part = len(faces)//split_parts
         faces_numpart = [0] * len(faces)
@@ -341,8 +340,8 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
                 bpy.ops.mesh.region_to_loop()
                 bpy.ops.mesh.edge_split()
 
-        t=perf_t(t)
-        print("Splitting faces by uv winding (for tangent vectors):")
+        # t=perf_t(t)
+        # print("Splitting faces by uv winding (for tangent vectors):")
         # Split faces by uv winding (for tangent vectors)
         if face_uv_winding:
             for i in range(len(faces)):
@@ -356,9 +355,9 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
         ob.modifiers[-1].split_angle = 0
         bpy.ops.object.modifier_apply(apply_as='DATA', modifier=ob.modifiers[-1].name)
 
-    t=perf_t(t)
+    # t=perf_t(t)
 
-    print('Getting average polygon area:')
+    # print('Getting average polygon area:')
     areas = [0] * len(ob.data.polygons)
     ob.data.polygons.foreach_get('area', areas)
     avg_poly_area = sum(areas)/len(ob.data.polygons)
@@ -770,7 +769,7 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
 
     # writing mesh
     open(fname,'wb').write(bindata)
-    
+
     # writing compressed mesh
     bingzip = gzip.compress(bindata)
     open(fname+'.gz','wb').write(bingzip)
@@ -797,6 +796,8 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
         else:
             elements.append(['weights'])
 
+    tris_count = len(indices)/3
+
     ob.hide = hide
     ob.data = orig_data
     ob.select = was_sel
@@ -814,6 +815,7 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
         'shape_multiplier': 1/shape_multiplier,
         'uv_multiplier': 1/uv_multiplier,
         'avg_poly_area': avg_poly_area,
+        'tris_count': tris_count,
         'center': [(min_v[0]+max_v[0])*0.5, (min_v[1]+max_v[1])*0.5, (min_v[2]+max_v[2])*0.5],
     })
 
