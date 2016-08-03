@@ -208,7 +208,7 @@ class GameObject
                             ob.stride/4,
                             scale,
                             @collision_margin,
-                            @name
+                            ob.hash
                         )
                         if @mirrors & 2
                             data.phy_mesh_mx = shape
@@ -364,7 +364,7 @@ class GameObject
             mat4.mul @world_matrix, @parent.world_matrix, @world_matrix
             #ppos = @parent.world_matrix.subarray 12,15
             #pos = [pos[0] + ppos[0], pos[1] + ppos[1], pos[2] + ppos[2]]
-    
+
     update_matrices_recursive: ->
         @parent?.update_matrices_recursive()
         @_update_matrices()
