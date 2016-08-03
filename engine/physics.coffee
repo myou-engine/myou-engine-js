@@ -131,6 +131,7 @@ TriangleMeshShape = (vertices, indices, vstride, scale, margin, name)->
     mesh = new Ammo.btTriangleIndexVertexArray(indices.length/3, inds, 3*4,
                                               vertices.length/3, verts, 3*4)
     shape =  new Ammo.btBvhTriangleMeshShape mesh, true, true
+    shape.name = name
     _tmp_Vector3.setValue scale[0], scale[1], scale[2]
     shape.setLocalScaling _tmp_Vector3
     shape.setMargin margin
