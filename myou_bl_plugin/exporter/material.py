@@ -119,12 +119,12 @@ def mat_to_json(mat, scn):
     dyn_consts = loads(mat.get('dyn_consts') or '[]')
     replacements = loads(mat.get('replacements') or '[]')
 
-    # Checking hash of main() is not enough
-    code_hash = hash(shader['fragment']) % 2147483648
+    # # Checking hash of main() is not enough
+    # code_hash = hash(shader['fragment']) % 2147483648
     #print(shader['fragment'].split('{')[0])
     premain, main = shader['fragment'].split('{')
 
-    if mat.get('code_hash') != code_hash:
+    if 1:
         # Dynamic uniforms (for animation, per object variables,
         #                   particle layers or other custom stuff)
         dyn_consts = []
@@ -183,7 +183,7 @@ def mat_to_json(mat, scn):
             {'type': -1, 'varname': c, 'gltype': types[i], 'index': i}
             for i,c in enumerate(dyn_consts)]
 
-    mat['code_hash'] = code_hash
+    # mat['code_hash'] = code_hash
 
     for a,b in replacements:
         shader['fragment'] = shader['fragment'].replace(a, b)
@@ -294,6 +294,6 @@ def mat_to_json(mat, scn):
         }
     ]
 
-    ret = dumps(shader).encode('utf8')
-    mat['hash'] = hash(ret) % 2147483648
+    ret = loads(dumps(shader))
+    # mat['hash'] = hash(ret) % 2147483648
     return ret

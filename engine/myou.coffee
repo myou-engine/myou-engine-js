@@ -21,6 +21,7 @@ class Myou
         @root = null
         @all_materials = []
         @mesh_datas = []
+        @embed_meshes = {}
         @SHADER_LIB = ''
         @all_anim_objects = []
         @root = root
