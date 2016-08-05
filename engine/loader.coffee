@@ -80,39 +80,11 @@ load_datablock = (scene, data, context) ->
 
     else if data.type=='ACTION'
         context.actions[data.name] = new Action data.name, data.channels, data.markers
-
+    
+    else if data.type=='EMBED_MESH'
+        context.embed_meshes[data.hash] = data
     else if data.type=='GROUP'
-        context.groups[data.name] = new Group data.objects, data.offset
-
-    else if data.type=='DELETE'
-        for n in data.names
-            scene.remove_object scene.objects[n]
-
-
-    else if data.type=='STOP_RENDER'
-        scene.enabled = false
-
-    else if data.type=='START_RENDER'
-        scene.enabled = true
-
-    else if data.type=='DEBUG_VIEW'
-        vp = context.render_manager.viewports[0]
-        if vp and vp.camera
-            if not vp.debug_camera
-                vp.debug_camera = vp.camera.clone()
-                vp.debug_camera.projection_matrix = new(Float32Array)(16)
-                vp.debug_camera.projection_matrix_inv = new(Float32Array)(16)
-                vp.debug_camera.parent = null
-            vp.debug_camera.cam_type = data.cam_type
-            vp.debug_camera.position = data.position
-            vp.debug_camera.rotation = data.rotation
-            vp.debug_camera.recalculate_projection()
-            vp.debug_camera._update_matrices()
-
-    else if data.type=='NO_DEBUG_VIEW'
-        vp = context.render_manager.viewports[0]
-        if vp
-            vp.debug_camera = null
+        # TODO
     else
         load_object data, scene
 

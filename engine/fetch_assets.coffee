@@ -68,8 +68,15 @@ fetch_mesh = (mesh_object, options={}) ->
             fetch_promises[file_name]
         else
             base = context.MYOU_PARAMS.data_dir + '/scenes/'
-            uri = base + mesh_object.scene.name + '/' + file_name + '.mesh'
-            fetch(uri).then((data)->data.arrayBuffer())
+            embed_mesh = context.embed_meshes[mesh_object.hash]
+            if embed_mesh?
+                buffer = (new Uint32Array(embed_mesh.int_list)).buffer
+                embed_mesh.int_list = null # No longer needed, free space
+                console.log 'loaded as int list'
+                Promise.resolve(buffer)
+            else
+                uri = base + mesh_object.scene.name + '/' + file_name + '.mesh'
+                fetch(uri).then((data)->data.arrayBuffer())
 
         fetch_promises[file_name] = fetch_promise
 

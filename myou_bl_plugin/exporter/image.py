@@ -133,8 +133,11 @@ def export_images(dest_path, used_data):
                             bpy.data.images.remove(resized_image)
                             image_info['formats'][out_format.lower()].append({
                                 'width': width, 'height': height,
-                                'file_name': file_name, 'file_size': fsize(exported_path),
+                                # 'file_name': file_name,
+                                'data_uri': file_path_to_data_uri(exported_path, out_format),
+                                'file_size': fsize(exported_path),
                             })
+                            
                             print('Image resized to '+str(lod_level)+' and exported as '+out_format)
                         else:
                             file_name = image.name + '.' + out_ext
@@ -161,9 +164,23 @@ def export_images(dest_path, used_data):
                 print('Copied original video')
         else:
             raise Exception('Image source not supported: ' + image.name + ' source: ' + image.source)
+        
+        # Embed all images that are 64x64 or lower, and delete the files
+        # TODO: make configurable
+        files_to_delete = set()
+        for fmt, datas in image_info['formats'].items():
+            for data in datas:
+                if fmt in ['png', 'jpeg'] and max(data['width'],data['height']) <= 64:
+                    exported_path = os.path.join(dest_path, file_name)
+                    data['data_uri'] = file_path_to_data_uri(exported_path, fmt)
+                    data['file_name'] = None
+                    del data['file_name']
+                    files_to_delete.add(exported_path)
+        for fpath in files_to_delete:
+            os.unlink(fpath)
         print()
         json_data.append(image_info)
-    return [dumps(img).encode('utf8') for img in json_data]
+    return json_data
 
 def pack_generated_images(used_data):
     for image in used_data['images']:
@@ -224,3 +241,8 @@ def png_file_has_alpha(file_path):
 
 def fsize(path):
     return os.stat(path).st_size
+
+import base64
+def file_path_to_data_uri(path, type):
+    data = base64.b64encode(open(path, 'rb').read()).decode().replace('\n', '')
+    return 'data:image/'+type.lower()+';base64,'+data

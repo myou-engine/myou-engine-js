@@ -9,6 +9,7 @@ from collections import defaultdict
 import shutil
 import tempfile
 import os
+import struct
 from math import *
 
 import re
@@ -142,7 +143,7 @@ def scene_data_to_json(scn=None):
         'frame_end': scn.frame_end,
         'fps': scn.render.fps,
         }
-    return dumps(scene_data).encode('utf8')
+    return scene_data
 
 #ported from animations.py
 def interpolate(t, p0, p1, p2, p3):
@@ -362,6 +363,8 @@ def ob_to_json(ob, scn=None, check_cache=False):
                         exported_factor = lod_data['tris_count']/tris_count
                         print('Exported LoD mesh with factor:', exported_factor)
 
+                        # TODO!! This is confusing. Should we copy lod_data
+                        # and then add factor outside?
                         lod_level_data.append({
                             'factor': exported_factor,
                             'hash': lod_data['hash'],
@@ -401,13 +404,13 @@ def ob_to_json(ob, scn=None, check_cache=False):
                         if factor:
                             bpy.ops.object.modifier_remove(modifier=ob.modifiers[-1].name)
                         ob.data = orig_data
+                    return phy_data
 
                 #Exporting lod, phy, embed from modifiers
 
                 lod_modifiers = []
                 phy_modifier = None
-                #TODO: Use this
-                embed_modifier = None
+                embed_modifiers = []
 
                 for m in ob.modifiers:
                     if m.type == 'DECIMATE':
@@ -419,7 +422,7 @@ def ob_to_json(ob, scn=None, check_cache=False):
                         if 'phy' in name:
                             phy_modifier = m
                         if 'embed' in name:
-                            embed_modifier = m
+                            embed_modifiers.append(m)
 
                 for m in lod_modifiers:
                     m.show_viewport = True
@@ -430,12 +433,21 @@ def ob_to_json(ob, scn=None, check_cache=False):
                             'export_data': lod_data,
                             'cached_file': lod_mesh['cached_file'],
                         })
+                    if m in embed_modifiers:
+                        scn['embed_mesh_hashes'][lod_data['hash']] = True
+                        embed_modifiers.remove(m)
                     m.show_viewport = False
 
                 if phy_modifier and not phy_modifier in lod_modifiers:
                     phy_modifier.show_viewport = True
-                    export_phy_mesh(ob)
+                    phy_mesh_data = export_phy_mesh(ob)
+                    if phy_modifier in embed_modifiers:
+                        scn['embed_mesh_hashes'][phy_mesh_data['hash']] = True
+                        embed_modifiers.remove(m)
                     phy_modifier.show_viewport = False
+                
+                if embed_modifiers:
+                    print('TODO! Embed mesh modifier without being LoD or Phy')
 
                 #Exporting lod phy from object properties
                 lod_levels = loads(str(ob.get('lod_levels',0)))
@@ -718,8 +730,7 @@ def ob_to_json(ob, scn=None, check_cache=False):
             'max_fall_speed': ob.game.fall_speed
         })
     obj.update(data)
-    s = dumps(obj).encode('utf8')
-    return s
+    return obj
 
 
 
@@ -796,7 +807,7 @@ def action_to_json(action, ob):
                     'channels': [list(k)+[v] for (k,v) in channels.items()],
                     'markers': markers}
 
-    return dumps(final_action).encode('utf8')
+    return final_action
 
 
 def ob_in_layers(scn, ob):
@@ -810,10 +821,21 @@ def ob_to_json_recursive(ob, scn=None, check_cache=False):
             d += ob_to_json_recursive(c, scn, check_cache)
     return d
 
+def embed_meshes(scn):
+    r = []
+    for hash in scn['embed_mesh_hashes'].keys():
+        mesh_bytes = open(scn['exported_meshes'][hash],'rb').read()
+        if len(mesh_bytes)%4 != 0:
+            mesh_bytes += bytes([0,0])
+        int_list = struct.unpack('<'+str(int(len(mesh_bytes)/4))+'I', mesh_bytes)
+        r.append({'type': 'EMBED_MESH', 'hash': hash, 'int_list': int_list})
+    return r
 
 def whole_scene_to_json(scn, used_data, textures_path):
     previous_scn = None
     if scn != bpy.context.screen.scene:
+        # TODO: This never worked with materials
+        # check if it works with the current version
         previous_scn = bpy.context.screen.scene
         bpy.context.screen.scene = scn
 
@@ -826,49 +848,54 @@ def whole_scene_to_json(scn, used_data, textures_path):
     was_editing = bpy.context.mode == 'EDIT_MESH'
     if was_editing:
         bpy.ops.object.editmode_toggle()
+    # exported_meshes and embed_mesh_hashes will be filled
+    # while exporting meshes from ob_to_json_recursive below
     scn['exported_meshes'] = {}
+    scn['embed_mesh_hashes'] = {}
     scn['game_tmp_path'] = get_scene_tmp_path(scn) # TODO: have a changed_scene function
-    tex_sizes.clear()
+    
+    # Start exporting scene settings, then the objects
     ret = [scene_data_to_json(scn)]
-
     for ob in used_data['objects']:
         if ob.parent:
             continue
         ret += ob_to_json_recursive(ob, scn, True)
-
+    # This uses embed_mesh_hashes created above then filled in ob_to_json_recursive
+    ret += embed_meshes(scn)
+    # TODO: this is not currently used
     for group in bpy.data.groups:
-        ret.append(dumps(
+        ret.append(
                 {'type': 'GROUP',
                 'name': group.name,
                 'scene': scn.name,
                 'offset': list(group.dupli_offset),
                 'objects': [o.name for o in group.objects],
-                }).encode())
-
+                })
+    # Export shader lib, textures (images), materials, actions
     image_json = image.export_images(textures_path, used_data)
     mat_json = [mat_to_json(mat, scn) for mat in used_data['materials']]
     act_json = [action_to_json(action, used_data['action_users'][action.name]) for action in used_data['actions']]
-
-    ret.append(dumps({"type":"SHADER_LIB","code": get_shader_lib()}).encode())
+    # We must export shader lib after materials, but engine has to read it before
+    ret.append({"type":"SHADER_LIB","code": get_shader_lib()})
     ret += image_json + mat_json + act_json
-    retb = b'['+b','.join(ret)+b']'
+    # Final JSON encoding, without spaces
+    retb = dumps(ret, separators=(',',':')).encode('utf8')
     retb_gz = gzip.compress(retb)
     size = len(retb)
     size_gz = len(retb_gz)
-    # TODO TODO TODO TODO TODO stop using scn['exported_meshes']
-    # ADD OPTION FOR HIDDEN MESH PRELOADING
-    for o in scn.objects:
-        if o.type=='MESH' and not o.hide_render and 'cached_file' in o.data and ob_in_layers(scn,o):
-            size += os.path.getsize(o.data['cached_file'])
-    #print('Total scene size: %.3f MiB (%.3f MiB compressed)' %
-          #(size/1048576, size_gz/1048576))
-    print('Total scene size: %.3f MiB' % (size/1048576))
-    scn['total_size'] = size# + sum(tex_sizes.values())
+    # TODO empty scn['exported_meshes']?
+    # for mesh_hash, fpath in scn['exported_meshes'].items():
+    #     if mesh_hash not in scn['embed_mesh_hashes']:
+    #         size += os.path.getsize(fpath)
+    print('Total scene size: %.3f MiB (%.3f MiB compressed)' %
+          (size/1048576, size_gz/1048576))
+    scn['total_size'] = size
     if was_editing:
         bpy.ops.object.editmode_toggle()
     if previous_scn:
         bpy.context.screen.scene = previous_scn
     return [retb, retb_gz]
+    
 
 def get_scene_tmp_path(scn):
     dir = (tempdir + os.sep + 'scenes' + os.sep + scn.name + os.sep)
@@ -912,9 +939,9 @@ def export_myou(path, scn):
     old_export = ''
     if os.path.exists(full_dir):
         bak = 1
-        while os.path.exists(full_dir+str(bak)):
+        while os.path.exists(full_dir+'.bak.'+str(bak)):
             bak += 1
-        old_export = full_dir+str(bak)
+        old_export = full_dir+'.bak.'+str(bak)
         shutil.move(full_dir, old_export)
     try:
         os.mkdir(full_dir)
@@ -936,9 +963,9 @@ def export_myou(path, scn):
             shutil.rmtree(old_export, ignore_errors=False)
     except:
         import datetime
-        shutil.move(full_dir, full_dir+'_FAILED_'+str(datetime.datetime.now()).replace(':','-').replace(' ','_').split('.')[0])
-        shutil.move(old_export, full_dir)
-        print("EXPORT HAS FAILED, but old folder has been restored")
+        # shutil.move(full_dir, full_dir+'_FAILED_'+str(datetime.datetime.now()).replace(':','-').replace(' ','_').split('.')[0])
+        # shutil.move(old_export, full_dir)
+        # print("EXPORT HAS FAILED, but old folder has been restored")
         raise
 
     bpy.ops.file.make_paths_relative()
