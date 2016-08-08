@@ -29,11 +29,11 @@ class Myou
         @use_physics = not MYOU_PARAMS.disable_physics
         @hash = Math.random()
         @initial_scene_loaded = false
-        
+
         # VR
         @_HMD = @_vrscene = null
         @use_VR_position = true
-        
+
         # The root element needs to be positioned, so the mouse events (layerX/Y) are
         # registered correctly, and the canvas is scaled inside
         if getComputedStyle(root).position == 'static'
@@ -75,19 +75,21 @@ class Myou
     update_canvas_rect:  =>
         @canvas_rect = @canvas.getClientRects()[0]
         @canvas.rect = @canvas_rect
-    
+
     hasVR: vr.has_HMD
     initVR: vr.init
     exitVR: vr.exit
 
 
-create_canvas = (root)->
+create_canvas = (root, id, className='MyouEngineCanvas')->
     canvas = document.createElement 'canvas'
     if root?
         canvas.style.position = 'relative'
         canvas.style.width = '100%'
         canvas.style.height = '100%'
         root.insertBefore canvas, root.firstChild
+        canvas.id = id
+        canvas.className = className
     return canvas
 
 module.exports = {Myou, create_canvas}
