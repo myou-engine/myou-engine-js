@@ -41,15 +41,15 @@ def convert_phy_mesh(ob, scn):
 
     file_hash = str(hash(mesh_bytes)).replace('-', 'm')
 
-    fname = scn['game_tmp_path'] + file_hash + '.mesh'
+    fname = file_hash + '.mesh'
     fname = fname.replace(os.sep, '/')
 
     # writing mesh
-    open(fname, 'wb').write(mesh_bytes)
+    open(scn['game_tmp_path'] + fname, 'wb').write(mesh_bytes)
 
     # writing compressed mesh
     bingzip = gzip.compress(mesh_bytes)
-    open(fname+'.gz','wb').write(bingzip)
+    open(scn['game_tmp_path'] + fname+'.gz','wb').write(bingzip)
 
     tris_count = len(indices)/3
 
