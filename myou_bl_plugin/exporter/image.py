@@ -170,7 +170,9 @@ def export_images(dest_path, used_data):
         files_to_delete = set()
         for fmt, datas in image_info['formats'].items():
             for data in datas:
-                if fmt in ['png', 'jpeg'] and max(data['width'],data['height']) <= 64:
+                if fmt in ['png', 'jpeg'] and \
+                        max(data['width'],data['height']) <= 64 and \
+                        data.get('file_name', None):
                     exported_path = os.path.join(dest_path, file_name)
                     data['data_uri'] = file_path_to_data_uri(exported_path, fmt)
                     data['file_name'] = None
@@ -187,7 +189,7 @@ def pack_generated_images(used_data):
         if image.source == 'GENERATED': #generated or rendered
             print('Generated image will be packed as png')
             #The image must be saved in a temporal path before packing.
-            tmp_filepath = tempdir + image.name + '.png'
+            tmp_filepath = os.path.join(tempdir, image.name + '.png')
             save_image(image, tmp_filepath, 'PNG')
             image.filepath = tmp_filepath
             image.file_format = 'PNG'
@@ -211,7 +213,7 @@ def get_non_alpha_images(used_data):
                     if not png_file_has_alpha(path):
                         non_alpha_images.append(image)
                 elif image.packed_file:
-                    tmp_filepath = tempdir + image.name + '.png'
+                    tmp_filepath = os.path.join(tempdir, image.name + '.png')
                     save_image(image, tmp_filepath, 'PNG')
                     if not png_file_has_alpha(tmp_filepath):
                         non_alpha_images.append(image)

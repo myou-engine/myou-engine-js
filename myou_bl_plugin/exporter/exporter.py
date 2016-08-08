@@ -260,7 +260,8 @@ def ob_to_json(ob, scn=None, check_cache=False):
         cache_was_invalidated = False
         def convert(o, sort):
             nonlocal cache_was_invalidated
-            if (check_cache and not os.path.exists(o.data.get('cached_file', ''))\
+            print(check_cache, not os.path.exists(scn['game_tmp_path'] + o.data.get('cached_file', '')))
+            if (check_cache and not os.path.exists(scn['game_tmp_path'] + o.data.get('cached_file', ''))\
                 or o.data.get('exported_name') != o.data.name)\
                 or 'export_data' not in o.data\
                 or 'avg_poly_area' not in loads(o.data.get('export_data','{}')):
@@ -270,9 +271,9 @@ def ob_to_json(ob, scn=None, check_cache=False):
                         if split_parts > 10:
                             raise Exception("Mesh "+o.name+" is too big.")
                         split_parts += 1
-
+            
             if check_cache:
-                scn['exported_meshes'][o.data['hash']] = o.data['cached_file']
+                scn['exported_meshes'][o.data['hash']] = scn['game_tmp_path'] + o.data['cached_file']
 
             d = loads(o.data['export_data'])
             materials = []
@@ -357,7 +358,7 @@ def ob_to_json(ob, scn=None, check_cache=False):
                         if not convert_mesh(ob, scn, 1, True):
                             raise Exception("Decimated LoD mesh is too big")
 
-                        lod_exported_meshes[lod_mesh['hash']] = lod_mesh['cached_file']
+                        lod_exported_meshes[lod_mesh['hash']] = scn['game_tmp_path'] + lod_mesh['cached_file']
                         lod_data = loads(lod_mesh['export_data'])
 
                         exported_factor = lod_data['tris_count']/tris_count
@@ -486,7 +487,7 @@ def ob_to_json(ob, scn=None, check_cache=False):
             if ob.data.get('phy_data', None):
                 phy_data = loads(ob.data['phy_data'])
                 data['phy_mesh'] = phy_data['export_data']
-                scn['exported_meshes'][phy_data['export_data']['hash']] = phy_data['cached_file']
+                scn['exported_meshes'][phy_data['export_data']['hash']] = scn['game_tmp_path'] + phy_data['cached_file']
         # end if no alt meshes and modifiers_were_applied
 
         if not 'zindex' in ob:
@@ -898,8 +899,8 @@ def whole_scene_to_json(scn, used_data, textures_path):
     
 
 def get_scene_tmp_path(scn):
-    dir = (tempdir + os.sep + 'scenes' + os.sep + scn.name + os.sep)
-    for p in (tempdir + os.sep + 'scenes', dir):
+    dir = os.path.join(tempdir, 'scenes', scn.name + os.sep)
+    for p in (os.path.join(tempdir, 'scenes'), dir):
         try:
             os.mkdir(p)
         except FileExistsError:
@@ -932,9 +933,9 @@ def export_myou(path, scn):
 
     if path.endswith('.myou'):
         path = path[:-5]
-    data_dir = os.path.basename(path.rstrip('/'))
+    data_dir = os.path.basename(path.rstrip('/').rstrip('\\').rstrip(os.sep))
     if data_dir:
-        data_dir += '/'
+        data_dir += os.sep
     full_dir = os.path.realpath(join(os.path.dirname(path), data_dir))
     old_export = ''
     if os.path.exists(full_dir):

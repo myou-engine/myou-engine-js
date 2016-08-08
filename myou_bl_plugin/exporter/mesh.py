@@ -764,15 +764,14 @@ def convert_mesh(ob, scn, split_parts=1, sort=True):
 
     bindata = binv+bini
     file_hash = hashlib.sha1(bindata).hexdigest()
-    fname = scn['game_tmp_path'] + file_hash + '.mesh'
-    fname = fname.replace(os.sep, '/')
+    fname = file_hash + '.mesh'
 
     # writing mesh
-    open(fname,'wb').write(bindata)
+    open(scn['game_tmp_path'] + fname,'wb').write(bindata)
 
     # writing compressed mesh
     bingzip = gzip.compress(bindata)
-    open(fname+'.gz','wb').write(bingzip)
+    open(scn['game_tmp_path'] + fname+'.gz','wb').write(bingzip)
 
     # TODO: delete old file?
     #t=perf_t(t)
