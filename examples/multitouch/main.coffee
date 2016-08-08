@@ -25,10 +25,10 @@ window.myou = myou
 window.MyouEngine = MyouEngine
 
 #resume main_loop
-canvas.onmousemove = myou.main_loop.reset_timeout
-canvas.ontouchstart = myou.main_loop.reset_timeout
-canvas.ontouchmove = myou.main_loop.reset_timeout
-canvas.onkeydown = myou.main_loop.reset_timeout
+canvas.addEventListener('mousemove', myou.main_loop.reset_timeout)
+canvas.addEventListener('touchstart', myou.main_loop.reset_timeout)
+canvas.addEventListener('touchmove', myou.main_loop.reset_timeout)
+canvas.addEventListener('keydown', myou.main_loop.reset_timeout)
 
 # Debug info:
 db = document.getElementById 'debug'
