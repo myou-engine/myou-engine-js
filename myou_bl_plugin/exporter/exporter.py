@@ -95,7 +95,7 @@ def search_scene_used_data(scene):
         if not t in used_data['textures']:
             print('    '*i+'Tex:', t.name)
             used_data['textures'].append(t)
-            if t.image:
+            if t.type == 'IMAGE' and t.image:
                 add_image(t.image,i+1)
                 used_data['image_users'][t.image.name].append(t)
 
@@ -342,6 +342,7 @@ def ob_to_json(ob, scn=None, check_cache=False):
                 # In both cases, the level of factor 1 is implicit.
 
                 def export_lod_mesh (ob, factor=0):
+                    name = ob.name
                     orig_data = ob.data
                     ob.data = lod_mesh = ob.data.copy()
                     scn.objects.active = ob
@@ -355,7 +356,7 @@ def ob_to_json(ob, scn=None, check_cache=False):
 
                     try:
                         if not convert_mesh(ob, scn, 1, True):
-                            raise Exception("Decimated LoD mesh is too big")
+                            raise Exception("Decimated LoD mesh of "+name+" is too big")
 
                         lod_exported_meshes[lod_mesh['hash']] = scn['game_tmp_path'] + lod_mesh['cached_file']
                         lod_data = loads(lod_mesh['export_data'])
