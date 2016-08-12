@@ -11,6 +11,11 @@ tempdir  = tempfile.gettempdir()
 def save_image(image, path, new_format):
     old_path = image.filepath_raw
     old_format = image.file_format
+    was_packed = bool(image.packed_file)
+    if old_format != 'PNG':
+        # We need to do this because, for some reason,
+        # Blender doesn't convert tifs and tgas otherwise
+        image.pack(as_png=True)
 
     image.filepath_raw = path
     image.file_format = new_format
@@ -18,6 +23,9 @@ def save_image(image, path, new_format):
 
     image.filepath_raw = old_path
     image.file_format = old_format
+    if bool(image.packed_file) and not was_packed:
+        # Undo above hack
+        image.unpack(method='USE_LOCAL')
 
 
 def export_images(dest_path, used_data):
@@ -173,7 +181,7 @@ def export_images(dest_path, used_data):
                 if fmt in ['png', 'jpeg'] and \
                         max(data['width'],data['height']) <= 64 and \
                         data.get('file_name', None):
-                    exported_path = os.path.join(dest_path, file_name)
+                    exported_path = os.path.join(dest_path, data['file_name'])
                     data['data_uri'] = file_path_to_data_uri(exported_path, fmt)
                     data['file_name'] = None
                     del data['file_name']
@@ -209,10 +217,10 @@ def get_non_alpha_images(used_data):
             # by saving it as PNG and parsing the meta data
             if image.file_format not in ['JPEG', 'TIFF']:
                 path = bpy.path.abspath(image.filepath)
-                if os.path.isfile(path):
+                if image.file_format == 'PNG' and os.path.isfile(path):
                     if not png_file_has_alpha(path):
                         non_alpha_images.append(image)
-                elif image.packed_file:
+                elif image.packed_file or os.path.isfile(path):
                     tmp_filepath = os.path.join(tempdir, image.name + '.png')
                     save_image(image, tmp_filepath, 'PNG')
                     if not png_file_has_alpha(tmp_filepath):
@@ -223,22 +231,25 @@ def get_non_alpha_images(used_data):
     return non_alpha_images
 
 def png_file_has_alpha(file_path):
-    file = open(file_path, 'rb')
-    file.seek(8, 0)
-    has_alpha_channel = False
-    has_transparency_chunk = False
-    end = False
-    max_bytes = 12
-    while not end:
-        data_bytes, tag = struct.unpack('!I4s', file.read(8))
-        data = file.read(min(data_bytes, max_bytes))
-        file.seek(max(0, data_bytes-max_bytes) + 4, 1)
-        if tag == b'IHDR':
-            if data[9] in [4,6]:
-                has_alpha_channel = True
-        if tag == b'tRNS':
-            has_transparency_chunk = True
-        end = tag == b'IEND'
+    try:
+        file = open(file_path, 'rb')
+        file.seek(8, 0)
+        has_alpha_channel = False
+        has_transparency_chunk = False
+        end = False
+        max_bytes = 12
+        while not end:
+            data_bytes, tag = struct.unpack('!I4s', file.read(8))
+            data = file.read(min(data_bytes, max_bytes))
+            file.seek(max(0, data_bytes-max_bytes) + 4, 1)
+            if tag == b'IHDR':
+                if data[9] in [4,6]:
+                    has_alpha_channel = True
+            if tag == b'tRNS':
+                has_transparency_chunk = True
+            end = tag == b'IEND'
+    except:
+        raise Exception("Couldn't read PNG file "+file_path)
     return has_alpha_channel or has_transparency_chunk
 
 def fsize(path):
