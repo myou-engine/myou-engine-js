@@ -8,24 +8,35 @@ from json import dumps, loads
 from collections import defaultdict
 tempdir  = tempfile.gettempdir()
 
+type_to_ext = {'JPEG': 'jpg', 'TIFF': 'tif', 'TARGA': 'tga'}
+
 def save_image(image, path, new_format):
     old_path = image.filepath_raw
     old_format = image.file_format
     was_packed = bool(image.packed_file)
-    if old_format != 'PNG':
-        # We need to do this because, for some reason,
-        # Blender doesn't convert tifs and tgas otherwise
-        image.pack(as_png=True)
+    
+    if was_packed:
+        # Packed images are not being converted, so we'll unpack them temporarily.
+        ext = type_to_ext.get(old_format, old_format.lower())
+        temp_file = tempfile.mktemp(suffix='.'+ext)
+        image.filepath_raw = image.filepath = temp_file
+        image.unpack(method='WRITE_ORIGINAL')
 
+    # Without pack or original file, Blender is being forced to use the
+    # raw uncompressed buffer in memory (so we must ensure it's loaded)
+    # and to encode it with the specified file_format
+    image.gl_load()
     image.filepath_raw = path
     image.file_format = new_format
     image.save()
 
-    image.filepath_raw = old_path
     image.file_format = old_format
-    if bool(image.packed_file) and not was_packed:
-        # Undo above hack
-        image.unpack(method='USE_LOCAL')
+    if was_packed:
+        # Pack again
+        image.filepath_raw = image.filepath = temp_file
+        image.pack()
+        os.unlink(temp_file)
+    image.filepath_raw = old_path
 
 
 def export_images(dest_path, used_data):
