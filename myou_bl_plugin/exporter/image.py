@@ -10,33 +10,34 @@ tempdir  = tempfile.gettempdir()
 
 type_to_ext = {'JPEG': 'jpg', 'TIFF': 'tif', 'TARGA': 'tga'}
 
-def save_image(image, path, new_format):
-    old_path = image.filepath_raw
-    old_format = image.file_format
-    was_packed = bool(image.packed_file)
-    
-    if was_packed:
-        # Packed images are not being converted, so we'll unpack them temporarily.
-        ext = type_to_ext.get(old_format, old_format.lower())
-        temp_file = tempfile.mktemp(suffix='.'+ext)
-        image.filepath_raw = image.filepath = temp_file
-        image.unpack(method='WRITE_ORIGINAL')
+def save_image(image, path, new_format, resize=None):
+    if resize:
+        image = image.copy()
+        image.scale(resize[0], resize[1])
 
-    # Without pack or original file, Blender is being forced to use the
-    # raw uncompressed buffer in memory (so we must ensure it's loaded)
-    # and to encode it with the specified file_format
-    image.gl_load()
-    image.filepath_raw = path
-    image.file_format = new_format
-    image.save()
+    # Store current render settings
+    settings = bpy.context.scene.render.image_settings
+    format = settings.file_format
+    mode = settings.color_mode
+    depth = settings.color_depth
 
-    image.file_format = old_format
-    if was_packed:
-        # Pack again
-        image.filepath_raw = image.filepath = temp_file
-        image.pack()
-        os.unlink(temp_file)
-    image.filepath_raw = old_path
+    # Change render settings to our target format
+    settings.file_format = new_format
+    settings.color_mode = 'RGB' if new_format == 'JPEG' else 'RGBA'
+    settings.color_depth = '8'
+
+    # Save image, this does NOT render anything!
+    # It only means that the save command will use the current scene's render settings.
+    image.save_render(path)
+
+    # Restore previous render settings
+    settings.file_format = format
+    settings.color_mode = mode
+    settings.color_depth = depth
+
+    if resize:
+        image.user_clear()
+        bpy.data.images.remove(image)
 
 
 def export_images(dest_path, used_data):
@@ -143,13 +144,9 @@ def export_images(dest_path, used_data):
                                 width = height = lod_level
                             else:
                                 width, height = lod_level
-                            resized_image = image.copy()
-                            resized_image.scale(width, height)
                             file_name = image.name + '-{w}x{h}.{e}'.format(w=width, h=height, e=out_ext)
                             exported_path = os.path.join(dest_path, file_name)
-                            save_image(resized_image, exported_path, out_format)
-                            resized_image.user_clear()
-                            bpy.data.images.remove(resized_image)
+                            save_image(image, exported_path, out_format, resize=(width, height))
                             image_info['formats'][out_format.lower()].append({
                                 'width': width, 'height': height,
                                 # 'file_name': file_name,
