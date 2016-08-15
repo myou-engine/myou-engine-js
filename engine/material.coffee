@@ -229,9 +229,8 @@ class Material
                 # GPU_DYNAMIC_SAMPLER_2DBUFFER = 12,
                 # And 15 was distance wrongly, it's GPU_DYNAMIC_OBJECT_AUTOBUMPSCALE
                 when 14, GPU_DYNAMIC_SAMPLER_2DSHADOW
-                    if @context.render_manager.extensions.texture_float_linear?# shadow texture
-                        @textures.push {loaded: true, gl_tex: @scene.objects[u.lamp].shadow_fb.texture}
-                        tex_uniforms.push u.varname
+                    @textures.push @scene.objects[u.lamp].shadow_texture
+                    tex_uniforms.push u.varname
                 when 13, GPU_DYNAMIC_SAMPLER_2DIMAGE, GPU_DYNAMIC_SAMPLER_2DBUFFER # 2D image
                     tex = @context.textures[u.image]
                     if not tex?

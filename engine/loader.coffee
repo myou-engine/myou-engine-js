@@ -206,9 +206,16 @@ load_object = (data, scene) ->
             ob = new Lamp context
             ob.name = data.name
             ob.static = data.static or false
-            if data.lamp_type!='POINT' and data.shadow and context.render_manager.extensions.texture_float_linear?
-                tex_size = if data.tex_size? then data.tex_size else 256
-                ob.init_shadow data.frustum_size, data.clip_start, data.clip_end, closest_pow2(tex_size)
+            if data.lamp_type!='POINT' and data.shadow
+                tex_size = closest_pow2(if data.tex_size? then data.tex_size else 256)
+                tex_size = Math.min(tex_size, context.MYOU_PARAMS.maximum_shadow_size or Infinity)
+                ob.shadow_options =
+                    texture_size: tex_size
+                    frustum_size: data.frustum_size
+                    clip_start: data.clip_start
+                    clip_end: data.clip_end
+                if context.render_manager.enable_shadows
+                    ob.init_shadow()
 
             scene.add_object ob, data.name, data.parent, data.parent_bone
         ob.lamp_type = data.lamp_type
