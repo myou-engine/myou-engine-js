@@ -8,10 +8,10 @@ VECTOR_MINUS_Z = new Float32Array [0,0,-1]
 
 class Camera extends GameObject
 
-    type = 'CAMERA'
 
     constructor: (@context, field_of_view=30.0, aspect_ratio=1, near_plane=0.1, far_plane=10000.0)->
         super @context
+        @type = 'CAMERA'
         @near_plane = near_plane
         @far_plane = far_plane
         @field_of_view = field_of_view * Math.PI / 180.0
