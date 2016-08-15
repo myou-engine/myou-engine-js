@@ -1,4 +1,4 @@
-import bpy, gpu, os, base64, struct, zlib
+import bpy, gpu, os, base64, struct, zlib, re
 from json import loads, dumps
 
 SHADER_LIB = ""
@@ -187,6 +187,12 @@ def mat_to_json(mat, scn):
 
     for a,b in replacements:
         shader['fragment'] = shader['fragment'].replace(a, b)
+    
+    if mat.game_settings.alpha_blend == 'CLIP':
+        shader['fragment'] = re.sub(
+            r'gl_FragColor = ([^;]*)',
+            r'if(\1.a < 0.7)discard; gl_FragColor = \1',
+            shader['fragment'])
 
     # Find number of required shape attributes (excluding basis)
     # And number of bones
