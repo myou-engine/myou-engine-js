@@ -49,6 +49,7 @@ class Scene
         @frame_start = 0
         @frame_end = 0
         @anim_fps = 30
+        @extra_data = null
 
     set_gravity: (gravity)->
         g = @gravity

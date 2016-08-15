@@ -59,6 +59,7 @@ load_datablock = (scene, data, context) ->
         scene.frame_start = data.frame_start if data.frame_start?
         scene.frame_end = data.frame_end if data.frame_end?
         scene.anim_fps = data.fps if data.fps?
+        scene.extra_data = data.extra_data
 
     else if data.type=='TEXTURE'
         context.textures[data.name] = new Texture(context, data)
