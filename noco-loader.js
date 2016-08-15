@@ -23,5 +23,6 @@ module.exports = function(source, map) {
 
     if(!has_coffee_config)
         source = coffee.compile(source);
+    this.cacheable(true)
     this.callback(null, source, map);
 };
