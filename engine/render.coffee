@@ -87,6 +87,8 @@ class RenderManager
             standard_derivatives: gl.getExtension 'OES_standard_derivatives'
             texture_float: gl.getExtension 'OES_texture_float'
             texture_float_linear: gl.getExtension 'OES_texture_float_linear'
+            texture_half_float: gl.getExtension 'OES_texture_half_float'
+            texture_half_float_linear: gl.getExtension 'OES_texture_half_float_linear'
             compressed_texture_s3tc: gl.getExtension 'WEBGL_compressed_texture_s3tc'
             texture_filter_anisotropic: gl.getExtension("EXT_texture_filter_anisotropic") or
                                     gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic") or
@@ -94,6 +96,12 @@ class RenderManager
             lose_context: gl.getExtension "WEBGL_lose_context"
         if @no_s3tc
             @extensions['compressed_texture_s3tc'] = null
+        
+        # By default, shadows will be enabled depending on
+        # support for linear interpolation in float textures
+        @enable_shadows = @extensions.texture_float_linear? or \
+            @extensions.texture_half_float_linear?
+        @_shadows_were_enabled = @enable_shadows
 
         @dummy_filter = new Filter @, """return get(0,0);""", 'dummy_filter'
         @shadow_box_filter = new Filter @, box_filter_code, 'box_filter'
@@ -117,6 +125,11 @@ class RenderManager
         @blank_texture = tex = gl.createTexture()
         gl.bindTexture gl.TEXTURE_2D, tex
         gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,0,0])
+        gl.bindTexture gl.TEXTURE_2D, null
+
+        @white_texture = tex = gl.createTexture()
+        gl.bindTexture gl.TEXTURE_2D, tex
+        gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([1,1,1,1])
         gl.bindTexture gl.TEXTURE_2D, null
 
         @resize @width, @height, @pixel_ratio_x, @pixel_ratio_y
@@ -192,7 +205,7 @@ class RenderManager
         if @common_filter_fb
             @common_filter_fb.destroy()
         if not @common_filter_fb or @common_filter_fb.width!=minx or @common_filter_fb.height!=miny
-            @common_filter_fb = new Framebuffer @context.render_manager, minx, miny, @gl.UNSIGNED_BYTE
+            @common_filter_fb = new Framebuffer @, minx, miny, @gl.UNSIGNED_BYTE
 
         # Write fb_size to all materials that require it
         for k, scene of @context.scenes
@@ -264,6 +277,7 @@ class RenderManager
         #@gl.flush()
         @debug.vectors.clear() # TODO: have them per scene? preserve for a bunch of frames?
         @compiled_shaders_this_frame = 0
+    
     # Returns: whether the frame should countinue
     draw_mesh: (mesh, mesh2world, pass_=-1, use_lod=true)->
         gl = @gl
@@ -410,20 +424,22 @@ class RenderManager
 
             for i in [0...mat.textures.length]
                 tex = mat.textures[i]
-                if not tex.loaded
-                    tex = @context.render_manager.blank_texture
+                if tex.loaded
+                    gl_tex = tex.gl_tex
+                else
+                    gl_tex = @blank_texture
                 #if tex.name == 'special:fb':
                     #gl.activeTexture(gl.TEXTURE0 + i)
                     #active_texture = i
                     #gl.bindTexture(gl.TEXTURE_2D, filter_fb.texture)
 
                 #else
-                if bound_textures[i] != tex
+                if bound_textures[i] != gl_tex
                     if active_texture != i
                         gl.activeTexture gl.TEXTURE0 + i
                         active_texture = i
-                    gl.bindTexture gl.TEXTURE_2D, tex.gl_tex
-                    bound_textures[i] = tex
+                    gl.bindTexture gl.TEXTURE_2D, gl_tex
+                    bound_textures[i] = gl_tex
 
             if mat.u_shapef.length != 0
                 i = 0
@@ -533,7 +549,14 @@ class RenderManager
         shadows_pending = false
         if scene.last_render_tick < @render_tick
             scene.last_render_tick = @render_tick
-            shadows_pending = true
+            if @enable_shadows
+                shadows_pending = true
+            else if @_shadows_were_enabled
+                for lamp in scene.lamps
+                    if lamp.shadow_fb?
+                        lamp.destroy_shadow()
+                @common_shadow_fb?.destroy()
+            @_shadows_were_enabled = @enable_shadows
 
             if scene._children_are_ordered == false
                 scene.reorder_children()
@@ -586,8 +609,10 @@ class RenderManager
 
         # Render shadow buffers
         for lamp in scene.lamps
-            if lamp.shadow_fb? and shadows_pending
-
+            if shadows_pending and lamp.shadow_options? and lamp.render_shadow
+                if not lamp.shadow_fb?
+                    # TODO: enable all at once to decide common fb size
+                    lamp.init_shadow()
                 size = lamp.shadow_fb.size_x * 2
                 if not @common_shadow_fb?
                     @common_shadow_fb = new Framebuffer @, size,size

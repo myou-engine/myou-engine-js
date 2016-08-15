@@ -12,7 +12,8 @@ class Viewport
         @set_clear true, true
         @render_manager.viewports.push @
         @recalc_aspect()
-        @render_manager.recalculate_fb_size()
+        if @render_manager.common_filter_fb
+            @render_manager.recalculate_fb_size()
 
     recalc_aspect: ->
         r = @rect

@@ -1,5 +1,7 @@
 {Filter} = require './filters.coffee'
 
+HALF_FLOAT_OES = 0x8D61
+
 class Framebuffer
 
     constructor: (@render_manager, size_x, size_y, tex_type=@render_manager.gl.FLOAT, tex_format=@render_manager.gl.RGBA) ->
@@ -17,13 +19,20 @@ class Framebuffer
         internal_format = @tex_format = tex_format
 
         if not tex_type?
-            tex_type = @render_manager.gl.FLOAT
+            tex_type = gl.FLOAT
         if not tex_format?
-            tex_format = @render_manager.gl.RGBA
+            tex_format = gl.RGBA
 
-        if tex_type == @render_manager.gl.FLOAT
-            if not @render_manager.extensions['texture_float']
-                tex_type == @render_manager.gl.UNSIGNED_BYTE
+        if tex_type == gl.FLOAT
+            if not @render_manager.extensions['texture_float_linear']
+                # Fall back to float_linear, then to byte
+                # Note: we're assuming we need linear interpolation
+                # (because we're using them for variance shadow maps)
+                # but that may not be the case at some point
+                if @render_manager.extensions['texture_half_float_linear']
+                    tex_type = HALF_FLOAT_OES
+                else
+                    tex_type == gl.UNSIGNED_BYTE
             
         gl.texImage2D gl.TEXTURE_2D, 0, internal_format, size_x, size_y, 0, tex_format, tex_type, null
 

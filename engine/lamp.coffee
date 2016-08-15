@@ -10,6 +10,12 @@ class Lamp extends GameObject
         super(@context)
         @lamp_type = 'POINT'
         @shadow_fb = null
+        @shadow_texture = {loaded: true, gl_tex: @context.render_manager.white_texture}
+        # set in loader, its presence signals calling init_shadow()
+        # when shadows are enabled
+        @shadow_options = null
+        # this option allows to stop rendering the shadow when stuff didn't change
+        @render_shadow = true
         @_color4 = vec4.fromValues 1,1,1,1
         @color = @_color4.subarray 0,3
         @energy = 1
@@ -22,8 +28,18 @@ class Lamp extends GameObject
     #Avoid physical lamps and cameras
     instance_physics: ->
 
-    init_shadow: (frustum_size, clip_start, clip_end, tex_size)->
-        @shadow_fb = new Framebuffer @context.render_manager, tex_size, tex_size
+    init_shadow: ->
+        {texture_size, frustum_size, clip_start, clip_end} = @shadow_options
+        @shadow_fb = new Framebuffer @context.render_manager, texture_size, texture_size
+        @shadow_texture.gl_tex = @shadow_fb.texture
+        
+        # If using half float buffers, add a little bit of extra bias
+        {extensions} = @context.render_manager
+        extra_bias = ''
+        if not extensions.texture_float_linear and extensions.texture_half_float_linear
+            # TODO: make configurable? or calculate depending on scene size?
+            extra_bias = '-0.0005'
+        
         vs = """precision highp float;
         uniform mat4 projection_matrix;
         uniform mat4 model_view_matrix;
@@ -42,7 +58,7 @@ class Lamp extends GameObject
             depth = depth * 0.5 + 0.5;
             float dx = dFdx(depth);
             float dy = dFdy(depth);
-            gl_FragColor = vec4(depth, pow(depth, 2.0) + 0.25*(dx*dx + dy*dy), 0.0, 1.0);
+            gl_FragColor = vec4(depth #{extra_bias}, pow(depth, 2.0) + 0.25*(dx*dx + dy*dy), 0.0, 1.0);
         }"""
 
         mat = new Material @context, {name: @name+'_shadow', fragment: fs, vertex: vs}
@@ -66,5 +82,12 @@ class Lamp extends GameObject
             0.5, 0.5, 0.5, 1.0],
             @_projection_matrix
             )
+    
+    destroy_shadow: ->
+        @shadow_fb?.destroy()
+        @shadow_fb = null
+        @material?.destroy()
+        @material = null
+        @shadow_texture.gl_tex = @context.render_manager.white_texture
 
 module.exports = {Lamp}
