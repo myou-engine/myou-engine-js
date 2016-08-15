@@ -288,7 +288,8 @@ def ob_to_json(ob, scn=None, check_cache=False):
                     n = mat.name
                     if mat.material.transparency_method == 'RAYTRACE':
                         pass_ = 2
-                    elif mat.material.use_transparency:
+                    elif mat.material.use_transparency and \
+                            mat.material.game_settings.alpha_blend != 'CLIP':
                         pass_ = 1
                 materials.append(n)
                 passes.append(pass_)
