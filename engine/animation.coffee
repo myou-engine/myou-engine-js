@@ -17,6 +17,14 @@ class Action
         @name = name
         @channels = {}
         @markers = markers
+        @sorted_markers  = sorted_markers = []
+        tmp_list = []
+        for name,frame of markers
+            tmp_list[frame] = {name,frame}
+
+        for m in tmp_list
+            if m? then sorted_markers.push m
+
         for ch in channels
             path = ch[0]+'.'+ch[1]+'.'+ch[2]
             @channels[path] = ch
@@ -72,7 +80,7 @@ class Animation
     owner : null
 
 evaluate_all_animations = (context, frame_duration_ms)->
-    
+
     for ob in context.all_anim_objects
 
         blended = []  # [orig_chan, final blend, total weight]
