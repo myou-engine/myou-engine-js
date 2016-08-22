@@ -31,6 +31,7 @@ multiple instances of the engine.
 * Physics: Currently Bullet (ammo.js when running in JS) is supported.
 * Multiple self-contained engine instances are allowed on the same webpage.
 * Multi-touch gestures (Only in chrome. Other browsers support will be added soon).
+* VR support.
 
 
 ## Future features
@@ -39,7 +40,6 @@ multiple instances of the engine.
 * 2D tools with SVG group separation for animation.
 * Graphical programming of game logic with nodes, which is converted to code
 you can learn from or expand.
-* VR support.
 * Generic and xInput Joystics.
 
 
@@ -57,14 +57,16 @@ npm install --save myou-engine
 ```
 
 ### Install the blender plugin
-The blender plugin is currently supported in __Blender 2.71__.
+The blender plugin is fully supported in __Blender 2.71__.
+__Blender 2.77__ is partially supported and is very unestable.
+We are currently porting the plugin to __Blender 2.78__.
 
 Only the exporter is available on the blender plugin but the live server and other
 tools will be added soon.
 
 To install the blender plugin just copy the __myou_bl_plugin__ folder to the __blender addons__ folder (or link it, see below).
 
-#### Blender addons folders####
+#### Blender addons folders
 
 Windows
 ```
@@ -95,14 +97,6 @@ ln -s "[path to myou_engine]/myou_bl_plugin" "/home/$user/.config/blender/2.71/s
 
 ### Export your blender scene
 The exporter is available here: *__File > Export > Myou engine__*
-
-#### WARNING:
-Currently the blender export interface only supports exporting to file but the
-myou plugin exports to a folder. To avoid this bug you have to create a "dumb"
-file in the same directory where you want to export the scene with the chosen name.
-
-Alternatively you can save your \*.blend file in the same directory
-where you will export the scene and export using the same name of the \*.blend file.
 
 ### Use the package in your code
 The example code in this page was written in coffee-script:
