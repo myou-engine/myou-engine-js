@@ -4,7 +4,7 @@ HALF_FLOAT_OES = 0x8D61
 
 class Framebuffer
 
-    constructor: (@render_manager, size_x, size_y, tex_type=@render_manager.gl.FLOAT, tex_format=@render_manager.gl.RGBA) ->
+    constructor: (@render_manager, size_x, size_y, @tex_type=@render_manager.gl.FLOAT, tex_format=@render_manager.gl.RGBA) ->
         @context = @render_manager.context
         gl = @render_manager.gl
         @size_x = size_x
