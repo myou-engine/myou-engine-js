@@ -15,15 +15,14 @@ class Framebuffer
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE
-        @tex_type = tex_type
         internal_format = @tex_format = tex_format
 
-        if not tex_type?
-            tex_type = gl.FLOAT
+        if not @tex_type?
+            @tex_type = gl.FLOAT
         if not tex_format?
             tex_format = gl.RGBA
 
-        if tex_type == gl.FLOAT
+        if @tex_type == gl.FLOAT
             if not (@render_manager.extensions['texture_float_linear'] and
                     @render_manager.has_float_fb_support)
                 # Fall back to float_linear, then to byte
@@ -32,11 +31,11 @@ class Framebuffer
                 # but that may not be the case at some point
                 if @render_manager.extensions['texture_half_float_linear'] and
                         @render_manager.has_half_float_fb_support
-                    tex_type = HALF_FLOAT_OES
+                    @tex_type = HALF_FLOAT_OES
                 else
-                    tex_type == gl.UNSIGNED_BYTE
+                    @tex_type == gl.UNSIGNED_BYTE
             
-        gl.texImage2D gl.TEXTURE_2D, 0, internal_format, size_x, size_y, 0, tex_format, tex_type, null
+        gl.texImage2D gl.TEXTURE_2D, 0, internal_format, size_x, size_y, 0, tex_format, @tex_type, null
 
         @render_buffer= rb = gl.createRenderbuffer()
         gl.bindRenderbuffer gl.RENDERBUFFER, rb
