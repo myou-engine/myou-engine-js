@@ -34,10 +34,9 @@ class Lamp extends GameObject
         @shadow_texture.gl_tex = @shadow_fb.texture
         
         # If using half float buffers, add a little bit of extra bias
-        {extensions, has_float_fb_support} = @context.render_manager
+        {extensions} = @context.render_manager
         extra_bias = ''
-        if not (extensions.texture_float_linear and has_float_fb_support) and
-                extensions.texture_half_float_linear
+        if @shadow_fb.tex_type == 0x8D61 # HALF_FLOAT_OES
             # TODO: make configurable? or calculate depending on scene size?
             extra_bias = '-0.0007'
         
