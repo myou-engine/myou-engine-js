@@ -20,7 +20,7 @@ class Myou
         @canvas = null
         @root = null
         @all_materials = []
-        @mesh_datas = []
+        @mesh_datas = {}
         @embed_meshes = {}
         @SHADER_LIB = ''
         @all_anim_objects = []
