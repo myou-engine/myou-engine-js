@@ -81,7 +81,7 @@ load_datablock = (scene, data, context) ->
 
     else if data.type=='ACTION'
         context.actions[data.name] = new Action data.name, data.channels, data.markers
-    
+
     else if data.type=='EMBED_MESH'
         context.embed_meshes[data.hash] = data
     else if data.type=='GROUP'
@@ -184,8 +184,17 @@ load_object = (data, scene) ->
 
         ob.set_curves data.curves, data.resolution, data.nodes
     else if data.type == 'CAMERA'
+        options = {
+            near_plane: data.clip_start
+            far_plane: data.clip_end
+            field_of_view: data.angle
+            ortho_scale: data.ortho_scale
+            aspect_ratio: 4/3 # TODO: Export it.
+            cam_type: data.cam_type
+            sensor_fit: data.sensor_fit
+        }
         if not ob
-            ob = new Camera context
+            ob = new Camera context, options
             ob.name = data.name
             ob.static = data.static or false
             scene.add_object ob, data.name, data.parent, data.parent_bone
@@ -193,14 +202,8 @@ load_object = (data, scene) ->
                 scene.active_camera = ob
                 if context.render_manager.viewports.length == 0
                     v = new Viewport context.render_manager, ob
-        ob.near_plane = data.clip_start
-        ob.far_plane = data.clip_end
-        if not context.render_manager.vrstate
-            ob.field_of_view = data.angle
-        ob.ortho_scale = data.ortho_scale
-        ob.cam_type = data.cam_type
-        ob.sensor_fit = data.sensor_fit
-        ob.recalculate_projection()
+        else
+            throw "Live server no longer in use"
 
     else if data.type=='LAMP'
         if not ob
