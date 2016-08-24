@@ -24,12 +24,14 @@ class Framebuffer
             tex_format = gl.RGBA
 
         if tex_type == gl.FLOAT
-            if not @render_manager.extensions['texture_float_linear']
+            if not (@render_manager.extensions['texture_float_linear'] and
+                    @render_manager.has_float_fb_support)
                 # Fall back to float_linear, then to byte
                 # Note: we're assuming we need linear interpolation
                 # (because we're using them for variance shadow maps)
                 # but that may not be the case at some point
-                if @render_manager.extensions['texture_half_float_linear']
+                if @render_manager.extensions['texture_half_float_linear'] and
+                        @render_manager.has_half_float_fb_support
                     tex_type = HALF_FLOAT_OES
                 else
                     tex_type == gl.UNSIGNED_BYTE
@@ -44,6 +46,8 @@ class Framebuffer
         gl.bindFramebuffer gl.FRAMEBUFFER, fb
         gl.framebufferTexture2D gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0
         gl.framebufferRenderbuffer gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb
+        
+        @is_complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER) == gl.FRAMEBUFFER_COMPLETE
 
         gl.bindTexture gl.TEXTURE_2D, null
         gl.bindRenderbuffer gl.RENDERBUFFER, null

@@ -95,11 +95,25 @@ class RenderManager
             lose_context: gl.getExtension "WEBGL_lose_context"
         if @no_s3tc
             @extensions['compressed_texture_s3tc'] = null
+        
+        @has_float_fb_support = false
+        if @extensions.texture_float?
+            @has_float_fb_support = true
+            fb = new Framebuffer @, 4, 4, @gl.FLOAT
+            @has_float_fb_support = fb.is_complete
+            fb.destroy()
+
+        @has_half_float_fb_support = false
+        if @extensions.texture_half_float?
+            @has_half_float_fb_support = true
+            fb = new Framebuffer @, 4, 4, 0x8D61 # HALF_FLOAT_OES
+            @has_half_float_fb_support = fb.is_complete
+            fb.destroy()
 
         # By default, shadows will be enabled depending on
-        # support for linear interpolation in float textures
-        @enable_shadows = @extensions.texture_float_linear? or \
-            @extensions.texture_half_float_linear?
+        # support for linear interpolation in float textures and float framebuffers
+        @enable_shadows = (@extensions.texture_float_linear? and @has_float_fb_support) or \
+            (@extensions.texture_half_float_linear? and @has_half_float_fb_support)
         @_shadows_were_enabled = @enable_shadows
 
         @dummy_filter = new Filter @, """return get(0,0);""", 'dummy_filter'
