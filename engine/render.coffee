@@ -39,7 +39,6 @@ class RenderManager
         @viewports = []
         @render_tick = 0
         @context_lost_count = 0
-        @vrstate = null
         @bound_textures = []
         @frame_start = performance.now()
         @pixel_ratio_x = pixel_ratio_y = 1
@@ -96,7 +95,7 @@ class RenderManager
             lose_context: gl.getExtension "WEBGL_lose_context"
         if @no_s3tc
             @extensions['compressed_texture_s3tc'] = null
-        
+
         # By default, shadows will be enabled depending on
         # support for linear interpolation in float textures
         @enable_shadows = @extensions.texture_float_linear? or \
@@ -277,7 +276,7 @@ class RenderManager
         #@gl.flush()
         @debug.vectors.clear() # TODO: have them per scene? preserve for a bunch of frames?
         @compiled_shaders_this_frame = 0
-    
+
     # Returns: whether the frame should countinue
     draw_mesh: (mesh, mesh2world, pass_=-1, use_lod=true)->
         gl = @gl

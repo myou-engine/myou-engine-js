@@ -9,24 +9,28 @@ VECTOR_MINUS_Z = new Float32Array [0,0,-1]
 class Camera extends GameObject
 
 
-    constructor: (@context, field_of_view=30.0, aspect_ratio=1, near_plane=0.1, far_plane=10000.0)->
+    constructor: (@context, options) ->
         super @context
         @type = 'CAMERA'
-        @near_plane = near_plane
-        @far_plane = far_plane
-        @field_of_view = field_of_view * Math.PI / 180.0
+        {
+            @near_plane = 0.1,
+            @far_plane = 10000,
+            @field_of_view = 30,
+            @ortho_scale = 8,
+            @aspect_ratio = 1,
+            @cam_type = 'PERSP',
+            @sensor_fit = 'AUTO',
+        } = options
         # if non-zero, will use as up, right, down and left FoV
         @fov_4 = vec4.create()
-        @aspect_ratio = aspect_ratio
-        @cam_type = 'PERSP'
-        @sensor_fit = 'AUTO'
+        @target_aspect_ratio = @aspect_ratio
         @projection_matrix = new Float32Array 16
         @projection_matrix_inv = new Float32Array 16
         @world_to_screen_matrix = new Float32Array 16
         @cull_left = new Float32Array 3
         @cull_bottom = new Float32Array 3
         @recalculate_projection()
-    
+
     clone: ->
         clone = super()
         clone.near_plane = @near_plane
@@ -37,6 +41,7 @@ class Camera extends GameObject
         clone.projection_matrix_inv = mat4.clone @projection_matrix_inv
         clone.world_to_screen_matrix = mat4.clone @world_to_screen_matrix
         clone.aspect_ratio = @aspect_ratio
+        clone.target_aspect_ratio = @target_aspect_ratio
         clone.cam_type = @cam_type
         clone.sensor_fit = @sensor_fit
         return clone
@@ -65,18 +70,19 @@ class Camera extends GameObject
         vec3.transformMat4 v, v, @projection_matrix_inv
         vec3.transformQuat v, v, @rotation
         return v
-    
+
     is_vertical_fit: ->
         {sensor_fit} = @
         if sensor_fit == 'AUTO'
-            if @aspect_ratio > 1
-                return false
-            else
-                return true
+            return @aspect_ratio <= 1
         if sensor_fit == 'HORIZONTAL'
             return false
         else if sensor_fit == 'VERTICAL'
             return true
+        else if sensor_fit == 'COVER'
+            return @aspect_ratio <= @target_aspect_ratio
+        else if sensor_fit == 'CONTAIN'
+            return @aspect_ratio > @target_aspect_ratio
         else
             throw "Camera.sensor_fit must be AUTO, HORIZONTAL or VERTICAL."
 
@@ -94,19 +100,14 @@ class Camera extends GameObject
             else
                 throw "Camera.cam_type must be PERSP or ORTHO."
 
-            if sensor_fit == 'AUTO'
-                if @aspect_ratio > 1
-                    sensor_fit = 'HORIZONTAL'
-                else
-                    sensor_fit = 'VERTICAL'
-            if sensor_fit == 'HORIZONTAL'
-                right = half_size
-                top = right / @aspect_ratio
-            else if sensor_fit == 'VERTICAL'
+            if @is_vertical_fit()
                 top = half_size
+                if /CONTAIN|COVER/.test @sensor_fit
+                    top /= @target_aspect_ratio
                 right = top * @aspect_ratio
             else
-                throw "Camera.sensor_fit must be AUTO, HORIZONTAL or VERTICAL."
+                right = half_size
+                top = right / @aspect_ratio
 
             bottom = -top
             left = -right
@@ -171,7 +172,7 @@ class Camera extends GameObject
             pm[15] = 1
             mat4.invert @projection_matrix_inv, @projection_matrix
             console.error "TODO: frustum culling for ortho!"
-    
+
     get_frustum_normals: (horizontal_fov=0, vertical_fov=0) ->
         near_plane = @near_plane
         far_plane = @far_plane
@@ -237,7 +238,7 @@ class Camera extends GameObject
             pm[15] = 1
             mat4.invert @projection_matrix_inv, @projection_matrix
             throw "TODO: frustum culling for ortho!"
-        
+
         @update_matrices_recursive()
         camera_z = vec3.transformMat3 vec3.create(), VECTOR_MINUS_Z, @rotation_matrix
         normal_left = vec3.transformMat3 vec3.create(), cull_left_local, @rotation_matrix
@@ -249,6 +250,6 @@ class Camera extends GameObject
         v[1] = -v[1]
         vec3.transformMat3 v, v, @rotation_matrix
         return {normal_top, normal_bottom, normal_right, normal_left}
-        
+
 
 module.exports = {Camera}
