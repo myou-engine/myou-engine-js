@@ -292,7 +292,7 @@ class RenderManager
         @compiled_shaders_this_frame = 0
 
     # Returns: whether the frame should countinue
-    draw_mesh: (mesh, mesh2world, pass_=-1, use_lod=true)->
+    draw_mesh: (mesh, mesh2world, pass_=-1)->
         gl = @gl
         bound_textures = @bound_textures
         m4 = @_m4
@@ -318,43 +318,7 @@ class RenderManager
         mesh.culled_in_last_frame = false
 
         # Select alternative mesh / LoD
-        amesh = mesh
-        if mesh.altmeshes.length
-            amesh = mesh.altmeshes[mesh.active_mesh_index] or mesh
-        else if mesh.lod_objects and use_lod
-            # Min polygon length in px
-            min_length = 2 #TODO
-            # Set it configurable and FPS
-            # dependent and customizable on each object
-
-            # Bigger side of the screen in px
-            screen_res = Math.max(@screen_size[0], @screen_size[1])
-
-            # The scale of the object affects to the polygon length
-            scale_factor = (mesh.scale[0] + mesh.scale[1] + mesh.scale[2])/3
-
-            # Average polygon length in pixels:
-            dist_factor = screen_res * scale_factor * (0.5 / Math.tan(cam.field_of_view / 2)) / distance_to_camera
-            orig_length =  mesh.avg_poly_length * dist_factor
-
-            # winner length is the max length of the lengths minor than min_length
-            winner_length = 0
-
-            for lod_ob in mesh.lod_objects
-                lod = lod_ob.object
-                #Average polygon length in pixels:
-                length = lod.avg_poly_length * dist_factor
-                if length < min_length and length > winner_length and lod.data
-                    winner_length = length
-                    mesh.last_lod_object = amesh = lod
-
-            # checking original object, or the highest that is loaded
-            if not winner_length or (orig_length < min_length and orig_length > winner_length)
-                mesh.last_lod_object = amesh = mesh
-                i = mesh.lod_objects.length
-                while not amesh.data and i > 0
-                    amesh = mesh.lod_objects[--i].object
-
+        amesh = mesh.get_lod_mesh(cam.field_of_view, distance_to_camera)
         if not amesh.data
             return true
 
@@ -637,9 +601,8 @@ class RenderManager
                 mat.use()
                 mat4.invert world2light, lamp.world_matrix
 
-
                 for ob in scene.mesh_passes[0]
-                    data = ob.last_lod_object?.data or ob.data
+                    data = ob.get_lod_mesh(cam).data
                     if ob.visible and data and data.attrib_pointers.length != 0 and not ob.culled_in_last_frame
                         mat4.multiply m4, world2light, ob.world_matrix
                         #draw_mesh ob, ob.world_matrix, world2light, mat
