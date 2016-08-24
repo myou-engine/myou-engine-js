@@ -51,10 +51,6 @@ GL_INT = 0x1404
 GL_UNSIGNED_INT = 0x1405
 GL_FLOAT = 0x1406
 
-# Global list of MeshDatas identified by hash
-# (TODO put in RenderManager)
-mesh_datas = {}
-
 class MeshData
     constructor: (@context)->
         @type = 'MESH'
@@ -139,7 +135,7 @@ class Mesh extends GameObject
     load_from_va_ia: (va, ia)->
         if @data?
             @data.remove @
-        data = @data = mesh_datas[@hash] = new MeshData @context
+        data = @data = @context.mesh_datas[@hash] = new MeshData @context
         data.hash = @hash
         data.users.push @
         data.varray = va
