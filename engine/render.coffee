@@ -71,7 +71,7 @@ class RenderManager
 
         lost = (event)->
             event.preventDefault()
-            on_context_lost()
+            on_context_lost?()
             render_manager.clear_context()
         restored = (event)->
             render_manager.restore_context()
