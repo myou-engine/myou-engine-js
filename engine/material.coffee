@@ -260,6 +260,10 @@ class Material
                     @textures.push @scene.objects[u.lamp].shadow_texture
                     tex_uniforms.push u.varname
                 when 13, GPU_DYNAMIC_SAMPLER_2DIMAGE, GPU_DYNAMIC_SAMPLER_2DBUFFER # 2D image
+                    if not u.image?
+                        # This means sampler defined elsewhere (in compositor)
+                        tex_uniforms.push u.varname
+                        continue
                     tex = @context.textures[u.image]
                     if not tex?
                         if not u.filepath

@@ -30,7 +30,7 @@ class Lamp extends GameObject
 
     init_shadow: ->
         {texture_size, frustum_size, clip_start, clip_end} = @shadow_options
-        @shadow_fb = new Framebuffer @context.render_manager, texture_size, texture_size
+        @shadow_fb = new Framebuffer @context, {size: [texture_size, texture_size]}
         @shadow_texture.gl_tex = @shadow_fb.texture
         
         # If using half float buffers, add a little bit of extra bias

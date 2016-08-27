@@ -62,7 +62,6 @@ class Myou
 
         window.addEventListener 'resize', resize_canvas
 
-        size = MYOU_PARAMS.total_size or 0
         data_dir = MYOU_PARAMS.data_dir or './data'
         data_dir = MYOU_PARAMS.data_dir = data_dir.replace(/\/$/g, '')
 

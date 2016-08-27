@@ -65,7 +65,7 @@ class GLRay
     constructor: (@context, options={}) ->
         {@debug_canvas, @width=512, @height=256,
             @max_distance=10, @render_steps=8, @wait_steps=3} = options
-        @buffer = new Framebuffer(@context.render_manager, @width, @height, @context.render_manager.gl.UNSIGNED_BYTE)
+        @buffer = new Framebuffer(@context, {size: [@width, @height], color_type: 'UNSIGNED_BYTE'})
         @pixels = new Uint8Array(@width * @height * 4)
         @pixels16 = new Uint16Array(@pixels.buffer)
         @distance = 0
@@ -92,7 +92,7 @@ class GLRay
         @pixels = new Uint8Array(@width * @height * 4)
         @pixels16 = new Uint16Array(@pixels.buffer)
         @buffer.destroy()
-        @buffer = new Framebuffer(@context.render_manager, @width, @height, @context.render_manager.gl.UNSIGNED_BYTE)
+        @buffer = new Framebuffer(@context, {size: [@width, @height], color_type: 'UNSIGNED_BYTE'})
         if @debug_canvas
             @debug_canvas.width = @width
             @debug_canvas.height = @height
