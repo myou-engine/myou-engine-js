@@ -1,5 +1,6 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 {Filter, box_filter_code} = require './filters.coffee'
+{Compositor, box_filter_code} = require './filters.coffee'
 {Framebuffer, MainFramebuffer} = require './framebuffer.coffee'
 {Mesh} = require './mesh.coffee'
 {Material} = require './material.coffee'
@@ -35,7 +36,7 @@ class RenderManager
         @gl = gl
         @width = width
         @height = height
-        @main_fb = new MainFramebuffer @
+        @main_fb = new MainFramebuffer @context
         @viewports = []
         @render_tick = 0
         @context_lost_count = 0
@@ -93,20 +94,21 @@ class RenderManager
                                     gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic") or
                                     gl.getExtension("MOZ_EXT_texture_filter_anisotropic")
             lose_context: gl.getExtension "WEBGL_lose_context"
+            depth_texture: gl.getExtension "WEBGL_depth_texture"
         if @no_s3tc
             @extensions['compressed_texture_s3tc'] = null
         
         @has_float_fb_support = false
         if @extensions.texture_float?
             @has_float_fb_support = true
-            fb = new Framebuffer @, 4, 4, @gl.FLOAT
+            fb = new Framebuffer @context, {size: [4, 4], color_type: 'FLOAT'}
             @has_float_fb_support = fb.is_complete
             fb.destroy()
 
         @has_half_float_fb_support = false
         if @extensions.texture_half_float?
             @has_half_float_fb_support = true
-            fb = new Framebuffer @, 4, 4, 0x8D61 # HALF_FLOAT_OES
+            fb = new Framebuffer @context, {size: [4, 4], color_type: 'HALF_FLOAT'}
             @has_half_float_fb_support = fb.is_complete
             fb.destroy()
 
@@ -116,9 +118,7 @@ class RenderManager
             (@extensions.texture_half_float_linear? and @has_half_float_fb_support)
         @_shadows_were_enabled = @enable_shadows
 
-        @dummy_filter = new Filter @, """return get(0,0);""", 'dummy_filter'
         @shadow_box_filter = new Filter @, box_filter_code, 'box_filter'
-        @invert_filter = new Filter @, """return vec3(1.0) - get(0,0);""", 'invert_filter'
 
         @common_shadow_fb = null
         @debug = new Debug @context
@@ -139,6 +139,19 @@ class RenderManager
         gl.bindTexture gl.TEXTURE_2D, tex
         gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,0,0])
         gl.bindTexture gl.TEXTURE_2D, null
+        
+        @quad = gl.createBuffer()
+        gl.bindBuffer gl.ARRAY_BUFFER, @quad
+        gl.bufferData gl.ARRAY_BUFFER, new(Float32Array)([0,1,0,0,0,0,1,1,0,1,0,0]), gl.STATIC_DRAW
+        gl.bindBuffer gl.ARRAY_BUFFER, null
+        
+        @uniform_functions = [
+            (l,v) -> gl.uniform1f l,v
+            (l,v) -> gl.uniform1f l,v
+            (l,v) -> gl.uniform2fv l,v
+            (l,v) -> gl.uniform3fv l,v
+            (l,v) -> gl.uniform4fv l,v
+        ]
 
         @white_texture = tex = gl.createTexture()
         gl.bindTexture gl.TEXTURE_2D, tex
@@ -147,13 +160,13 @@ class RenderManager
 
         @resize @width, @height, @pixel_ratio_x, @pixel_ratio_y
 
-    clear_context: ()->
+    clear_context: ->
         @context_lost_count += 1
         for k, t of @textures
             t.gl_tex = null
         return
 
-    restore_context: ()->
+    restore_context: ->
         @initialize()
         for k, t of @context.textures
             t.reupload()
@@ -186,7 +199,7 @@ class RenderManager
             if v.post_processing_enabled
                 filter_fb_needed = true
 
-        if filter_fb_needed and @viewports != []
+        if filter_fb_needed and @viewports.length != 0
             @recalculate_fb_size()
 
     resize_soft: (width, height)->
@@ -195,7 +208,7 @@ class RenderManager
             v.camera.recalculate_projection()
         return
 
-    request_fullscreen: ()->
+    request_fullscreen: ->
         #https://dvcs.w3.org/hg/fullscreen/raw-file/tip/Overview.html#api
         c = @canvas
         (c.requestFullscreen or
@@ -203,26 +216,30 @@ class RenderManager
          c.webkitRequestFullscreen)()
         # TODO: differences in style if the canvas is not 100%
 
-    recalculate_fb_size: ()->
+    recalculate_fb_size: ->
         next_POT = (x)->
             x = Math.max(0, x-1)
             return Math.pow(2, Math.floor(Math.log(x)/Math.log(2))+1)
         # For nearest POT: pow(2, round(log(x)/log(2)))
 
+        # Framebuffer needs to be power of two (POT), so we'll find out the
+        # smallest POT that can be used by all viewports
         minx = miny = 0
         for v in @viewports
             minx = Math.max(minx, v.rect_pix[2])
             miny = Math.max(miny, v.rect_pix[3])
         minx = next_POT(minx)
         miny = next_POT(miny)
-        if @common_filter_fb
+        if @common_filter_fb and (@common_filter_fb.width!=minx or @common_filter_fb.height!=miny)
             @common_filter_fb.destroy()
-        if not @common_filter_fb or @common_filter_fb.width!=minx or @common_filter_fb.height!=miny
-            @common_filter_fb = new Framebuffer @, minx, miny, @gl.UNSIGNED_BYTE
+            @common_filter_fb = null
+        if not @common_filter_fb
+            @common_filter_fb = new Framebuffer @context,
+                {size: [minx, miny], color_type: 'UNSIGNED_BYTE'}
 
         # Write fb_size to all materials that require it
         for k, scene of @context.scenes
-            for kk ,mat of scene.materials
+            for kk, mat of scene.materials
                 if mat.u_fb_size?
                     mat.use()
                     @gl.uniform2f mat.u_fb_size, minx, miny
@@ -265,23 +282,20 @@ class RenderManager
                 quat.copy @viewports[1].camera.rotation, pose.orientation
 
 
-        for viewport in @viewports
-            #if viewport.post_processing_enabled:
-                #if not @common_filter_fb:  # TODO: may have a race condition?
-                    #@recalculate_fb_size()
-                #rect = viewport.rect_pix
-                #src_rect = [0, 0, rect[2], rect[3]]
-                #@draw_viewport(viewport, src_rect, @common_filter_fb, true, [0, 1])
-                #dest_rect = viewport.dest_rect_pix
-                #viewport.dest_buffer.enable(dest_rect)
-
-                #for filter in viewport.post_processing_filters:
-                    #@common_filter_fb.draw_with_filter(filter, src_rect)
-                ## Draw translucid pass (post processing is required because it uses the filter fb)
-                #if viewport.camera.scene.mesh_passes[2].length
-                    #@draw_viewport(viewport, src_rect, viewport.dest_buffer, false, [2])
-            #else
-            if viewport.camera.scene.enabled
+        for viewport in @viewports when viewport.camera.scene.enabled
+            if viewport.compositor_enabled
+                rect = viewport.rect_pix
+                src_rect = [0, 0, rect[2], rect[3]]
+                @draw_viewport(viewport, src_rect, @common_filter_fb, [0, 1])
+                viewport.compositor.compose()
+                # Draw translucid pass (post processing is required because it uses the filter fb)
+                if viewport.camera.scene.mesh_passes[2].length
+                    # TODO: how to properly do this?
+                    old_clear_bits = viewport.clear_bits
+                    viewport.clear_bits = 256
+                    @draw_viewport(viewport, src_rect, viewport.dest_buffer, [2])
+                    viewport.clear_bits = old_clear_bits
+            else
                 @draw_viewport viewport, viewport.rect_pix, viewport.dest_buffer, [0, 1]
 
         if pose?
@@ -379,11 +393,14 @@ class RenderManager
             if mat.u_alpha?
                 gl.uniform1f mat.u_alpha, shading_params.alpha
 
+            # TODO: would it be better to generate
+            # a JS function that is called with all assignments at once?
+            # (including also all other uniforms)
             for i in [0...mat.u_custom.length]
                 cv = mesh.custom_uniform_values[i]
                 if cv
-                    if cv.length
-                        gl.uniform4fv mat.u_custom[i], cv
+                    if cv.length?
+                        @uniform_functions[cv.length] mat.u_custom[i], cv
                     else
                         gl.uniform1f mat.u_custom[i], cv
 
@@ -592,7 +609,7 @@ class RenderManager
                     lamp.init_shadow()
                 size = lamp.shadow_fb.size_x * 2
                 if not @common_shadow_fb?
-                    @common_shadow_fb = new Framebuffer @, size,size
+                    @common_shadow_fb = new Framebuffer @context, {size: [size,size]}
 
                 @common_shadow_fb.enable [0, 0, size, size]
                 gl.clearColor 1,1,1,1  # TODO: which color should we use?

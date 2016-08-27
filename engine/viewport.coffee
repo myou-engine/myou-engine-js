@@ -4,8 +4,8 @@ class Viewport
 
     constructor: (@render_manager, @camera, @rect=[0,0,1,1], @custom_size=[0, 0], @dest_buffer=@render_manager.main_fb)->
         @rect_pix = @rect
-        @post_processing_enabled = false
-        @post_processing_filters = [@render_manager.dummy_filter]
+        @compositor_enabled = false
+        @compositor = null
         @eye_shift = vec3.create()
         @custom_fov = null
         @debug_camera = null
@@ -35,5 +35,8 @@ class Viewport
     
     clone: ->
         return new Viewport(@render_manager, @camera, @rect, @custom_size, @dest_buffer)
+    
+    get_size_px: ->
+        return [@dest_buffer.size_x, @dest_buffer.size_y]
 
 module.exports = {Viewport}
