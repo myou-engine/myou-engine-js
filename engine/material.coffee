@@ -62,6 +62,9 @@ CD_MCOL = 6
 CD_MTFACE = 5
 CD_ORCO = 14
 CD_TANGENT = 18
+CD_SHAPE_KEY = 99 # not supplied by blender but by the export script
+CD_ARMATURE_DEFORM = 88 # not supplied by blender but by the export script
+CD_ARMATURE_DEFORM_6 = 86 # not supplied by blender but by the export script
 GPU_DATA_1I = 1
 GPU_DATA_1F = 2
 GPU_DATA_2F = 3
@@ -131,6 +134,31 @@ class ShadingParams
         @alpha = params.alpha
 
 class Material
+    # data is an object with:
+    # * vertex: string with vertex shader code
+    #       (optional, auto generated here for blender materials)
+    # * fragment: string with vertex shader code,
+    #       or list of strings (concatenated here)
+    # * uniforms: list of uniforms, each have this format:
+    #   {
+    #       varname: name of GLSL variable
+    #       type: (optional) supply a GPU_DYNAMIC_* constant
+    #             to have it assigned to some scene parameter
+    #             Otherwise, mesh.custom_uniform_values will be used instead.
+    #       image: If type is GPU_DYNAMIC_SAMPLER_2DIMAGE, put the texture name
+    #             here, it must be defined in context.textures
+    #   }
+    #   Data type of each uniform is inferred from the type or the custom value.
+    # * attributes: list of vertex attributes, each have this format:
+    #   {
+    #       varname: name of GLSL variable
+    #       type: one of these:
+    #        * CD_MTFACE: Texture UV coordinates, vec2
+    #        * CD_MCOL: Vertex color, vec4
+    #        * CD_TANGENT: Vertex tangent vector (for normal mapping), vec4
+    #        * there are more types but of limited use outside Blender for now
+    #   }
+    #   There are two implicit vec3 attributes: vertex, vnormal.
     constructor: (@context, data, @scene) ->
         if @context.all_materials.indexOf(@) == -1
             @context.all_materials.push @
@@ -289,6 +317,8 @@ class Material
                     var_strand_type = u.gltype
                 when -1 # custom
                     var_custom.push u.varname
+                when undefined # custom
+                    var_custom.push u.varname
                 else
                     console.log u
                     console.log "Warning: unknown uniform", u.varname, \
@@ -321,14 +351,14 @@ class Material
                     attribute_asgn += v+"="+a.varname+";\n"
                     @attrib_locs[a.varname] = -1
                 when CD_TANGENT # tangent vectors
-                    attribute_decl += "attribute vec4 tangent;\n"\
+                    attribute_decl += "attribute vec4 "+a.varname+";\n"\
                         +"varying vec4 "+v+";\n"
                     #attribute_asgn += v+".xyz = normalize("\
                         #+var_model_view_matrix+"*vec4("+a.varname+",0.0)).xyz;\n"
-                    attribute_asgn += v+".xyz = normalize(("+var_model_view_matrix+"*vec4(tangent.xyz,0)).xyz);\n"
-                    attribute_asgn += v+".w = tangent.w;\n"
-                    @attrib_locs["tangent"] = -1
-                when 99 # shape key
+                    attribute_asgn += v+".xyz = normalize(("+var_model_view_matrix+"*vec4("+a.varname+".xyz,0)).xyz);\n"
+                    attribute_asgn += v+".w = "+a.varname+".w;\n"
+                    @attrib_locs[a.varname] = -1
+                when CD_SHAPE_KEY # shape key
                     num_shapes = a.count
                     for i in [0...num_shapes]
                         attribute_decl += "attribute vec3 shape"+i+";\n"
@@ -336,7 +366,7 @@ class Material
                         @attrib_locs["shape"+i] = -1
                         @attrib_locs["shapenor"+i] = -1
                     uniform_decl += "uniform float shapef["+num_shapes+"];"
-                when 88 # armature deform
+                when CD_ARMATURE_DEFORM # armature deform
                     num_bones = a.count
                     @num_bone_uniforms = num_bones
                     attribute_decl += "attribute vec4 weights;\n"
@@ -362,7 +392,7 @@ class Material
                     # holds mesh -> armature transformation and use that in the code above
                     # but add an optimization pass at export to apply mesh transformations
                     # where possible.
-                when 86 # armature deform, 6 weights
+                when CD_ARMATURE_DEFORM_6 # armature deform, 6 weights
                     num_bones = a.count
                     @num_bone_uniforms = num_bones
                     attribute_decl += "attribute vec4 weights;\n"
@@ -493,6 +523,7 @@ class Material
         if not gl.getShaderParameter(fragment_shader, gl.COMPILE_STATUS) and not gl.isContextLost()
             error_msg = """Error compiling fragment shader of material #{@name}
             #{gl.getShaderInfoLog fragment_shader}"""
+            console.log fs
             # ext = gl.getExtension "WEBGL_debug_shaders"
             # if ext
             #     console.log  '\n' + ext.getTranslatedShaderSource(fragment_shader)).split('\n')
@@ -650,4 +681,24 @@ class Material
 
         return cloned
 
-module.exports = {Material}
+module.exports = {Material,
+CD_MCOL, CD_MTFACE, CD_ORCO, CD_TANGENT, CD_SHAPE_KEY, CD_ARMATURE_DEFORM,
+CD_ARMATURE_DEFORM_6, GPU_DATA_1I, GPU_DATA_1F, GPU_DATA_2F, GPU_DATA_3F,
+GPU_DATA_4F, GPU_DATA_9F, GPU_DATA_16F, GPU_DATA_4UB, GPU_DYNAMIC_AMBIENT_COLOR,
+GPU_DYNAMIC_GROUP_LAMP, GPU_DYNAMIC_GROUP_MAT, GPU_DYNAMIC_GROUP_MISC,
+GPU_DYNAMIC_GROUP_MIST, GPU_DYNAMIC_GROUP_OBJECT, GPU_DYNAMIC_GROUP_SAMPLER,
+GPU_DYNAMIC_GROUP_WORLD, GPU_DYNAMIC_HORIZON_COLOR, GPU_DYNAMIC_LAMP_ATT1,
+GPU_DYNAMIC_LAMP_ATT2, GPU_DYNAMIC_LAMP_DISTANCE, GPU_DYNAMIC_LAMP_DYNCO,
+GPU_DYNAMIC_LAMP_DYNCOL, GPU_DYNAMIC_LAMP_DYNENERGY, GPU_DYNAMIC_LAMP_DYNIMAT,
+GPU_DYNAMIC_LAMP_DYNPERSMAT, GPU_DYNAMIC_LAMP_DYNVEC, GPU_DYNAMIC_LAMP_SPOTBLEND,
+GPU_DYNAMIC_LAMP_SPOTSCALE, GPU_DYNAMIC_LAMP_SPOTSIZE, GPU_DYNAMIC_MAT_ALPHA,
+GPU_DYNAMIC_MAT_AMB, GPU_DYNAMIC_MAT_DIFFRGB, GPU_DYNAMIC_MAT_EMIT,
+GPU_DYNAMIC_MAT_HARD, GPU_DYNAMIC_MAT_REF, GPU_DYNAMIC_MAT_SPEC,
+GPU_DYNAMIC_MAT_SPECRGB, GPU_DYNAMIC_MIST_COLOR, GPU_DYNAMIC_MIST_DISTANCE,
+GPU_DYNAMIC_MIST_ENABLE, GPU_DYNAMIC_MIST_INTENSITY, GPU_DYNAMIC_MIST_START,
+GPU_DYNAMIC_MIST_TYPE, GPU_DYNAMIC_NONE, GPU_DYNAMIC_OBJECT_AUTOBUMPSCALE,
+GPU_DYNAMIC_OBJECT_COLOR, GPU_DYNAMIC_OBJECT_IMAT,
+GPU_DYNAMIC_OBJECT_LOCTOVIEWIMAT, GPU_DYNAMIC_OBJECT_LOCTOVIEWMAT,
+GPU_DYNAMIC_OBJECT_MAT, GPU_DYNAMIC_OBJECT_VIEWIMAT, GPU_DYNAMIC_OBJECT_VIEWMAT,
+GPU_DYNAMIC_SAMPLER_2DBUFFER, GPU_DYNAMIC_SAMPLER_2DIMAGE,
+GPU_DYNAMIC_SAMPLER_2DSHADOW, GPU_DYNAMIC_ZENITH_COLOR}
