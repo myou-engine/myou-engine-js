@@ -12,7 +12,7 @@ MYOU_PARAMS =
     no_mipmaps: false
     timeout: 5000 #time to pause the main_loop
     # background_alpha: 0
-    gl_options: {alpha:false, antialias:true}
+    gl_options: {alpha:false, antialias:false}
     no_s3tc: navigator.userAgent.toString().indexOf('Edge/12.')!=-1
 
 canvas = document.getElementById('myou')
@@ -48,21 +48,15 @@ recreate_compositor = ->
         "ssao_buf": {buffer: ssao_buf}
         "screen": {buffer: viewport.dest_buffer}
     }
-    uniforms = {
-        "test_float": 3,
-        "test_vec3": [1,2,3],
+    uniforms = window.example_uniforms = {
+        # "test_float": 3,
+        # "test_vec3": [1,0,1],
     }
     filters = {
-        "sharpen_x":
-            code: '''
-                return
-                    (get_scene_from_px(gl_FragCoord.xy)*3.0-
-                    get_scene_from_px(gl_FragCoord.xy+1.0)-
-                    get_scene_from_px(gl_FragCoord.xy-1.0))
-                
-                ;
-            '''
-            inputs: ["ssao_buf", "scene"]
+        "FXAA":
+            library: MyouEngine.compositor_shaders.FXAA.library
+            code: 'return FXAA(scene_sampler, scene_orig_px_size);'
+            inputs: ["scene"]
             output: "screen"
     }
 
