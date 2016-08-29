@@ -235,7 +235,9 @@ class RenderManager
             @common_filter_fb = null
         if not @common_filter_fb
             @common_filter_fb = new Framebuffer @context,
-                {size: [minx, miny], color_type: 'UNSIGNED_BYTE'}
+                {size: [minx, miny], color_type: 'UNSIGNED_BYTE', depth_type: 'UNSIGNED_SHORT'}
+        if not @common_filter_fb.is_complete
+            throw "Common filter framebuffer is not complete"
 
         # Write fb_size to all materials that require it
         for k, scene of @context.scenes

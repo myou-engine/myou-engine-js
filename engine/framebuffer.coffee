@@ -1,6 +1,6 @@
 {Filter} = require './filters.coffee'
 
-color_types =
+component_types =
     BYTE: 0x1400
     UNSIGNED_BYTE: 0x1401
     SHORT: 0x1402
@@ -20,52 +20,53 @@ class Framebuffer
         {gl, extensions, has_float_fb_support, has_half_float_fb_support} \
             = @context.render_manager
         {size, color_type='FLOAT', depth_type=null} = @options
-        @size_x = size_x = size[0]
-        @size_y = size_y = size[1]
+        [@size_x, @size_y] = size
         @texture = tex = gl.createTexture()
         gl.bindTexture gl.TEXTURE_2D, tex
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE
-        @tex_type = color_types[color_type]
+        @tex_type = component_types[color_type]
 
-        if @tex_type == color_types.FLOAT
+        if @tex_type == component_types.FLOAT
             if not (extensions['texture_float_linear'] and
                     has_float_fb_support)
-                # Fall back to float_linear, then to byte
+                # Fall back to half_float_linear, then to byte
                 # Note: we're assuming we need linear interpolation
                 # (because we're using them for variance shadow maps)
                 # but that may not be the case at some point
                 if extensions['texture_half_float_linear'] and
                         has_half_float_fb_support
-                    @tex_type = color_types.HALF_FLOAT
+                    @tex_type = component_types.HALF_FLOAT
                 else
-                    @tex_type == color_types.UNSIGNED_BYTE
+                    @tex_type == component_types.UNSIGNED_BYTE
             
         internal_format = tex_format = gl.RGBA
-        gl.texImage2D gl.TEXTURE_2D, 0, internal_format, size_x, size_y, 0, tex_format, @tex_type, null
+        gl.texImage2D gl.TEXTURE_2D, 0, internal_format, @size_x, @size_y, 0, tex_format, @tex_type, null
 
         @depth_texture = null
-        if extensions.depth_texture
+        if depth_type? and extensions.depth_texture and has_float_fb_support
+            depth_tex_type = component_types[depth_type]
             @depth_texture = gl.createTexture()
             gl.bindTexture gl.TEXTURE_2D, @depth_texture
             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST
             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST
             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE
             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE
-            gl.texImage2D gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, size, size, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_SHORT, null
+            gl.texImage2D gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, @size_x, @size_y, 0, gl.DEPTH_COMPONENT, depth_tex_type, null
 
         @render_buffer= rb = gl.createRenderbuffer()
         gl.bindRenderbuffer gl.RENDERBUFFER, rb
-        gl.renderbufferStorage gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, size_x, size_y
+        gl.renderbufferStorage gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, @size_x, @size_y
 
         @framebuffer = fb = gl.createFramebuffer()
         gl.bindFramebuffer gl.FRAMEBUFFER, fb
         gl.framebufferTexture2D gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0
         if @depth_texture
             gl.framebufferTexture2D gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, @depth_texture, 0
-        gl.framebufferRenderbuffer gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb
+        else
+            gl.framebufferRenderbuffer gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb
         
         @is_complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER) == gl.FRAMEBUFFER_COMPLETE
 
@@ -73,7 +74,7 @@ class Framebuffer
         gl.bindRenderbuffer gl.RENDERBUFFER, null
         gl.bindFramebuffer gl.FRAMEBUFFER, null
 
-    recreate: ()->
+    recreate: ->
         if @framebuffer
             @constructor @context, @options
 
@@ -97,7 +98,7 @@ class Framebuffer
         #render_manager.gl.scissor(left, top, size_x, size_y)
         Framebuffer.active_rect = [left, top, size_x, size_y]
 
-    disable: ()->
+    disable: ->
         {gl} = @context.render_manager
         gl.bindFramebuffer gl.FRAMEBUFFER, null
 
@@ -119,7 +120,7 @@ class Framebuffer
         gl.vertexAttribPointer filter.a_vertex, 3.0, gl.FLOAT, false, 0, 0
         gl.drawArrays gl.TRIANGLE_STRIP, 0, 4
 
-    destroy: ()->
+    destroy: ->
         {gl} = @context.render_manager
         gl.deleteRenderbuffer @render_buffer
         gl.deleteFramebuffer @framebuffer

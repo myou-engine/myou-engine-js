@@ -1,4 +1,4 @@
-material = require './material.coffee'
+material_module = require './material.coffee'
 {Framebuffer} = require './framebuffer.coffee'
 
 ###
@@ -17,7 +17,7 @@ Declare the following objects:
       input/output dependencies. TODO: not yet; put in required order.
 
 Each filter has:
-    * libraries: auxiliary GLSL code that the code may use
+    * library: auxiliary GLSL code that the code may use (in a string)
     * inputs: a list of input names, e.g: ["scene"]
       TODO: for now inputs are only buffers, it should accept also uniforms and filters
     * output: the name of a buffer, or null for chaining with another filter
@@ -118,7 +118,7 @@ class Compositor
                     {varname: name+'_px_size'}
                     {varname: name+'_orig_px_size'}
                     # {varname: name+'_offset_f'}
-                    {varname: name+'_sampler', type: material.GPU_DYNAMIC_SAMPLER_2DBUFFER}
+                    {varname: name+'_sampler', type: material_module.GPU_DYNAMIC_SAMPLER_2DBUFFER}
                 ]
                 fs_code += """\nuniform vec2
                     #{name}_size_f,
@@ -139,7 +139,7 @@ class Compositor
                     }
                     """
             
-            fs_code += """\n
+            fs_code += '\n' + (filter_options.library or '') + """\n
             vec4 filter(){
                 #{filter_options.code}
             }
@@ -147,8 +147,8 @@ class Compositor
                 gl_FragColor = filter();
             }"""
             
-            material = new material.Material @context, {
-                name: filter_name+(Math.random()*65536)|0
+            material = new material_module.Material @context, {
+                name: filter_name+((Math.random()*65536)|0)
                 uniforms: uniforms
                 vertex: vs_code
                 fragment: fs_code
