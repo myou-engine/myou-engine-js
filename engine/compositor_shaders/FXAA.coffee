@@ -18,8 +18,8 @@
 # }
 # filters = {
 #     "FXAA":
-#         library: require('../../engine/comp_shaders/FXAA').library
-#         code: "return FXAA(scene_sampler, scene_orig_px_size);"
+#         library: MyouEngine.compositor_shaders.FXAA.library
+#         code: "return FXAA(sampler, scene_orig_px_size);"
 #         inputs: ["scene"]
 #         output: "screen"
 # }
@@ -31,11 +31,11 @@ exports.library = ''' #line 29 /**/
     #define FXAA_REDUCE_MUL   (1.0/8.0)
     #define FXAA_SPAN_MAX     8.0
     vec4 FXAA(sampler2D sampler, vec2 orig_px_size){
-        vec3 rgbNW = texture2D(scene_sampler, (gl_FragCoord.xy + vec2( -1.0, -1.0 ))*orig_px_size).xyz;
-        vec3 rgbNE = texture2D(scene_sampler, (gl_FragCoord.xy + vec2( 1.0, -1.0 ))*orig_px_size).xyz;
-        vec3 rgbSW = texture2D(scene_sampler, (gl_FragCoord.xy + vec2( -1.0, 1.0 ))*orig_px_size).xyz;
-        vec3 rgbSE = texture2D(scene_sampler, (gl_FragCoord.xy + vec2( 1.0, 1.0 ))*orig_px_size).xyz;
-        vec4 rgbaM  = texture2D(scene_sampler, gl_FragCoord.xy*orig_px_size);
+        vec3 rgbNW = texture2D(sampler, (gl_FragCoord.xy + vec2( -1.0, -1.0 ))*orig_px_size).xyz;
+        vec3 rgbNE = texture2D(sampler, (gl_FragCoord.xy + vec2( 1.0, -1.0 ))*orig_px_size).xyz;
+        vec3 rgbSW = texture2D(sampler, (gl_FragCoord.xy + vec2( -1.0, 1.0 ))*orig_px_size).xyz;
+        vec3 rgbSE = texture2D(sampler, (gl_FragCoord.xy + vec2( 1.0, 1.0 ))*orig_px_size).xyz;
+        vec4 rgbaM  = texture2D(sampler, gl_FragCoord.xy*orig_px_size);
         vec3 rgbM  = rgbaM.xyz;
         vec3 luma = vec3( 0.299, 0.587, 0.114 );
         float lumaNW = dot( rgbNW, luma );
@@ -54,11 +54,11 @@ exports.library = ''' #line 29 /**/
             max( vec2(-FXAA_SPAN_MAX, -FXAA_SPAN_MAX),
                 dir * rcpDirMin));
         vec4 rgbA = (1.0/2.0) * (
-            texture2D(scene_sampler, (gl_FragCoord.xy + dir * (1.0/3.0 - 0.5))*orig_px_size) +
-            texture2D(scene_sampler, (gl_FragCoord.xy + dir * (2.0/3.0 - 0.5))*orig_px_size));
+            texture2D(sampler, (gl_FragCoord.xy + dir * (1.0/3.0 - 0.5))*orig_px_size) +
+            texture2D(sampler, (gl_FragCoord.xy + dir * (2.0/3.0 - 0.5))*orig_px_size));
         vec4 rgbB = rgbA * (1.0/2.0) + (1.0/4.0) * (
-            texture2D(scene_sampler, (gl_FragCoord.xy + dir * (0.0/3.0 - 0.5))*orig_px_size) +
-            texture2D(scene_sampler, (gl_FragCoord.xy + dir * (3.0/3.0 - 0.5))*orig_px_size));
+            texture2D(sampler, (gl_FragCoord.xy + dir * (0.0/3.0 - 0.5))*orig_px_size) +
+            texture2D(sampler, (gl_FragCoord.xy + dir * (3.0/3.0 - 0.5))*orig_px_size));
         float lumaB = dot(rgbB, vec4(luma, 0.0));
         if ( ( lumaB < lumaMin ) || ( lumaB > lumaMax ) ) {
             return rgbA;
