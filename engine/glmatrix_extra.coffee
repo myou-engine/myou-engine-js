@@ -1,42 +1,23 @@
 glm = require 'gl-matrix'
-glm.quat.to_euler = (out=[0,0,0], quat, order='XZY') ->
-    if order != 'XZY'
-        throw new Error "Euler order "+order+" not supported yet."
-    # It will return XZY euler. TODO: implement other orders
-    x = quat[0]
-    y = quat[1]
-    z = quat[2]
-    w = quat[3]
 
-    test = x*y + z*w;
-    if test > 0.499 # singularity at north pole
-        heading = 2 * Math.atan2 x,w
-        attitude = Math.PI/2
-        bank = 0
+# http://stackoverflow.com/questions/1031005/is-there-an-algorithm-for-converting-quaternion-rotations-to-euler-angle-rotatio
 
-    else if test < -0.499 # singularity at south pole
-        heading = -2 * Math.atan2 x,w
-        attitude = - Math.PI/2
-        bank = 0
+threeaxisrot = (out, r11, r12, r21, r31, r32) ->
+    out[0] = Math.atan2( r31, r32 )
+    out[1] = Math.asin ( r21 )
+    out[2] = Math.atan2( r11, r12 )
 
-    else if isNaN heading
-        sqx = x*x
-        sqy = y*y
-        sqz = z*z
-        heading = Math.atan2 2*y*w - 2*x*z , 1 - 2*sqy - 2*sqz # Heading
-        attitude = Math.asin 2*test  # attitude
-        bank = Math.atan2 2*x*w - 2*y*z , 1 - 2*sqx - 2*sqz # bank
-    
-    # Compatibility with turntable camera (bank limited to 0-180)
-    if bank < 0
-        bank += Math.PI
-        heading += Math.PI
-        attitude = Math.PI - attitude
-    
-    out[1] = heading
-    out[2] = attitude
-    out[0] = bank
-
+glm.quat.to_euler = (out=[0,0,0], q, order='XYZ') ->
+    [x, y, z, w] = q
+    switch order
+        when 'XYZ'
+            threeaxisrot(out, 2*(x*y + w*z),
+                            w*w + x*x - y*y - z*z,
+                           -2*(x*z - w*y),
+                            2*(y*z + w*x),
+                            w*w - x*x - y*y + z*z)
+        else
+            throw new Error "Euler order "+order+" not supported yet."
     return out
 
 module.exports = glm
