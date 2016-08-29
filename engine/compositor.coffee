@@ -1,5 +1,7 @@
 material_module = require './material.coffee'
 {Framebuffer} = require './framebuffer.coffee'
+compositor_shaders =
+    FXAA: require './compositor_shaders/FXAA.coffee'
 
 ###
 How to use the compositor:
@@ -32,14 +34,20 @@ Implicit variables and functions,
 all of them handle unused buffer borders as if they didn't exist:
     * aspect_ratio: gives the aspect ratio of the camera
     * get_FOO_from_px(x, y) and
-      get_FOO_from_px(vec2) gets the value of the buffer FOO
+      get_FOO_from_px(vec2) gets the value of the buffer/texture FOO
       in the x/y coordinate in pixels
     * get_FOO_from_coord(x, y) and
-      get_FOO_from_coord(vec2) gets the value of the buffer FOO
+      get_FOO_from_coord(vec2) gets the value of the buffer/texture FOO
       in the x/y coordinate in the buffer's viewport, [-1, 1] interval
       e.g: get_FOO_from_coord(0.5, 0.5) gets the value in the middle
     * coord: current texture coordinate of viewport
       (if you want pixels, use gl_FragCoord.xy instead)
+    * FOO_sampler: Sampler of buffer/texture FOO
+    * FOO_size_f: Size of FOO. Multiply coord by FOO_size_f to get the actual
+                  coordinate to be used with texture2D()
+    * FOO_orig_px_size: Size of a pixel in FOO.
+                  Multiply gl_FragCoord.xy by FOO_orig_px_size to get the actual
+                  coordinate to be used with texture2D()
         
 Full example:
 
@@ -133,9 +141,15 @@ class Compositor
                         return texture2D(#{name}_sampler, co_px*#{name}_orig_px_size);
                         //return texture2D(#{name}_sampler, co_px*#{name}_orig_px_size + #{name}_offset_f);
                     }
+                    vec4 get_#{name}_from_px(float x, float y){
+                        return get_#{name}_from_px(vec2(x,y));
+                    }
                     vec4 get_#{name}_from_coord(vec2 co){
                         return texture2D(#{name}_sampler, co*#{name}_size_f);
                         //return texture2D(#{name}_sampler, co*#{name}_size_f + #{name}_offset_f);
+                    }
+                    vec4 get_#{name}_from_coord(float x, float y){
+                        return get_#{name}_from_coord(vec2(x,y));
                     }
                     """
             
@@ -164,12 +178,13 @@ class Compositor
     assign_uniforms: ->
         {gl} = @context.render_manager
         for {material} in @filters
+            # console.log material.name
             material.use()
             {u_custom} = material
             i = -1
             for name, {buffer, size=[buffer.size_x, buffer.size_y]} of @buffers
                 size_f = [size[0]/buffer.size_x, size[1]/buffer.size_y]
-                console.log name, size+'', size_f+'', u_custom[i+1]
+                # console.log name, size+'', size_f+'', u_custom[i+1], u_custom[i+4]
                 u_custom[++i]? and gl.uniform2fv u_custom[i], size_f # size_f
                 u_custom[++i]? and gl.uniform2fv u_custom[i], size # size_px
                 u_custom[++i]? and gl.uniform2fv u_custom[i], [1/size[0], 1/size[1]] # px_size
@@ -214,4 +229,4 @@ class Compositor
         return
 
 
-module.exports = {Compositor}
+module.exports = {Compositor, compositor_shaders}

@@ -10,10 +10,11 @@ actuators = require './engine/actuators.coffee'
 {load_scene} = require './engine/loader.coffee'
 {fetch_objects} = require './engine/fetch_assets.coffee'
 {Framebuffer} = require './engine/framebuffer.coffee'
-{Compositor} = require './engine/compositor.coffee'
+{Compositor, compositor_shaders} = require './engine/compositor.coffee'
 module.exports = {
     #myou engine
-    Myou, create_canvas, load_scene, fetch_objects, Framebuffer, Compositor
+    Myou, create_canvas, load_scene, fetch_objects,
+    Framebuffer, Compositor, compositor_shaders,
     #Game logic
     LogicBlock, sensors, actuators, glm,
     #Extras
