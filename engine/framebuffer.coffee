@@ -11,7 +11,7 @@ component_types =
     HALF_FLOAT: 0x8D61
 
 # Pass 'UNSIGNED_BYTE' to color_type for 8 bit per component (default is 'FLOAT')
-# Pass 'UNSIGNED_SHORT' to depth_type to enable depth (default is null)
+# Pass 'UNSIGNED_SHORT' to depth_type to enable depth texture (default is null)
 # TODO: Create specific classes like:
 # ByteFramebuffer, FloatFramebuffer, ByteFramebufferWithDepth
 # or something like that
@@ -19,7 +19,12 @@ class Framebuffer
     constructor: (@context, @options) ->
         {gl, extensions, has_float_fb_support, has_half_float_fb_support} \
             = @context.render_manager
-        {size, color_type='FLOAT', depth_type=null} = @options
+        {
+            size
+            use_depth=false
+            color_type='FLOAT'
+            depth_type=null
+        } = @options
         [@size_x, @size_y] = size
         @texture = tex = gl.createTexture()
         gl.bindTexture gl.TEXTURE_2D, tex
@@ -56,17 +61,18 @@ class Framebuffer
             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE
             gl.texImage2D gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, @size_x, @size_y, 0, gl.DEPTH_COMPONENT, depth_tex_type, null
 
-        @render_buffer= rb = gl.createRenderbuffer()
-        gl.bindRenderbuffer gl.RENDERBUFFER, rb
-        gl.renderbufferStorage gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, @size_x, @size_y
 
         @framebuffer = fb = gl.createFramebuffer()
         gl.bindFramebuffer gl.FRAMEBUFFER, fb
         gl.framebufferTexture2D gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0
-        if @depth_texture
-            gl.framebufferTexture2D gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, @depth_texture, 0
-        else
-            gl.framebufferRenderbuffer gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb
+        if use_depth
+            if @depth_texture
+                gl.framebufferTexture2D gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, @depth_texture, 0
+            else
+                @render_buffer= rb = gl.createRenderbuffer()
+                gl.bindRenderbuffer gl.RENDERBUFFER, rb
+                gl.renderbufferStorage gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, @size_x, @size_y
+                gl.framebufferRenderbuffer gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb
         
         @is_complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER) == gl.FRAMEBUFFER_COMPLETE
 

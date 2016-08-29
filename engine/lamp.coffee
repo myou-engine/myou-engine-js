@@ -30,7 +30,9 @@ class Lamp extends GameObject
 
     init_shadow: ->
         {texture_size, frustum_size, clip_start, clip_end} = @shadow_options
-        @shadow_fb = new Framebuffer @context, {size: [texture_size, texture_size]}
+        # This one has no depth because we're using common_shadow_fb,
+        # then applying box blur and storing here
+        @shadow_fb = new Framebuffer @context, {size: [texture_size, texture_size], use_depth: false}
         @shadow_texture.gl_tex = @shadow_fb.texture
         
         # If using half float buffers, add a little bit of extra bias
