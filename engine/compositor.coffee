@@ -104,11 +104,11 @@ class Compositor
             coord = vertex.xy;
             gl_Position = vec4((vertex.xy*2.0)-vec2(1.0,1.0), 0.0, 1.0);
         }"""
-        uniforms = []
         @buffers = @options.buffers
         # TODO: resolve and concatenate filters with 1:1 intermediate result
         # and measure in different platforms if that's better than flipping buffers
         @filters = for filter_name,filter_options of @options.filters
+            uniforms = []
             fs_code = """precision highp float;
             varying vec2 coord;"""
             for name, {buffer} of @buffers
@@ -180,13 +180,7 @@ class Compositor
     
     compose: ->
         {gl, uniform_functions} = @context.render_manager
-        # Bind textures
-        # TODO: Should we unbind the texture of the output buffer?
-        i = 0
-        for name, {buffer, texture} of @buffers
-            texture = texture or buffer.texture
-            gl.activeTexture gl.TEXTURE0 + i++
-            gl.bindTexture gl.TEXTURE_2D, texture
+        gl.disable gl.DEPTH_TEST
         # Bind quad mesh
         gl.bindBuffer gl.ARRAY_BUFFER, @context.render_manager.quad
                 
@@ -194,6 +188,16 @@ class Compositor
         # but eventually we'll order it in the constructor evaluating dependencies
         for {material, output} in @filters
             prog = material.use()
+            # Bind textures
+            i = 0
+            # Note: relying on having the same order in "for .. of"
+            for name, {buffer, texture} of @buffers
+                # It may be a Texture instance, a WebGL texture or a buffer
+                if output.buffer != buffer
+                    texture = texture?.gl_tex or texture or buffer.texture
+                    gl.activeTexture gl.TEXTURE0 + i
+                    gl.bindTexture gl.TEXTURE_2D, texture
+                i++
             # Configure attributes
             @context.render_manager.change_enabled_attributes 1<<material.a_vertex
             gl.vertexAttribPointer material.a_vertex, 3.0, gl.FLOAT, false, 0, 0
@@ -206,6 +210,7 @@ class Compositor
             size = output.size or [output.buffer.size_x, output.buffer.size_y]
             output.buffer.enable([0, 0, size[0], size[1]])
             gl.drawArrays gl.TRIANGLE_STRIP, 0, 4
+        gl.enable gl.DEPTH_TEST
         return
 
 
