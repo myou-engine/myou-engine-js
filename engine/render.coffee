@@ -101,14 +101,16 @@ class RenderManager
         @has_float_fb_support = false
         if @extensions.texture_float?
             @has_float_fb_support = true
-            fb = new Framebuffer @context, {size: [4, 4], color_type: 'FLOAT'}
+            # TODO: use_depth is probably unnecessary
+            # TODO: should we test available depth types?
+            fb = new Framebuffer @context, {size: [4, 4], color_type: 'FLOAT', use_depth: true}
             @has_float_fb_support = fb.is_complete
             fb.destroy()
 
         @has_half_float_fb_support = false
         if @extensions.texture_half_float?
             @has_half_float_fb_support = true
-            fb = new Framebuffer @context, {size: [4, 4], color_type: 'HALF_FLOAT'}
+            fb = new Framebuffer @context, {size: [4, 4], color_type: 'HALF_FLOAT', use_depth: true}
             @has_half_float_fb_support = fb.is_complete
             fb.destroy()
 
@@ -235,7 +237,7 @@ class RenderManager
             @common_filter_fb = null
         if not @common_filter_fb
             @common_filter_fb = new Framebuffer @context,
-                {size: [minx, miny], color_type: 'UNSIGNED_BYTE', depth_type: 'UNSIGNED_SHORT'}
+                {size: [minx, miny], color_type: 'UNSIGNED_BYTE', depth_type: 'UNSIGNED_SHORT', use_depth: true}
         if not @common_filter_fb.is_complete
             throw "Common filter framebuffer is not complete"
 
@@ -611,7 +613,7 @@ class RenderManager
                     lamp.init_shadow()
                 size = lamp.shadow_fb.size_x * 2
                 if not @common_shadow_fb?
-                    @common_shadow_fb = new Framebuffer @context, {size: [size,size]}
+                    @common_shadow_fb = new Framebuffer @context, {size: [size,size], use_depth: true}
 
                 @common_shadow_fb.enable [0, 0, size, size]
                 gl.clearColor 1,1,1,1  # TODO: which color should we use?
