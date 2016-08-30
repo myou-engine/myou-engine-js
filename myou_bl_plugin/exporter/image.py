@@ -205,10 +205,10 @@ def pack_generated_images(used_data):
         if image.source == 'GENERATED': #generated or rendered
             print('Generated image will be packed as png')
             #The image must be saved in a temporal path before packing.
-            tmp_filepath = os.path.join(tempdir, image.name + '.png')
-            save_image(image, tmp_filepath, 'PNG')
-            image.filepath = tmp_filepath
+            tmp_filepath = tempfile.mktemp('.png')
             image.file_format = 'PNG'
+            image.filepath_raw = tmp_filepath
+            image.save()
             image.pack()
             image.filepath = ''
             os.unlink(tmp_filepath)
@@ -229,7 +229,7 @@ def get_non_alpha_images(used_data):
                     if not png_file_has_alpha(path):
                         non_alpha_images.append(image)
                 elif image.packed_file or os.path.isfile(path):
-                    tmp_filepath = os.path.join(tempdir, image.name + '.png')
+                    tmp_filepath = tempfile.mktemp('.png')
                     save_image(image, tmp_filepath, 'PNG')
                     if not png_file_has_alpha(tmp_filepath):
                         non_alpha_images.append(image)
