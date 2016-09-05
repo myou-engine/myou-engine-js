@@ -361,6 +361,9 @@ class RenderManager
         if amesh.materials.length != amesh.material_names.length
             amesh.configure_materials()
             return
+        
+        flip_normals = mesh.scale[0]*mesh.scale[1]*mesh.scale[2] < 0
+        
         # Main routine for each submesh
         submesh_idx = -1
 
@@ -514,7 +517,12 @@ class RenderManager
                 gl.uniformMatrix4fv mat.u_model_view_matrix, false, m4
                 mat3.multiply m3, @_world2cam3, mesh.normal_matrix
                 gl.uniformMatrix3fv mat.u_normal_matrix, false, m3
-                gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
+                if flip_normals
+                    gl.frontFace 2304 # gl.CW
+                    gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
+                    gl.frontFace 2305 # gl.CCW
+                else
+                    gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
             if mirrors & 178
                 mat4.multiply m4, @_world2cam_mx, mesh2world
                 gl.uniformMatrix4fv mat.u_model_view_matrix, false, m4
