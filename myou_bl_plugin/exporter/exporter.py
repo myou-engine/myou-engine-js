@@ -676,6 +676,13 @@ def ob_to_json(ob, scn=None, check_cache=False):
     first_mat = ob.material_slots and ob.material_slots[0].material
 
     game_properties = {}
+    for k,v in ob.items():
+        if k not in ['modifiers_were_applied', 'zindex', 'cycles', 'cycles_visibility']:
+            if hasattr(v, 'to_list'):
+                v = v.to_list()
+            elif hasattr(v, 'to_dict'):
+                v = v.to_dict()
+            game_properties[k] = v
     for k,v in ob.game.properties.items():
         game_properties[k] = v.value
 
