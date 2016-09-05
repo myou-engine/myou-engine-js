@@ -4,7 +4,7 @@
 # FUTURE OPTIMIZATION STRATEGIES
 # Make a single flat array for positions and rotations,
 # Sending them as textures where available
-# Or as uniform16fv where not
+# Or as uniformMatrix4fv where not
 # Baking animation loops into spare framebuffer texture
 # sending bone locations in parent space instead of local
 
@@ -17,8 +17,8 @@ class Bone extends GameObject
 
     constructor: (@context)->
         # Base pose position and rotation in PARENT space
-        @base_position = new Float32Array 3
-        @base_rotation = new Float32Array 4
+        @base_position = vec3.create()
+        @base_rotation = quat.create()
         # Position and rotation in LOCAL (base) space
         @position = [0, 0, 0]
         @rotation = [0, 0, 0, 1]
@@ -142,9 +142,9 @@ class Armature extends GameObject
         return
 
 rotation_to = (out, p1, p2, maxang)->
-    angle = Math.atan2 vec3.len(vec3.cross([],p1,p2)), vec3.dot(p1,p2)
+    angle = Math.atan2 vec3.len(vec3.cross(vec3.create(),p1,p2)), vec3.dot(p1,p2)
     angle = Math.max -maxang, Math.min(maxang, angle)
-    axis = vec3.cross [], p1, p2
+    axis = vec3.cross vec3.create(), p1, p2
     vec3.normalize axis, axis
     quat.setAxisAngle out, axis, angle
     quat.normalize out, out
@@ -170,7 +170,7 @@ class BoneConstraints
         q = quat.create()
         if target.parent
             quat.invert q, target.parent.final_rotation
-            rot = quat.mul [], q, rot
+            rot = quat.mul quat.create(), q, rot
         t = vec3.transformQuat vec3.create(), axis, rot
         q = rotation_to q, t, axis, 9999
         quat.mul q, q, rot
@@ -201,8 +201,8 @@ class BoneConstraints
         vec3.sub target, target, first
         points = []
         for b in bones[...-1]
-            points.push vec3.sub([], b.final_position, first)
-        tip = vec3.transformQuat [], [0,tip_bone.blength,0], tip_bone.final_rotation
+            points.push vec3.sub(vec3.create(), b.final_position, first)
+        tip = vec3.transformQuat vec3.create(), [0,tip_bone.blength,0], tip_bone.final_rotation
         vec3.add tip, tip, tip_bone.final_position
         vec3.sub tip, tip, first
         points.insert 0, tip
@@ -241,11 +241,11 @@ class BoneConstraints
             vec3.add points[i], points[i], first
             vec3.add original_points[i], original_points[i], first
         #for i in [0...point.length-1]
-            #render_manager.debug.vectors.push [vec3.sub([], points[i], points[i+1]), vec3.clone(points[i+1]), [1,1,0,1]]
-        #render_manager.debug.vectors.push [vec3.sub([], points[points.length-1], first), first, [1,1,0,1]]
+            #render_manager.debug.vectors.push [vec3.sub(vec3.create(), points[i], points[i+1]), vec3.clone(points[i+1]), [1,1,0,1]]
+        #render_manager.debug.vectors.push [vec3.sub(vec3.create(), points[points.length-1], first), first, [1,1,0,1]]
         #for i in [0...original_points.length-1]
-            #render_manager.debug.vectors.push [vec3.sub([], original_points[i], original_points[i+1]), vec3.clone(original_points[i+1]), [1,0,1,1]]
-        #render_manager.debug.vectors.push [vec3.sub([], original_points[original_points.length-1], first), first, [1,0,1,1]]
+            #render_manager.debug.vectors.push [vec3.sub(vec3.create(), original_points[i], original_points[i+1]), vec3.clone(original_points[i+1]), [1,0,1,1]]
+        #render_manager.debug.vectors.push [vec3.sub(vec3.create(), original_points[original_points.length-1], first), first, [1,0,1,1]]
         #for i in [0...points.length]
             #objects['Icosphere.00'+i].position = vec3.clone points[i]
 

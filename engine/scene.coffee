@@ -132,7 +132,7 @@ class Scene
             pos = child.position
             rot = child.rotation
             vec3.sub pos, pos, parent.get_world_position()
-            p_rot = quat.invert [], parent.get_world_rotation()
+            p_rot = quat.invert quat.create(), parent.get_world_rotation()
             vec3.transformQuat pos, pos, p_rot
             quat.mul rot, p_rot, rot
         child.parent = parent

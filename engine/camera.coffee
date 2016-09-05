@@ -2,9 +2,9 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 
 ZERO_MAT4 = new(Float32Array)(16)
-VECTOR_X = new Float32Array [1,0,0]
-VECTOR_Y = new Float32Array [0,1,0]
-VECTOR_MINUS_Z = new Float32Array [0,0,-1]
+VECTOR_X = vec3.fromValues 1,0,0
+VECTOR_Y = vec3.fromValues 0,1,0
+VECTOR_MINUS_Z = vec3.fromValues 0,0,-1
 
 class Camera extends GameObject
 
@@ -24,11 +24,11 @@ class Camera extends GameObject
         # if non-zero, will use as up, right, down and left FoV
         @fov_4 = vec4.create()
         @target_aspect_ratio = @aspect_ratio
-        @projection_matrix = new Float32Array 16
-        @projection_matrix_inv = new Float32Array 16
-        @world_to_screen_matrix = new Float32Array 16
-        @cull_left = new Float32Array 3
-        @cull_bottom = new Float32Array 3
+        @projection_matrix = mat4.create()
+        @projection_matrix_inv = mat4.create()
+        @world_to_screen_matrix = mat4.create()
+        @cull_left = vec3.create()
+        @cull_bottom = vec3.create()
         @recalculate_projection()
 
     clone: ->

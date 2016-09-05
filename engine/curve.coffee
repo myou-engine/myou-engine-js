@@ -154,7 +154,7 @@ class Curve extends GameObject
             i2 = i*2
             vec3.mul p1, va.subarray(ia[i2]*3, ia[i2]*3+3), scale
             vec3.mul p2, va.subarray(ia[i2+1]*3, ia[i2+1]*3+3), scale
-            l=l.concat vec3.normalize([],vec3.sub([],p2, p1))
+            l=l.concat vec3.normalize(vec3.create(),vec3.sub(vec3.create(),p2, p1))
         return new Float32Array l
 
     get_nodes: (main_curve_index=0, precission=0.0001)->

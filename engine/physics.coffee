@@ -334,8 +334,8 @@ colliding_bodies = (body)->
 get_linear_velocity = (body, local = false)->
     v = body.getLinearVelocity()
     if local
-        ir = quat.invert([], body.owner.get_world_rotation())
-        new_v = vec3.transformQuat([], [v.x(), v.y(), v.z()], ir)
+        ir = quat.invert(quat.create(), body.owner.get_world_rotation())
+        new_v = vec3.transformQuat(vec3.create(), [v.x(), v.y(), v.z()], ir)
         return new_v
     return [v.x(), v.y(), v.z()]
 
@@ -365,8 +365,8 @@ set_max_fall_speed = (body, f)->
 get_angular_velocity = (body, local = false)->
     v = body.getAngularVelocity()
     if local
-        ir = quat.invert([], body.owner.get_world_rotation())
-        new_v = vec3.transformQuat([], [v.x(), v.y(), v.z()], ir)
+        ir = quat.invert(quat.create(), body.owner.get_world_rotation())
+        new_v = vec3.transformQuat(vec3.create(), [v.x(), v.y(), v.z()], ir)
         return new_v
     return [v.x(), v.y(), v.z()]
 

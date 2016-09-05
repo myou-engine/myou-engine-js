@@ -105,6 +105,7 @@ class Mesh extends GameObject
         @altmeshes = []
         @last_lod_object = null
         @culled_in_last_frame = false
+        @center = vec3.create()
 
         # Populated when loading, used in load_from_va_ia()
         # Not used on render.
@@ -182,7 +183,7 @@ class Mesh extends GameObject
             @instance_physics()
         @context.main_loop?.reset_timeout()
         # This forces the mesh to be uploaded
-        # ZERO_MATRIX = mat4.set mat4.create(), 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,1
+        # ZERO_MATRIX = mat4.fromValues 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,1
         # @context.render_manager.draw_mesh(@, ZERO_MATRIX, -1, false)
         return data
 
