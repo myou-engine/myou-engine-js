@@ -72,6 +72,10 @@ class GLRay
         @alpha_treshold = 0.5
         @step = 0
         @rounds = 0
+        # Detect invalid max_distance (NaN, Infinity, 0)
+        if (@max_distance/@max_distance) != 1
+            console.warn "GLRay: max_distance of #{@max_distance} is invalid. Defaulting to 10."
+            @max_distance = 10
         @mat = new Material(@context, {
             name: 'gl_ray', vertex: gl_ray_vs(@max_distance), fragment: gl_ray_fs(@max_distance)})
         @m4 = mat4.create()
