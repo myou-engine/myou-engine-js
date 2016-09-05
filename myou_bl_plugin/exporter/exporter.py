@@ -286,8 +286,9 @@ def ob_to_json(ob, scn=None, check_cache=False):
                 mat = mat and mat[0]
                 if mat and mat.material:
                     n = mat.name
-                    if mat.material.transparency_method == 'RAYTRACE':
-                        pass_ = 2
+                    if mat.material.use_transparency and \
+                        mat.material.transparency_method == 'RAYTRACE':
+                            pass_ = 2
                     elif mat.material.use_transparency and \
                             mat.material.game_settings.alpha_blend != 'CLIP':
                         pass_ = 1
