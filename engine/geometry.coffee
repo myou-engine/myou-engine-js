@@ -27,9 +27,9 @@ rect_equation = (out, v, p)-> # UNTESTED
     out[1] = -1/v[1]
     out[2] = 0
     out[3] = p[1]/v[1] - p[0]/v[0]
-    out[4] = 1/v[1]
-    out[5] = -1/v[1]
-    out[6] = 0
+    out[4] = 0
+    out[5] = 1/v[1]
+    out[6] = -1/v[2]
     out[7] = p[2]/v[2] - p[1]/v[1]
     return out
 
