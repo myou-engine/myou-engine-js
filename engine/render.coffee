@@ -7,7 +7,7 @@
 MIRROR_MASK_X = 2|16|32|128 #178
 MIRROR_MASK_Y = 4|16|64|128 #212
 MIRROR_MASK_Z = 8|32|64|128 #232
-VECTOR_MINUS_Z = new Float32Array [0,0,-1]
+VECTOR_MINUS_Z = vec3.fromValues 0,0,-1
 
 
 class RenderManager
@@ -34,6 +34,23 @@ class RenderManager
         @context.render_manager = @
         @canvas = canvas
         @gl = gl
+        if vec3.create().byteLength == 24
+            # TODO: convert only when necessary?
+            gl.tmp2 = new Float32Array 2
+            gl.tmp3 = new Float32Array 3
+            gl.tmp4 = new Float32Array 4
+            gl.tmp9 = new Float32Array 9
+            gl.tmp16 = new Float32Array 16
+            gl._uniform2fv = gl.uniform2fv
+            gl.uniform2fv = (l, v) -> @tmp2.set(v);@_uniform2fv l, @tmp2
+            gl._uniform3fv = gl.uniform3fv
+            gl.uniform3fv = (l, v) -> @tmp3.set(v);@_uniform3fv l, @tmp3
+            gl._uniform4fv = gl.uniform4fv
+            gl.uniform4fv = (l, v) -> @tmp4.set(v);@_uniform4fv l, @tmp4
+            gl._uniformMatrix3fv = gl.uniformMatrix3fv
+            gl.uniformMatrix3fv = (l, t, v) -> @tmp9.set(v);@_uniformMatrix3fv l, t, @tmp9
+            gl._uniformMatrix4fv = gl.uniformMatrix4fv
+            gl.uniformMatrix4fv = (l, t, v) -> @tmp16.set(v);@_uniformMatrix4fv l, t, @tmp16
         @width = width
         @height = height
         @main_fb = new MainFramebuffer @context

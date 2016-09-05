@@ -33,11 +33,11 @@ class GameObject
         @rotation = quat.create()
         @radius = 0
         @rotation_order = 'Q'
-        @scale = vec3.set vec3.create(), 1, 1, 1
+        @scale = vec3.fromValues 1, 1, 1
         @dimensions = vec3.create()
-        @color = vec4.set vec4.create(), 1, 1, 1, 1
+        @color = vec4.fromValues 1, 1, 1, 1
         @alpha = 1
-        @offset_scale = vec3.set vec3.create(), 1, 1, 1
+        @offset_scale = vec3.fromValues 1, 1, 1
         @scene = null
         @dupli_group = null
         @visible = true
@@ -65,7 +65,7 @@ class GameObject
         if @context.use_physics
             @physical_radius = 1
             @anisotropic_friction = false
-            @friction_coefficients = vec3.set vec3.create(), 1, 1, 1
+            @friction_coefficients = vec3.fromValues 1, 1, 1
             @collision_group = 1   # [1, 0, 0, 0, 0, 0, 0, 0]
             @collision_mask = 255  # [1, 1, 1, 1, 1, 1, 1, 1]
             @collision_shape = null
@@ -74,8 +74,8 @@ class GameObject
             @mass = 0
             @no_sleeping = false
             @is_ghost = false
-            @linear_factor = vec3.set vec3.create(), 1, 1, 1
-            @angular_factor = vec3.set vec3.create(), 1, 1, 1
+            @linear_factor = vec3.fromValues 1, 1, 1
+            @angular_factor = vec3.fromValues 1, 1, 1
             @form_factor = 0.4
             @friction = 0.5
             @elasticity = 0
@@ -231,7 +231,7 @@ class GameObject
                     # TODO: avoid calling this all the time
                     parent_posrot = parent.get_world_pos_rot()
                     vec3.sub pos, pos, parent_posrot[0]
-                    inv = quat.invert [], parent_posrot[1]
+                    inv = quat.invert quat.create(), parent_posrot[1]
                     vec3.transformQuat pos, pos, inv
                     quat.mul rot, inv, rot
                     comp = parent.shape

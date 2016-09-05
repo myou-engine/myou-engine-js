@@ -57,9 +57,9 @@ class TouchGesturesOver extends LogicBlock
                 # ray projection to gesture plane
                 if not obhit.init_ratio?
                     obhit.init_ratio = obhit.init_ratio or
-                    vec3.len(vec3.sub([],obhit.ob.position,cam_pos))/vec3.len(vec3.sub([],rayto,cam_pos))
+                    vec3.len(vec3.sub(vec3.create(),obhit.ob.position,cam_pos))/vec3.len(vec3.sub(vec3.create(),rayto,cam_pos))
 
-                touch.world_position = vec3.scale([], rayto, obhit.init_ratio)
+                touch.world_position = vec3.scale(vec3.create(), rayto, obhit.init_ratio)
 
                 obhit.touch_events[id] = touch
                 @hits_by_touch_id[id] = ob_name
@@ -282,7 +282,7 @@ class RotationGesture extends LogicBlock
             @rel_rot = @rel_rot - PI_2
 
         @rot = rot
-        angular_velocity = vec3.scale([],rel_rot,1/frame_duration)
+        angular_velocity = vec3.scale(vec3.create(),rel_rot,1/frame_duration)
         return {rot, rel_rot, angular_velocity}
 
 # output {objet, point, normal}
@@ -353,7 +353,7 @@ axis_objet_mapper = (pos, cam, axis=[0,0,0])->
     # camera Z
     m = cam.world_matrix
     cpos = [m[8],m[9],m[10]]
-    vec3.transformQuat(cpos, cpos, quat.invert([], ob.rotation))
+    vec3.transformQuat(cpos, cpos, quat.invert(quat.create(), ob.rotation))
     a = atan2(cpos[0],cpos[1])
 
     return [

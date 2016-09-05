@@ -46,7 +46,7 @@ class Track
             scale = curve_object.scale
             pre_section_distance = 0
 
-            for section_number in [0...curve.la.lenth]
+            for section_number in [0...curve.la.length]
                 s = curve.la[section_number]
                 ss = pre_section_distance + s
                 if ss >= offset

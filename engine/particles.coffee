@@ -104,7 +104,7 @@ class ParticleSystem
         @start_time = main_loop.last_time *0.001
         track = @track = Track @tracker
         if 'auto_pause' in @properties
-            @last_tracker_position = vec3.copy [],@tracker.position
+            @last_tracker_position = vec3.copy vec3.create(),@tracker.position
             @auto_pause = @properties.auto_pause
         if 'formula' in @properties and @properties.formula?
             @formula = @properties.formula
