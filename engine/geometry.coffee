@@ -1,7 +1,11 @@
 
-{mat3, vec3, vec4} = require 'gl-matrix'
+{mat3, vec3, vec4, quat} = require 'gl-matrix'
 
 m3 = mat3.create()
+Z_VECTOR = vec3.fromValues 0,0,1
+na = vec3.create()
+nb = vec3.create()
+q = quat.create()
 
 planes_intersection = (out, m)->
     # m is the 4x3 row-major matrix defined by 3 plane equations.
@@ -23,14 +27,17 @@ rect_equation = (out, v, p)-> # UNTESTED
     # v is the director vector of the rect
     # the result will be 2 planes which define the rect, in a
     # 4x2 row-major matrix (or first half of 4x4)
-    out[0] = 1/v[0]
-    out[1] = -1/v[1]
-    out[2] = 0
-    out[3] = p[1]/v[1] - p[0]/v[0]
-    out[4] = 0
-    out[5] = 1/v[1]
-    out[6] = -1/v[2]
-    out[7] = p[2]/v[2] - p[1]/v[1]
+    vec3.set na, 1,0,0
+    vec3.set nb, 0,1,0
+    quat.rotationTo q, Z_VECTOR, v
+    vec3.transformQuat na, na, q
+    vec3.transformQuat nb, nb, q
+    plane_equation out, nb, p
+    out[4] = out[0]
+    out[5] = out[1]
+    out[6] = out[2]
+    out[7] = out[3]
+    plane_equation out, na, p
     return out
 
 module.exports = {planes_intersection, plane_equation, rect_equation}
