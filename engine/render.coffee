@@ -11,7 +11,7 @@ VECTOR_MINUS_Z = vec3.fromValues 0,0,-1
 
 
 class RenderManager
-    constructor: (context, canvas, width, height, glflags, on_webgl_failed, on_context_lost, on_context_restored, no_s3tc)->
+    constructor: (context, canvas, width, height, glflags)->
         try
             gl = canvas.getContext("webgl", glflags) or canvas.getContext("experimental-webgl", glflags)
         catch e
@@ -27,7 +27,7 @@ class RenderManager
                 gl = canvas.getContext("webgl", glflags) or canvas.getContext("experimental-webgl", glflags)
 
         if not gl
-            on_webgl_failed?()
+            context.MYOU_PARAMS.on_webgl_failed?()
             throw "Error: Can't start WebGL"
 
         @context = context
@@ -62,7 +62,7 @@ class RenderManager
         @pixel_ratio_x = pixel_ratio_y = 1
         @camera_z = vec3.create()
         @lod_factor = 1
-        @no_s3tc = no_s3tc
+        @no_s3tc = @context.MYOU_PARAMS.no_s3tc
         ba = @context.MYOU_PARAMS.background_alpha
         @background_alpha = if ba? then ba else 1
         @compiled_shaders_this_frame = 0
@@ -89,11 +89,11 @@ class RenderManager
 
         lost = (event)->
             event.preventDefault()
-            on_context_lost?()
+            @context.MYOU_PARAMS.on_context_lost?()
             render_manager.clear_context()
         restored = (event)->
             render_manager.restore_context()
-            on_context_restored? and requestAnimationFrame(on_context_restored)
+            @context.MYOU_PARAMS.on_context_restored? and requestAnimationFrame(@context.MYOU_PARAMS.on_context_restored)
         canvas.addEventListener "webglcontextlost", lost, false
         canvas.addEventListener "webglcontextrestored", restored, false
         @initialize()
