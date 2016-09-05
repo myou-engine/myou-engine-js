@@ -496,7 +496,10 @@ class RenderManager
             attrib_pointers = data.attrib_pointers[submesh_idx]
             attrib_bitmasks = data.attrib_bitmasks[submesh_idx]
             stride = data.stride
-            gl.bindBuffer gl.ARRAY_BUFFER, data.vertex_buffers[submesh_idx]
+            array_buffer = data.vertex_buffers[submesh_idx]
+            if not array_buffer?
+                continue
+            gl.bindBuffer gl.ARRAY_BUFFER, array_buffer
             @change_enabled_attributes attrib_bitmasks
             for attr in attrib_pointers
                 # [location, number of components, type, offset]
