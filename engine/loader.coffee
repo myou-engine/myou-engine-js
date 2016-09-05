@@ -124,6 +124,7 @@ load_object = (data, scene) ->
                 ob.packed_file = data.packed_file
                 ob.avg_poly_area = data.avg_poly_area or 10
                 ob.avg_poly_length = Math.pow(ob.avg_poly_area,0.5)
+                vec3.copy ob.center, data.center or [0,0,0]
 
         load_mesh_properties ob, data
 
