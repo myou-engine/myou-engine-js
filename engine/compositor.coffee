@@ -2,6 +2,7 @@ material_module = require './material.coffee'
 {Framebuffer} = require './framebuffer.coffee'
 compositor_shaders =
     FXAA: require './compositor_shaders/FXAA.coffee'
+    SSAO: require './compositor_shaders/SSAO.coffee'
 
 ###
 How to use the compositor:
@@ -49,12 +50,12 @@ all of them handle unused buffer borders as if they didn't exist:
                   Multiply gl_FragCoord.xy by FOO_orig_px_size to get the actual
                   coordinate to be used with texture2D()
         
-Full example:
+Example:
 
     buffers = {
-        "scene": {buffer: common_filter_fb, size: viewport.size}
-        "depth": {texture: common_filter_fb.depth_texture, size: viewport.size}
-        "ssao_buf": {buffer: new Framebuffer(context, 128, 128)}
+        "scene": {buffer: common_filter_fb, size: viewport.get_size_px()}
+        "depth": {texture: common_filter_fb.depth_texture, size: viewport.get_size_px()}
+        "ssao_buf": {buffer: new Framebuffer(context, size: [128, 128])}
         "screen": {buffer: viewport.dest_buffer}
     }
     uniforms = {
@@ -62,22 +63,14 @@ Full example:
         "test_vec3": [1,2,3],
     }
     filters = {
-        "SSAO":
-            libraries: require('some_glsl_library')
-            code: require('glsl-ssao')
-            inputs: ["scene", "depth"]
-            output: "ssao_buf"
-        "FXAA":
-            code: require('glsl-fxaa')
-            inputs: ["ssao_buf", "scene"]
-            output: null # not to be stored in a buffer
-        "color_grading"
-            code: require('glsl-grading')
-            inputs: ["FXAA"]
+        "invert"
+            code: 'return vec4(vec3(1.0)-get_scene_from_coord(coord), 1.0);'
+            inputs: ["scene"]
             output: "screen"
     }
 
     viewport.compositor = new Compositor(context, {buffers, uniforms, filters})
+    viewport.compositor_enabled = true
 ###
 
 # '''
@@ -161,6 +154,9 @@ class Compositor
                 gl_FragColor = filter();
             }"""
             
+            for varname of @options.uniforms
+                uniforms.push {varname}
+
             material = new material_module.Material @context, {
                 name: filter_name+((Math.random()*65536)|0)
                 uniforms: uniforms
@@ -170,8 +166,6 @@ class Compositor
             output = @buffers[filter_options.output]
             {vs_code, fs_code, material, output}
         
-        for varname of @options.uniforms
-            uniforms.push {varname}
         
         @assign_uniforms()
     
@@ -220,6 +214,7 @@ class Compositor
             {u_custom} = material
             i = @custom_uniform_index
             for varname, value of @options.uniforms
+                # console.log varname, value, u_custom[i]
                 uniform_functions[value.length|0] u_custom[i++], value
             # TODO! Offset when drawing to the screen?
             size = output.size or [output.buffer.size_x, output.buffer.size_y]
