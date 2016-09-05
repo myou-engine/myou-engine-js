@@ -100,7 +100,7 @@ class TouchDemo extends LogicBlock
                     # Transform rot_to with the cam_rotation
                     vec3.transformQuat rot_to, rot_to, cam.rotation
                     # q = quat from rot_from to rot_to
-                    q = quat.rotationTo [], rot_from, rot_to
+                    q = quat.rotationTo quat.create(), rot_from, rot_to
                     # Applying q to the object rotation.
                     quat.mul ob.rotation, q, ob.rotation
 
