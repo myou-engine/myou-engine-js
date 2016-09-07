@@ -355,13 +355,13 @@ class Material
                     attribute_asgn += v+"="+a.varname+";\n"
                     @attrib_locs[a.varname] = -1
                 when CD_TANGENT # tangent vectors
-                    attribute_decl += "attribute vec4 "+a.varname+";\n"\
+                    attribute_decl += "attribute vec4 tangent;\n"\
                         +"varying vec4 "+v+";\n"
                     #attribute_asgn += v+".xyz = normalize("\
-                        #+var_model_view_matrix+"*vec4("+a.varname+",0.0)).xyz;\n"
-                    attribute_asgn += v+".xyz = normalize(("+var_model_view_matrix+"*vec4("+a.varname+".xyz,0)).xyz);\n"
-                    attribute_asgn += v+".w = "+a.varname+".w;\n"
-                    @attrib_locs[a.varname] = -1
+                        #+var_model_view_matrix+"*vec4(tangent,0.0)).xyz;\n"
+                    attribute_asgn += v+".xyz = normalize(("+var_model_view_matrix+"*vec4(tangent.xyz,0)).xyz);\n"
+                    attribute_asgn += v+".w = tangent.w;\n"
+                    @attrib_locs['tangent'] = -1
                 when CD_SHAPE_KEY # shape key
                     num_shapes = a.count
                     for i in [0...num_shapes]
