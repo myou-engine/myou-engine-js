@@ -654,25 +654,27 @@ def ob_to_json(ob, scn=None, check_cache=False):
     if rot_mode=='QUATERNION':
         rot = ob.rotation_quaternion
         rot_mode = 'Q'
+    elif rot_mode == 'AXIS_ANGLE':
+        raise Exception('Rotation mode not supported yet')
     else:
         rot = ob.rotation_euler.to_quaternion()
         # 'WARNING: All rotations are converted to quaternions (for now).
-        rot_mode='Q'
+        rot_mode = 'Q'
 
 
-    # Calculate local matrix to extract the hidden
-    # parent matrix, particularly the scale
-
-    m = Matrix()
-    m[0][0],m[1][1],m[2][2] = ob.scale
-    real_local_matrix = (Matrix.Translation(ob.location) * rot.to_matrix().to_4x4() * m)
-    hidden_matrix = ob.matrix_local * real_local_matrix.inverted()
-
-    # Extracting rotation and location from computed local
-    # matrix instead of the real local
-    m3 = ob.matrix_local.to_3x3()
-    rot_mode = 'Q'
-    rot = m3.to_quaternion()
+    # # Calculate local matrix to extract the hidden
+    # # parent matrix, particularly the scale
+    #
+    # m = Matrix()
+    # m[0][0],m[1][1],m[2][2] = ob.scale
+    # real_local_matrix = (Matrix.Translation(ob.location) * rot.to_matrix().to_4x4() * m)
+    # hidden_matrix = ob.matrix_local * real_local_matrix.inverted()
+    #
+    # # Extracting rotation and location from computed local
+    # # matrix instead of the real local
+    # m3 = ob.matrix_local.to_3x3()
+    # rot_mode = 'Q'
+    # rot = m3.to_quaternion()
 
     first_mat = ob.material_slots and ob.material_slots[0].material
 
@@ -704,7 +706,8 @@ def ob_to_json(ob, scn=None, check_cache=False):
         'rot_mode': rot_mode,
         'properties': game_properties,
         'scale': list(ob.scale),
-        'offset_scale': list(hidden_matrix.to_scale()),
+        'offset_scale': [1,1,1],
+        'matrix_parent_inverse': sum(list(map(list, ob.matrix_parent_inverse.transposed())),[]),
         'dimensions': list(ob.dimensions),
         'color' : list(ob.color),
         'parent': parent,
