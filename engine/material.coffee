@@ -515,6 +515,7 @@ class Material
             # if ext
             #     console.log  '\n' + ext.getTranslatedShaderSource(vertex_shader)).split('\n')
             gl.deleteShader vertex_shader
+            @context.MYOU_PARAMS.on_shader_failed?()
             (material_promises[@name]?.functions.reject or console_error)(error_msg)
             return
 
@@ -532,6 +533,7 @@ class Material
             # if ext
             #     console.log  '\n' + ext.getTranslatedShaderSource(fragment_shader)).split('\n')
             gl.deleteShader fragment_shader
+            @context.MYOU_PARAMS.on_shader_failed?()
             (material_promises[@name]?.functions.reject or console_error)(error_msg)
             return
 
@@ -556,6 +558,7 @@ class Material
             gl.deleteProgram prog
             gl.deleteShader vertex_shader
             gl.deleteShader fragment_shader
+            @context.MYOU_PARAMS.on_shader_failed?()
             (material_promises[@name]?.functions.reject or console_error)(error_msg)
             return
 
