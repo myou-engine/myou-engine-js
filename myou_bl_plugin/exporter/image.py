@@ -55,7 +55,8 @@ def export_images(dest_path, used_data):
 
     # For compatibility with old .blends you need to add
     # 'skip_texture_conversion' to the active scene
-    skip_conversion = bpy.context.scene.get('skip_texture_conversion')
+    scene = bpy.context.scene
+    skip_conversion = scene.get('skip_texture_conversion')
 
     for image in used_data['images']:
         if image.source == 'VIEWER':
@@ -182,12 +183,14 @@ def export_images(dest_path, used_data):
             raise Exception('Image source not supported: ' + image.name + ' source: ' + image.source)
         
         # Embed all images that are 64x64 or lower, and delete the files
-        # TODO: make configurable
+        # To change the default 64x64, add an 'embed_max_size' property
+        # to the scene, set the value (as integer) and a max range >= the value
+        # (if you don't change the max range, the final value used gets clamped)
         files_to_delete = set()
         for fmt, datas in image_info['formats'].items():
             for data in datas:
                 if fmt in ['png', 'jpeg'] and \
-                        max(data['width'],data['height']) <= 64 and \
+                        max(data['width'],data['height']) <= scene.get('embed_max_size', 64) and \
                         data.get('file_name', None):
                     exported_path = os.path.join(dest_path, data['file_name'])
                     data['data_uri'] = file_path_to_data_uri(exported_path, fmt)
