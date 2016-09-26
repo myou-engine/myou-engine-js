@@ -97,7 +97,7 @@ class Events
                 touch.touch_target = touch.target = t.target
                 @touch.touch_events[touch.id] = touch
             @touch.touches = event.touches.length
-        
+
         if enable_touch
             root_element.addEventListener 'touchstart', touch_start, false
 
@@ -242,6 +242,7 @@ class Events
             # until then, we'll have 1 or -1
             mouse.wheel += Math.max(-1, Math.min(1, event.deltaY))
             if mouse.cancel_wheel
+                event.stopPropagation()
                 event.preventDefault()
         root_element.addEventListener 'wheel', wheel, false
 
