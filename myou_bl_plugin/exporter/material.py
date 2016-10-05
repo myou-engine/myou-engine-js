@@ -68,8 +68,10 @@ def mat_to_json(mat, scn):
     parts = shader['fragment'].rsplit('}',2)
     if not SHADER_LIB:
         SHADER_LIB = "#extension GL_OES_standard_derivatives : enable\n"\
+        +"#ifdef GL_ES\n"\
         +"precision highp float;\n"\
-        +"precision highp int;\n"+(parts[0]+'}')\
+        +"precision highp int;\n"\
+        +"#endif\n"+(parts[0]+'}')\
         .replace('gl_ModelViewMatrixInverse','mat4(1)')\
         .replace('gl_ModelViewMatrix','mat4(1)')\
         .replace('gl_ProjectionMatrixInverse','mat4(1)')\
@@ -89,8 +91,8 @@ def mat_to_json(mat, scn):
         .replace('''/* These are needed for high quality bump mapping */
 #version 130
 #extension GL_ARB_texture_query_lod: enable
-        #open('/tmp/shader_lib','w').write(SHADER_LIB)
 #define BUMP_BICUBIC''','').replace('\r','')
+        #open('/tmp/shader_lib','w').write(SHADER_LIB)
         try:
             import shader_lib_filter, imp
             imp.reload(shader_lib_filter)
