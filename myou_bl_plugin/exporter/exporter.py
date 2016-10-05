@@ -299,7 +299,7 @@ def ob_to_json(ob, scn=None, check_cache=False):
             return d
 
         print('\nExporting object', ob.name)
-        data = convert(ob, sort=True)
+        data = convert(ob, sort=bool(ob.get('sort_mesh', True)))
         tris_count = loads(ob.data['export_data']).get('tris_count',0)
         # copying conditions in mesh.py
         # because of linked meshes
