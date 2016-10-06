@@ -78,10 +78,11 @@ ConvexShape = (vertices, vstride, scale, margin)->
     shape = new Ammo.btConvexHullShape
     p = shape.ptr
     i = 0
+    last = vlen-1
     for i in [0...vlen]
         j = i*vstride
         _tmp_Vector3.setValue vertices[j], vertices[j+1], vertices[j+2]
-        shape.addPoint _tmp_Vector3
+        shape.addPoint _tmp_Vector3, i==last
     _tmp_Vector3.setValue scale[0], scale[1], scale[2]
     shape.setLocalScaling _tmp_Vector3
     shape.setMargin margin
@@ -311,7 +312,7 @@ make_ghost = (body, is_ghost)->
 
 colliding_bodies = (body)->
     ret = []
-    p = body.ptr
+    p = body.ptr or body.getPtr()
     dispatcher = scene.world.getDispatcher()
     for i in [0...dispatcher.getNumManifolds()]
         m = dispatcher.getManifoldByIndexInternal(i)
@@ -521,13 +522,15 @@ ray_intersect_body_absolute = (scene, rayfrom, rayto, int_mask)->
         # TODO optim: check if the pointers of members of callback are always the same
         cob = callback.get_m_collisionObject()
 
-        p = hit_point.ptr>>2
-        n = hit_normal.ptr>>2
-
-        return [_phy_obs_ptrs[cob.ptr],
-                new Float32Array(Ammo.HEAPF32.subarray(p,p+3)),
-                new Float32Array(Ammo.HEAPF32.subarray(n,n+3))]
-
+        if cob.ptr
+            p = hit_point.ptr>>2
+            n = hit_normal.ptr>>2
+            return [_phy_obs_ptrs[cob.ptr],
+                    new Float32Array(Ammo.HEAPF32.subarray(p,p+3)),
+                    new Float32Array(Ammo.HEAPF32.subarray(n,n+3))]
+        return [_phy_obs_ptrs[cob.getPtr()],
+            vec3.create(hit_point.x(), hit_point.y(), hit_point.z()),
+            vec3.create(hit_normal.x(), hit_normal.y(), hit_normal.z())]
     return null
 
 ray_intersect_body_bool = (scene, rayfrom, rayto, mask)->

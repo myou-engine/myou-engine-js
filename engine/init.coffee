@@ -5,7 +5,8 @@ window.requestAnimationFrame =
     window.requestAnimationFrame or\
     window.mozRequestAnimationFrame or\
     window.webkitRequestAnimationFrame or\
-    window.msRequestAnimationFrame
+    window.msRequestAnimationFrame or\
+    window.setImmediate
 
 window.cancelAnimationFrame =
     window.cancelAnimationFrame or\
@@ -13,7 +14,7 @@ window.cancelAnimationFrame =
     window.webkitCancelAnimationFrame or\
     window.msCancelAnimationFrame
 
-eproto = HTMLElement.prototype
+eproto = HTMLElement?.prototype or {}
 
 eproto.requestPointerLock =
     eproto.requestPointerLock or\

@@ -36,7 +36,7 @@ class Myou
 
         # The root element needs to be positioned, so the mouse events (layerX/Y) are
         # registered correctly, and the canvas is scaled inside
-        if getComputedStyle(root).position == 'static'
+        if getComputedStyle?(root).position == 'static'
             root.style.position = 'relative'
 
         #The canvas could be inside other element (root) used to get the mouse events

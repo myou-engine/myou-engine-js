@@ -476,8 +476,10 @@ class Material
         # TODO: find which uniform
         # has conflicting precision between VS and FS in ANGLE/win32
         @vs_code = vs = data.vertex or """
+        #ifdef GL_ES
         precision highp float;
         precision highp int;
+        #endif
         uniform mat4 """+var_model_view_matrix+""";
         uniform mat4 projection_matrix;
         uniform mat3 normal_matrix;
@@ -570,8 +572,8 @@ class Material
         @u_uv_multiplier = gl.getUniformLocation prog, "uv_multiplier"
         @u_group_id = gl.getUniformLocation prog, "group_id"
         @u_mesh_id = gl.getUniformLocation prog, "mesh_id"
-        gl.uniform1f @u_shape_multiplier, @shape_multiplier
-        gl.uniform1f @u_uv_multiplier, @uv_multiplier
+        @u_shape_multiplier? and gl.uniform1f @u_shape_multiplier, @shape_multiplier
+        @u_uv_multiplier? and gl.uniform1f @u_uv_multiplier, @uv_multiplier
 
         # these getUniformLocation may yield null
         @u_inv_model_view_matrix = gl.getUniformLocation prog, var_inv_model_view_matrix
