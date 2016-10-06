@@ -1,4 +1,7 @@
-if(process.browser){
+if ((typeof window === "undefined" || window === null) && typeof global !== "undefined") {
+    global.window = global;
+}
+if(process.browser || process.android){
     //Webpack code
     if(!window.fetch){
         require('whatwg-fetch');
