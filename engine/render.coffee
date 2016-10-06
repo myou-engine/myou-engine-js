@@ -25,7 +25,10 @@ class RenderManager
                 canvas.parentNode.replaceChild iecanvas, canvas
                 canvas = iecanvas
                 gl = canvas.getContext("webgl", glflags) or canvas.getContext("experimental-webgl", glflags)
-
+        
+        if not gl
+            gl = window.WebGL
+        
         if not gl
             context.MYOU_PARAMS.on_webgl_failed?()
             throw "Error: Can't start WebGL"
@@ -430,15 +433,15 @@ class RenderManager
 
             for lavars in mat.lamps
                 lamp = lavars[0]
-                gl.uniform3fv lavars[1], lamp._view_pos
-                gl.uniform3fv lavars[2], lamp.color
+                lavars[1]? and gl.uniform3fv lavars[1], lamp._view_pos
+                lavars[2]? and gl.uniform3fv lavars[2], lamp.color
                 # if gl.getError() != gl.NO_ERROR:
                 #     console.error('Error with', mesh.name, mat.name)
-                gl.uniform4fv lavars[3], lamp._color4
-                gl.uniform1f lavars[4], lamp.falloff_distance
-                gl.uniform3fv lavars[5], lamp._dir
-                gl.uniformMatrix4fv lavars[6], false, lamp._cam2depth
-                gl.uniform1f lavars[7], lamp.energy
+                lavars[3]? and gl.uniform4fv lavars[3], lamp._color4
+                lavars[4]? and gl.uniform1f lavars[4], lamp.falloff_distance
+                lavars[5]? and gl.uniform3fv lavars[5], lamp._dir
+                lavars[6]? and gl.uniformMatrix4fv lavars[6], false, lamp._cam2depth
+                lavars[7]? and gl.uniform1f lavars[7], lamp.energy
 
             for i in [0...mat.textures.length]
                 tex = mat.textures[i]
@@ -474,7 +477,7 @@ class RenderManager
                     mat.shape_multiplier = amesh.shape_multiplier
                     gl.uniform1f mat.u_shape_multiplier, amesh.shape_multiplier
 
-            if amesh.uv_multiplier != mat.uv_multiplier
+            if mat.u_uv_multiplier? and amesh.uv_multiplier != mat.uv_multiplier
                 mat.uv_multiplier = amesh.uv_multiplier
                 gl.uniform1f mat.u_uv_multiplier, amesh.uv_multiplier
 
@@ -516,21 +519,22 @@ class RenderManager
                 mat4.multiply m4, @_world2cam, mesh2world
                 gl.uniformMatrix4fv mat.u_model_view_matrix, false, m4
                 mat3.multiply m3, @_world2cam3, mesh.normal_matrix
-                gl.uniformMatrix3fv mat.u_normal_matrix, false, m3
-                if flip_normals
-                    gl.frontFace 2304 # gl.CW
-                    gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
-                    gl.frontFace 2305 # gl.CCW
-                else
-                    gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
-            if mirrors & 178
-                mat4.multiply m4, @_world2cam_mx, mesh2world
-                gl.uniformMatrix4fv mat.u_model_view_matrix, false, m4
-                mat3.multiply m3, @_world2cam3_mx, mesh.normal_matrix
-                gl.uniformMatrix3fv mat.u_normal_matrix, false, m3
-                gl.frontFace 2304 # gl.CW
+                if mat.u_normal_matrix?
+                    gl.uniformMatrix3fv mat.u_normal_matrix, false, m3
+                # if flip_normals
+                #     gl.frontFace 2304 # gl.CW
+                #     gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
+                #     gl.frontFace 2305 # gl.CCW
+                # else
                 gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
-                gl.frontFace 2305 # gl.CCW
+            # if mirrors & 178
+            #     mat4.multiply m4, @_world2cam_mx, mesh2world
+            #     gl.uniformMatrix4fv mat.u_model_view_matrix, false, m4
+            #     mat3.multiply m3, @_world2cam3_mx, mesh.normal_matrix
+            #     gl.uniformMatrix3fv mat.u_normal_matrix, false, m3
+            #     gl.frontFace 2304 # gl.CW
+            #     gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
+            #     gl.frontFace 2305 # gl.CCW
             ## TODO: Enable in debug mode, silence after n errors
             # error = gl.getError()
             # if error != gl.NO_ERROR

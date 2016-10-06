@@ -5,7 +5,7 @@
 {Camera} = require './camera.coffee'
 {Lamp} = require './lamp.coffee'
 {Mesh} = require './mesh.coffee'
-{Scene, get_scene} = require './scene.coffee'
+{Scene} = require './scene.coffee'
 {Curve} = require './curve.coffee'
 {GameObject} = require './gameobject.coffee'
 {Armature} = require './armature.coffee'
@@ -266,6 +266,8 @@ load_object = (data, scene) ->
     ob.rotation_order = data.rot_mode
     vec3.copy ob.scale, data.scale
     vec3.copy ob.offset_scale, data.offset_scale
+    # if data.matrix_parent_inverse?
+    #     mat4.copy ob.matrix_parent_inverse, data.matrix_parent_inverse
     ob.visible = data.visible
     ob.mirrors = data.mirrors or 1
     vec3.copy ob.dimensions, data.dimensions # is this used outside physics?
@@ -302,29 +304,32 @@ load_object = (data, scene) ->
 load_physics_engine = ()->
     # Add promise if it doesn't exist yet (to be used by any engine instance)
     if not window.global_ammo_promise
-        window.global_ammo_promise = new Promise (resolve, reject) ->
-            check_ammo_is_loaded = ->
-                if not Ammo?
-                    if window.Module?.allocate
-                        reject("There was an error initializing physics")
-                    else
-                        setTimeout(check_ammo_is_loaded, 300)
-                else
-                    resolve()
-            setTimeout(check_ammo_is_loaded, 300)
-
-        script = document.createElement 'script'
-        script.type = 'text/javascript'
-        script.async = true
-
-        if process.browser
-            physics_engine_url = require("file?name=/libs/ammo.asm.js!./libs/ammo.asm.js")
+        if Ammo?
+            window.global_ammo_promise = Promise.resolve()
         else
-            dirname =  __dirname.replace(/\\/g, '/')
-            physics_engine_url = 'file://' + dirname + "/libs/ammo.asm.js"
+            window.global_ammo_promise = new Promise (resolve, reject) ->
+                check_ammo_is_loaded = ->
+                    if not Ammo?
+                        if window.Module?.allocate
+                            reject("There was an error initializing physics")
+                        else
+                            setTimeout(check_ammo_is_loaded, 300)
+                    else
+                        resolve()
+                setTimeout(check_ammo_is_loaded, 300)
 
-        script.src = physics_engine_url
-        document.body.appendChild script
+            script = document.createElement 'script'
+            script.type = 'text/javascript'
+            script.async = true
+
+            if process.browser
+                physics_engine_url = require("file?name=/libs/ammo.asm.js!./libs/ammo.asm.js")
+            else
+                dirname =  __dirname.replace(/\\/g, '/')
+                physics_engine_url = 'file://' + dirname + "/libs/ammo.asm.js"
+
+            script.src = physics_engine_url
+            document.body.appendChild script
 
     # Callback for when the engine has loaded
     # (will be executed immediately if the promise was already resolved)

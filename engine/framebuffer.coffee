@@ -103,7 +103,7 @@ class Framebuffer
         ## unless we enable preserveDrawingBuffer but may be inefficient
         #render_manager.gl.scissor(left, top, size_x, size_y)
         Framebuffer.active_rect = [left, top, size_x, size_y]
-
+        
     disable: ->
         {gl} = @context.render_manager
         gl.bindFramebuffer gl.FRAMEBUFFER, null
@@ -136,5 +136,6 @@ class MainFramebuffer extends Framebuffer
     constructor: (@context)->
         # sizes set in render_manager.resize()
         @framebuffer = null
+        @is_complete = true
 
 module.exports = {Framebuffer, MainFramebuffer}

@@ -444,7 +444,7 @@ class GameObject
             for i in [0...materials.length]
                 mat = materials[i] = materials[i].clone_to_scene scene
 
-        scene.add_object n, @name
+        scene?.add_object n, @name
         if @body
             n.body = null
             n.instance_physics @_use_visual_mesh

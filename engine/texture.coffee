@@ -17,6 +17,9 @@
 # }
 # Look at image.py in the exporter for more info.
 
+if not Image?
+    getPixels = require 'get-pixels/node-pixels.js'
+    
 class Texture
     constructor: (@context, tex_data) ->
         @type = 'TEXTURE'
@@ -72,17 +75,46 @@ class Texture
                 return @promise
             @promised_data = data
             @promise = new Promise (resolve, reject) =>
-                @image = new Image
-                @image.onload = =>
-                    @context.main_loop.add_frame_callback =>
-                        {@width, @height} = @image
-                        @type = 'image'
+                if getPixels?
+                    type = 'image/png'
+                    if jpeg
+                        type = 'image/jpeg'
+                    f = data.file_name+(new Error).stack.split('\n')[1]
+                    # TODO Move out of here
+                    if AndroidReadFile? and not data.data_uri and base[0] != '/'
+                        data.data_uri = Buffer.from(AndroidReadFile(base + data.file_name))
+                    # get-pixels expects a file uri, an url, a data uri or a node buffer
+                    getPixels data.data_uri or (base + data.file_name), type, (err, pixels) =>
+                        if err?
+                            return reject "Image not found: " + (data.file_name or @name)
+                        @buffers = [pixels.data.buffer]
+                        [@width, @height] = pixels.shape
+                        @type = 'buffers'
+                        @gl_format = @gl_internal_format = gl.RGBA
+                        @gl_type = gl.UNSIGNED_BYTE
+                        # flip vertically
+                        pixels = new Uint32Array(@buffers[0])
+                        line = new Uint32Array(@width)
+                        for i in [0...@height>>1]
+                            line1 = pixels.subarray @width*i, @width*(i+1)
+                            line2 = pixels.subarray @width*(@height-i-1), @width*(@height-i)
+                            line.set line1
+                            line1.set line2
+                            line2.set line
                         @restore() #TODO: use @upload and @configure instead when possible
                         resolve @
-                @image.onerror = =>
-                    # TODO: Distinguish between not found, timeout and malformed?
-                    reject "Image not found: " + (data.file_name or @name)
-                @image.src = data.data_uri or (base + data.file_name)
+                else
+                    @image = new Image
+                    @image.onload = =>
+                        @context.main_loop.add_frame_callback =>
+                            {@width, @height} = @image
+                            @type = 'image'
+                            @restore() #TODO: use @upload and @configure instead when possible
+                            resolve @
+                    @image.onerror = =>
+                        # TODO: Distinguish between not found, timeout and malformed?
+                        reject "Image not found: " + (data.file_name or @name)
+                    @image.src = data.data_uri or (base + data.file_name)
         else if rgb565?
             # TODO: Test this part
             # NOTE: Assuming a single element in the list
