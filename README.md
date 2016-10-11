@@ -1,7 +1,6 @@
 # Myou
 
-Myou is a __game engine for web__, it features an __editor based on Blender__
-(It will be added soon).
+Myou is a __game engine for web__, it currently features an __editor based on Blender__.
 
 It is built as a platform with __collaborative__ groups in mind, enabling a fast working environment which allows editing, prototyping, testing and also deployment of both __2D__ and __3D__ interactive content.
 
@@ -35,6 +34,7 @@ multiple instances of the engine.
 
 
 ## Future features
+* Myou Editor which will include: Scenes editor, material editor, Logic editor, assets manager, animations manager.
 * Physics: Cannon.js and Box2D engines will be suported soon.
 * Debug server with live update of all scene data within Blender.
 * 2D tools with SVG group separation for animation.
@@ -171,24 +171,8 @@ We are working on the documentation. It will be added soon.
 Try it from:
 <http://pixelements.net/myou/examples/>
 
-To run the example locally, you can choose one of these two alternatives:
+You can clone our [myou-examples](https://github.com/myou-engine/myou-examples) repository and run the examples locally.
 
-1. From the browser using __Webpack__
-
-    ```
-    cd [myou-engine]/examples/[example]
-    webpack
-    node run_server.js
-    ```
-
-    Alternatively, you can configure your browser to allow file access to avoid using the server.
-
-2. Natively using __Electron__
-
-    ```
-    cd [myou-engine]/examples/[example]
-    node electron_launcher.js
-    ```
 
 ## Feedback
 
