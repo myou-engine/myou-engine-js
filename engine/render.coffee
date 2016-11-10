@@ -303,11 +303,11 @@ class RenderManager
             if pose.position and @context.use_VR_position
                 vec3.copy @viewports[0].camera.position, pose.position
                 vec3.copy @viewports[1].camera.position, pose.position
-            # else if pose.orientation and nm
-            #     vec3.transformQuat nm.neck, nm.orig_neck, pose.orientation
-            #     nm.neck[2] -= nm.orig_neck[2]
-            #     vec3.copy @viewports[0].camera.position, nm.neck
-            #     vec3.copy @viewports[1].camera.position, nm.neck
+            else if pose.orientation and nm
+                vec3.transformQuat nm.neck, nm.orig_neck, pose.orientation
+                nm.neck[2] -= nm.orig_neck[2]
+                vec3.copy @viewports[0].camera.position, nm.neck
+                vec3.copy @viewports[1].camera.position, nm.neck
             if pose.orientation
                 quat.copy @viewports[0].camera.rotation, pose.orientation
                 quat.copy @viewports[1].camera.rotation, pose.orientation
