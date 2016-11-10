@@ -41,6 +41,16 @@ exports.init = (scene, options={}) ->
             ctx._HMD = HMD
             if options.use_VR_position?
                 ctx.use_VR_position = options.use_VR_position
+            # if options.neck_model?
+            #     nm = ctx.neck_model = options.neck_model
+            #
+            #     nq = quat.fromValues 0,0,0,1
+            #     vec3.rotateX nq, nq, nm.angle
+            #
+            #     nm.orig_neck = vec3.fromValues 0,0,nm.length
+            #     vec3.transformQuat nm.orig_neck, nm.orig_neck, nq
+            #     nm.neck = vec3.copy vec3.create(), nm.orig_neck
+
             viewport1 = null
             for v,i in ctx.render_manager.viewports
                 if v.camera == scene.active_camera
@@ -88,7 +98,7 @@ exports.init = (scene, options={}) ->
                         exit(ctx)
             resolve()
         .catch reject
-            
+
 exports.exit = exit = (ctx=this) ->
     if ctx._HMD
         # TODO: detect the proper viewport, undo changes
@@ -99,4 +109,3 @@ exports.exit = exit = (ctx=this) ->
         v.camera = v.camera.scene.active_camera
         ctx.render_manager.resize(window.innerWidth, window.innerHeight)
         ctx._HMD = null
-    

@@ -25,10 +25,10 @@ class RenderManager
                 canvas.parentNode.replaceChild iecanvas, canvas
                 canvas = iecanvas
                 gl = canvas.getContext("webgl", glflags) or canvas.getContext("experimental-webgl", glflags)
-        
+
         if not gl
             gl = window.WebGL
-        
+
         if not gl
             context.MYOU_PARAMS.on_webgl_failed?()
             throw "Error: Can't start WebGL"
@@ -117,7 +117,7 @@ class RenderManager
             depth_texture: gl.getExtension "WEBGL_depth_texture"
         if @no_s3tc
             @extensions['compressed_texture_s3tc'] = null
-        
+
         @has_float_fb_support = false
         if @extensions.texture_float?
             @has_float_fb_support = true
@@ -161,12 +161,12 @@ class RenderManager
         gl.bindTexture gl.TEXTURE_2D, tex
         gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,0,0])
         gl.bindTexture gl.TEXTURE_2D, null
-        
+
         @quad = gl.createBuffer()
         gl.bindBuffer gl.ARRAY_BUFFER, @quad
         gl.bufferData gl.ARRAY_BUFFER, new(Float32Array)([0,1,0,0,0,0,1,1,0,1,0,0]), gl.STATIC_DRAW
         gl.bindBuffer gl.ARRAY_BUFFER, null
-        
+
         @uniform_functions = [
             (l,v) -> gl.uniform1f l,v
             (l,v) -> gl.uniform1f l,v
@@ -298,13 +298,19 @@ class RenderManager
         {_HMD} = @context
         if _HMD?
             pose = _HMD.getPose()
+            nm = @context.neck_model
+
             if pose.position and @context.use_VR_position
                 vec3.copy @viewports[0].camera.position, pose.position
                 vec3.copy @viewports[1].camera.position, pose.position
+            # else if pose.orientation and nm
+            #     vec3.transformQuat nm.neck, nm.orig_neck, pose.orientation
+            #     nm.neck[2] -= nm.orig_neck[2]
+            #     vec3.copy @viewports[0].camera.position, nm.neck
+            #     vec3.copy @viewports[1].camera.position, nm.neck
             if pose.orientation
                 quat.copy @viewports[0].camera.rotation, pose.orientation
                 quat.copy @viewports[1].camera.rotation, pose.orientation
-
 
         for viewport in @viewports when viewport.camera.scene.enabled
             if viewport.compositor_enabled
@@ -364,9 +370,9 @@ class RenderManager
         if amesh.materials.length != amesh.material_names.length
             amesh.configure_materials()
             return
-        
+
         flip_normals = mesh.scale[0]*mesh.scale[1]*mesh.scale[2] < 0
-        
+
         # Main routine for each submesh
         submesh_idx = -1
 
