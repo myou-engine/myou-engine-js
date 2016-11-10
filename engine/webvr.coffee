@@ -1,5 +1,5 @@
 
-{vec3, vec4} = require 'gl-matrix'
+{vec3, vec4, quat} = require 'gl-matrix'
 
 exports.has_HMD = ->
     ctx = this
@@ -18,6 +18,14 @@ exports.has_HMD = ->
             if not HMD?
                 return reject "No HMDs detected."
             resolve true
+
+set_neck_model = exports.set_neck_model = (ctx, nm) ->
+    ctx.neck_model = nm
+    nq = quat.fromValues 0,0,0,1
+    quat.rotateX nq, nq, -nm.angle*Math.PI/180 # deg to rad
+    nm.orig_neck = vec3.fromValues 0,nm.length, 0
+    vec3.transformQuat nm.orig_neck, nm.orig_neck, nq
+    nm.neck = vec3.copy vec3.create(), nm.orig_neck
 
 exports.init = (scene, options={}) ->
     ctx = scene.context
@@ -41,15 +49,8 @@ exports.init = (scene, options={}) ->
             ctx._HMD = HMD
             if options.use_VR_position?
                 ctx.use_VR_position = options.use_VR_position
-            # if options.neck_model?
-            #     nm = ctx.neck_model = options.neck_model
-            #
-            #     nq = quat.fromValues 0,0,0,1
-            #     vec3.rotateX nq, nq, nm.angle
-            #
-            #     nm.orig_neck = vec3.fromValues 0,0,nm.length
-            #     vec3.transformQuat nm.orig_neck, nm.orig_neck, nq
-            #     nm.neck = vec3.copy vec3.create(), nm.orig_neck
+            if options.neck_model?
+                set_neck_model ctx, options.neck_model
 
             viewport1 = null
             for v,i in ctx.render_manager.viewports
