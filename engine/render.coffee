@@ -303,7 +303,7 @@ class RenderManager
         @triangles_drawn = 0
         @meshes_drawn = 0
         {_HMD} = @context
-        if _HMD?
+        if _HMD?.isPresenting
             pose = _HMD.getPose()
             nm = @context.neck_model
 
