@@ -8,6 +8,11 @@ _active_program = null
 
 console_error = console.error.bind(console)
 
+## Run this in blender to get these constants:
+# print('\n'.join(sorted([" '%i': '%s',"%(v,k)
+# for k,v in gpu.__dict__.items()
+# if isinstance(v,int)])))
+
 gpu_constants =
  '0': 'GPU_DYNAMIC_NONE',
  '131072': 'GPU_DYNAMIC_GROUP_LAMP',
@@ -132,6 +137,22 @@ class ShadingParams
         @specular_hardness = params.specular_hardness
         @emit = params.emit
         @alpha = params.alpha
+        @uniforms =
+            diffcol: null
+            diffint: null
+            speccol: null
+            specint: null
+            hardness: null
+            emit: null
+            alpha: null
+        @vars =
+            diffcol: ""
+            diffint: ""
+            speccol: ""
+            specint: ""
+            hardness: ""
+            emit: ""
+            alpha: ""
 
 class Material
     # data is an object with:
@@ -163,8 +184,9 @@ class Material
         if @context.all_materials.indexOf(@) == -1
             @context.all_materials.push @
         {@name, uniforms, attributes, params=[]} = data
+        @shading_params_dict = {}
         @shading_params = for p in params
-            new ShadingParams p
+            @shading_params_dict[p.name] = new ShadingParams p
         gl = @context.render_manager.gl
         @textures = []
         @uv_layer_attribs = {} #name of attribute for each uv layer
@@ -190,13 +212,6 @@ class Material
         var_strand = ""
         var_strand_type = "float"
         var_ambient = ""
-        var_diffcol = ""
-        var_diffint = ""
-        var_speccol = ""
-        var_specint = ""
-        var_hardness = ""
-        var_emit = ""
-        var_alpha = ""
         var_mistcol = ""
         var_mistdist = ""
         var_mistenable = ""
@@ -204,6 +219,7 @@ class Material
         var_miststart = ""
         var_misttype = ""
         var_custom = []
+        zero_var = []
         last_lamp = null
 
         for u in uniforms or []
@@ -291,19 +307,19 @@ class Material
                 when GPU_DYNAMIC_AMBIENT_COLOR
                     var_ambient = u.varname
                 when GPU_DYNAMIC_MAT_DIFFRGB
-                    var_diffcol = u.varname
+                    @shading_params_dict[u.material].vars.diffcol = u.varname
                 when GPU_DYNAMIC_MAT_REF
-                    var_diffint = u.varname
+                    @shading_params_dict[u.material].vars.diffint = u.varname
                 when GPU_DYNAMIC_MAT_SPECRGB
-                    var_speccol = u.varname
+                    @shading_params_dict[u.material].vars.speccol = u.varname
                 when GPU_DYNAMIC_MAT_SPEC
-                    var_specint = u.varname
+                    @shading_params_dict[u.material].vars.specint = u.varname
                 when GPU_DYNAMIC_MAT_HARD
-                    var_hardness = u.varname
+                    @shading_params_dict[u.material].vars.hardness = u.varname
                 when GPU_DYNAMIC_MAT_EMIT
-                    var_emit = u.varname
+                    @shading_params_dict[u.material].vars.emit = u.varname
                 when GPU_DYNAMIC_MAT_ALPHA
-                    var_alpha = u.varname
+                    @shading_params_dict[u.material].vars.alpha = u.varname
                 when GPU_DYNAMIC_MIST_COLOR
                     var_mistcol = u.varname
                 when GPU_DYNAMIC_MIST_DISTANCE
@@ -324,7 +340,12 @@ class Material
                 when undefined # custom
                     var_custom.push u.varname
                 else
-                    console.log u
+                    if u.datatype < 6
+                        zero_var.push {
+                            name: u.varname
+                            type: ['0','1i','1f','2fv','3fv','4fv'][u.datatype]
+                            data: [0,0,0,[0,0],[0,0,0],[0,0,0,0]][u.datatype]}
+                    # console.log u
                     console.log "Warning: unknown uniform", u.varname, \
                         gpu_constants[u.type] or u.type, "of data type", \
                         ['0','1i','1f','2f','3f','4f','m3','m4','4ub'][u.datatype]
@@ -583,13 +604,15 @@ class Material
         @u_fb_size = gl.getUniformLocation prog, "fb_size"
         @u_strand = gl.getUniformLocation prog, var_strand
         @u_ambient = gl.getUniformLocation prog, var_ambient
-        @u_diffcol = gl.getUniformLocation prog, var_diffcol
-        @u_diffint = gl.getUniformLocation prog, var_diffint
-        @u_speccol = gl.getUniformLocation prog, var_speccol
-        @u_specint = gl.getUniformLocation prog, var_specint
-        @u_hardness = gl.getUniformLocation prog, var_hardness
-        @u_emit = gl.getUniformLocation prog, var_emit
-        @u_alpha = gl.getUniformLocation prog, var_alpha
+        for params in @shading_params
+            params.uniforms.diffcol = gl.getUniformLocation prog, params.vars.diffcol
+            params.uniforms.diffint = gl.getUniformLocation prog, params.vars.diffint
+            params.uniforms.speccol = gl.getUniformLocation prog, params.vars.speccol
+            params.uniforms.specint = gl.getUniformLocation prog, params.vars.specint
+            params.uniforms.hardness = gl.getUniformLocation prog, params.vars.hardness
+            params.uniforms.emit = gl.getUniformLocation prog, params.vars.emit
+            params.uniforms.alpha = gl.getUniformLocation prog, params.vars.alpha
+        
         @u_mistcol = gl.getUniformLocation prog, var_mistcol
         @u_mistdist = gl.getUniformLocation prog, var_mistdist
         @u_mistenable = gl.getUniformLocation prog, var_mistenable
@@ -607,6 +630,8 @@ class Material
         @u_custom = []
         for v in var_custom
             @u_custom.push gl.getUniformLocation(prog, v)
+        for v in zero_var
+            gl['uniform'+v.type](gl.getUniformLocation(prog, v.name), v.data)
 
         fb = @context.render_manager.common_filter_fb
         if fb and @u_fb_size?

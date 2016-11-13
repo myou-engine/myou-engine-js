@@ -88,10 +88,30 @@ def mat_to_json(mat, scn):
         .replace('gl_LightSource[i].halfVector','vec3(0,0,0)')\
         .replace('float rad[4], fac;', 'float rad[4];float fac;')\
         .replace('(normalize(vec).z + 1)', '(normalize(vec).z + 1.0)') \
+        .replace('strength * v1 + (1 - strength) * v2', 'strength * v1 + (1.0 - strength) * v2') \
+        .replace('int(x) - ((x < 0) ? 1 : 0)', 'int(x) - ((x < 0.0) ? 1 : 0)') \
+        .replace('return x - i;', 'return x - float(i);') \
+        .replace('(M_PI * 2)', '(M_PI * 2.0)') \
+        .replace('((mod(xi, 2) == mod(yi, 2)) == bool(mod(zi, 2)))', 'true') \
+        .replace('if (depth > 0) {', 'if (depth > 0.0) {') \
+        .replace('if (depth > 1) {', 'if (depth > 1.0) {') \
+        .replace('if (depth > 2) {', 'if (depth > 2.0) {') \
+        .replace('if (depth > 3) {', 'if (depth > 3.0) {') \
+        .replace('if (depth > 4) {', 'if (depth > 4.0) {') \
+        .replace('if (depth > 5) {', 'if (depth > 5.0) {') \
+        .replace('if (depth > 6) {', 'if (depth > 6.0) {') \
+        .replace('if (depth > 7) {', 'if (depth > 7.0) {') \
+        .replace('if (depth > 8) {', 'if (depth > 8.0) {') \
+        .replace('if (depth > 9) {', 'if (depth > 9.0) {') \
+        .replace('fac = 1;', 'fac = 1.0;') \
         .replace('''/* These are needed for high quality bump mapping */
 #version 130
 #extension GL_ARB_texture_query_lod: enable
 #define BUMP_BICUBIC''','').replace('\r','')
+        splits = SHADER_LIB. split('BIT_OPERATIONS', 2)
+        if len(splits) == 3:
+            a,b,c = splits
+            SHADER_LIB = a+'BIT_OPERATIONS\n#endif'+c
         #open('/tmp/shader_lib','w').write(SHADER_LIB)
         try:
             import shader_lib_filter, imp
@@ -103,6 +123,7 @@ def mat_to_json(mat, scn):
 
     shader['fragment'] = ('\n'+parts[1]+'}').replace('sampler2DShadow','sampler2D')\
         .replace('\nin ', '\nvarying ')
+    shader['fragment'] = re.sub(r'[^\x00-\x7f]',r'', shader['fragment'])
 
     # Stuff for debugging shaders
     # TODO write only when they have changed
@@ -222,6 +243,7 @@ def mat_to_json(mat, scn):
         shader['attributes'].append({'type':t, 'count': num_bones, 'varname': ''})
 
     last_lamp = ""
+    param_mats = {}
     for u in shader['uniforms']:
         if 'lamp' in u:
             u['lamp'] = last_lamp = u['lamp'].name
@@ -280,6 +302,9 @@ def mat_to_json(mat, scn):
                 u['type'] = gpu.GPU_DYNAMIC_SAMPLER_2DIMAGE
                 u['size'] = 0
                 del u['texpixels']
+        if 'material' in u:
+            param_mats[u['material'].name] = u['material']
+            u['material'] = u['material'].name
 
     # Engine builds its own vertex shader
     del shader['vertex']
@@ -288,18 +313,18 @@ def mat_to_json(mat, scn):
     shader['name'] = mat.name
     shader['scene'] = scn.name
     
-    # TODO: modify blender to get all uniforms?
-    
     shader['params'] = [
         {
-            'diffuse_color': list(mat.diffuse_color),
-            'diffuse_intensity': mat.diffuse_intensity,
-            'specular_color': list(mat.specular_color),
-            'specular_intensity': mat.specular_intensity,
-            'specular_hardness': mat.specular_hardness,
-            'emit': mat.emit,
-            'alpha': mat.alpha,
+            'name': m.name,
+            'diffuse_color': list(m.diffuse_color),
+            'diffuse_intensity': m.diffuse_intensity,
+            'specular_color': list(m.specular_color),
+            'specular_intensity': m.specular_intensity,
+            'specular_hardness': m.specular_hardness,
+            'emit': m.emit,
+            'alpha': m.alpha,
         }
+        for m in param_mats.values()
     ]
 
     ret = loads(dumps(shader))

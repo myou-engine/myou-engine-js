@@ -410,21 +410,22 @@ class RenderManager
             if mat.u_ambient?
                 gl.uniform4fv mat.u_ambient, mesh.scene.ambient_color
 
-            shading_params = mat.shading_params[0]
-            if mat.u_diffcol?
-                gl.uniform3fv mat.u_diffcol, shading_params.diffuse_color
-            if mat.u_diffint?
-                gl.uniform1f mat.u_diffint, shading_params.diffuse_intensity
-            if mat.u_speccol?
-                gl.uniform3fv mat.u_speccol, shading_params.specular_color
-            if mat.u_specint?
-                gl.uniform1f mat.u_specint, shading_params.specular_intensity
-            if mat.u_hardness?
-                gl.uniform1f mat.u_hardness, shading_params.specular_hardness
-            if mat.u_emit?
-                gl.uniform1f mat.u_emit, shading_params.emit
-            if mat.u_alpha?
-                gl.uniform1f mat.u_alpha, shading_params.alpha
+            for params in mat.shading_params
+                {uniforms: {diffcol,diffint,speccol,specint,hardness,emit,alpha}} = params
+                if diffcol?
+                    gl.uniform3fv diffcol, params.diffuse_color
+                if diffint?
+                    gl.uniform1f diffint, params.diffuse_intensity
+                if speccol?
+                    gl.uniform3fv speccol, params.specular_color
+                if specint?
+                    gl.uniform1f specint, params.specular_intensity
+                if hardness?
+                    gl.uniform1f hardness, params.specular_hardness
+                if emit?
+                    gl.uniform1f emit, params.emit
+                if alpha?
+                    gl.uniform1f alpha, params.alpha
 
             # TODO: would it be better to generate
             # a JS function that is called with all assignments at once?
