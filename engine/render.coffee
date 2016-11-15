@@ -28,6 +28,12 @@ class RenderManager
 
         if not gl
             gl = window.WebGL
+            
+        if not gl
+            # Try disabling multisampling
+            # (Chrome is not following the specification by rejecting to create the context)
+            glflags.antialias = false
+            gl = canvas.getContext("webgl", glflags)
 
         if not gl
             context.MYOU_PARAMS.on_webgl_failed?()
