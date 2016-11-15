@@ -8,9 +8,18 @@ MAX_TASK_DURATION = MAX_FRAME_DURATION * 0.5
 class MainLoop
 
     constructor: (context)->
-        # All milliseconds
+        # All in milliseconds
         @frame_duration = 16
-        @last_frame_durations = [16, 16, 16, 16, 16, 16, 16, 16, 16, 16]
+        # Time from beginning of a tick to the next (including idle time)
+        @last_frame_durations = (new Float32Array(30)).fill(16)
+        # Time it takes for running (logic) JS code
+        @logic_durations = (new Float32Array(30)).fill(16)
+        # Time it takes for physics evaluations
+        @physics_durations = (new Float32Array(30)).fill(16)
+        # Time it takes for evaluating animations and constraints
+        @animation_durations = (new Float32Array(30)).fill(16)
+        # Time it takes for submitting GL commands
+        @render_durations = (new Float32Array(30)).fill(16)
         @_fdi = 0
         @timeout_time = context.MYOU_PARAMS.timeout
         @tasks_per_tick = context.MYOU_PARAMS.tasks_per_tick || 1
@@ -23,6 +32,7 @@ class MainLoop
         @_bound_run = @run.bind @
         @_frame_callbacks = []
         @frame_number = 0
+        @update_fps = null # assign a function to be called every 30 frames
 
     run: ->
         @stopped = false
@@ -93,7 +103,6 @@ class MainLoop
         if not @enabled
             return
         @last_frame_durations[@_fdi] = frame_duration
-        @_fdi = (@_fdi+1) % @last_frame_durations.length
         
         # Limit low speed of logic and physics
         frame_duration = Math.min(frame_duration, MAX_FRAME_DURATION)
@@ -108,20 +117,30 @@ class MainLoop
 
             for p in scene.active_particle_systems
                 p._eval()
+        
+        time2 = performance.now()
 
+        for scene_name in @context.loaded_scenes
             if scene.physics_enabled and (scene.rigid_bodies.length or scene.kinematic_characters.length)
                 get_last_char_phy scene.kinematic_characters
                 step_world scene.world, frame_duration * 0.001
                 phy_to_ob scene.rigid_bodies
+        
+        time3 = performance.now()
+
+        evaluate_all_animations @context, frame_duration
+        
+        time4 = performance.now()
 
         for name, video_texture of @context.video_textures
             #TODO: Optimize updating only the video_textures whose video is being played
             video_texture.update_texture?()
 
-        evaluate_all_animations @context, frame_duration
         # for s in @context.active_sprites
         #     s.evaluate_sprite frame_duration
         @context.render_manager.draw_all()
+
+        time5 = performance.now()
 
         for scene_name in @context.loaded_scenes
             scene = @context.scenes[scene_name]
@@ -130,5 +149,16 @@ class MainLoop
 
         @context.events.reset_frame_events()
         @frame_number += 1
+
+        time6 = performance.now()
+
+        @logic_durations[@_fdi] = (time2 - time) + (time6 - time5)
+        @physics_durations[@_fdi] = time3 - time2
+        @animation_durations[@_fdi] = time4 - time3
+        @render_durations[@_fdi] = time5 - time4
+        @_fdi = (@_fdi+1) % @last_frame_durations.length
+        if @_fdi == 0 and @update_fps
+            @update_fps(@)
+
 
 module.exports = {MainLoop}
