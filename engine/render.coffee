@@ -638,7 +638,8 @@ class RenderManager
         world2cam3_mx = @_world2cam3_mx
         world2light = @_world2light
         # Shift position for stereo VR rendering
-        vec3.transformMat4 cam2world.subarray(12), viewport.eye_shift, cam2world
+        eye_shift = vec3.scale @_v, viewport.eye_shift, vec3.len(cam.world_matrix.subarray(8,11))
+        vec3.transformMat4 cam2world.subarray(12,15), eye_shift, cam2world
 
         mat4.invert world2cam, cam2world
         mat3.fromMat4 world2cam3, world2cam
