@@ -1,5 +1,5 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
-{PhysicsWorld, set_gravity} = require './physics.coffee'
+{PhysicsWorld, set_gravity, remove_body, destroy_world} = require './physics.coffee'
 {load_scene} = require './loader.coffee'
 {fetch_objects} = require './fetch_assets.coffee'
 
@@ -91,7 +91,6 @@ class Scene
         if ob.type=='ARMATURE'
             @armatures.push ob
 
-
     remove_object: (ob, recursive=true)->
         @children.remove ob
         if not ob.static
@@ -125,6 +124,7 @@ class Scene
                 child = l-i-1
                 @remove_object children[i]
         return
+    
     make_parent: (parent, child, keep_transform=true)->
         if child.parent
             @clear_parent child, keep_transform
