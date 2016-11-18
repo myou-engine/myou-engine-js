@@ -73,18 +73,23 @@ def register():
     except:
         pass
     bpy.types.INFO_MT_file_export.append(exporter.menu_export)
+    from . import export_panel
+    export_panel.register()
     updating = False
 
 
 def reload_modules():
     from .exporter import mesh, phy_mesh, image, material
+    from . import export_panel, winutils
     # For reloading changes in all modules when developing
-    for m in [mesh, phy_mesh, image, material, exporter] + \
+    for m in [mesh, phy_mesh, image, material, exporter, winutils, export_panel] + \
             auto_register_modules:
         imp.reload(m)
 
 
 def unregister():
+    from . import export_panel
+    export_panel.unregister()
     bpy.types.INFO_MT_file_export.remove(exporter.menu_export)
     for c in reversed(auto_register_classes):
         try_unregister(c)
