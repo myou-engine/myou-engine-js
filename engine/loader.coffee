@@ -260,14 +260,18 @@ load_object = (data, scene) ->
                 p.formula = (new Function('return ' + p.formula))()
             ob.particle_systems.push {'properties':p}
 
-    vec3.copy ob.position, (data.position or data.pos)
+    if data.position?
+        # current format
+        vec3.copy ob.position, data.position
+        mat4.copy ob.matrix_parent_inverse, data.matrix_parent_inverse
+    else
+        # old format, that may have matrix_parent_inverse but incorrect
+        vec3.copy ob.position, data.pos
     r = data.rot
     quat.set ob.rotation, r[1], r[2], r[3], r[0]
     ob.rotation_order = data.rot_mode
     vec3.copy ob.scale, data.scale
     vec3.copy ob.offset_scale, data.offset_scale
-    if data.matrix_parent_inverse?
-        mat4.copy ob.matrix_parent_inverse, data.matrix_parent_inverse
     ob.visible = data.visible
     ob.mirrors = data.mirrors or 1
     vec3.copy ob.dimensions, data.dimensions # is this used outside physics?
