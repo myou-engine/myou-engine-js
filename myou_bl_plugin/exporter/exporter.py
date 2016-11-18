@@ -701,7 +701,8 @@ def ob_to_json(ob, scn=None, check_cache=False):
         'scene': scn.name,
         'type': obtype,
         'name': ob.name,
-        'pos': list(ob.matrix_local.translation),
+        'pos': list(ob.matrix_local.translation), # legacy (TODO remove when no longer used)
+        'position': list(ob.location),
         'rot': list(rot),
         'rot_mode': rot_mode,
         'properties': game_properties,
