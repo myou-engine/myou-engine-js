@@ -459,7 +459,7 @@ class GameObject
         return n
 
     remove: (recursive) ->
-        @scene.remove_object recursive
+        @scene.remove_object @, recursive
 
     add_animation: (anim_id, action) ->
         if Object.keys(@animations).length == 0
