@@ -38,11 +38,13 @@ class GameObject
         @color = vec4.fromValues 1, 1, 1, 1
         @alpha = 1
         @offset_scale = vec3.fromValues 1, 1, 1
+        @matrix_parent_inverse = mat4.create()
         @scene = null
         @dupli_group = null
         @visible = true
         @_world_position = vec3.create()
         @_sqdist = 0  # Squared distance to camera
+        @_flip = false
         @parent = null
         @children = []
         @static = false
@@ -299,6 +301,12 @@ class GameObject
     _update_matrices:  ->
         rm = @rotation_matrix
         [x, y, z, w] = @rotation
+        scl = @scale
+        @_flip = @parent?._flip or false
+        if scl[0]*scl[1]*scl[2] < 0
+            x=-x
+            w=-w
+            @_flip = not @_flip
         rm[0] = w*w + x*x - y*y - z*z
         rm[1] = 2 * (x * y + z * w)
         rm[2] = 2 * (x * z - y * w)
@@ -318,7 +326,6 @@ class GameObject
         # Parents before children
 
         # TODO: manage negative scales (use abs() here, flip polygons and rotation)
-        scl = @scale
         isx = 1/scl[0]
         isy = 1/scl[1]
         isz = 1/scl[2]
@@ -361,6 +368,7 @@ class GameObject
             ## TODO: make this more efficient, etc
             mat3.mul rm, @parent.rotation_matrix, rm
             mat3.mul nm, @parent.normal_matrix, nm
+            mat4.mul wm, @matrix_parent_inverse, wm
             mat4.mul @world_matrix, @parent.world_matrix, @world_matrix
             #ppos = @parent.world_matrix.subarray 12,15
             #pos = [pos[0] + ppos[0], pos[1] + ppos[1], pos[2] + ppos[2]]
