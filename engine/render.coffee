@@ -616,7 +616,22 @@ class RenderManager
         debug = @debug
         filter_fb = @common_filter_fb
 
-        cam2world = mat4.copy @_cam2world, cam.world_matrix
+        # Create cam2world from camera world matrix but ignoring scale
+        cam_rm = cam.rotation_matrix
+        cam_wm = cam.world_matrix
+        cam2world = @_cam2world
+        cam2world[0] = cam_rm[0]
+        cam2world[1] = cam_rm[1]
+        cam2world[2] = cam_rm[2]
+        cam2world[4] = cam_rm[3]
+        cam2world[5] = cam_rm[4]
+        cam2world[6] = cam_rm[5]
+        cam2world[8] = cam_rm[6]
+        cam2world[9] = cam_rm[7]
+        cam2world[10] = cam_rm[8]
+        cam2world[12] = cam_wm[12]
+        cam2world[13] = cam_wm[13]
+        cam2world[14] = cam_wm[14]
         world2cam = @_world2cam
         world2cam3 = @_world2cam3
         world2cam_mx = @_world2cam_mx
