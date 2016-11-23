@@ -56,48 +56,6 @@ and game consoles will be supported.
 npm install --save myou-engine
 ```
 
-### Install the blender plugin
-The blender plugin is fully supported in __Blender 2.71__.
-__Blender 2.77__ is partially supported and is very unestable.
-We are currently porting the plugin to __Blender 2.78__.
-
-Only the exporter is available on the blender plugin but the live server and other
-tools will be added soon.
-
-To install the blender plugin just copy the __myou_bl_plugin__ folder to the __blender addons__ folder (or link it, see below).
-
-#### Blender addons folders
-
-Windows
-```
-C:\Users\%username%\AppData\Roaming\Blender Foundation\Blender\2.71\scripts\addons
-```
-
-Linux
-```
-/home/$user/.config/blender/$version/scripts/addons
-```
-
-#### (optional) Linking myou_bl_plugin to blender addons folder instead of copying
-
-Windows (cmd)
-```
-mklink /j "%APPDATA%/Blender Foundation/Blender/2.71/scripts/addons/myou_bl_plugin" "[Path to myou_engine]/myou_bl_plugin"
-```
-
-Windows (cygwin)
-```
- cmd /c mklink /j "%APPDATA%/Blender Foundation/Blender/2.71/scripts/addons/myou_bl_plugin" "[Path to myou_engine]/myou_bl_plugin"
-```
-
-Linux
-```
-ln -s "[path to myou_engine]/myou_bl_plugin" "/home/$user/.config/blender/2.71/scripts/addons"
-```
-
-### Export your blender scene
-The exporter is available here: *__File > Export > Myou engine__*
-
 ### Use the package in your code
 The example code in this page was written in coffee-script:
 ```coffee-script
