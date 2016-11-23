@@ -121,16 +121,40 @@ TriangleMeshShape = (vertices, indices, vstride, scale, margin, name)->
     # TODO all this is not deleted
     #pn = performance.now()
     vlen = vertices.length/vstride
-    inds = Ammo._malloc indices.length*4
-    Ammo.HEAPU32.set indices, inds>>2
-    verts = Ammo._malloc vlen*3*4
-    offset = verts>>2
-    HEAPF32 = Ammo.HEAPF32
-    for v in [0...vlen]
-        HEAPF32.set vertices.subarray(v*vstride,v*vstride+3), offset
-        offset += 3
-    mesh = new Ammo.btTriangleIndexVertexArray(indices.length/3, inds, 3*4,
-                                              vertices.length/3, verts, 3*4)
+    if not Ammo._malloc
+        inds = new Uint32Array(indices)
+        verts = new Float32Array(vlen*3)
+        offset = 0
+        for v in [0...vlen]
+            verts.set vertices.subarray(v*vstride,v*vstride+3), offset
+            offset += 3
+        mesh = new Ammo.btTriangleIndexVertexArray(indices.length/3, inds.buffer, 3*4,
+                                                vertices.length/3, verts.buffer, 3*4)
+        mesh.things = [inds, verts] # avoid deleting those
+        # crashes because wrapbtBvhTriangleMeshShape::calculateLocalInertia
+        # is being called for some reason
+        
+        ## another failed attempt below
+        # mesh = new Ammo.btTriangleMesh(true, true)
+        # for i in [0...indices.length] by 3
+        #     v = vertices.subarray(indices[i]*vstride, indices[i]*vstride + 3)
+        #     _tmp_Vector3.setValue v[0], v[1], v[2]
+        #     v = vertices.subarray(indices[i+1]*vstride, indices[i+1]*vstride + 3)
+        #     _tmp_Vector3b.setValue v[0], v[1], v[2]
+        #     v = vertices.subarray(indices[i+2]*vstride, indices[i+2]*vstride + 3)
+        #     _tmp_Vector3c.setValue v[0], v[1], v[2]
+        #     mesh.addTriangle _tmp_Vector3, _tmp_Vector3b, _tmp_Vector3c
+    else
+        inds = Ammo._malloc indices.length*4
+        Ammo.HEAPU32.set indices, inds>>2
+        verts = Ammo._malloc vlen*3*4
+        offset = verts>>2
+        HEAPF32 = Ammo.HEAPF32
+        for v in [0...vlen]
+            HEAPF32.set vertices.subarray(v*vstride,v*vstride+3), offset
+            offset += 3
+        mesh = new Ammo.btTriangleIndexVertexArray(indices.length/3, inds, 3*4,
+                                                vertices.length/3, verts, 3*4)
     shape =  new Ammo.btBvhTriangleMeshShape mesh, true, true
     shape.name = name
     _tmp_Vector3.setValue scale[0], scale[1], scale[2]
