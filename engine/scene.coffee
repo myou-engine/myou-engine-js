@@ -205,14 +205,24 @@ class Scene
         visible_objects = for ob in @children when ob.visible and not ob.data then ob
         return fetch_objects(visible_objects, options).then(=>@)
 
+    load_physics_objects: (options) ->
+        physics_objects = for ob in @children \
+            when not ob.data and /CONVEX_HULL|TRIANGLE_MESH/.test(ob.collision_shape) then ob
+        return fetch_objects(physics_objects, options).then(=>@)
+
+    load_visible_and_physics_objects: (options) ->
+        objects = for ob in @children \
+            when not ob.data and (ob.visible or /CONVEX_HULL|TRIANGLE_MESH/.test(ob.collision_shape)) then ob
+        return fetch_objects(objects, options).then(=>@)
+
     load_all_objects: (options) ->
         # TODO: This may not work the second time is not called.
         # Meshes should always return data's promises
         return fetch_objects(@children, options).then(=>@)
 
     load_objects: (list, options)->
-        if not list
-            throw "No list supplied. Did you mean 'load_all_objects()'?"
+        if not list or not options
+            throw "Invalid arguments, expects (list, options). Did you mean 'load_all_objects()'?"
         # TODO: This may not work the second time is not called.
         # Meshes should always return data's promises
         return fetch_objects(list, options).then(=>@)
@@ -235,3 +245,4 @@ class Scene
 
 
 module.exports = {Scene}
+

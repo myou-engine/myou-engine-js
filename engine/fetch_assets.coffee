@@ -14,7 +14,7 @@ material_promises = {} # {mat_name: promise}
 #     politician
 
 # Loads textures of material (given a name), return a promise
-fetch_textures_of_material = (scene, mat_name) ->
+fetch_textures_of_material = (scene, mat_name, ob_name="") ->
     mat = scene.materials[mat_name]
     if mat
         Promise.all [texture.promise for texture in mat.textures]
@@ -35,7 +35,8 @@ fetch_textures_of_material = (scene, mat_name) ->
                     tex.load()
             )
         else
-            Promise.reject "Couldn't find material '#{mat_name}'"
+            console.warn "Warning: Couldn't find material '#{mat_name}' when trying to load object #{ob_name}"
+            Promise.resolve()
 
 # Load a mesh of a mesh type object, return a promise
 fetch_mesh = (mesh_object, options={}) ->
@@ -116,13 +117,15 @@ fetch_objects = (object_list, options) ->
     for ob in object_list
         if ob.type == 'MESH'
             {scene} = ob
-            ob.visible = true
             promises.push fetch_mesh(ob, options)
             for mat_name in ob.material_names
                 mat = scene.materials[mat_name]
                 # Check if material was already loaded; if it was, we'll assume
                 # it was rendered at this point, even though it may not
                 if not mat
+                    # TODO: add this back when we can ensure
+                    # it is drawn at least once, to force loading into the GPU
+                    ###
                     if scene.enabled and scene.context.main_loop.enabled
                         # TODO: compile material even though is not
                         # going to be used
@@ -133,7 +136,8 @@ fetch_objects = (object_list, options) ->
                                 do (mat_name) -> container = {resolve, reject}
                             promise.functions = container
                         promises.push promise
-                    promises.push fetch_textures_of_material scene, mat_name
+                    ###
+                    promises.push fetch_textures_of_material scene, mat_name, ob.name
 
     Promise.all promises
 
