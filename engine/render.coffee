@@ -116,6 +116,7 @@ class RenderManager
             texture_half_float: gl.getExtension 'OES_texture_half_float'
             texture_half_float_linear: gl.getExtension 'OES_texture_half_float_linear'
             compressed_texture_s3tc: gl.getExtension 'WEBGL_compressed_texture_s3tc'
+            compressed_texture_astc: gl.getExtension 'KHR_texture_compression_astc_ldr' or 'WEBGL_compressed_texture_astc'
             texture_filter_anisotropic: gl.getExtension("EXT_texture_filter_anisotropic") or
                                     gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic") or
                                     gl.getExtension("MOZ_EXT_texture_filter_anisotropic")
