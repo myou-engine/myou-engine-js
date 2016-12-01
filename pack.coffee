@@ -26,7 +26,10 @@ glm = {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require './engine/glmatrix_ex
 {fetch_objects} = require './engine/fetch_assets.coffee'
 {Framebuffer} = require './engine/framebuffer.coffee'
 {Compositor, compositor_shaders} = require './engine/compositor.coffee'
-geom_util = require './engine/geometry.coffee'
+geometry_utils =
+    r2: require './engine/geometry_utils/r2.coffee'
+    r3: require './engine/geometry_utils/r3.coffee'
+
 module.exports = {
     #myou engine
     Myou, create_canvas, load_scene, fetch_objects,
@@ -34,7 +37,7 @@ module.exports = {
     #Game logic
     LogicBlock, sensors, actuators, glm,
     #Extras
-    physics, particles, GLRay, geom_util,
+    physics, particles, GLRay, geometry_utils,
     #Scene data classes
     Action, Group, Viewport, Camera, Lamp, Mesh, Scene,
     Curve, GameObject, Armature, Texture, Material,
