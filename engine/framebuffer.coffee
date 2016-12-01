@@ -1,3 +1,4 @@
+{vec4} = require 'gl-matrix'
 {Filter} = require './filters.coffee'
 
 component_types =
@@ -102,7 +103,7 @@ class Framebuffer
         ## doesn't work for limiting color clearing
         ## unless we enable preserveDrawingBuffer but may be inefficient
         #render_manager.gl.scissor(left, top, size_x, size_y)
-        Framebuffer.active_rect = [left, top, size_x, size_y]
+        vec4.set Framebuffer.active_rect, left, top, size_x, size_y
         
     disable: ->
         {gl} = @context.render_manager
@@ -137,5 +138,7 @@ class MainFramebuffer extends Framebuffer
         # sizes set in render_manager.resize()
         @framebuffer = null
         @is_complete = true
+
+Framebuffer.active_rect = new vec4.create()
 
 module.exports = {Framebuffer, MainFramebuffer}
