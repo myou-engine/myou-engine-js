@@ -42,6 +42,7 @@ class Texture
         @image = null
         @video = null
         @buffers = []
+        @offset = 0
         @gl_format = @gl_internal_format = @gl_type = 0
         if not @name
             debugger
@@ -53,20 +54,37 @@ class Texture
         # for the high res one.
         # When loading a scene, this will be called only once,
         # even when used many times.
-        {gl} = @context.render_manager
+        {gl, extensions} = @context.render_manager
         # # We're using @restore() for now, which does this for us
         # if not @gl_tex?
         #     @gl_tex = gl.createTexture()
         base = @context.MYOU_PARAMS.data_dir + '/textures/'
-        # TODO: Try compressed textures first when they're supported again
-        {jpeg, png, rgb565, mp4, ogv, ogg, webm} = @formats
+        {jpeg, png, rgb565, dxt1, dxt5, etc1, etc2, pvrtc, astc, mp4, ogv, ogg, webm} = @formats
         image_list = jpeg or png
         # TODO!! Select format depending on browser support
         # TODO!! Or add all files as <source> inside the <video>
         video_list = mp4 or ogg or webm
         # (also, if both images and videos are available,
         # should the image be shown until the video starts?)
-        if image_list?[0]
+
+        # Trying formats from best to worst
+        if astc? and extensions.compressed_texture_astc
+            # NOTE: Assuming a single element in the list
+            if @loaded
+                return @promise
+            @promise = new Promise (resolve, reject) =>
+                fetch(base+astc[0].file_name).then((data)->data.arrayBuffer()).then (buffer) =>
+                    console.log "Loading astc texture #{@name}"
+                    @context.main_loop.add_frame_callback =>
+                        {@width, @height} = astc[0]
+                        @type = 'compressed'
+                        @offset = 16
+                        @gl_internal_format = astc[0].format_enum
+                        @buffers = [buffer]
+                        @restore() #TODO: use @upload and @configure instead when possible
+                        resolve @
+                .catch reject
+        else if image_list?[0] #if jpeg or png
             if not @loaded
                 data = image_list[0] # Lowest quality
             else
@@ -120,19 +138,20 @@ class Texture
             # NOTE: Assuming a single element in the list
             if @loaded
                 return @promise
-            @promise = fetch(base+rgb565[0].file_name).then((data)->data.arrayBuffer()).then (buffer) =>
-                @context.main_loop.add_frame_callback =>
-                    # If there's no width or height, assume it's square
-                    {@width, @height} = rgb565
-                    @type = 'buffers'
-                    @gl_format = @gl_internal_format = gl.RGB
-                    @gl_type = gl.UNSIGNED_SHORT_5_6_5
-                    if not @width or not @height
-                        @width = @height = Math.sqrt(buffer.byteLength>>1)
-                    @buffers = [buffer]
-                    @restore() #TODO: use @upload and @configure instead when possible
-                    resolve @
-            .catch reject
+            @promise = new Promise (resolve, reject) =>
+                fetch(base+rgb565[0].file_name).then((data)->data.arrayBuffer()).then (buffer) =>
+                    @context.main_loop.add_frame_callback =>
+                        # If there's no width or height, assume it's square
+                        {@width, @height} = rgb565[0]
+                        @type = 'buffers'
+                        @gl_format = @gl_internal_format = gl.RGB
+                        @gl_type = gl.UNSIGNED_SHORT_5_6_5
+                        if not @width or not @height
+                            @width = @height = Math.sqrt(buffer.byteLength>>1)
+                        @buffers = [buffer]
+                        @restore() #TODO: use @upload and @configure instead when possible
+                        resolve @
+                .catch reject
         else if video_list?[0]
             # TODO: Will we need more than one video data?
             data = video_list[0]
@@ -207,9 +226,9 @@ class Texture
             when 'compressed'
                 for buffer, i in @buffers
                     gl.compressedTexImage2D(gl.TEXTURE_2D, i, @gl_internal_format,
-                        @width>>i, @height>>i, 0, new Uint8Array(@buffers[0]))
+                        @width>>i, @height>>i, 0, new Uint8Array(@buffers[0], @offset))
                 if @buffers.length == 1 and @use_mipmap
-                    gl.generateMipmap gl.TEXTURE_2D
+                    console.error "Compressed texture #{@name} doesn't have requested mipmaps."
             when 'image'
                 gl.pixelStorei gl.UNPACK_FLIP_Y_WEBGL, true
                 # TODO: Use gl.RGB when there's no alpha? Would other format be better?
@@ -298,3 +317,5 @@ get_texture_from_path_legacy = (name, path, filter, wrap, file_size=0, context) 
     return tex
 
 module.exports = {Texture, get_texture_from_path_legacy}
+
+
