@@ -109,11 +109,13 @@ class MainLoop
 
         for scene_name in @context.loaded_scenes
             scene = @context.scenes[scene_name]
-            for callback in scene.pre_draw_callbacks
-                callback scene, frame_duration
+            i = scene.pre_draw_callbacks.length+1
+            while --i != 0
+                scene.pre_draw_callbacks[scene.pre_draw_callbacks.length-i] scene, frame_duration
 
-            for logic_tick in scene.logic_ticks
-                logic_tick frame_duration
+            i = scene.logic_ticks.length+1
+            while --i != 0
+                scene.logic_ticks[scene.logic_ticks.length-i] frame_duration
 
             for p in scene.active_particle_systems
                 p._eval()
@@ -144,8 +146,9 @@ class MainLoop
 
         for scene_name in @context.loaded_scenes
             scene = @context.scenes[scene_name]
-            for f in scene.post_draw_callbacks
-                f scene, frame_duration
+            i = scene.post_draw_callbacks.length+1
+            while --i != 0
+                scene.post_draw_callbacks[scene.post_draw_callbacks.length-i] scene, frame_duration
 
         @context.events.reset_frame_events()
         @frame_number += 1
