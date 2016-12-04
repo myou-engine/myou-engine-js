@@ -207,12 +207,14 @@ class Scene
 
     load_physics_objects: (options) ->
         physics_objects = for ob in @children \
-            when not ob.data and /CONVEX_HULL|TRIANGLE_MESH/.test(ob.collision_shape) then ob
+            when not ob.data and \
+                ob.physics_type!='NO_COLLISION' and /CONVEX_HULL|TRIANGLE_MESH/.test(ob.collision_shape) then ob
         return fetch_objects(physics_objects, options).then(=>@)
 
     load_visible_and_physics_objects: (options) ->
         objects = for ob in @children \
-            when not ob.data and (ob.visible or /CONVEX_HULL|TRIANGLE_MESH/.test(ob.collision_shape)) then ob
+            when not ob.data and (ob.visible or \
+                (ob.physics_type!='NO_COLLISION' and /CONVEX_HULL|TRIANGLE_MESH/.test(ob.collision_shape))) then ob
         return fetch_objects(objects, options).then(=>@)
 
     load_all_objects: (options) ->
