@@ -118,7 +118,7 @@ fetch_objects = (object_list, options) ->
         if ob.type == 'MESH'
             {scene} = ob
             promises.push fetch_mesh(ob, options)
-            for mat_name in ob.material_names
+            for mat_name in ob.material_names or []
                 mat = scene.materials[mat_name]
                 # Check if material was already loaded; if it was, we'll assume
                 # it was rendered at this point, even though it may not
