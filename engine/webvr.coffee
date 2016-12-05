@@ -23,7 +23,7 @@ exports.has_HMD = ->
                     break
             if not HMD?
                 return reject "No HMDs detected."
-            resolve true
+            resolve displays
 
 set_neck_model = exports.set_neck_model = (ctx, nm) ->
     ctx.neck_model = nm
