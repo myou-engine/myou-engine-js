@@ -154,6 +154,8 @@ class ShadingParams
             emit: ""
             alpha: ""
 
+id = 0
+
 class Material
     # data is an object with:
     # * vertex: string with vertex shader code
@@ -181,6 +183,7 @@ class Material
     #   }
     #   There are two implicit vec3 attributes: vertex, vnormal.
     constructor: (@context, data, @scene) ->
+        @id = id++
         if @context.all_materials.indexOf(@) == -1
             @context.all_materials.push @
         {@name, uniforms, attributes, params=[]} = data

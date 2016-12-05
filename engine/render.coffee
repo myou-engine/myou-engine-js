@@ -158,6 +158,7 @@ class RenderManager
         gl.depthFunc gl.LEQUAL
         gl.enable gl.CULL_FACE
         gl.cullFace gl.BACK
+        @flip = false
         @cull_face_enabled = true
         # Not premultiplied alpha textures
         gl.blendFunc gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA
@@ -379,6 +380,11 @@ class RenderManager
             return
 
         flip_normals = mesh._flip
+        if @flip != flip_normals
+            if (@flip = flip_normals)
+                gl.frontFace 2304 # gl.CW
+            else
+                gl.frontFace 2305 # gl.CCW
 
         # Main routine for each submesh
         submesh_idx = -1
@@ -535,11 +541,6 @@ class RenderManager
                 mat3.multiply m3, @_world2cam3, mesh.normal_matrix
                 if mat.u_normal_matrix?
                     gl.uniformMatrix3fv mat.u_normal_matrix, false, m3
-                if flip_normals
-                    gl.frontFace 2304 # gl.CW
-                    gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
-                    gl.frontFace 2305 # gl.CCW
-                else
                     gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
             # if mirrors & 178
             #     mat4.multiply m4, @_world2cam_mx, mesh2world
@@ -744,6 +745,7 @@ class RenderManager
 
         # PASS 0  (solid objects)
         if passes.indexOf(0) >= 0
+            scene.mesh_passes[0].sort sort_by_mat_id
             for ob in scene.mesh_passes[0]
                 if ob.visible == true and not ob.bg and not ob.fg
                     @draw_mesh(ob, ob.world_matrix, 0)
@@ -1018,6 +1020,11 @@ class Debug
         return mesh
 
 #TODO: TimSort
+
+sort_by_mat_id = (a,b) ->
+    id_a = (a.materials[0]?.id) + a._flip<<30 # boolean coerced into 1 or 0
+    id_b = (b.materials[0]?.id) + b._flip<<30
+    id_a - id_b
 
 module.exports = {
     RenderManager,
