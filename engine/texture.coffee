@@ -260,7 +260,8 @@ class Texture
         # and add a global switch
         ext = extensions.texture_filter_anisotropic
         if @context.MYOU_PARAMS.anisotropic_filter and ext
-            gl.texParameterf gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, 4
+            # TODO: detect max anisotropy, make configurable
+            gl.texParameterf gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT or 0x84FE, 4
         wrap_const = {'C': gl.CLAMP_TO_EDGE, 'R': gl.REPEAT, 'M': gl.MIRRORED_REPEAT}[@wrap[0]]
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap_const
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap_const
