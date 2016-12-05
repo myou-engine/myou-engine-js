@@ -93,10 +93,13 @@ exports.init = (scene, options={}) ->
             # TODO: fix frustum culling in VR
             ctx.render_manager.use_frustum_culling = false
             if myou._HMD.capabilities.canPresent
-                HMD.requestPresent [{source: ctx.canvas}]
-                window.addEventListener 'vrdisplaypresentchange', ->
+                window.addEventListener 'click', f = ->
                     if not display.isPresenting
-                        exit(ctx)
+                        HMD.requestPresent [{source: ctx.canvas}]
+                        window.addEventListener 'vrdisplaypresentchange', ->
+                            if not display.isPresenting
+                                exit(ctx)
+                    window.removeEventListener 'click', f
             resolve()
         .catch reject
 
