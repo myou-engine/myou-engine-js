@@ -168,9 +168,6 @@ class GameObject
                 data = ob.data
 
                 if not data?
-                    console.warn """Warning: mesh #{@name} is not loaded for physics.
-                    Use scene.load_visible_and_physics_objects() or scene.physics_objects().
-                    This deprecation warning will be removed next version."""
                     return
 
                 if is_hull

@@ -124,7 +124,7 @@ class Scene
                 child = l-i-1
                 @remove_object children[i]
         return
-    
+
     make_parent: (parent, child, keep_transform=true)->
         if child.parent
             @clear_parent child, keep_transform
@@ -206,15 +206,26 @@ class Scene
         return fetch_objects(visible_objects, options).then(=>@)
 
     load_physics_objects: (options) ->
-        physics_objects = for ob in @children \
-            when not ob.data and \
-                ob.physics_type!='NO_COLLISION' and /CONVEX_HULL|TRIANGLE_MESH/.test(ob.collision_shape) then ob
+        physics_objects = []
+        for ob in @children
+            if not ob.data and ob.physics_type!='NO_COLLISION'\
+            and /CONVEX_HULL|TRIANGLE_MESH/.test(ob.collision_shape)
+                physics_objects.push ob
+                phy = ob.physics_mesh
+                if phy and not phy.data
+                    physics_objects.push phy
+
         return fetch_objects(physics_objects, options).then(=>@)
 
     load_visible_and_physics_objects: (options) ->
-        objects = for ob in @children \
-            when not ob.data and (ob.visible or \
-                (ob.physics_type!='NO_COLLISION' and /CONVEX_HULL|TRIANGLE_MESH/.test(ob.collision_shape))) then ob
+        objects = []
+        for ob in @children
+            if not ob.data and (ob.visible or (ob.physics_type!='NO_COLLISION'\
+            and /CONVEX_HULL|TRIANGLE_MESH/.test(ob.collision_shape)))
+                objects.push ob
+                phy = ob.physics_mesh
+                if phy and not phy.data
+                    objects.push phy
         return fetch_objects(objects, options).then(=>@)
 
     load_all_objects: (options) ->
@@ -247,4 +258,3 @@ class Scene
 
 
 module.exports = {Scene}
-
