@@ -82,6 +82,32 @@ window.range = (start, stop, step=1) ->
         i += step
     return r
 
+# Warn if overriding existing method
+if Array::equals
+    console.warn("Overriding existing Array.prototype.equals. Possible causes: New API defines the method, there's a framework conflict or you've got double inclusions in your code.");
+
+# attach the .equals method to Array's prototype to call it on any array
+Array::equals = (array)->
+    # if the other array is a falsy value, return
+    if not array
+        return false
+    # compare lengths - can save a lot of time
+    if @length != array.length
+        return false
+    for i in [0...@length]
+        # Check if we have nested arrays
+        if @[i] instanceof Array && array[i] instanceof Array
+            # recurse into the nested arrays
+            if not @[i].equals array[i]
+                return false
+        else if @[i] != array[i]
+            # Warning - two different object instances will never be equal: {x:20} != {x:20}
+            return false
+    return true
+
+# Hide method from for-in loops
+Object.defineProperty(Array.prototype, "equals", {enumerable: false});
+
 window.KEYS = {
     CANCEL: 3, HELP: 6, BACK_SPACE: 8, TAB: 9, CLEAR: 12,
     RETURN: 13, ENTER: 14, SHIFT: 16, CONTROL: 17, ALT: 18,
