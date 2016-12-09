@@ -418,9 +418,12 @@ class GameObject
             p = p.parent
         return [pos, rot]
 
-    clone: (scene=this.scene) ->
+    clone: (scene=this.scene, recursive=false) ->
         n = Object.create @
-        n.children = @children[...]
+        if recursive
+            n.children = for child in @children then child.clone(scene, true)
+        else
+            n.children = []
         n.position = vec3.clone @position
         n.rotation = vec4.clone @rotation
         n.scale = vec3.clone @scale
