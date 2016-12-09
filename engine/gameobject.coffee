@@ -49,7 +49,7 @@ class GameObject
         @children = []
         @static = false
         @world_matrix = mat4.create()
-        @rotation_matrix = mat3.create() # not used elsewhere
+        @rotation_matrix = mat3.create()
         @normal_matrix = mat3.create()
         @_m3 = mat3.create()
         @custom_uniform_values = []
@@ -364,6 +364,7 @@ class GameObject
                 mat4.mul(@world_matrix, bone.ol_matrix, @world_matrix)
 
             ## TODO: make this more efficient, etc
+            ## TODO TODO: Rotation and normal matrices are incorrect, esp after scaling parents and having matrix_parent_inverse
             mat3.mul rm, @parent.rotation_matrix, rm
             mat3.mul nm, @parent.normal_matrix, nm
             mat4.mul wm, @matrix_parent_inverse, wm
@@ -385,38 +386,26 @@ class GameObject
         vec3.add(@bounding_box_high, @position, dim_half)
 
 
-    # TODO: make property
-    get_world_position: (out) ->
-        p = @parent
-        pos = vec3.copy @_world_position, @position
-        while p
-            vec3.mul pos, pos, p.scale
-            vec3.transformQuat pos, pos, p.rotation
-            vec3.add pos, pos, p.position
-            p = p.parent
-        return pos
+    get_world_position: (out=vec3.create()) ->
+        return vec3.copy out, @get_world_matrix().subarray(12,15)
 
-    # TODO: make property
-    get_world_rotation: (out)  ->
-        p = @parent
-        rot = quat.copy(out or quat.create(), @rotation)
-        while p
-            quat.mul rot, p.rotation, rot
-            p = p.parent
-        return rot
+    get_world_rotation: (out=quat.create())  ->
+        # TODO: would it be more efficient to convert
+        # matrix_parent_inverse into a quat?
+        wm = @get_world_matrix()
+        quat.fromMat3 out, mat3.fromMat4(mat3.create(), wm)
+
 
     get_world_pos_rot: ->
-        p = @parent
-        pos = vec3.clone @position
-        rot = quat.clone @rotation
-        while p
-            vec3.mul pos, pos, p.scale
-            vec3.transformQuat pos, pos, p.rotation
-            vec3.add pos, pos, p.position
-            quat.mul rot, p.rotation, rot
-
-            p = p.parent
+        wm = @get_world_matrix()
+        pos = vec3.clone(wm.subarray(12,15))
+        rot = quat.fromMat3 quat.create(), mat3.fromMat4(mat3.create(), wm)
         return [pos, rot]
+
+    get_world_matrix: ->
+        @parent?.get_world_matrix()
+        @_update_matrices()
+        return @world_matrix
 
     clone: (scene=this.scene, recursive=false) ->
         n = Object.create @
