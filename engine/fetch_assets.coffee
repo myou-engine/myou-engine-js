@@ -86,7 +86,7 @@ fetch_mesh = (mesh_object, options={}) ->
             if mesh_data
                 # It was loaded before, replace if not the same
                 if mesh_object.data != mesh_data
-                    mesh_object.data.remove mesh_object
+                    mesh_object.data?.remove mesh_object
                     mesh_object.data = mesh_data
                     mesh_object.data.users.push mesh_object
                 resolve(mesh_object)
