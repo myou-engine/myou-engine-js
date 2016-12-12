@@ -16,9 +16,6 @@
 #     ]
 # }
 # Look at image.py in the exporter for more info.
-
-if not Image?
-    getPixels = require 'get-pixels/node-pixels.js'
     
 class Texture
     constructor: (@context, tex_data) ->
