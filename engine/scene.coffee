@@ -137,7 +137,7 @@ class Scene
             quat.mul rot, p_rot, rot
         child.parent = parent
         parent.children.push child
-        if @children.indexOf(parent) > @children.indexOf(child)
+        if @auto_updated_children.indexOf(parent) > @auto_updated_children.indexOf(child)
             # When this is set to false, reorder_children() is called
             # in render_manager.draw_viewport
             @_children_are_ordered = false
@@ -155,19 +155,15 @@ class Scene
         '''Makes sure all scene children are in order for correct matrix calculations'''
         # TODO: Only the objects marked as unordered need to be resolved here!
         #       (make a new list and append to children)
-        children = @children
-
-        reorder = (ob,index)->
-            children[index++] = ob
-            for c in ob.children
-                reorder c, index
-
+        children = @auto_updated_children
         index = 0
-        objects = @objects
-        for name, ob of objects
-            if not ob.parent
-                reorder ob, index
-
+        reorder = (ob)->
+            if not ob.static
+                children[index++] = ob
+            for c in ob.children
+                reorder c
+        for ob of @children when not ob.parent
+            reorder ob
         @_children_are_ordered = true
 
     load: ->
