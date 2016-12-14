@@ -234,7 +234,7 @@ class GLRay
                         gl.uniform1f(mat.u_mesh_id, mat.mesh_id)
                     mesh2world = mesh.world_matrix
                     data = mesh.last_lod_object?.data or mesh.data
-                    for submesh_idx in [0...data.vertex_buffers.length]
+                    for submesh_idx in [0...data.attrib_pointers.length]
                         gl.bindBuffer(gl.ARRAY_BUFFER, data.vertex_buffers[submesh_idx])
                         # vertex attribute
                         attr = data.attrib_pointers[submesh_idx][0]
@@ -295,23 +295,15 @@ class GLRay
         return
 
     single_step_pick_object: (x, y) ->
-        # @pixels.fill(128)
         {gl} = @context.render_manager
         @step = 0
         coords = @get_byte_coords(x, y)
         @buffer.enable()
-        # TODO! TODO! Render only one pixel
-        # scissor is not scissoring and readPixels is off by one!!
-        # gl.scissor(coords.x, coords.y, 8, 8)
+        # TODO! Render/capture only one pixel?
         @do_step()
-        while @step != @render_steps + @wait_steps - 1
+        while @step != 0
             @do_step()
-        @step = 0
         @rounds += 2
-        # gl.readPixels(coords.x, coords.y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE,
-        #     @pixels.subarray(coords.index, coords.index+4))
-        gl.readPixels(0, 0, @width, @height, gl.RGBA, gl.UNSIGNED_BYTE, @pixels)
-        # gl.scissor(0, 0, @width, @height)
         @debug_xy x,y
         @pick_object(x, y)
 
