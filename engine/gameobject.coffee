@@ -502,4 +502,4 @@ class GameObject
     set_altmesh: (index) ->
         set_altmesh @,index
 
-module.exports = {GameObject, STransform}
+module.exports = {GameObject}
