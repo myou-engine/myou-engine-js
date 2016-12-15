@@ -299,6 +299,18 @@ class GameObject
     _update_matrices:  ->
         rm = @rotation_matrix
         [x, y, z, w] = @rotation
+        if @rotation_order != 'Q'
+            q = quat.create()
+            for i in [2..0] by -1
+                switch @rotation_order[i]
+                    when 'X'
+                        quat.rotateX q, q, x
+                    when 'Y'
+                        quat.rotateY q, q, y
+                    when 'Z'
+                        quat.rotateZ q, q, z
+            [x, y, z, w] = q
+
         scl = @scale
         @_flip = @parent?._flip or false
         if scl[0]*scl[1]*scl[2] < 0
