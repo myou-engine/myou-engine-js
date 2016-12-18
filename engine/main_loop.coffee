@@ -11,15 +11,15 @@ class MainLoop
         # All in milliseconds
         @frame_duration = 16
         # Time from beginning of a tick to the next (including idle time)
-        @last_frame_durations = (new Float32Array(30)).fill(16)
+        (@last_frame_durations = new Float32Array(30)).fill?(16)
         # Time it takes for running (logic) JS code
-        @logic_durations = (new Float32Array(30)).fill(16)
+        (@logic_durations = new Float32Array(30)).fill?(16)
         # Time it takes for physics evaluations
-        @physics_durations = (new Float32Array(30)).fill(16)
+        (@physics_durations = new Float32Array(30)).fill?(16)
         # Time it takes for evaluating animations and constraints
-        @animation_durations = (new Float32Array(30)).fill(16)
+        (@animation_durations = new Float32Array(30)).fill?(16)
         # Time it takes for submitting GL commands
-        @render_durations = (new Float32Array(30)).fill(16)
+        (@render_durations = new Float32Array(30)).fill?(16)
         @_fdi = 0
         @timeout_time = context.MYOU_PARAMS.timeout
         @tasks_per_tick = context.MYOU_PARAMS.tasks_per_tick || 1
