@@ -47,7 +47,7 @@ load_scene = (name, filter, use_physics, context) ->
 
 load_datablock = (scene, data, context) ->
     # TODO: This has grown a little too much
-    # We should use a map with functions instead of so many ifs...
+    # We should use switch
     if data.type=='SCENE'
         scene.set_gravity data.gravity
         vec3.copy(scene.background_color, data.background_color)
@@ -80,7 +80,7 @@ load_datablock = (scene, data, context) ->
         window.eval data.code
 
     else if data.type=='ACTION'
-        context.actions[data.name] = new Action data.name, data.channels, data.markers
+        context.actions[data.name] = new Action data.name, data.channels, data.markers, scene
 
     else if data.type=='EMBED_MESH'
         context.embed_meshes[data.hash] = data

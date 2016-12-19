@@ -7,7 +7,7 @@ sensors = require './engine/sensors.coffee'
 actuators = require './engine/actuators.coffee'
 glm = {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require './engine/glmatrix_extra.coffee'
 # Main classes (not to be used directly when loading scene files)
-{Action} = require './engine/animation.coffee'
+{Action, Animation, LoopedAnimation, FiniteAnimation} = require './engine/animation.coffee'
 {Group} = require './engine/group.coffee'
 {Viewport} = require './engine/viewport.coffee'
 {Camera} = require './engine/camera.coffee'
@@ -38,7 +38,9 @@ module.exports = {
     LogicBlock, sensors, actuators, glm,
     #Extras
     physics, particles, GLRay, geometry_utils,
+    #Animation
+    Action, Animation, LoopedAnimation, FiniteAnimation,
     #Scene data classes
-    Action, Group, Viewport, Camera, Lamp, Mesh, Scene,
+    Group, Viewport, Camera, Lamp, Mesh, Scene,
     Curve, GameObject, Armature, Texture, Material,
 }

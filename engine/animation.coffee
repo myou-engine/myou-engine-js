@@ -13,7 +13,7 @@ class Action
     # 'pose', bone_name, 'location', [...]
     # 'shape', shape_name, '', [[keys]]
 
-    constructor: (name, channels, markers={})->
+    constructor: (name, channels, markers={}, @scene)->
         @name = name
         @channels = {}
         @markers = markers
@@ -37,6 +37,7 @@ class Action
         ret_vec = []
         for ch in @channels[channel_path][3]
             # Format:
+            # Every keyframe has a left handle, a point and a right handle
             #  0    1    2    3    4    5  ;  6    7    8    9
             # lhX, lhY, p_X, p_Y, rhX, rhY ; lhX, lhY, p_X, p_Y, ...
             #            0    1    2    3     4    5    6    7
@@ -67,25 +68,74 @@ class Action
 # An animation is a group of actions (usually one of them) with settings
 # such as start, end, fade in/out, etc.
 class Animation
+    constructor: (@action) ->
+        # Position in animation frames, usually assigned in update(),
+        # used when evaluating the animation
+        @pos = 0
+        # Final factor is calculated from weight and fade in/out
+        # usually in update(), and used when evaluating the animation.
+        # Multiplies all values of each channel
+        # and it's normalized with other animations playing the same channel
+        # so the final factor of all animations combined will always be <= 1
+        @final_factor = 1
+        # Owner is set in ob.add_animation()
+        # used when evaluating the animation
+        @owner = null
+        # Set and used when evaluating the animation to calculate frame_delta
+        @last_eval = performance.now()
+        # All the rest are only used in update()
+        @speed = 0
+        @weight = 1
+        @blendin_total = 0
+        @blendout_total = 0
+        @blendin_remaining = 0
+        @blendout_remaining = 0
+        # Set start_frame and end_frame
+        # from markers (if any) or from scene
+        {markers, sorted_markers, scene} = @action
+        @start_frame = markers['start']
+        if not @start_frame?
+            @start_frame = sorted_markers[0]?.frame
+        if not @start_frame?
+            @start_frame = scene.frame_start
 
-    action : null
-    speed : 0
-    pos : 0
-    weight : 1
-    factor : 1
-    blendin_total : 0
-    blendout_total : 0
-    blendin_remaining : 0
-    blendout_remaining : 0
-    owner : null
+        @end_frame = markers['end']
+        if not @end_frame?
+            @end_frame = sorted_markers[sorted_markers.length-1]?.frame
+        if not @end_frame?
+            @end_frame = scene.frame_end
+
+    update: (frame_delta) ->
+        @pos += frame_delta * @speed
+
+class LoopedAnimation extends Animation
+    update: (frame_delta) ->
+        @pos += frame_delta * @speed
+        if @pos > @end_frame
+            @pos = @start_frame + (@pos - @end_frame)
+
+class FiniteAnimation extends Animation
+    update: (frame_delta) ->
+        @pos += frame_delta * @speed
+        if @pos > @end_frame
+            @pos = @end_frame
+            @speed = 0
+
 
 evaluate_all_animations = (context, frame_duration_ms)->
 
     for ob in context.all_anim_objects
 
-        blended = []  # [orig_chan, final blend, total weight]
+        # Update all animations
+        now = performance.now()
+        for k,anim of ob.animations
+            delta = now - anim.last_eval
+            anim.update(delta * 0.001 * ob.scene.anim_fps)
+            anim.last_eval = now
 
         for path of ob.affected_anim_channels
+            # First, iterate through all animations
+            # to accumulate the result for this chanel
             blend = null
             weight = 0
             type = name = prop = ''
@@ -94,7 +144,7 @@ evaluate_all_animations = (context, frame_duration_ms)->
                 if not orig_chan
                     continue
                 v = anim.action.get path, anim.pos
-                w = anim.weight * anim.factor
+                w = anim.final_factor
                 for i in [0...v.length]
                     v[i] *= w
                 if not blend?
@@ -106,12 +156,11 @@ evaluate_all_animations = (context, frame_duration_ms)->
                     for i in [0...blend.length]
                         blend[i] += v[i]
                 weight += w
-            blended.push [type, name, prop, blend, weight]
 
-        for chan in blended
-            type = chan[0]
-            name = chan[1]
-            prop = chan[2]
+            # Then, apply the result to the object
+            is_quat = prop == 'rotation'
+            if prop == 'rotation_euler'
+                prop = 'rotation'
             if type == 'object'
                 target = ob
             else if type == 'pose'
@@ -121,9 +170,9 @@ evaluate_all_animations = (context, frame_duration_ms)->
                 prop = name
             else
                 console.log "Unknown channel type:", type
-            v = chan[3]
-            wi = Math.max(1 - chan[4], 0)
-            wo = 1 / Math.max(chan[4], 1)
+            v = blend
+            wi = Math.max(1 - weight, 0)
+            wo = 1 / Math.max(weight, 1)
             if v.length == 1
                 v = v[0]
                 target[prop] = (target[prop]*wi) + v*wo
@@ -131,26 +180,9 @@ evaluate_all_animations = (context, frame_duration_ms)->
                 p = target[prop]
                 for j in [0...v.length]
                     p[j] = p[j]*wi + v[j]*wo
-                if prop == 'rotation'
+                if is_quat
                     quat.normalize p, p
             i += 1
-
-        for anim_id of ob.animations
-            anim = ob.animations[anim_id]
-            s = anim.speed * frame_duration_ms * 0.001 * (anim.fps or ob.scene.anim_fps)
-            anim.pos += s
-            if s == 0
-                #ob.del_animation(anim_id)
-                continue
-            bo_r = anim.blendout_remaining
-            if bo_r > 0
-                bo_r -= frame_factor
-                if bo_r <= 0
-                    #ob.del_animation(anim_id)
-                    pass
-                else
-                    anim.blendout_remaining = bo_r
-                    anim.weight = bo_r / anim.blendout_total
 
         update_ob_physics ob
 
@@ -254,4 +286,6 @@ solve_roots = (x, p0, p1, p2, p3, s) ->
 akEq = (v) ->
     return v >= -0.000000119209290 and v < 1+0.000000119209290
 
-module.exports = {Action, Animation, evaluate_all_animations, stop_all_animations}
+module.exports = {
+    Action, Animation, LoopedAnimation, FiniteAnimation,
+    evaluate_all_animations, stop_all_animations}
