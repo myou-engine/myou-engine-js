@@ -463,14 +463,30 @@ class GameObject
     remove: (recursive) ->
         @scene.remove_object @, recursive
 
-    add_animation: (anim_id, action) ->
-        if Object.keys(@animations).length == 0
+    add_animation: (animation, name, options={}) ->
+        if typeof animation == 'string'
+            console.error "Deprecated use of add_animation. See documentation for details."
+            action = name
+            name = animation
+            animation = new Animation action
+        has_animations = false
+        for _ of @animations
+            has_animations = true
+            break
+        if not has_animations
             @scene.context.all_anim_objects.push @
-        anim = @animations[anim_id] = new Animation
-        anim.action = action
-        anim.owner = @
+        old_animation = @animations[name]
+        if old_animation?
+            i = 0
+            while @animations[old_name = name+'.'+i]
+                i++
+            @animations[old_name] = old_animation
+            # TODO: old_animation.fadeout if not fading
+            @del_animation old_name
+        @animations[name] = animation
+        animation.owner = @
         @_recalc_affected_channels()
-        return anim
+        return animation
 
     del_animation: (anim_id) ->
         #console.log 'removing',anim_id
