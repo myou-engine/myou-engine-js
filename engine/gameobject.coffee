@@ -54,6 +54,7 @@ class GameObject
         @_m3 = mat3.create()
         @custom_uniform_values = []
         @properties = {}
+        @animation_strips = []
         @animations = {}
         @name = null
         @original_name = null
@@ -484,7 +485,6 @@ class GameObject
             # TODO: old_animation.fadeout if not fading
             @del_animation old_name
         @animations[name] = animation
-        animation.owner = @
         @_recalc_affected_channels()
         return animation
 
