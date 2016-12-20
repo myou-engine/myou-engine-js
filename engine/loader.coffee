@@ -278,6 +278,7 @@ load_object = (data, scene) ->
     ob.radius = vec3.len(ob.dimensions) * 0.5
     ob.properties = data.properties or {}
     ob.actions = data.actions or []
+    ob.animation_strips = data.animation_strips or []
     ob.physics_type = data.phy_type
     if context.use_physics
         ob.physical_radius = data.radius

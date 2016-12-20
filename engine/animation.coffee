@@ -1,5 +1,3 @@
-actions = {}
-animations = {}
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 {update_ob_physics} = require './physics.coffee'
 
@@ -65,10 +63,34 @@ class Action
                 ret_vec.push v
         return ret_vec
 
+class Strip
+    constructor: (@object, data) ->
+        {
+            @extrapolation
+            @blend_type
+            @frame_start
+            @frame_end
+            @blend_in
+            @blend_out
+            @reversed
+            action
+            @action_frame_start
+            @action_frame_end
+            @scale
+            @repeat
+        } = data
+        @action = @object.context.actions[action]
+
+
 # An animation is a group of actions (usually one of them) with settings
 # such as start, end, fade in/out, etc.
 class Animation
-    constructor: (@action) ->
+    constructor: (objects, options) ->
+        {exclude=[], start_marker, end_marker} = options or {}
+        @strips = []
+        for ob in objects
+            for strip in ob.animation_strips
+                @strips.push new Strip(ob, strip)
         # Position in animation frames, usually assigned in update(),
         # used when evaluating the animation
         @pos = 0
@@ -78,9 +100,6 @@ class Animation
         # and it's normalized with other animations playing the same channel
         # so the final factor of all animations combined will always be <= 1
         @final_factor = 1
-        # Owner is set in ob.add_animation()
-        # used when evaluating the animation
-        @owner = null
         # Set and used when evaluating the animation to calculate frame_delta
         @last_eval = performance.now()
         # All the rest are only used in update()
@@ -92,29 +111,34 @@ class Animation
         @blendout_remaining = 0
         # Set start_frame and end_frame
         # from markers (if any) or from scene
-        {markers, sorted_markers, scene} = @action
-        @start_frame = markers['start']
-        if not @start_frame?
-            @start_frame = sorted_markers[0]?.frame
-        if not @start_frame?
-            @start_frame = scene.frame_start
+        {markers, frame_start, frame_end} = objects[0].scene
+        @start_frame = frame_start
+        if start_marker? and markers[start_marker]?
+            @start_frame = markers[start_marker].frame
+        @end_frame = frame_end
+        if end_marker? and markers[end_marker]?
+            @end_frame = markers[end_marker].frame
+        @init()
 
-        @end_frame = markers['end']
-        if not @end_frame?
-            @end_frame = sorted_markers[sorted_markers.length-1]?.frame
-        if not @end_frame?
-            @end_frame = scene.frame_end
+    init: ->
+        throw "Abstract class"
 
     update: (frame_delta) ->
         @pos += frame_delta * @speed
 
 class LoopedAnimation extends Animation
+    init: ->
+        @pos = @start_frame
+
     update: (frame_delta) ->
         @pos += frame_delta * @speed
         if @pos > @end_frame
             @pos = @start_frame + (@pos - @end_frame)
 
 class FiniteAnimation extends Animation
+    init: ->
+        @pos = @start_frame
+
     update: (frame_delta) ->
         @pos += frame_delta * @speed
         if @pos > @end_frame
@@ -172,7 +196,7 @@ evaluate_all_animations = (context, frame_duration_ms)->
                 console.log "Unknown channel type:", type
             v = blend
             wi = Math.max(1 - weight, 0)
-            wo = 1 / Math.max(weight, 1)
+            wo = Math.min(weight, 1)
             if v.length == 1
                 v = v[0]
                 target[prop] = (target[prop]*wi) + v*wo
