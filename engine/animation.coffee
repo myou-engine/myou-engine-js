@@ -63,34 +63,17 @@ class Action
                 ret_vec.push v
         return ret_vec
 
-class Strip
-    constructor: (@object, data) ->
-        {
-            @extrapolation
-            @blend_type
-            @frame_start
-            @frame_end
-            @blend_in
-            @blend_out
-            @reversed
-            action
-            @action_frame_start
-            @action_frame_end
-            @scale
-            @repeat
-        } = data
-        @action = @object.context.actions[action]
-
-
 # An animation is a group of actions (usually one of them) with settings
 # such as start, end, fade in/out, etc.
 class Animation
-    constructor: (objects, options) ->
+    constructor: (@objects, options) ->
+        # TODO document and distinguish:
+        # - methods that one can override (init, step)
+        # - members usually assigned in step()
+        # - members used in evaluate()
+        # - methods for regular usage, that can be chained
         {exclude=[], start_marker, end_marker} = options or {}
-        @strips = []
-        for ob in objects
-            for strip in ob.animation_strips
-                @strips.push new Strip(ob, strip)
+        {@scene, scene: {@context}} = @objects[0]
         # Position in animation frames, usually assigned in update(),
         # used when evaluating the animation
         @pos = 0
@@ -111,7 +94,7 @@ class Animation
         @blendout_remaining = 0
         # Set start_frame and end_frame
         # from markers (if any) or from scene
-        {markers, frame_start, frame_end} = objects[0].scene
+        {markers, frame_start, frame_end} = @scene
         @start_frame = frame_start
         if start_marker? and markers[start_marker]?
             @start_frame = markers[start_marker].frame
@@ -120,102 +103,169 @@ class Animation
             @end_frame = markers[end_marker].frame
         @init()
 
+        @playing = false
+        @_index = -1
+
+    play: ->
+        @playing = true
+        if @_index == -1
+            {active_animations} = @context
+            @_index = active_animations.length
+            active_animations.push @
+        return @
+
+    pause: ->
+        @playing = false
+        if @_index != -1
+            @context.active_animations.splice @_index, 1
+            @_index = -1
+        return @
+
+    rewind: ->
+        @pos = @start_frame
+        return @
+
+    stop: ->
+        @pause()
+        @pos = @start_frame
+        return @
+
     init: ->
         throw "Abstract class"
 
-    update: (frame_delta) ->
+    step: (frame_delta) ->
         @pos += frame_delta * @speed
+
+    apply: ->
+        {actions} = @context
+        for ob in @objects
+            # TODO: optimize
+            affected_channels = {}
+            for strip in ob.animation_strips
+                {frame_start, frame_end, action_frame_start, action_frame_end} = strip
+                switch strip.extrapolation
+                    when 'HOLD_FORWARD'
+                        if @pos < frame_start
+                            continue
+                    when 'NOTHING'
+                        if @pos < frame_start or @pos > frame_end
+                            continue
+                action = actions[strip.action]
+                # TODO: not quite right?
+                pos = Math.max(frame_start, Math.min(frame_end, @pos - frame_start + action_frame_start))
+                for path, chan of action.channels
+                    ac = affected_channels[path] = affected_channels[path] or []
+                    ac.push {strip, action, pos}
+
+            for path, strip_actions of affected_channels
+                # First, iterate through all animations
+                # to accumulate the result for this channel
+                blend = null
+                weight = 0
+                type = name = prop = ''
+                for {strip, action, pos} in strip_actions
+                    orig_chan = action.channels[path]
+                    if not orig_chan
+                        continue
+                    v = action.get path, pos
+                    w = @final_factor
+                    for i in [0...v.length]
+                        v[i] *= w
+                    if not blend?
+                        blend = v
+                        type = orig_chan[0]
+                        name = orig_chan[1]
+                        prop = orig_chan[2]
+                    else
+                        switch strip.blend_type
+                            when 'REPLACE'
+                                for i in [0...blend.length]
+                                    blend[i] = v[i]
+                            when 'ADD'
+                                for i in [0...blend.length]
+                                    blend[i] += v[i]
+                            when 'MULTIPLY'
+                                for i in [0...blend.length]
+                                    blend[i] *= v[i]
+                            when 'SUBSTRACT'
+                                for i in [0...blend.length]
+                                    blend[i] -= v[i]
+
+                    weight += w
+
+                # Then, apply the result to the object
+                is_quat = prop == 'rotation'
+                if prop == 'rotation_euler'
+                    prop = 'rotation'
+                if type == 'object'
+                    target = ob
+                else if type == 'pose'
+                    target = ob.bones[name]
+                else if type == 'shape'
+                    target = ob.shapes
+                    prop = name
+                else
+                    console.log "Unknown channel type:", type
+                v = blend
+                wi = Math.max(1 - weight, 0)
+                wo = Math.min(weight, 1)
+                if v.length == 1
+                    v = v[0]
+                    target[prop] = (target[prop]*wi) + v*wo
+                else
+                    p = target[prop]
+                    for j in [0...v.length]
+                        p[j] = p[j]*wi + v[j]*wo
+                    if is_quat
+                        quat.normalize p, p
+
+            update_ob_physics ob
 
 class LoopedAnimation extends Animation
     init: ->
         @pos = @start_frame
+        @speed = 1
 
-    update: (frame_delta) ->
+    step: (frame_delta) ->
         @pos += frame_delta * @speed
         if @pos > @end_frame
             @pos = @start_frame + (@pos - @end_frame)
 
+class PingPongAnimation extends Animation
+    init: ->
+        @pos = @start_frame
+        @speed = 1
+
+    step: (frame_delta) ->
+        @pos += frame_delta * @speed
+        if @speed > 0 and @pos > @end_frame
+            @speed = -@speed
+            @pos = Math.max(@end_frame*2 - @pos, @start_frame)
+        else if @speed < 0 and @pos < @start_frame
+            @speed = -@speed
+            @pos = Math.min(@start_frame*2 - @pos, @start_frame)
+
 class FiniteAnimation extends Animation
     init: ->
         @pos = @start_frame
+        @speed = 1
 
-    update: (frame_delta) ->
+    step: (frame_delta) ->
         @pos += frame_delta * @speed
         if @pos > @end_frame
             @pos = @end_frame
-            @speed = 0
+            # even though we're calling stop,
+            # it's being evaluated on this frame
+            @stop()
 
 
 evaluate_all_animations = (context, frame_duration_ms)->
-
-    for ob in context.all_anim_objects
-
-        # Update all animations
-        now = performance.now()
-        for k,anim of ob.animations
-            delta = now - anim.last_eval
-            anim.update(delta * 0.001 * ob.scene.anim_fps)
-            anim.last_eval = now
-
-        for path of ob.affected_anim_channels
-            # First, iterate through all animations
-            # to accumulate the result for this chanel
-            blend = null
-            weight = 0
-            type = name = prop = ''
-            for k,anim of ob.animations
-                orig_chan = anim.action.channels[path]
-                if not orig_chan
-                    continue
-                v = anim.action.get path, anim.pos
-                w = anim.final_factor
-                for i in [0...v.length]
-                    v[i] *= w
-                if not blend?
-                    blend = v
-                    type = orig_chan[0]
-                    name = orig_chan[1]
-                    prop = orig_chan[2]
-                else
-                    for i in [0...blend.length]
-                        blend[i] += v[i]
-                weight += w
-
-            # Then, apply the result to the object
-            is_quat = prop == 'rotation'
-            if prop == 'rotation_euler'
-                prop = 'rotation'
-            if type == 'object'
-                target = ob
-            else if type == 'pose'
-                target = ob.bones[name]
-            else if type == 'shape'
-                target = ob.shapes
-                prop = name
-            else
-                console.log "Unknown channel type:", type
-            v = blend
-            wi = Math.max(1 - weight, 0)
-            wo = Math.min(weight, 1)
-            if v.length == 1
-                v = v[0]
-                target[prop] = (target[prop]*wi) + v*wo
-            else
-                p = target[prop]
-                for j in [0...v.length]
-                    p[j] = p[j]*wi + v[j]*wo
-                if is_quat
-                    quat.normalize p, p
-            i += 1
-
-        update_ob_physics ob
-
-    return
-
-stop_all_animations = ->
-    for ob in _all_anim_objects[...]
-        for anim_id of ob.animations
-            ob.del_animation anim_id
+    now = performance.now()
+    for anim in context.active_animations
+        delta = now - anim.last_eval
+        anim.step(delta * 0.001 * anim.scene.anim_fps)
+        anim.last_eval = now
+        anim.apply()
     return
 
 cubic_root = (d) ->
@@ -312,4 +362,4 @@ akEq = (v) ->
 
 module.exports = {
     Action, Animation, LoopedAnimation, FiniteAnimation,
-    evaluate_all_animations, stop_all_animations}
+    evaluate_all_animations}
