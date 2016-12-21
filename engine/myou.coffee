@@ -23,7 +23,7 @@ class Myou
         @mesh_datas = {}
         @embed_meshes = {}
         @SHADER_LIB = ''
-        @all_anim_objects = []
+        @active_animations = []
         @root = root
         @MYOU_PARAMS = MYOU_PARAMS
         @use_physics = not MYOU_PARAMS.disable_physics
