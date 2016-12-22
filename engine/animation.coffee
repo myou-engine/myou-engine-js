@@ -1,5 +1,6 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 {update_ob_physics} = require './physics.coffee'
+{clamp} = window
 
 # An action is a bunch of animation splines, without specific start, end
 # or any other setting
@@ -66,13 +67,22 @@ class Action
 # An animation is a group of actions (usually one of them) with settings
 # such as start, end, fade in/out, etc.
 class Animation
-    constructor: (@objects, options) ->
+    constructor: (objects, options) ->
         # TODO document and distinguish:
         # - methods that one can override (init, step)
         # - members usually assigned in step()
         # - members used in evaluate()
         # - methods for regular usage, that can be chained
         {exclude=[], start_marker, end_marker} = options or {}
+        full_exclude_list = []
+        for thing in exclude
+            if thing.length?
+                full_exclude_list = full_exclude_list.concat thing
+            else if thing instanceof Animation
+                full_exclude_list = full_exclude_list.concat thing.objects
+            else
+                full_exclude_list.push thing
+        @objects = for ob in objects when ob not in exclude then ob
         {@scene, scene: {@context}} = @objects[0]
         # Position in animation frames, usually assigned in update(),
         # used when evaluating the animation
@@ -130,6 +140,8 @@ class Animation
         @pos = @start_frame
         return @
 
+    set_frame: (@pos) -> @
+
     init: ->
         throw "Abstract class"
 
@@ -143,6 +155,14 @@ class Animation
             affected_channels = {}
             for strip in ob.animation_strips
                 {frame_start, frame_end, action_frame_start, action_frame_end} = strip
+                strip_pos = @pos - frame_start
+                strip_pos_reverse = frame_end - @pos
+                blend_factor = clamp(strip_pos/strip.blend_in, 0, 1) * \
+                              clamp(strip_pos_reverse/strip.blend_out, 0, 1)
+                if blend_factor < 0.0000000000001
+                    continue
+                if strip.reversed
+                    [strip_pos, strip_pos_reverse] = [strip_pos_reverse, strip_pos]
                 switch strip.extrapolation
                     when 'HOLD_FORWARD'
                         if @pos < frame_start
@@ -151,47 +171,53 @@ class Animation
                         if @pos < frame_start or @pos > frame_end
                             continue
                 action = actions[strip.action]
-                # TODO: not quite right?
-                pos = Math.max(frame_start, Math.min(frame_end, @pos - frame_start + action_frame_start))
+                scaled_pos = strip_pos/strip.scale
+                # we're ignoring strip.scale, instead we're checking
+                # we're not exactly at the end or past it (or at the start for reversed)
+                if @pos < frame_end and @pos > frame_start
+                    # TODO: check we're not off by one when repeating
+                    scaled_pos %= action_frame_end - action_frame_start
+                pos = clamp(scaled_pos + action_frame_start, action_frame_start, action_frame_end)
                 for path, chan of action.channels
                     ac = affected_channels[path] = affected_channels[path] or []
-                    ac.push {strip, action, pos}
+                    ac.push {strip, action, pos, blend_factor}
 
             for path, strip_actions of affected_channels
                 # First, iterate through all animations
                 # to accumulate the result for this channel
                 blend = null
+                # TODO: use weight influence with multiple animations
+                # the goal is to normalize influence in a way
+                # there strips are always affecting 100% or 0%
+                # e.g. when it's the first animation does blend in
+                # it affects 100% when it's not zero,
+                # when two animations are blending in, both weights are normalized
                 weight = 0
                 type = name = prop = ''
-                for {strip, action, pos} in strip_actions
+                for {strip, action, pos, blend_factor} in strip_actions
                     orig_chan = action.channels[path]
                     if not orig_chan
                         continue
                     v = action.get path, pos
-                    w = @final_factor
-                    for i in [0...v.length]
-                        v[i] *= w
                     if not blend?
-                        blend = v
                         type = orig_chan[0]
                         name = orig_chan[1]
                         prop = orig_chan[2]
-                    else
-                        switch strip.blend_type
-                            when 'REPLACE'
-                                for i in [0...blend.length]
-                                    blend[i] = v[i]
-                            when 'ADD'
-                                for i in [0...blend.length]
-                                    blend[i] += v[i]
-                            when 'MULTIPLY'
-                                for i in [0...blend.length]
-                                    blend[i] *= v[i]
-                            when 'SUBSTRACT'
-                                for i in [0...blend.length]
-                                    blend[i] -= v[i]
-
-                    weight += w
+                        blend = v[...].fill(prop=='scale')
+                        blend_factor = 1
+                    switch strip.blend_type
+                        when 'REPLACE'
+                            for i in [0...blend.length]
+                                blend[i] = blend[i] + blend_factor*(v[i]-blend[i])
+                        when 'ADD'
+                            for i in [0...blend.length]
+                                blend[i] += v[i] * blend_factor
+                        when 'MULTIPLY'
+                            for i in [0...blend.length]
+                                blend[i] *= 1 + blend_factor*(v[i]-1)
+                        when 'SUBSTRACT'
+                            for i in [0...blend.length]
+                                blend[i] -= v[i] * blend_factor
 
                 # Then, apply the result to the object
                 is_quat = prop == 'rotation'
@@ -207,19 +233,17 @@ class Animation
                 else
                     console.log "Unknown channel type:", type
                 v = blend
-                wi = Math.max(1 - weight, 0)
-                wo = Math.min(weight, 1)
                 if v.length == 1
-                    v = v[0]
-                    target[prop] = (target[prop]*wi) + v*wo
+                    target[prop] = v[0]
                 else
                     p = target[prop]
                     for j in [0...v.length]
-                        p[j] = p[j]*wi + v[j]*wo
+                        p[j] = v[j]
                     if is_quat
                         quat.normalize p, p
 
             update_ob_physics ob
+        return @
 
 class LoopedAnimation extends Animation
     init: ->
