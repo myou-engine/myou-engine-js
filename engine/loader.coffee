@@ -59,6 +59,11 @@ load_datablock = (scene, data, context) ->
         scene.frame_start = data.frame_start if data.frame_start?
         scene.frame_end = data.frame_end if data.frame_end?
         scene.anim_fps = data.fps if data.fps?
+        if data.markers?
+            scene.markers = data.markers
+            scene.markers_by_name = {}
+            for m in scene.markers
+                scene.markers_by_name[m.name] = m
         scene.extra_data = data.extra_data
 
     else if data.type=='TEXTURE'
@@ -80,7 +85,7 @@ load_datablock = (scene, data, context) ->
         window.eval data.code
 
     else if data.type=='ACTION'
-        context.actions[data.name] = new Action data.name, data.channels, data.markers, scene
+        context.actions[data.name] = new Action data.name, data.channels, (data.markers or []), scene
 
     else if data.type=='EMBED_MESH'
         context.embed_meshes[data.hash] = data

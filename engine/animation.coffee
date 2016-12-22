@@ -1,3 +1,7 @@
+nancheck = (v) ->
+    if v? and (v!=v or v[0]!=v[0]) then debugger
+    v
+
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 {update_ob_physics} = require './physics.coffee'
 {clamp} = window
@@ -12,17 +16,13 @@ class Action
     # 'pose', bone_name, 'location', [...]
     # 'shape', shape_name, '', [[keys]]
 
-    constructor: (name, channels, markers={}, @scene)->
+    constructor: (name, channels, markers=[], @scene)->
         @name = name
         @channels = {}
         @markers = markers
-        @sorted_markers  = sorted_markers = []
-        tmp_list = []
-        for name,frame of markers
-            tmp_list[frame] = {name,frame}
-
-        for m in tmp_list
-            if m? then sorted_markers.push m
+        @markers_by_name = {}
+        for m in markers
+            @markers_by_name[m.name] = m
 
         for ch in channels
             path = ch[0]+'.'+ch[1]+'.'+ch[2]
@@ -104,13 +104,13 @@ class Animation
         @blendout_remaining = 0
         # Set start_frame and end_frame
         # from markers (if any) or from scene
-        {markers, frame_start, frame_end} = @scene
+        {markers_by_name, frame_start, frame_end} = @scene
         @start_frame = frame_start
-        if start_marker? and markers[start_marker]?
-            @start_frame = markers[start_marker].frame
+        if start_marker? and markers_by_name[start_marker]?
+            @start_frame = markers_by_name[start_marker].frame
         @end_frame = frame_end
-        if end_marker? and markers[end_marker]?
-            @end_frame = markers[end_marker].frame
+        if end_marker? and markers_by_name[end_marker]?
+            @end_frame = markers_by_name[end_marker].frame
         @init()
 
         @playing = false
