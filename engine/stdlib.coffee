@@ -1,3 +1,6 @@
+
+# TODO: Remove this file, organizing things better
+
 TimSort = require 'timsort'
 window.PI_2 = Math.PI * 2
 
@@ -24,6 +27,9 @@ window.randInt = (min, max) ->
     range = max - min
     rand = Math.floor(Math.random() * (range + 1))
     return min + rand
+
+window.clamp = (value, min, max) ->
+    Math.max(min, Math.min(max, value))
 
 String::startswith ?= (s) -> @[...s.length] == s
 String::endswith ?= (s) -> s == '' or @[-s.length..] == s
