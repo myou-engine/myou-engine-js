@@ -541,7 +541,7 @@ class RenderManager
                 mat3.multiply m3, @_world2cam3, mesh.normal_matrix
                 if mat.u_normal_matrix?
                     gl.uniformMatrix3fv mat.u_normal_matrix, false, m3
-                    gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
+                gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
             # if mirrors & 178
             #     mat4.multiply m4, @_world2cam_mx, mesh2world
             #     gl.uniformMatrix4fv mat.u_model_view_matrix, false, m4
