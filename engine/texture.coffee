@@ -96,8 +96,8 @@ class Texture
                         type = 'image/jpeg'
                     f = data.file_name+(new Error).stack.split('\n')[1]
                     # TODO Move out of here
-                    if AndroidReadFile? and not data.data_uri and base[0] != '/'
-                        data.data_uri = Buffer.from(AndroidReadFile(base + data.file_name))
+                    if readFileForGetPixels? and not data.data_uri and base[0] != '/'
+                        data.data_uri = readFileForGetPixels(base + data.file_name)
                     # get-pixels expects a file uri, an url, a data uri or a node buffer
                     getPixels data.data_uri or (base + data.file_name), type, (err, pixels) =>
                         if err?
