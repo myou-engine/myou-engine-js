@@ -1,7 +1,3 @@
-nancheck = (v) ->
-    if v? and (v!=v or v[0]!=v[0]) then debugger
-    v
-
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 {update_ob_physics} = require './physics.coffee'
 {clamp} = window
@@ -71,7 +67,7 @@ class Animation
         # TODO document and distinguish:
         # - methods that one can override (init, step)
         # - members usually assigned in step()
-        # - members used in evaluate()
+        # - members used in apply()
         # - methods for regular usage, that can be chained
         {exclude=[], start_marker, end_marker} = options or {}
         full_exclude_list = []
@@ -84,24 +80,13 @@ class Animation
                 full_exclude_list.push thing
         @objects = for ob in objects when ob not in exclude then ob
         {@scene, scene: {@context}} = @objects[0]
-        # Position in animation frames, usually assigned in update(),
+        # Position in animation frames, usually assigned in step(),
         # used when evaluating the animation
         @pos = 0
-        # Final factor is calculated from weight and fade in/out
-        # usually in update(), and used when evaluating the animation.
-        # Multiplies all values of each channel
-        # and it's normalized with other animations playing the same channel
-        # so the final factor of all animations combined will always be <= 1
-        @final_factor = 1
         # Set and used when evaluating the animation to calculate frame_delta
         @last_eval = performance.now()
-        # All the rest are only used in update()
+        # All the rest are only used in step()
         @speed = 0
-        @weight = 1
-        @blendin_total = 0
-        @blendout_total = 0
-        @blendin_remaining = 0
-        @blendout_remaining = 0
         # Set start_frame and end_frame
         # from markers (if any) or from scene
         {markers_by_name, frame_start, frame_end} = @scene
@@ -172,8 +157,9 @@ class Animation
                             continue
                 action = actions[strip.action]
                 scaled_pos = strip_pos/strip.scale
-                # we're ignoring strip.scale, instead we're checking
+                # we're ignoring strip.repeat, instead we're only checking that
                 # we're not exactly at the end or past it (or at the start for reversed)
+                # since the repeat is implicit in the other 5 playback attributes we use
                 if @pos < frame_end and @pos > frame_start
                     # TODO: check we're not off by one when repeating
                     scaled_pos %= action_frame_end - action_frame_start
@@ -186,13 +172,11 @@ class Animation
                 # First, iterate through all animations
                 # to accumulate the result for this channel
                 blend = null
-                # TODO: use weight influence with multiple animations
-                # the goal is to normalize influence in a way
-                # there strips are always affecting 100% or 0%
-                # e.g. when it's the first animation does blend in
-                # it affects 100% when it's not zero,
-                # when two animations are blending in, both weights are normalized
-                weight = 0
+                # TODO: blender seems to behave as if the influence of the first strip
+                # is always 1 or 0, independently of other strips.
+                # we're doing this (with blend_factor = 1 below)
+                # but we want it to work across different animations
+                # (including copies of the same animation)
                 type = name = prop = ''
                 for {strip, action, pos, blend_factor} in strip_actions
                     orig_chan = action.channels[path]
