@@ -78,7 +78,23 @@ class Animation
                 full_exclude_list = full_exclude_list.concat thing.objects
             else
                 full_exclude_list.push thing
-        @objects = for ob in objects when ob not in exclude then ob
+        @objects = for ob in objects when ob not in exclude
+            # TODO: Shall we do this when there are strips too?
+            if ob.animation_strips.length == 0 and ob.actions.length != 0
+                ob.animation_strips.push {
+                    action: ob.actions[0]
+                    frame_start: 0
+                    frame_end: 1e99
+                    action_frame_start: 0
+                    action_frame_end: 1e99
+                    scale: 1
+                    blend_in: 0
+                    blend_out: 0
+                    reversed: false
+                    extrapolation: 'HOLD'
+                    blend_type: 'REPLACE'
+                }
+            ob
         {@scene, scene: {@context}} = @objects[0]
         # Position in animation frames, usually assigned in step(),
         # used when evaluating the animation
