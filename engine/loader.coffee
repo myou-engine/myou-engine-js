@@ -64,6 +64,7 @@ load_datablock = (scene, data, context) ->
             scene.markers_by_name = {}
             for m in scene.markers
                 scene.markers_by_name[m.name] = m
+        scene.sequencer_strips = data.sequencer_strips or []
         scene.extra_data = data.extra_data
 
     else if data.type=='TEXTURE'
@@ -127,6 +128,8 @@ load_object = (data, scene) ->
                 ob.uv_multiplier = data.uv_multiplier or 1
                 ob.pack_offset = data.pack_offset
                 ob.packed_file = data.packed_file
+                if data.bbox?
+                    ob.bound_box = [vec3.clone(data.bbox),vec3.clone(data.bbox[3...])]
                 ob.avg_poly_area = data.avg_poly_area or 10
                 ob.avg_poly_length = Math.pow(ob.avg_poly_area,0.5)
                 vec3.copy ob.center, data.center or [0,0,0]
@@ -280,7 +283,7 @@ load_object = (data, scene) ->
     ob.visible = data.visible
     ob.mirrors = data.mirrors or 1
     vec3.copy ob.dimensions, data.dimensions # is this used outside physics?
-    ob.radius = vec3.len(ob.dimensions) * 0.5
+    ob.radius = data.mesh_radius or vec3.len(ob.dimensions) * 0.5
     ob.properties = data.properties or {}
     ob.actions = data.actions or []
     ob.animation_strips = data.animation_strips or []
