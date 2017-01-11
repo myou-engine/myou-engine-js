@@ -88,6 +88,7 @@ class RenderManager
         @_m3 = mat3.create()  #       in several methods
         @_v = vec3.create()
         @_cam = null
+        @_vp = null
         @_cull_left = vec3.create()
         @_cull_right = vec3.create()
         @_cull_top = vec3.create()
@@ -370,7 +371,7 @@ class RenderManager
         mesh.culled_in_last_frame = false
 
         # Select alternative mesh / LoD
-        amesh = mesh.get_lod_mesh(cam.field_of_view, distance_to_camera)
+        amesh = mesh.get_lod_mesh(@_vp)
         if not amesh.data
             return true
 
@@ -584,6 +585,7 @@ class RenderManager
         if gl.isContextLost()
             return
         @_cam = cam = viewport.debug_camera or viewport.camera
+        @_vp = viewport
         scene = cam.scene
 
         m4 = @_m4
@@ -686,7 +688,7 @@ class RenderManager
                 mat4.invert world2light, lamp.world_matrix
 
                 for ob in scene.mesh_passes[0]
-                    data = ob.get_lod_mesh(cam).data
+                    data = ob.get_lod_mesh(@_vp).data
                     if ob.visible and data and data.attrib_pointers.length != 0 and not ob.culled_in_last_frame
                         mat4.multiply m4, world2light, ob.world_matrix
                         #draw_mesh ob, ob.world_matrix, world2light, mat
