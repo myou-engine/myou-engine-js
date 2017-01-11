@@ -837,10 +837,10 @@ class RenderManager
                 s = vec3.len v3
                 vec3.scale v2,v2,s
                 vec3.scale v1,v1,s
-                ma = [v1[0], v1[1], v1[2], 0,
+                ma = mat4.fromValues v1[0], v1[1], v1[2], 0,
                     v2[0], v2[1], v2[2], 0,
                     v3[0], v3[1], v3[2], 0,
-                    dob.position[0], dob.position[1], dob.position[2], 1]
+                    dob.position[0], dob.position[1], dob.position[2], 1
                 @draw_mesh dob, ma
 
             dob = @debug.bone
