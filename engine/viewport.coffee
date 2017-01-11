@@ -1,5 +1,7 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 
+v = vec3.create()
+
 class Viewport
 
     constructor: (@render_manager, @camera, @rect=[0,0,1,1], @custom_size=[0, 0], @dest_buffer=@render_manager.main_fb)->
@@ -9,6 +11,7 @@ class Viewport
         @eye_shift = vec3.create()
         @custom_fov = null
         @debug_camera = null
+        @units_to_pixels = 100
         @set_clear true, true
         @render_manager.viewports.push @
         @recalc_aspect()
@@ -27,6 +30,9 @@ class Viewport
         else
             @rect_pix = [r[0]*w, r[1]*h, cs[0], cs[1]]
         @dest_rect_pix = [r[0]*w, r[1]*h, r[2]*w, r[3]*h]
+        vec3.set v, 1,0,-1
+        vec3.transformMat4(v, v, @camera.projection_matrix)
+        @units_to_pixels = v[0] * w
 
     set_clear: (color, depth)->
         c = if color then 16384 else 0 # GL_COLOR_BUFFER_BIT

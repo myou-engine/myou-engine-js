@@ -1,6 +1,7 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 {GameObject} = require './gameobject.coffee'
 {Material} = require './material.coffee'
+{clamp} = window
 #   Mesh format:
 #
 #   Vertex array:
@@ -50,6 +51,9 @@ GL_UNSIGNED_SHORT = 0x1403
 GL_INT = 0x1404
 GL_UNSIGNED_INT = 0x1405
 GL_FLOAT = 0x1406
+ZERO_BBOX = [vec3.create(), vec3.create()]
+
+LAST_POS = ''
 
 class MeshData
     constructor: (@context)->
@@ -387,51 +391,64 @@ class Mesh extends GameObject
                 cuv.push null
         return true
     
-    get_lod_mesh: (field_of_view, distance_to_camera) ->
+    get_lod_mesh: (viewport) ->
         amesh = @
         if @altmeshes.length
             amesh = @altmeshes[@active_mesh_index] or @
         else if @lod_objects
-            # Old code has a bug with detection of camera distance
-            # so for now we'll just select the highest loaded LoD
-            if not @data?.attrib_pointers
-                for lod_ob in @lod_objects
-                    lod = lod_ob.object
-                    if lod.data?.attrib_pointers
-                        @last_lod_object = amesh = lod
+            {camera} = viewport
+#             # Old code has a bug with detection of camera distance
+#             # so for now we'll just select the highest loaded LoD
+#             @last_lod_object = amesh = @
+#             if not @data?.attrib_pointers
+#                 for lod_ob in @lod_objects
+#                     lod = lod_ob.object
+#                     if lod.data?.attrib_pointers
+#                         @last_lod_object = amesh = lod
             
-            # # Min polygon length in px
-            # min_length = 2 #TODO
-            # # Set it configurable and FPS
-            # # dependent and customizable on each object
-            #
-            # # Bigger side of the screen in px
-            # {largest_side} = @context.render_manager
-            #
-            # # The scale of the object affects to the polygon length
-            # scale_factor = (@scale[0] + @scale[1] + @scale[2])/3
-            #
-            # # Average polygon length in pixels:
-            # dist_factor = largest_side * scale_factor * (0.5 / Math.tan(field_of_view / 2)) / distance_to_camera
-            # orig_length =  @avg_poly_length * dist_factor
-            #
-            # # winner length is the max length of the lengths minor than min_length
-            # winner_length = 0
-            #
-            # for lod_ob in @lod_objects
-            #     lod = lod_ob.object
-            #     #Average polygon length in pixels:
-            #     length = lod.avg_poly_length * dist_factor
-            #     if length < min_length and length > winner_length and lod.data
-            #         winner_length = length
-            #         @last_lod_object = amesh = lod
-            #
-            # # checking original object, or the highest that is loaded
-            # if not winner_length or (orig_length < min_length and orig_length > winner_length)
-            #     @last_lod_object = amesh = mesh
-            #     i = @lod_objects.length
-            #     while not amesh.data and i > 0
-            #         amesh = @lod_objects[--i].object
+            # Approximation to nearest point to the surface:
+            # We clamp the camera position to the object's bounding box
+            #    we transform the point with the inverse matrix
+            #    we clamp with dimensions
+            #    we clamp with radius
+            #    we transform back with matrix
+            # that's the approximate near distance
+            inv = mat4.invert(mat4.create(), @world_matrix)
+            if not inv? or not @bound_box
+                return @last_lod_object = @lod_objects[0]?.object or @
+            p = vec3.transformMat4 vec3.create(), camera.position, inv
+            p = vec3.max p, p, @bound_box[0]
+            p = vec3.min p, p, @bound_box[1]
+
+#             len = vec3.len p
+#             if len > @radius
+#                 vec3.scale p, p, @radius/len
+            vec3.transformMat4 p, p, @world_matrix
+
+            distance_to_camera = vec3.dist p, camera.position
+
+            # Min polygon length in px
+            min_length_px = window.MIN_LENGTH or 20 #TODO
+            # Set it configurable and FPS
+            # dependent and customizable on each object
+
+            # world scale: assuming all three axes have same scale as X
+            world_scale = vec3.len @world_matrix # [0...3] implied
+
+            # number that converts a length to screen pixels
+            poly_length_to_visual_size = viewport.units_to_pixels/distance_to_camera
+
+            # we'll going to find the biggest length that is small enough on screen
+            biggest_length = @avg_poly_length
+            @last_lod_object = amesh = @
+
+            for lod in @lod_objects by -1
+                ob = lod.object
+                visual_size_px = ob.avg_poly_length * poly_length_to_visual_size
+                if ob.avg_poly_length > biggest_length and visual_size_px < min_length_px and ob.data?
+                    biggest_length = ob.avg_poly_length
+                    @last_lod_object = amesh = ob
+
         return amesh
 
 module.exports = {Mesh}
