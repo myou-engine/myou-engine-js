@@ -106,6 +106,7 @@ class Mesh extends GameObject
         @last_lod_object = null
         @culled_in_last_frame = false
         @center = vec3.create()
+        @bound_box = null
 
         # Populated when loading, used in load_from_va_ia()
         # Not used on render.
