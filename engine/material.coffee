@@ -182,11 +182,11 @@ class Material
     #        * there are more types but of limited use outside Blender for now
     #   }
     #   There are two implicit vec3 attributes: vertex, vnormal.
-    constructor: (@context, data, @scene) ->
+    constructor: (@context, @data, @scene) ->
         @id = id++
         if @context.all_materials.indexOf(@) == -1
             @context.all_materials.push @
-        {@name, uniforms, attributes, params=[]} = data
+        {@name, uniforms, attributes, params=[]} = @data
         @shading_params_dict = {}
         @shading_params = for p in params
             @shading_params_dict[p.name] = new ShadingParams p
@@ -205,7 +205,7 @@ class Material
         @uv_multiplier = 1
         @shape_multiplier = 1
         @group_id = -1
-        @double_sided = not not data.double_sided
+        @double_sided = Boolean @data.double_sided
 
         var_model_view_matrix = "model_view_matrix"
         var_inv_model_view_matrix = ""
@@ -499,7 +499,7 @@ class Material
 
         # TODO: find which uniform
         # has conflicting precision between VS and FS in ANGLE/win32
-        @vs_code = vs = data.vertex or """
+        @vs_code = vs = @data.vertex or """
         #ifdef GL_ES
         precision highp float;
         precision highp int;
@@ -676,8 +676,7 @@ class Material
         return prog
 
     reupload: ->
-        @constructor(@name, @fs_code,
-        @uniforms_config, @attributes_config, @vs_code, @scene)
+        @constructor(@context, @data, @scene)
 
     destroy: ->
         @context.render_manager.gl.deleteProgram @_program
@@ -717,6 +716,28 @@ class Material
             # If matches weren't found, fat chance. We're not warning.
 
         return cloned
+
+    debug_blender_material: (varnum) ->
+        if not @fs_code.splice
+            throw "Not a Blender material"
+        [lib, code] = @orig_fs_code = @orig_fs_code or @fs_code[...]
+        re = new RegExp("\\btmp#{varnum}\\b", "g")
+        value = "tmp#{varnum}.x"
+        if re.test code
+            for line in code.split('\n') when re.test line
+                if line.length < 15
+                    if /float/.test line
+                        value = "tmp#{varnum}"
+                else
+                    console.log line.replace(re, "TMP"+varnum)
+            @fs_code[1] = code.replace('gl_FragColor = ',
+                "gl_FragColor = vec4(-#{value}, #{value}, #{value}*10.0-5.0, 1.0);//")
+            @reupload()
+        else
+            console.log "No such variable"
+        return
+
+
 
 module.exports = {Material,
 CD_MCOL, CD_MTFACE, CD_ORCO, CD_TANGENT, CD_SHAPE_KEY, CD_ARMATURE_DEFORM,
