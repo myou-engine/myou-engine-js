@@ -118,7 +118,9 @@ class Animation
         @_index = -1
 
     play: ->
-        @playing = true
+        if not @playing
+            @last_eval = performance.now()
+            @playing = true
         if @_index == -1
             {active_animations} = @context
             @_index = active_animations.length
