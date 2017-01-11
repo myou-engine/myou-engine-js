@@ -545,7 +545,7 @@ class Material
             (material_promises[@name]?.functions.reject or console_error)(error_msg)
             return
 
-        @fs_code = data.fragment
+        @fs_code = @data.fragment
         fragment_shader = gl.createShader gl.FRAGMENT_SHADER
         fs = if @fs_code.splice then @fs_code.join('') else @fs_code
         gl.shaderSource fragment_shader, fs
