@@ -87,6 +87,10 @@ exports.init = (scene, options={}) ->
                     rightEye = HMD.getEyeParameters("right")
                     viewport1.camera = viewport1.camera.clone()
                     viewport2.camera = viewport2.camera.clone()
+                    viewport1.camera.rotation_order = 'Q'
+                    viewport2.camera.rotation_order = 'Q'
+                    quat.identity viewport1.camera.rotation
+                    quat.identity viewport2.camera.rotation
                     scene.make_parent scene.active_camera, viewport1.camera
                     scene.make_parent scene.active_camera, viewport2.camera
                     {fieldOfView} = leftEye
