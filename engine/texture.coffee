@@ -25,7 +25,7 @@ class Texture
             @formats # See above
             @wrap='R' # Clamp, Repeat or Mirrored
             @filter=true # enable bilinear filtering
-            @use_mipmap=true
+            @use_mipmap=true # TODO: currently not exported!
         } = tex_data
         @gl_tex = null
         @loaded = false
@@ -67,7 +67,7 @@ class Texture
         # Trying formats from best to worst
         if astc? and extensions.compressed_texture_astc
             # NOTE: Assuming a single element in the list
-            if @loaded
+            if @promise
                 return @promise
             @promise = new Promise (resolve, reject) =>
                 fetch(base+astc[0].file_name).then((data)->data.arrayBuffer()).then (buffer) =>
@@ -78,6 +78,7 @@ class Texture
                         @offset = 16
                         @gl_internal_format = astc[0].format_enum
                         @buffers = [buffer]
+                        @use_mipmap = false
                         @restore() #TODO: use @upload and @configure instead when possible
                         resolve @
                 .catch reject
@@ -133,7 +134,7 @@ class Texture
         else if rgb565?
             # TODO: Test this part
             # NOTE: Assuming a single element in the list
-            if @loaded
+            if @promise?
                 return @promise
             @promise = new Promise (resolve, reject) =>
                 fetch(base+rgb565[0].file_name).then((data)->data.arrayBuffer()).then (buffer) =>
