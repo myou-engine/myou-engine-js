@@ -371,9 +371,13 @@ class RenderManager
         mesh.culled_in_last_frame = false
 
         # Select alternative mesh / LoD
-        amesh = mesh.get_lod_mesh(@_vp)
-        if not amesh.data
-            return true
+        if @render_tick != mesh.last_lod_tick
+            amesh = mesh.get_lod_mesh(@_vp, @context.mesh_lod_min_length_px)
+            if not amesh.data
+                return true
+            mesh.last_lod_tick = @render_tick
+        else
+            amesh = mesh.last_lod_object
 
         # Reconfigure materials of mesh if they're missing
         if amesh.materials.length != amesh.material_names.length
@@ -670,6 +674,8 @@ class RenderManager
         @bound_textures.clear()
         active_texture = -1
 
+        {mesh_lod_min_length_px} = @context
+
         # Render shadow buffers
         for lamp in scene.lamps
             if shadows_pending and lamp.shadow_options? and lamp.render_shadow
@@ -688,7 +694,7 @@ class RenderManager
                 mat4.invert world2light, lamp.world_matrix
 
                 for ob in scene.mesh_passes[0]
-                    data = ob.get_lod_mesh(@_vp).data
+                    data = ob.get_lod_mesh(@_vp, mesh_lod_min_length_px).data
                     if ob.visible and data and data.attrib_pointers.length != 0 and not ob.culled_in_last_frame
                         mat4.multiply m4, world2light, ob.world_matrix
                         #draw_mesh ob, ob.world_matrix, world2light, mat
