@@ -447,6 +447,34 @@ ob_to_phy = (ob_list)->
         ob.body.setWorldTransform(_tmp_Transform)
     return
 
+ob_to_phy_with_scale = (ob_list)->
+    pos = vec3.create()
+    rot = quat.create()
+    for ob in ob_list when ob.body
+        p = ob.parent
+        vec3.copy pos, ob.position
+        quat.copy rot, ob.rotation
+        scale = ob.scale[0]
+        while p
+            vec3.mul pos, pos, p.scale
+            vec3.transformQuat pos, pos, p.rotation
+            vec3.add pos, pos, p.position
+            quat.mul rot, p.rotation, rot
+            scale *= p.scale[0]
+            p = p.parent
+        _tmp_Vector3.setValue(pos[0], pos[1], pos[2])
+        _tmp_Transform.setOrigin(_tmp_Vector3)
+        _tmp_Quaternion.setValue(rot[0], rot[1], rot[2], rot[3])
+        _tmp_Transform.setRotation(_tmp_Quaternion)
+        ob.body.setWorldTransform(_tmp_Transform)
+        if ob.data.phy_mesh
+            # TODO: avoid doing this when scale didn't change?
+            # remove ob_to_phy?
+            _tmp_Vector3.setValue scale, scale, scale
+            ob.data.phy_mesh.setLocalScaling _tmp_Vector3
+        # else TODO
+    return
+
 phy_to_ob = (ob_list)->
     # To be used only for dynamic/rigid bodies
     # because it doesn't handle objects with parent
@@ -590,7 +618,7 @@ module.exports = {
     physics_engine_init,
     PhysicsWorld, destroy_world, set_gravity,
     step_world, update_ob_physics, set_phy_scale,
-    ob_to_phy, phy_to_ob, get_last_char_phy,
+    ob_to_phy, ob_to_phy_with_scale, phy_to_ob, get_last_char_phy,
 
     BoxShape, SphereShape, CylinderShape, CapsuleShape,
     ConvexShape, TriangleMeshShape, CompoundShape,

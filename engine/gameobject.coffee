@@ -6,7 +6,7 @@ fetch_assets = require './fetch_assets.coffee'
 
     BoxShape, SphereShape, CylinderShape, CapsuleShape,
     ConvexShape, TriangleMeshShape, CompoundShape,
-    get_convex_hull_edges, add_child_shape,
+    get_convex_hull_edges, add_child_shape, ob_to_phy_with_scale,
 
     RigidBody, StaticBody, CharacterBody,
     add_body, remove_body,
@@ -297,6 +297,22 @@ class GameObject
                 update_ob_physics @
             @body = body
 
+    # Function meant for static meshes or objects that change scale.
+    # This is very fast except when a static triangle mesh had a change in scale
+    # which is very slow to do every frame (maybe other phy types too)
+    update_physics_transform: ->
+        @_update_physics_transform_of_children()
+        if @body
+            ob_to_phy_with_scale [@]
+        return
+
+    _update_physics_transform_of_children: ->
+        for child in @children
+            if child.children.length
+                child._update_physics_transform_of_children()
+        ob_to_phy_with_scale @children
+        return
+
     _update_matrices:  ->
         rm = @rotation_matrix
         [x, y, z, w] = @rotation
@@ -379,6 +395,8 @@ class GameObject
             ## TODO: make this more efficient, etc
             ## TODO TODO: Rotation and normal matrices are incorrect, esp after scaling parents and having matrix_parent_inverse
             mat3.mul rm, @parent.rotation_matrix, rm
+
+            # TODO: make normal matrix with inverse transpose instead of this way
             mat3.mul nm, @parent.normal_matrix, nm
             mat4.mul wm, @matrix_parent_inverse, wm
             mat4.mul @world_matrix, @parent.world_matrix, @world_matrix
