@@ -29,6 +29,7 @@ class Myou
         @use_physics = not MYOU_PARAMS.disable_physics
         @hash = Math.random()
         @initial_scene_loaded = false
+        @mesh_lod_min_length_px = 13
 
         # VR
         @_HMD = @_vrscene = null

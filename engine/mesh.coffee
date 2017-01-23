@@ -53,8 +53,6 @@ GL_UNSIGNED_INT = 0x1405
 GL_FLOAT = 0x1406
 ZERO_BBOX = [vec3.create(), vec3.create()]
 
-LAST_POS = ''
-
 class MeshData
     constructor: (@context)->
         @type = 'MESH'
@@ -111,6 +109,7 @@ class Mesh extends GameObject
         @culled_in_last_frame = false
         @center = vec3.create()
         @bound_box = null
+        @last_lod_tick = -1
 
         # Populated when loading, used in load_from_va_ia()
         # Not used on render.
@@ -391,21 +390,14 @@ class Mesh extends GameObject
                 cuv.push null
         return true
     
-    get_lod_mesh: (viewport) ->
+    # min_length_px is the minimum length of the average polygon, in screen pixels
+    get_lod_mesh: (viewport, min_length_px) ->
         amesh = @
         if @altmeshes.length
             amesh = @altmeshes[@active_mesh_index] or @
         else if @lod_objects
             {camera} = viewport
-#             # Old code has a bug with detection of camera distance
-#             # so for now we'll just select the highest loaded LoD
-#             @last_lod_object = amesh = @
-#             if not @data?.attrib_pointers
-#                 for lod_ob in @lod_objects
-#                     lod = lod_ob.object
-#                     if lod.data?.attrib_pointers
-#                         @last_lod_object = amesh = lod
-            
+            cam_pos = camera.world_matrix.subarray(12,15)
             # Approximation to nearest point to the surface:
             # We clamp the camera position to the object's bounding box
             #    we transform the point with the inverse matrix
@@ -413,30 +405,27 @@ class Mesh extends GameObject
             #    we clamp with radius
             #    we transform back with matrix
             # that's the approximate near distance
+            # TODO: Optimize
             inv = mat4.invert(mat4.create(), @world_matrix)
             if not inv? or not @bound_box
                 return @last_lod_object = @lod_objects[0]?.object or @
-            p = vec3.transformMat4 vec3.create(), camera.position, inv
+            p = vec3.transformMat4 vec3.create(), cam_pos, inv
             p = vec3.max p, p, @bound_box[0]
             p = vec3.min p, p, @bound_box[1]
 
+            # TODO: What was wrong with this?
 #             len = vec3.len p
 #             if len > @radius
 #                 vec3.scale p, p, @radius/len
             vec3.transformMat4 p, p, @world_matrix
 
-            distance_to_camera = vec3.dist p, camera.position
-
-            # Min polygon length in px
-            min_length_px = window.MIN_LENGTH or 20 #TODO
-            # Set it configurable and FPS
-            # dependent and customizable on each object
+            distance_to_camera = vec3.dist p, cam_pos
 
             # world scale: assuming all three axes have same scale as X
             world_scale = vec3.len @world_matrix # [0...3] implied
 
             # number that converts a length to screen pixels
-            poly_length_to_visual_size = viewport.units_to_pixels/distance_to_camera
+            poly_length_to_visual_size = (viewport.units_to_pixels/distance_to_camera) * world_scale
 
             # we'll going to find the biggest length that is small enough on screen
             biggest_length = @avg_poly_length
@@ -452,3 +441,4 @@ class Mesh extends GameObject
         return amesh
 
 module.exports = {Mesh}
+
