@@ -129,7 +129,7 @@ TriangleMeshShape = (vertices, indices, vstride, scale, margin, name)->
             verts.set vertices.subarray(v*vstride,v*vstride+3), offset
             offset += 3
         mesh = new Ammo.btTriangleIndexVertexArray(indices.length/3, inds.buffer, 3*4,
-                                                vertices.length/3, verts.buffer, 3*4)
+                                                vlen, verts.buffer, 3*4)
         mesh.things = [inds, verts] # avoid deleting those
         # crashes because wrapbtBvhTriangleMeshShape::calculateLocalInertia
         # is being called for some reason
@@ -154,22 +154,22 @@ TriangleMeshShape = (vertices, indices, vstride, scale, margin, name)->
             HEAPF32.set vertices.subarray(v*vstride,v*vstride+3), offset
             offset += 3
         mesh = new Ammo.btTriangleIndexVertexArray(indices.length/3, inds, 3*4,
-                                                vertices.length/3, verts, 3*4)
+                                                vlen, verts, 3*4)
     shape =  new Ammo.btBvhTriangleMeshShape mesh, true, true
     shape.name = name
     _tmp_Vector3.setValue scale[0], scale[1], scale[2]
     shape.setLocalScaling _tmp_Vector3
     shape.setMargin margin
+    shape.calculateLocalInertia = ->
     return shape
 
 CompoundShape = ->
     return new Ammo.btCompoundShape
 
 RigidBody = (mass, shape, position, rotation, friction, elasticity, form_factor)->
-    # For some reason this is the formula in BGE for inertia
-    inertia = form_factor * mass/3
-    localInertia =  new Ammo.btVector3 inertia, inertia, inertia
-    shape.calculateLocalInertia mass, localInertia
+    localInertia =  new Ammo.btVector3 0, 0, 0
+    if mass
+        shape.calculateLocalInertia mass, localInertia
     startTransform = new Ammo.btTransform
     _tmp_Vector3.setValue position[0], position[1], position[2]
     startTransform.setOrigin _tmp_Vector3
