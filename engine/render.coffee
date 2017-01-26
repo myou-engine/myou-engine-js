@@ -1023,7 +1023,7 @@ class Debug
         mesh.configure_materials [@material]
         mesh.color = vec4.create 1,1,1,1
         mesh.data.draw_method = render_manager.gl.LINES
-        mesh.scale = [1,1,1]
+        mesh.scale = vec3.create 1,1,1
         mesh._update_matrices()
         return mesh
 

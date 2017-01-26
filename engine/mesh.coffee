@@ -101,6 +101,7 @@ class Mesh extends GameObject
         @_shape_names = []
         @armature = null
         @sort_dot = 0
+        @uv_rect = vec4.fromValues 0, 0, 1, 1 # x, y, w, h
         #TODO move to MeshData
         @custom_uniform_values = []
         @active_mesh_index = 0
