@@ -9,6 +9,7 @@ class Viewport
         @compositor_enabled = false
         @compositor = null
         @eye_shift = vec3.create()
+        @right_eye_factor = 0
         @custom_fov = null
         @debug_camera = null
         @units_to_pixels = 100

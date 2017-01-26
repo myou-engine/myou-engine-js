@@ -79,6 +79,7 @@ exports.init = (scene, options={}) ->
                             viewport1 = v
                             viewport2 = v.clone()
                             viewport2.set_clear false, false
+                            viewport2.right_eye_factor = 1
                             # ctx.render_manager.viewports.splice(i+1, 0, viewport2)
                             break
                     if not viewport1?

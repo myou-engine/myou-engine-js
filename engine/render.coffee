@@ -94,6 +94,7 @@ class RenderManager
         @_cull_top = vec3.create()
         @_cull_bottom = vec3.create()
         @_polygon_ratio = 1
+        @_right_eye_factor = 0
         @triangles_drawn = 0
         @meshes_drawn = 0
 
@@ -502,9 +503,11 @@ class RenderManager
                     mat.shape_multiplier = amesh.shape_multiplier
                     gl.uniform1f mat.u_shape_multiplier, amesh.shape_multiplier
 
-            if mat.u_uv_multiplier? and amesh.uv_multiplier != mat.uv_multiplier
-                mat.uv_multiplier = amesh.uv_multiplier
-                gl.uniform1f mat.u_uv_multiplier, amesh.uv_multiplier
+            if mat.u_uv_rect?
+                [x,y,w,h] = mesh.uv_rect
+                x += mesh.uv_right_eye_offset[0] * @_right_eye_factor
+                y += mesh.uv_right_eye_offset[1] * @_right_eye_factor
+                gl.uniform4f mat.u_uv_rect, x, y, w, h
 
             if mesh.armature? and mesh.parent_bone_index == -1
                 bones = mesh.armature.deform_bones
@@ -648,6 +651,7 @@ class RenderManager
         # Shift position for stereo VR rendering
         eye_shift = vec3.scale @_v, viewport.eye_shift, vec3.len(cam.world_matrix.subarray(8,11))
         vec3.transformMat4 cam2world.subarray(12,15), eye_shift, cam2world
+        @_right_eye_factor = viewport.right_eye_factor
 
         mat4.invert world2cam, cam2world
         mat3.fromMat4 world2cam3, world2cam
