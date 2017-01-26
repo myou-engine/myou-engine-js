@@ -102,6 +102,7 @@ class Mesh extends GameObject
         @armature = null
         @sort_dot = 0
         @uv_rect = vec4.fromValues 0, 0, 1, 1 # x, y, w, h
+        @uv_right_eye_offset = [0, 0]
         #TODO move to MeshData
         @custom_uniform_values = []
         @active_mesh_index = 0
