@@ -4,6 +4,7 @@
 {MainLoop} = require './main_loop.coffee'
 loader = require './loader.coffee'
 vr = require './webvr.coffee'
+{MeshFactory} = require './mesh_factory.coffee'
 
 class Myou
     constructor: (root, MYOU_PARAMS)->
@@ -67,6 +68,7 @@ class Myou
         data_dir = MYOU_PARAMS.data_dir = data_dir.replace(/\/$/g, '')
 
         @events = new Events root, MYOU_PARAMS.event_options
+        @mesh_factory = new MeshFactory @
         @main_loop.run()
 
     load_scene: (name, load_physics=true) ->
