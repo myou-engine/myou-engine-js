@@ -202,7 +202,6 @@ class Material
         @users = []
         @uniforms_config = uniforms
         @attributes_config = attributes
-        @uv_multiplier = 1
         @shape_multiplier = 1
         @group_id = -1
         @double_sided = Boolean @data.double_sided
@@ -370,7 +369,7 @@ class Material
                     @uv_layer_attribs[a.name] = a.varname
                     attribute_decl += "attribute vec2 "+a.varname+";\n"\
                         +"varying vec2 "+v+";\n"
-                    attribute_asgn += v+"="+a.varname+"*uv_multiplier;\n"
+                    attribute_asgn += v+"="+a.varname+"*uv_rect.zw+uv_rect.xy;\n"
                     @attrib_locs[a.varname] = -1
                 when CD_MCOL # Vertex color
                     @color_attribs[a.name] = a.varname
@@ -508,7 +507,7 @@ class Material
         uniform mat4 projection_matrix;
         uniform mat3 normal_matrix;
         uniform float shape_multiplier;
-        uniform float uv_multiplier;
+        uniform vec4 uv_rect;
         attribute vec3 vertex;
         attribute vec3 vnormal;
         varying vec3 varposition;
@@ -593,11 +592,11 @@ class Material
         @u_projection_matrix = gl.getUniformLocation prog, "projection_matrix"
         @u_normal_matrix = gl.getUniformLocation prog, "normal_matrix"
         @u_shape_multiplier = gl.getUniformLocation prog, "shape_multiplier"
-        @u_uv_multiplier = gl.getUniformLocation prog, "uv_multiplier"
+        @u_uv_rect = gl.getUniformLocation prog, "uv_rect"
         @u_group_id = gl.getUniformLocation prog, "group_id"
         @u_mesh_id = gl.getUniformLocation prog, "mesh_id"
         @u_shape_multiplier? and gl.uniform1f @u_shape_multiplier, @shape_multiplier
-        @u_uv_multiplier? and gl.uniform1f @u_uv_multiplier, @uv_multiplier
+        @u_uv_rect? and gl.uniform4f @u_uv_rect, 0, 0, 1, 1
 
         # these getUniformLocation may yield null
         @u_inv_model_view_matrix = gl.getUniformLocation prog, var_inv_model_view_matrix

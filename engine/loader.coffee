@@ -125,7 +125,10 @@ load_object = (data, scene) ->
                 ob.material_names = data.materials
                 ob.all_f = data.all_f
                 ob.shape_multiplier = data.shape_multiplier or 1
-                ob.uv_multiplier = data.uv_multiplier or 1
+                if data.uv_rect?
+                    vec3.copy ob.uv_rect, data.uv_rect
+                else
+                    ob.uv_rect[2] = ob.uv_rect[3] = data.uv_multiplier or 1
                 ob.pack_offset = data.pack_offset
                 ob.packed_file = data.packed_file
                 if data.bbox?
