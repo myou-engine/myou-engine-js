@@ -482,56 +482,6 @@ class GameObject
     remove: (recursive) ->
         @scene.remove_object @, recursive
 
-    add_animation: (animation, name, options={}) ->
-        if typeof animation == 'string'
-            console.error "Deprecated use of add_animation. See documentation for details."
-            action = name
-            name = animation
-            animation = new Animation action
-        has_animations = false
-        for _ of @animations
-            has_animations = true
-            break
-        if not has_animations
-            @scene.context.all_anim_objects.push @
-        old_animation = @animations[name]
-        if old_animation?
-            i = 0
-            while @animations[old_name = name+'.'+i]
-                i++
-            @animations[old_name] = old_animation
-            # TODO: old_animation.fadeout if not fading
-            @del_animation old_name
-        @animations[name] = animation
-        @_recalc_affected_channels()
-        return animation
-
-    del_animation: (anim_id) ->
-        #console.log 'removing',anim_id
-        delete @animations[anim_id]
-        if Object.keys @animations.length == 0
-            @scene.context.all_anim_objects.remove @
-        @_recalc_affected_channels()
-
-    _recalc_affected_channels:  ->
-        # We make a list of affected channels
-        # each with a list of channels from animations
-        # and we'll make sure they all are present as zero
-        # (or one, depending on the mixing type)
-        # NOTE: maybe it's a good idea to add a preweight for each chan
-        # and add all contiguous channels
-        # Eventually this will also reserve memory for
-        # storing cache
-        affected = {}
-        i = 0
-        for key, anim of @animations
-            for path of anim.action.channels
-                c = affected[path]
-                if not c?
-                    c = affected[path] = true
-            i += 1
-        @affected_anim_channels = affected
-
     # delete me
     set_altmesh: (index) ->
         set_altmesh @,index

@@ -117,6 +117,12 @@ class Animation
         @playing = false
         @_index = -1
 
+    has_strips: ->
+        for ob in @objects
+            if ob.animation_strips.length != 0
+                return true
+        return false
+
     play: ->
         if not @playing
             @last_eval = performance.now()
