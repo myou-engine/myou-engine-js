@@ -70,7 +70,6 @@ class RenderManager
         @frame_start = performance.now()
         @pixel_ratio_x = @pixel_ratio_y = 1
         @camera_z = vec3.create()
-        @lod_factor = 1
         @no_s3tc = @context.MYOU_PARAMS.no_s3tc
         ba = @context.MYOU_PARAMS.background_alpha
         @background_alpha = if ba? then ba else 1
@@ -368,22 +367,22 @@ class RenderManager
             (vec3.dot(pos, @_cull_right)+r) *
             (vec3.dot(pos, @_cull_bottom)+r)) < 0
                 mesh.culled_in_last_frame = true
-                return true
+                return
         mesh.culled_in_last_frame = false
 
         # Select alternative mesh / LoD
         if @render_tick != mesh.last_lod_tick
             amesh = mesh.get_lod_mesh(@_vp, @context.mesh_lod_min_length_px)
             if not amesh.data
-                return true
+                return
             mesh.last_lod_tick = @render_tick
         else
             amesh = mesh.last_lod_object
 
         # Reconfigure materials of mesh if they're missing
         if amesh.materials.length != amesh.material_names.length
-            amesh.configure_materials()
-            return
+            if not amesh.configure_materials()
+                return
 
         flip_normals = mesh._flip
         if @flip != flip_normals
@@ -585,7 +584,7 @@ class RenderManager
             # @meshes_drawn += 1
             # @triangles_drawn += num_indices * 0.33333333333333333
 
-        return true
+        return
 
     draw_viewport: (viewport, rect, dest_buffer, passes)->
         gl = @gl

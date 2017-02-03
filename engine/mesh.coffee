@@ -213,8 +213,9 @@ class Mesh extends GameObject
             # console.log render_manager.frame_start, performance.now()
             scene = @scene
             for mname in @material_names
+                # TODO: This makes meshes flicker, it should be done in LoD!
                 if (@context.render_manager.frame_start + 33) < performance.now() or @context.render_manager.compiled_shaders_this_frame > 1
-                    break
+                    return false
                 if mname == 'UNDEFINED_MATERIAL'
                     console.warn 'Mesh '+@name+' has undefined material'
                 data = scene.unloaded_material_data[mname]
@@ -228,7 +229,7 @@ class Mesh extends GameObject
                     materials.push mat
                 else
                     # Abort
-                    break
+                    return false
         else if materials.length > @material_names.length
             @material_names = for m in materials then m.name
 
