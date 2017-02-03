@@ -173,7 +173,7 @@ load_object = (data, scene) ->
                 # the base level already have them
                 lod_data.elements = data.elements
                 lod_data.stride = data.stride
-                lod_data.materials = data.materials
+                lod_data.materials = lod_data.materials or data.materials # workaround
                 lod_data.visible = data.visible
                 lod_ob = new Mesh context
                 lod_ob.scene = ob.scene
