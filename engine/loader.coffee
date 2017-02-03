@@ -177,6 +177,7 @@ load_object = (data, scene) ->
                 lod_data.visible = data.visible
                 lod_ob = new Mesh context
                 lod_ob.scene = ob.scene
+                lod_ob.parent = ob.parent # for armature in configure_materials
                 load_mesh_properties lod_ob, lod_data
                 ob.lod_objects.push
                     factor: lod_data.factor,
