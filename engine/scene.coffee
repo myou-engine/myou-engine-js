@@ -40,7 +40,6 @@ class Scene
         @_children_are_ordered = true
         @last_render_tick = 0
         @load_callbacks = []
-        @logic_ticks = []
         @pre_draw_callbacks = []
         @post_draw_callbacks = []
         @_pending_tasks = 0

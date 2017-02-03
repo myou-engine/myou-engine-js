@@ -74,7 +74,7 @@ class MainLoop
     reset_timeout: =>
         if @timeout_time
             @timeout(@timeout_time)
-        
+
     tick_once: ->
         if @req_tick?
             cancelAnimationFrame @req_tick
@@ -83,7 +83,7 @@ class MainLoop
             @tick()
             cancelAnimationFrame @req_tick
             @req_tick = null
-    
+
     tick: ->
         {_HMD} = @context
         if _HMD?
@@ -99,11 +99,11 @@ class MainLoop
         while (task_time < max_task_time) and (@_frame_callbacks.length != 0)
             @_frame_callbacks.shift()()
             task_time = performance.now()
-            
+
         if not @enabled
             return
         @last_frame_durations[@_fdi] = frame_duration
-        
+
         # Limit low speed of logic and physics
         frame_duration = Math.min(frame_duration, MAX_FRAME_DURATION)
 
@@ -113,13 +113,9 @@ class MainLoop
             while --i != 0
                 scene.pre_draw_callbacks[scene.pre_draw_callbacks.length-i] scene, frame_duration
 
-            i = scene.logic_ticks.length+1
-            while --i != 0
-                scene.logic_ticks[scene.logic_ticks.length-i] frame_duration
-
             for p in scene.active_particle_systems
                 p._eval()
-        
+
         time2 = performance.now()
 
         for scene_name in @context.loaded_scenes
@@ -127,11 +123,11 @@ class MainLoop
                 get_last_char_phy scene.kinematic_characters
                 step_world scene.world, frame_duration * 0.001
                 phy_to_ob scene.rigid_bodies
-        
+
         time3 = performance.now()
 
         evaluate_all_animations @context, frame_duration
-        
+
         time4 = performance.now()
 
         for name, video_texture of @context.video_textures
