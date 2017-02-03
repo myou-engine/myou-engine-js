@@ -28,7 +28,7 @@ class RenderManager
 
         if not gl
             gl = window.WebGL
-            
+
         if not gl
             # Try disabling multisampling
             # (Chrome is not following the specification by rejecting to create the context)
@@ -68,7 +68,7 @@ class RenderManager
         @context_lost_count = 0
         @bound_textures = []
         @frame_start = performance.now()
-        @pixel_ratio_x = pixel_ratio_y = 1
+        @pixel_ratio_x = @pixel_ratio_y = 1
         @camera_z = vec3.create()
         @lod_factor = 1
         @no_s3tc = @context.MYOU_PARAMS.no_s3tc
