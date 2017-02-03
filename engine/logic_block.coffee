@@ -4,8 +4,11 @@ class LogicBlock
     constructor: (@scene, @settings={})->
         scene = @scene
         @context = context = scene.context
-        if @init? then @init()
-        if @pre_draw_tick? then scene.pre_draw_callbacks.push(@pre_draw_tick.bind @)
-        if @post_draw_tick? then scene.post_draw_callbacks.push(@pre_draw_tick.bind @)
+        @init?()
+        if @pre_draw_tick?
+            scene.pre_draw_callbacks.push (scene)=> @pre_draw_tick.bind(@)(context.main_loop.frame_duration)
+
+        if @post_draw_tick?
+            scene.pre_draw_callbacks.push (scene)=> @post_draw_tick.bind(@)(context.main_loop.frame_duration)
 
 module.exports = {LogicBlock}
