@@ -1,5 +1,5 @@
 
-{vec3, vec4} = require 'gl-matrix'
+{vec3, vec4, quat} = require 'gl-matrix'
 
 displays = []
 navigator.getVRDisplays?().then (_displays) ->
@@ -52,7 +52,7 @@ exports.init = (scene, options={}) ->
             break
     if not HMD?
         return Promise.reject "No HMDs detected. Conect an HMD, turn it on and try again."
-    
+
     ctx._vrscene = scene
     ctx._HMD = HMD
     # Request present
@@ -62,7 +62,7 @@ exports.init = (scene, options={}) ->
     else
         # TODO: support non-presenting VR displays?
         return Promise.reject "Non-presenting VR displays are not supported"
-        
+
     # Prepare scene after is presenting
     window.removeEventListener 'vrdisplaypresentchange', vrdisplaypresentchange
     new Promise (resolve, reject) ->
