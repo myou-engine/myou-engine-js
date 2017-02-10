@@ -16,7 +16,7 @@
 #     ]
 # }
 # Look at image.py in the exporter for more info.
-    
+
 class Texture
     constructor: (@context, tex_data) ->
         @type = 'TEXTURE'
@@ -43,7 +43,7 @@ class Texture
         @gl_format = @gl_internal_format = @gl_type = 0
         if not @name
             debugger
-    
+
     load: ->
         # TODO: better define how we do this
         # For now we'll load the low res texture,
@@ -56,11 +56,11 @@ class Texture
         # if not @gl_tex?
         #     @gl_tex = gl.createTexture()
         base = @context.MYOU_PARAMS.data_dir + '/textures/'
-        {jpeg, png, rgb565, dxt1, dxt5, etc1, etc2, pvrtc, astc, mp4, ogv, ogg, webm} = @formats
+        {jpeg, png, rgb565, dxt1, dxt5, etc1, etc2, pvrtc, astc, mp4, ogv, ogg, webm, mov} = @formats
         image_list = jpeg or png
         # TODO!! Select format depending on browser support
         # TODO!! Or add all files as <source> inside the <video>
-        video_list = mp4 or ogg or webm
+        video_list = mp4 or ogg or ogv or webm or mov
         # (also, if both images and videos are available,
         # should the image be shown until the video starts?)
 
@@ -186,7 +186,7 @@ class Texture
                                 correctly if the size is not power of two."
                             console.warn "Specify the size, or set to 'clamp' and disable mipmaps to silence this warning."
                     @restore() #TODO: use @upload and @configure instead when possible
-                    
+
                     # update_texture will be called on each game engine frame (in main_loop)
                     # but it only will update the texture if video.currentTime has been changed.
                     update_texture = =>
@@ -201,7 +201,7 @@ class Texture
         else
             @promise = Promise.reject("Texture #{@name} has no supported formats")
         return @promise
-    
+
     # Use this after context is lost
     restore: ->
         {gl} = @context.render_manager
@@ -210,7 +210,7 @@ class Texture
         @gl_tex = gl.createTexture()
         @upload()
         @configure()
-        
+
     upload: ->
         {gl} = @context.render_manager
         gl.bindTexture gl.TEXTURE_2D, @gl_tex
@@ -242,7 +242,7 @@ class Texture
                 if @use_mipmap
                     gl.generateMipmap gl.TEXTURE_2D
         gl.bindTexture gl.TEXTURE_2D, null
-    
+
     configure: ->
         {gl, extensions} = @context.render_manager
         gl.bindTexture gl.TEXTURE_2D, @gl_tex
@@ -279,7 +279,7 @@ class Texture
         @video = null
         @buffers = []
         @gl_format = @gl_internal_format = @gl_type = 0
-    
+
     is_power_of_two: ->
         {width, height} = @
         if not width or not height
@@ -316,5 +316,3 @@ get_texture_from_path_legacy = (name, path, filter, wrap, file_size=0, context) 
     return tex
 
 module.exports = {Texture, get_texture_from_path_legacy}
-
-
