@@ -188,9 +188,9 @@ class Scene
         # remove texture.users and garabage collect them after textures
         # of the next scene are enumerated
 
-        for v in render_manager.viewports[...]
+        for v in @context.render_manager.viewports[...]
             if v.camera.scene == @
-                render_manager.viewports.remove v
+                @context.render_manager.viewports.remove v
         if @context.scene == @
             @context.scene = null
 
