@@ -174,7 +174,7 @@ class Scene
         for ob in @children[...]
             @remove_object ob, false
             delete @context.objects[ob.name]
-        destroy_world @world
+        if @world? then destroy_world @world
 
         # Reduce itself to a stub by deleting itself and copying callbacks
         stub = @context.scenes[@name] = new Scene @context
