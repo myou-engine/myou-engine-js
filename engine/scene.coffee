@@ -174,7 +174,7 @@ class Scene
         for ob in @children[...]
             @remove_object ob, false
             delete @context.objects[ob.name]
-        destroy_world @world
+        if @world? then destroy_world @world
 
         # Reduce itself to a stub by deleting itself and copying callbacks
         stub = @context.scenes[@name] = new Scene @context
@@ -188,9 +188,9 @@ class Scene
         # remove texture.users and garabage collect them after textures
         # of the next scene are enumerated
 
-        for v in render_manager.viewports[...]
+        for v in @context.render_manager.viewports[...]
             if v.camera.scene == @
-                render_manager.viewports.remove v
+                @context.render_manager.viewports.remove v
         if @context.scene == @
             @context.scene = null
 
