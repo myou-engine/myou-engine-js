@@ -307,8 +307,12 @@ pointer_over_no_phy = (pointer_event, cam, objects={})->
 
     for ob in objects
         pos = ob.get_world_position()
-        vdist = r3.v_dist_point_to_rect v3, pos, cam_pos, dir
-        dist = vec3.len vdist
+
+        vec3.normalize dir, dir
+        target_dir = vec3.scale v3, dir, vec3.dist(cam_pos, pos)
+        vec3.add target_dir, cam_pos, target_dir
+        dist = vec3.dist(target_dir, pos)
+
         if dist <= ob.radius
             hits.push
                 object: ob
