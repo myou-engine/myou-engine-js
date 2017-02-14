@@ -1,6 +1,8 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{vec2, vec3, quat} = require 'gl-matrix'
 phy = require './physics.coffee'
 {LogicBlock} = require './logic_block.coffee'
+r3 = require './geometry_utils/r3.coffee'
+v3 = vec3.create()
 
 # Capture all the multitouch gestures over the objects in a collision mask
 
@@ -285,11 +287,40 @@ class RotationGesture extends LogicBlock
         angular_velocity = vec3.scale(vec3.create(),rel_rot,1/frame_duration)
         return {rot, rel_rot, angular_velocity}
 
+
+pointer_over_no_phy = (pointer_event, cam, objects={})->
+    # objects are considered as spheres
+    #TODO: improve using bound box
+    scene = cam.scene
+    context = scene.context
+
+    cam_pos = cam.get_world_position()
+    {width, height} = context.canvas_rect
+
+    {x,y} = pointer_event
+    x = x/width
+    y = y/height
+
+    dir = cam.get_ray_direction(x,y)
+
+    hits = []
+
+    for ob in objects
+        pos = ob.get_world_position()
+        vdist = r3.v_dist_point_to_rect v3, pos, cam_pos, dir
+        dist = vec3.len vdist
+        if dist <= ob.radius
+            hits.push
+                object: ob
+                point: vec3.add vec3.create(), pos, vdist
+
+    return hits
+
 # output {objet, point, normal}
 pointer_over = (pointer_event, cam, int_mask)->
     scene = cam.scene
-    context = cam.scene.context
-    events = context.events
+    context = scene.context
+
     pos = cam.get_world_position()
     {width, height} = context.canvas_rect
 
@@ -362,4 +393,4 @@ axis_objet_mapper = (pos, cam, axis=[0,0,0])->
         0
     ]
 
-module.exports = {TouchGesturesOver, RotationGesture, PinchGesture, pointer_over, trackball_rotation, curve_closest_point, digital_to_axes, axis_objet_mapper}
+module.exports = {TouchGesturesOver, RotationGesture, PinchGesture, pointer_over_no_phy, pointer_over, trackball_rotation, curve_closest_point, digital_to_axes, axis_objet_mapper}
