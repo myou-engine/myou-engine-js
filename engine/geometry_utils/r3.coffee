@@ -1,10 +1,13 @@
 
 {mat3, vec3, vec4, quat} = require 'gl-matrix'
 
-m3 = mat3.create()
+#Constants
 Z_VECTOR = vec3.fromValues 0,0,1
-na = vec3.create()
-nb = vec3.create()
+
+#Temporal
+m3 = mat3.create()
+v1 = vec3.create()
+v2 = vec3.create()
 q = quat.create()
 
 planes_intersection = (out, m)->
@@ -27,17 +30,27 @@ rect_from_dir_point = (out, d, p)-> # UNTESTED
     # d is the director vector of the rect
     # the result will be 2 planes which define the rect, in a
     # 4x2 row-major matrix (or first half of 4x4)
-    vec3.set na, 1,0,0
-    vec3.set nb, 0,1,0
+    vec3.set v1, 1,0,0
+    vec3.set v2, 0,1,0
     quat.rotationTo q, Z_VECTOR, d
-    vec3.transformQuat na, na, q
-    vec3.transformQuat nb, nb, q
-    plane_from_norm_point out, nb, p
+    vec3.transformQuat v1, v1, q
+    vec3.transformQuat v2, v2, q
+    plane_from_norm_point out, v2, p
     out[4] = out[0]
     out[5] = out[1]
     out[6] = out[2]
     out[7] = out[3]
-    plane_from_norm_point out, na, p
+    plane_from_norm_point out, v1, p
     return out
 
-module.exports = {planes_intersection, plane_from_norm_point, rect_from_dir_point}
+v_dist_point_to_rect = (out, p, rp, dir)->
+    # p is a point
+    # rp is a point of the rect
+    # dir is the director vector of the rect
+
+    vec3.normalize dir, dir
+    vec3.cross out, vec3.sub(v1,p,rp), dir
+    return out
+
+
+module.exports = {planes_intersection, plane_from_norm_point, rect_from_dir_point, v_dist_point_to_rect}
