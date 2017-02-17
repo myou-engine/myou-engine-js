@@ -8,13 +8,16 @@ class LogicBlock
         @context = context = scene.context
         @init?()
         if @pre_draw_tick?
-            scene.pre_draw_callbacks.push (scene)=> @pre_draw_tick.bind(@)(context.main_loop.frame_duration)
+            scene.pre_draw_callbacks.push (scene, frame_duration) =>
+                @pre_draw_tick frame_duration
 
         if @tick? #TODO: Delete it in future versions.
             console.warn '"tick" is deprecated in LogicBlock, please use "pre_draw_tick" or "post_draw_tick" instead.'
-            scene.pre_draw_callbacks.push (scene)=> @tick.bind(@)(context.main_loop.frame_duration)
+            scene.pre_draw_callbacks.push (scene, frame_duration) =>
+                @tick frame_duration
 
         if @post_draw_tick?
-            scene.pre_draw_callbacks.push (scene)=> @post_draw_tick.bind(@)(context.main_loop.frame_duration)
+            scene.pre_draw_callbacks.push (scene, frame_duration) =>
+                @post_draw_tick frame_duration
 
 module.exports = {LogicBlock}
