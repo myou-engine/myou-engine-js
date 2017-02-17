@@ -2,9 +2,9 @@ Myou Engine documentation
 =======================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
-   myou/myou
+   The classes of Myou <myou/tocs/classes>
    tutorial/tutorial
    license
 
