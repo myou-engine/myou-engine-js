@@ -5,8 +5,14 @@ Myou Engine documentation
    :maxdepth: 1
 
    The classes of Myou <myou/tocs/classes>
+   myou-tool
    tutorial/tutorial
    license
+
+.. toctree::
+  :maxdepth: 3
+
+  Myou Engine <myou/tocs/MyouEngine>
 
 Features
 --------

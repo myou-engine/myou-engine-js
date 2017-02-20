@@ -6,3 +6,5 @@ Classes
 
    ../myou
    ../gameobject
+   ../scene
+   ../group
