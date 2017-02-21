@@ -105,9 +105,9 @@ Members
 Methods
 =======
 
----------------------------
-instance_physics: (Boolean)
----------------------------
+-----------------------------------
+instance_physics: (use_visual_mesh)
+-----------------------------------
 
 Sets the physics settings for that instance of an object.
 
@@ -125,24 +125,26 @@ Parameters:
 
     Source: **gameobject.js**, `line 101 <https://github.com/myou-engine/myou-engine/blob/master/engine/gameobject.coffee#L101>`_
 
-----------------
-_update_matrices
-----------------
+------------------
+_update_matrices()
+------------------
 
 Updates object matrices.
 
     Source: **gameobject.js**, `line 299 <https://github.com/myou-engine/myou-engine/blob/master/engine/gameobject.coffee#L299>`_
 
--------------------------
-update_matrices_recursive
--------------------------
+---------------------------
+update_matrices_recursive()
+---------------------------
 
 Updates object matrices recursively.
 
     Source: **gameobject.js**, `line 368 <https://github.com/myou-engine/myou-engine/blob/master/engine/gameobject.coffee#L368>`_
 
------------------
-calc_bounding_box
------------------
+-------------------
+calc_bounding_box()
+-------------------
 
 Calculates the bounding box of an object.
+
+    Source: **gameobject.js**, `line 411 <https://github.com/myou-engine/myou-engine/blob/master/engine/gameobject.coffee#L411>`_

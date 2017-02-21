@@ -2,6 +2,7 @@ Myou Engine
 ===========
 
 .. toctree::
+  :maxdepth: 3
 
   Myou <../myou>
   RenderManager <../render>
