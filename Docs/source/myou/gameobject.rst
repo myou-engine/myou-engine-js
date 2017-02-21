@@ -54,7 +54,7 @@ Source: **gameobject.coffee**, `line 30 <https://github.com/myou-engine/myou-eng
   +------------------------+-----------+---------------------------------------------------+-------------------------------------------------------------------------------------------------------------------+
   |scene                   |           |                                                   |**gameobject.js**, `line 41 <https://github.com/myou-engine/myou-engine/blob/master/engine/gameobject.coffee#L41>`_|
   +------------------------+-----------+---------------------------------------------------+-------------------------------------------------------------------------------------------------------------------+
-  |dupli_group             |           |                                                   |**gameobject.js**, `line 42 <https://github.com/myou-engine/myou-engine/blob/master/engine/gameobject.coffee#L42>`_|
+  |dupli_group             |                                                   |**gameobject.js**, `line 42 <https://github.com/myou-engine/myou-engine/blob/master/engine/gameobject.coffee#L42>`_|
   +------------------------+-----------+---------------------------------------------------+-------------------------------------------------------------------------------------------------------------------+
   |visible                 |Boolean    |Defauls to true. Set to false to hide object.      |**gameobject.js**, `line 43 <https://github.com/myou-engine/myou-engine/blob/master/engine/gameobject.coffee#L43>`_|
   +------------------------+-----------+---------------------------------------------------+-------------------------------------------------------------------------------------------------------------------+

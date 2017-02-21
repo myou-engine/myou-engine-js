@@ -105,7 +105,7 @@ html_static_path = ['nstatic']
 
 # -- Favicon and logo--------------------------------------
 
-html_favicon ='images/favicon.png'
+html_favicon ='images/favicon.ico'
 html_logo ='images/myou_logo_tex.svg'
 
 # -- Options for HTMLHelp output ------------------------------------------
