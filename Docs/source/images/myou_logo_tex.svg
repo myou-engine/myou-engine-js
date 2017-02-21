@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="512" height="256">
+<path d="m 448 64 0 48 -16 0 0 16 -16 0 0 32 32 0 0 -16 16 0 0 16 16 0 0 -48 16 0 0 -48 -16 0 0 16 -16 0 0 -16 z m -32 64 0 -32 -16 0 0 -16 -16 0 0 32 16 0 0 16 z m -224 -16 0 48 64 0 0 -48 z m -160 16 0 32 16 0 0 -16 16 0 0 16 16 0 0 -16 16 0 0 16 16 0 0 -32 z m 96 0 0 32 32 0 0 32 16 0 0 -64 -16 0 0 16 -16 0 0 -16 z m 80 0 32 0 0 16 -32 0 z m 64 0 0 32 64 0 0 -32 -16 0 0 16 -32 0 0 -16 z m 96 16 0 16 16 0 0 -16 z" />
+<rect width="16" height="16" x="448" y="80" style="fill:#92ab00" />
+<rect width="16" height="16" x="480" y="80" style="fill:#efab00" />
+<rect width="16" height="16" x="224" y="112" style="fill:#66a5ed" />
+<rect width="16" height="16" x="128" y="144" style="fill:#ab54c1" />
+<rect width="16" height="16" x="320" y="144" style="fill:#d25400" />
+</svg>
