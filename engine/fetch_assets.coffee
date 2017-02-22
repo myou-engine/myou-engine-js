@@ -113,6 +113,10 @@ fetch_mesh = (mesh_object, options={}) ->
 # This returns a promise of all things necessary to display the object
 # (meshes, textures, materials)
 fetch_objects = (object_list, options) ->
+fetch_objects = (object_list, options={}) ->
+    if not object_list.length
+        return Promise.resolve()
+        
     promises = []
     for ob in object_list
         if ob.type == 'MESH'
