@@ -237,6 +237,14 @@ class Scene
         # Meshes should always return data's promises
         return fetch_objects(list, options).then(=>@)
 
+    enable_objects_render: (list)->
+        for ob in list
+            ob.render = true
+
+    disable_objects_render: (list)->
+        for ob in list
+            ob.render = false
+
     enable_render: ->
         @enabled = true
         return @

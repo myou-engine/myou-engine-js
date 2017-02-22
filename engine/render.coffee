@@ -617,7 +617,7 @@ class RenderManager
             #       (also, this is used in LookAt and other nodes)
             for ob in scene.armatures
                 for c in ob.children
-                    if c.visible
+                    if c.visible and c.render
                         ob.recalculate_bone_matrices()
                         break
             for ob in scene.auto_updated_children
@@ -698,7 +698,7 @@ class RenderManager
 
                 for ob in scene.mesh_passes[0]
                     data = ob.get_lod_mesh(@_vp, mesh_lod_min_length_px).data
-                    if ob.visible and data and data.attrib_pointers.length != 0 and not ob.culled_in_last_frame
+                    if ob.render and ob.visible and data and data.attrib_pointers.length != 0 and not ob.culled_in_last_frame
                         mat4.multiply m4, world2light, ob.world_matrix
                         #draw_mesh ob, ob.world_matrix, world2light, mat
                         gl.uniformMatrix4fv mat.u_model_view_matrix, false, m4
@@ -750,7 +750,7 @@ class RenderManager
         # PASS -1  (background)
         if scene.bg_pass and scene.bg_pass.length
             for ob in scene.bg_pass
-                if ob.visible == true
+                if ob.visible == true and ob.render
                     @draw_mesh(ob, ob.world_matrix, 0)
             gl.clear gl.DEPTH_BUFFER_BIT
 
@@ -758,7 +758,7 @@ class RenderManager
         if passes.indexOf(0) >= 0
             scene.mesh_passes[0].sort sort_by_mat_id
             for ob in scene.mesh_passes[0]
-                if ob.visible == true and not ob.bg and not ob.fg
+                if ob.visible == true and not ob.bg and not ob.fg and ob.render
                     @draw_mesh(ob, ob.world_matrix, 0)
 
 
@@ -778,7 +778,7 @@ class RenderManager
             timsort_sqdist scene.mesh_passes[1]
 
         for ob in scene.mesh_passes[1]
-            if ob.visible == true
+            if ob.visible == true and ob.render
                 @draw_mesh(ob, ob.world_matrix, 1)
 
                 #if ob.dupli_group?
@@ -794,14 +794,14 @@ class RenderManager
         if scene.fg_pass and scene.fg_pass.length
             gl.clear gl.DEPTH_BUFFER_BIT
             for ob in scene.fg_pass
-                if ob.visible == true
+                if ob.visible == true and ob.render
                     @draw_mesh(ob, ob.world_matrix, 0)
 
         # PASS 2  (translucent)
         # Currently it uses the filter FB, so this has to be drawn unfiltered
         if passes.indexOf(2)>=0
             for ob in scene.mesh_passes[2]
-                if ob.visible == true
+                if ob.visible == true and ob.render
                     @draw_mesh ob, ob.world_matrix, 2
 
 
@@ -881,7 +881,7 @@ class RenderManager
     polycount_debug: (ratio=1)->
         total_polys = 0
         for ob in scene.children
-            if ob.type == 'MESH' and ob.visible and ob.data
+            if ob.type == 'MESH' and ob.visible and ob.data and ob.render
                 for n in ob.data.num_indices
                     total_polys += n
         inv_ratio = 1-ratio
@@ -890,7 +890,7 @@ class RenderManager
         for ob in scene.children
             if removed_polys/total_polys > inv_ratio
                 return
-            if ob.type == 'MESH' and ob.visible and ob.data
+            if ob.type == 'MESH' and ob.visible and ob.data and ob.render
                 for n in ob.data.num_indices
                     removed_polys += n
                 ob.visible = false
