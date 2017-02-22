@@ -79,6 +79,7 @@ fetch_mesh = (mesh_object, options={}) ->
                 uri = base + mesh_object.scene.name + '/' + file_name + '.mesh'
                 fetch(uri).then((data)->data.arrayBuffer())
 
+
         fetch_promises[file_name] = fetch_promise
 
         fetch_promise.then (data) ->
@@ -112,9 +113,14 @@ fetch_mesh = (mesh_object, options={}) ->
 
 # This returns a promise of all things necessary to display the object
 # (meshes, textures, materials)
-fetch_objects = (object_list, options) ->
+fetch_objects = (object_list, options={}) ->
+    render = options.render or true
+    if not object_list.length
+        return Promise.resolve()
+        
     promises = []
     for ob in object_list
+        ob.render = render
         if ob.type == 'MESH'
             {scene} = ob
             promises.push fetch_mesh(ob, options)

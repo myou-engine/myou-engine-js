@@ -47,9 +47,7 @@ v_dist_point_to_rect = (out, p, rp, dir)->
     # p is a point
     # rp is a point of the rect
     # dir is the director vector of the rect
-
-    vec3.normalize dir, dir
-    vec3.cross out, vec3.sub(v1,p,rp), dir
+    vec3.cross out, vec3.sub(v2,p,rp), vec3.normalize v1, dir
     return out
 
 

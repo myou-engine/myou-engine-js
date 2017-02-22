@@ -77,4 +77,14 @@ glm.quat.to_euler_ZYX = (out, q) ->
                     w*w + x*x - y*y - z*z)
     return out
 
+glm.vec3.signedAngle = (a, b, n, flip) ->
+    flip = (flip and -1) or 1
+    {scale, dot, cross, normalize, angle, create} = glm.vec3
+    result = angle a, b
+    c = cross create(), a, b
+    if dot(n, c) < 0
+        result *= -1
+
+    return result
+
 module.exports = glm
