@@ -392,7 +392,7 @@ class Mesh extends GameObject
             for i in [0...num_values]
                 cuv.push null
         return true
-    
+
     # min_length_px is the minimum length of the average polygon, in screen pixels
     get_lod_mesh: (viewport, min_length_px) ->
         amesh = @
@@ -437,11 +437,14 @@ class Mesh extends GameObject
             for lod in @lod_objects by -1
                 ob = lod.object
                 visual_size_px = ob.avg_poly_length * poly_length_to_visual_size
-                if ob.avg_poly_length > biggest_length and visual_size_px < min_length_px and ob.data?
+                if ob.avg_poly_length > biggest_length and visual_size_px < min_length_px and ob.data?.attrib_pointers
                     biggest_length = ob.avg_poly_length
                     @last_lod_object = amesh = ob
+
+            # NOTE TODO: Fix when lod levels can't be seen if the main level is not configured
+            if amesh != @ and @data? and @materials.length == 0
+                @configure_materials()
 
         return amesh
 
 module.exports = {Mesh}
-
