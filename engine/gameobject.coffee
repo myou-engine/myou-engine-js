@@ -42,6 +42,7 @@ class GameObject
         @scene = null
         @dupli_group = null
         @visible = true
+        @render = true
         @_world_position = vec3.create()
         @_sqdist = 0  # Squared distance to camera
         @_flip = false
