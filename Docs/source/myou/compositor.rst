@@ -132,7 +132,7 @@ Assigns values to uniforms.
 compose
 ^^^^^^^
 
-
+Binds textures, configures attributes, and assigns custom uniforms to the render_manager.
 
     Source: **compositor.coffee**, `line 172 <https://github.com/myou-engine/myou-engine/blob/master/engine/compositor.coffee#L172>`_
 
