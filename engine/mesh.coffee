@@ -447,4 +447,10 @@ class Mesh extends GameObject
 
         return amesh
 
+    clone: (scene, recursive) ->
+        clone = super scene, recursive
+        clone.uv_rect = @uv_rect[...]
+        clone.uv_right_eye_offset = @uv_right_eye_offset[...]
+        return clone
+
 module.exports = {Mesh}
