@@ -33,6 +33,7 @@ fetch_textures_of_material = (scene, mat_name, ob_name="") ->
                             throw "Texture #{u.image} not found (in material #{mat_name})."
                         tex = texture.get_texture_from_path_legacy u.image, u.filepath, u.filter, u.wrap, u.size, scene.context
                     tex.load()
+                    tex.ob_user_names.push ob_name
             )
         else
             console.warn "Warning: Couldn't find material '#{mat_name}' when trying to load object #{ob_name}"
@@ -117,7 +118,7 @@ fetch_objects = (object_list, options={}) ->
     render = options.render or true
     if not object_list.length
         return Promise.resolve()
-        
+
     promises = []
     for ob in object_list
         ob.render = render

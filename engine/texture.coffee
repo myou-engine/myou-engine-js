@@ -32,6 +32,7 @@ class Texture
         @promise = null
         @promised_data = null
         @users = [] # materials
+        @ob_user_names = [] # names of object users, TODO: temporary until #9 is fixed 
         # These hold the data for the current texture, and they
         # change after another texture is loaded
         @type = '' # One of: image, video, buffers, compressed
