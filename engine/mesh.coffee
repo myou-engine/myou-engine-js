@@ -360,12 +360,13 @@ class Mesh extends GameObject
                     attribs.push [mat.attrib_locs[varname], 4, GL_UNSIGNED_BYTE, color[1]]
 
             if @armature
-                attribs.push([mat.attrib_locs['weights'], 4, GL_FLOAT, o_weights])
-                if weights6
-                    attribs.push([mat.attrib_locs['weights2'], 2, GL_FLOAT, o_weights2])
-                attribs.push([mat.attrib_locs['b_indices'], 4, gl_float_unsigned_byte, o_b_indices])
-                if weights6
-                    attribs.push([mat.attrib_locs['b_indices2'], 2, gl_float_unsigned_byte, o_b_indices2])
+                if mat.attrib_locs['weights']
+                    attribs.push([mat.attrib_locs['weights'], 4, GL_FLOAT, o_weights])
+                    if weights6
+                        attribs.push([mat.attrib_locs['weights2'], 2, GL_FLOAT, o_weights2])
+                    attribs.push([mat.attrib_locs['b_indices'], 4, gl_float_unsigned_byte, o_b_indices])
+                    if weights6
+                        attribs.push([mat.attrib_locs['b_indices2'], 2, gl_float_unsigned_byte, o_b_indices2])
 
             bitmask = 0
             for attr in reversed attribs
