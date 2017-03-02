@@ -230,8 +230,8 @@ class Scene
         # Meshes should always return data's promises
         return fetch_objects(@children, options).then(=>@)
 
-    load_objects: (list, options)->
-        if not list or not options
+    load_objects: (list, options={})->
+        if not list?.length?
             throw "Invalid arguments, expects (list, options). Did you mean 'load_all_objects()'?"
         # TODO: This may not work the second time is not called.
         # Meshes should always return data's promises
