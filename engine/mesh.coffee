@@ -435,16 +435,12 @@ class Mesh extends GameObject
             biggest_length = @avg_poly_length
             @last_lod_object = amesh = @
 
-            for lod in @lod_objects by -1
+            for lod in @lod_objects by -1 # from highest to lowest
                 ob = lod.object
                 visual_size_px = ob.avg_poly_length * poly_length_to_visual_size
-                if ob.avg_poly_length > biggest_length and visual_size_px < min_length_px and ob.data?.attrib_pointers
+                if not amesh.data? or (ob.avg_poly_length > biggest_length and visual_size_px < min_length_px and ob.data?.attrib_pointers)
                     biggest_length = ob.avg_poly_length
                     @last_lod_object = amesh = ob
-
-            # NOTE TODO: Fix when lod levels can't be seen if the main level is not configured
-            if amesh != @ and @data? and @materials.length == 0
-                @configure_materials()
 
         return amesh
 
