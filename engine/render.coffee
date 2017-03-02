@@ -508,8 +508,8 @@ class RenderManager
                 y += mesh.uv_right_eye_offset[1] * @_right_eye_factor
                 gl.uniform4f mat.u_uv_rect, x, y, w, h
 
-            if mesh.armature? and mesh.parent_bone_index == -1
-                bones = mesh.armature.deform_bones
+            if amesh.armature? and mesh.parent_bone_index == -1
+                bones = amesh.armature.deform_bones
                 ## Commented lines sets a float array instead of a matrix array
                 ## Useful for reducing calls
                 ## (TODO: flatten list at source and compare performance)
