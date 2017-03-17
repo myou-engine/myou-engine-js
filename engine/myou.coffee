@@ -91,11 +91,18 @@ create_canvas = (root, id, className='MyouEngineCanvas')->
     canvas = document.createElement 'canvas'
     if root?
         canvas.style.position = 'relative'
-        canvas.style.width = '100%'
-        canvas.style.height = '100%'
+        canvas.style.width = '100vw'
+        canvas.style.height = '100vh'
         root.insertBefore canvas, root.firstChild
         canvas.id = id
         canvas.className = className
     return canvas
 
-module.exports = {Myou, create_canvas}
+create_full_window_canvas = ->
+    document.body.style.margin = '0 0 0 0'
+    document.body.style.height = '100vh'
+    canvas = create_canvas document.body, 'canvas'
+    canvas.style.marginBottom = '-100px'
+    return canvas
+
+module.exports = {Myou, create_canvas, create_full_window_canvas}

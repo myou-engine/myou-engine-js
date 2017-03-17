@@ -1,5 +1,5 @@
 require './engine/init.coffee'
-{Myou, create_canvas} = require './engine/myou.coffee'
+{Myou, create_canvas, create_full_window_canvas} = require './engine/myou.coffee'
 # Modules
 physics = require './engine/physics.coffee'
 particles = require './engine/particles.coffee'
@@ -32,7 +32,7 @@ geometry_utils =
 
 module.exports = {
     #myou engine
-    Myou, create_canvas, load_scene, fetch_objects,
+    Myou, create_canvas, create_full_window_canvas, load_scene, fetch_objects,
     Framebuffer, Compositor, compositor_shaders,
     #Game logic
     LogicBlock, sensors, actuators, glm,
