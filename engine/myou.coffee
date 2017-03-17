@@ -7,7 +7,11 @@ vr = require './webvr.coffee'
 {MeshFactory} = require './mesh_factory.coffee'
 
 class Myou
-    constructor: (root, MYOU_PARAMS)->
+    constructor: (root, options)->
+        if not root?
+            throw "Missing root DOM element, got null or undefined"
+        if not options?
+            throw "Missing options"
         @scenes = {}
         @loaded_scenes = []
         @active_sprites = []
@@ -26,8 +30,8 @@ class Myou
         @SHADER_LIB = ''
         @active_animations = []
         @root = root
-        @MYOU_PARAMS = MYOU_PARAMS
-        @use_physics = not MYOU_PARAMS.disable_physics
+        @options = @MYOU_PARAMS = options
+        @use_physics = not options.disable_physics
         @hash = Math.random()
         @initial_scene_loaded = false
         @mesh_lod_min_length_px = 13
@@ -52,7 +56,7 @@ class Myou
             canvas,
             canvas.clientWidth,
             canvas.clientHeight,
-            MYOU_PARAMS.gl_options or {antialias: true, alpha: false}
+            options.gl_options or {antialias: true, alpha: false}
         )
 
         @update_canvas_rect()
@@ -64,10 +68,10 @@ class Myou
 
         window.addEventListener 'resize', resize_canvas
 
-        data_dir = MYOU_PARAMS.data_dir or './data'
-        data_dir = MYOU_PARAMS.data_dir = data_dir.replace(/\/$/g, '')
+        data_dir = options.data_dir or './data'
+        data_dir = options.data_dir = data_dir.replace(/\/$/g, '')
 
-        @events = new Events root, MYOU_PARAMS.event_options
+        @events = new Events root, options.event_options
         @mesh_factory = new MeshFactory @
         @main_loop.run()
 
