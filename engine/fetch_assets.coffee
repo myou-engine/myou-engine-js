@@ -78,7 +78,10 @@ fetch_mesh = (mesh_object, options={}) ->
                 Promise.resolve(buffer)
             else
                 uri = base + mesh_object.scene.name + '/' + file_name + '.mesh'
-                fetch(uri).then((data)->data.arrayBuffer())
+                fetch(uri).then (response)->
+                    if not response.ok
+                        return Promise.reject "Mesh '#{mesh_object.name}' could not be loaded from URL '#{uri}' with error '#{response.status} #{response.statusText}'"
+                    response.arrayBuffer()
 
 
         fetch_promises[file_name] = fetch_promise

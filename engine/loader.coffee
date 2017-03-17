@@ -21,7 +21,11 @@ load_scene = (name, filter, use_physics, context) ->
     scene = new Scene context, name
     #TODO: check if scene has some physic object
     url = "#{context.MYOU_PARAMS.data_dir}/scenes/#{name}/all.json"
-    return fetch(url).then((data)->data.json()).then (data)=>
+    return fetch(url).then (response) ->
+        if not response.ok
+            return Promise.reject "Scene '#{name}' could not be loaded from URL #{url[...-8]}"
+        return response.json()
+    .then (data)=>
         if filter
             data = filter(data)
 
