@@ -13,6 +13,10 @@
 {fetch_objects} = require './fetch_assets.coffee'
 {Texture} = require './texture.coffee'
 
+if process.browser
+    # for loading ammo.js relative to the output .js
+    scripts = document.querySelectorAll 'script'
+    current_script_path = scripts[scripts.length-1].src?.split('/')[...-1].join('/') or ''
 
 load_scene = (name, filter, use_physics, context) ->
     scene = context.scenes[name]
@@ -23,7 +27,7 @@ load_scene = (name, filter, use_physics, context) ->
     url = "#{context.MYOU_PARAMS.data_dir}/scenes/#{name}/all.json"
     return fetch(url).then (response) ->
         if not response.ok
-            return Promise.reject "Scene '#{name}' could not be loaded from URL #{url[...-8]}"
+            return Promise.reject "Scene '#{name}' could not be loaded from URL '#{url}' with error '#{response.status} #{response.statusText}'"
         return response.json()
     .then (data)=>
         if filter
@@ -344,7 +348,7 @@ load_physics_engine = ()->
             script.async = true
 
             if process.browser
-                physics_engine_url = require("file-loader?name=/libs/ammo.asm.js!./libs/ammo.asm.js")
+                physics_engine_url = current_script_path + '/' + require("file-loader?name=/libs/ammo.asm.js!./libs/ammo.asm.js")
             else
                 dirname =  __dirname.replace(/\\/g, '/')
                 physics_engine_url = 'file://' + dirname + "/libs/ammo.asm.js"
