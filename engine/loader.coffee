@@ -340,7 +340,7 @@ load_physics_engine = ()->
             script.async = true
 
             if process.browser
-                physics_engine_url = require("file?name=/libs/ammo.asm.js!./libs/ammo.asm.js")
+                physics_engine_url = require("file-loader?name=/libs/ammo.asm.js!./libs/ammo.asm.js")
             else
                 dirname =  __dirname.replace(/\\/g, '/')
                 physics_engine_url = 'file://' + dirname + "/libs/ammo.asm.js"
