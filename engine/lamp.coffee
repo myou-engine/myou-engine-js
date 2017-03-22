@@ -41,29 +41,20 @@ class Lamp extends GameObject
         if @shadow_fb.tex_type == 0x8D61 # HALF_FLOAT_OES
             # TODO: make configurable? or calculate depending on scene size?
             extra_bias = '-0.0007'
-        
-        vs = """precision highp float;
-        uniform mat4 projection_matrix;
-        uniform mat4 model_view_matrix;
-        attribute vec3 vertex;
-        varying vec4 varposition;
-        void main(){
-            gl_Position = varposition =
-            projection_matrix * model_view_matrix * vec4(vertex, 1.0);
-        }"""
 
+        varyings = [{type: 'PROJ_POSITION', varname: 'proj_position'}]
         fs = """#extension GL_OES_standard_derivatives : enable
         precision highp float;
-        varying vec4 varposition;
+        varying vec4 proj_position;
         void main(){
-            float depth = varposition.z/varposition.w;
+            float depth = proj_position.z/proj_position.w;
             depth = depth * 0.5 + 0.5;
             float dx = dFdx(depth);
             float dy = dFdy(depth);
             gl_FragColor = vec4(depth #{extra_bias}, pow(depth, 2.0) + 0.25*(dx*dx + dy*dy), 0.0, 1.0);
         }"""
 
-        mat = new Material @context, {name: @name+'_shadow', fragment: fs, vertex: vs}
+        mat = new Material @context, @name+'_shadow', {fragment: fs, varyings}
         mat.is_shadow_material = true
         @_shadow_material = mat
 
@@ -84,6 +75,7 @@ class Lamp extends GameObject
             0.5, 0.5, 0.5, 1.0],
             @_projection_matrix
             )
+        return
     
     destroy_shadow: ->
         @shadow_fb?.destroy()

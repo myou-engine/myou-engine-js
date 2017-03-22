@@ -14,30 +14,24 @@ material_promises = {} # {mat_name: promise}
 #     politician
 
 # Loads textures of material (given a name), return a promise
-fetch_textures_of_material = (scene, mat_name, ob_name="") ->
-    mat = scene.materials[mat_name]
-    if mat
-        Promise.all [texture.promise for texture in mat.textures]
+fetch_textures_of_material = (scene, mat, ob_name="") ->
+    if mat.last_shader
+        Promise.all [texture.promise for texture in mat.last_shader.textures]
     else
         # Useful when you only want to request textures to be loaded without compiling the shader
         # TODO: Do we need to draw the texture with a dummy shader
         # to force it to be actually loaded?
-        data = scene.unloaded_material_data[mat_name]
-        if data
-            Promise.all(for u in data.uniforms \
-                when (u.type == 13 or u.type == 262146 or u.type == 262145) and scene
-                    # 2D image, see constants in material.py
-                    tex = scene.context.textures[u.image]
-                    if not tex?
-                        if not u.filepath
-                            throw "Texture #{u.image} not found (in material #{mat_name})."
-                        tex = texture.get_texture_from_path_legacy u.image, u.filepath, u.filter, u.wrap, u.size, scene.context
-                    tex.load()
-                    tex.ob_user_names.push ob_name
-            )
-        else
-            console.warn "Warning: Couldn't find material '#{mat_name}' when trying to load object #{ob_name}"
-            Promise.resolve()
+        Promise.all(for u in mat.data.uniforms \
+            when (u.type == 13 or u.type == 262146 or u.type == 262145) and scene
+                # 2D image, see constants in material.py
+                tex = scene.context.textures[u.image]
+                if not tex?
+                    if not u.filepath
+                        throw "Texture #{u.image} not found (in material #{mat_name})."
+                    tex = texture.get_texture_from_path_legacy u.image, u.filepath, u.filter, u.wrap, u.size, scene.context
+                tex.load()
+                tex.ob_user_names.push ob_name
+        )
 
 # Load a mesh of a mesh type object, return a promise
 fetch_mesh = (mesh_object, options={}) ->
@@ -128,11 +122,10 @@ fetch_objects = (object_list, options={}) ->
         if ob.type == 'MESH'
             {scene} = ob
             promises.push fetch_mesh(ob, options)
-            for mat_name in ob.material_names or []
-                mat = scene.materials[mat_name]
-                # Check if material was already loaded; if it was, we'll assume
-                # it was rendered at this point, even though it may not
-                if not mat
+            for mat in ob.materials
+                # TODO: we'll assume here there's only one shader per material for now
+                shader = mat.last_shader
+                if not shader
                     # TODO: add this back when we can ensure
                     # it is drawn at least once, to force loading into the GPU
                     ###
@@ -147,7 +140,7 @@ fetch_objects = (object_list, options={}) ->
                             promise.functions = container
                         promises.push promise
                     ###
-                    promises.push fetch_textures_of_material scene, mat_name, ob.name
+                    promises.push fetch_textures_of_material scene, mat, ob.name
 
     Promise.all promises
 

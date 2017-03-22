@@ -1,7 +1,9 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 {GameObject} = require './gameobject.coffee'
 {Material} = require './material.coffee'
+{ShapeKeyModifier, ArmatureModifier} = require './vertex_modifiers.coffee'
 {clamp} = window
+
 #   Mesh format:
 #
 #   Vertex array:
@@ -31,6 +33,9 @@
 #    ['shape', 'my_shape'],
 #    ['bone']
 #   ]
+#
+#   NOTE: While @elements still works, it's obsolete and we're
+#         converting it to @layout and @vertex_modifiers on load.
 #
 #   Offsets:
 #
@@ -95,10 +100,7 @@ class Mesh extends GameObject
         @type = 'MESH'
         @data = null
         @materials = []
-        @material_names = []
         @passes = [0]
-        @shapes = {} # {'shape_name', influence}
-        @_shape_names = []
         @armature = null
         @sort_dot = 0
         @uv_rect = vec4.fromValues 0, 0, 1, 1 # x, y, w, h
@@ -116,7 +118,9 @@ class Mesh extends GameObject
         # Populated when loading, used in load_from_va_ia()
         # Not used on render.
         @hash = ''
-        @elements = []
+        @elements = [] # obsolete, now it's @layout and @vertex_modifiers
+        @layout = []
+        @vertex_modifiers = []
         @offsets = []
         @stride = 0
         @mesh_id = 0
@@ -179,10 +183,6 @@ class Mesh extends GameObject
             data.index_buffers.push ib
             data.num_indices.push offsets[i2+3] - offsets[i2+1]
         data.stride = @stride
-        if @scene
-            # If it has materials (some mesh was already loaded), configure again
-            if @materials.length !=0
-                @configure_materials()
 
         #@phy_mesh = null # only necessary for live server, otherwise it may cause bugs
         if @scene and @scene.world
@@ -206,193 +206,86 @@ class Mesh extends GameObject
             gl.bufferData gl.ELEMENT_ARRAY_BUFFER, ia.subarray(offsets[i2+1], offsets[i2+3]), gl.STATIC_DRAW
         return
 
-    configure_materials: (materials=[])->
+    # This method ensures that layout, vertex_modifiers and _signature exist.
+    # This is used and only necessary in Material for assets in the old format.
+    ensure_layout_and_modifiers: ->
+        if @_signature
+            return
 
-        if materials.length < @material_names.length
-            # If frame is too long, it was compiling other materials, exit early.
-            # console.log render_manager.frame_start, performance.now()
-            scene = @scene
-            for mname in @material_names
-                # TODO: This makes meshes flicker, it should be done in LoD!
-                if (@context.render_manager.frame_start + 33) < performance.now() or @context.render_manager.compiled_shaders_this_frame > 1
-                    return false
-                if mname == 'UNDEFINED_MATERIAL'
-                    console.warn 'Mesh '+@name+' has undefined material'
-                data = scene.unloaded_material_data[mname]
-                if data
-                    # time = performance.now()
-                    scene.materials[mname] = new Material @context, data, scene
-                    # @context.log.push 'material loaded: ' + mname + ' in ' +( performance.now() - time)*0.001
-                    delete scene.unloaded_material_data[mname]
-                mat = scene.materials[mname]
-                if mat
-                    materials.push mat
-                else
-                    # Abort
-                    return false
-        else if materials.length > @material_names.length
-            @material_names = for m in materials then m.name
-
-        for m in materials
-            m.users.remove @
-            m.users.push @
-            # TODO: remove before re-assignment
-
-
-        @materials = materials
+        layout = [{name: 'vertex', type: 'f', count: 3, offset: 0}]
+        stride = 3 * 4  # 4 floats * 4 bytes per float
 
         @_shape_names = []
-        o_shapes = []
-        o_shapes_b = []
-        o_tangent = []
-        o_particles = []
-        o_uvs = []
-        o_uvs_s = []
-        o_colors = []
-        o_weights = 0
-        o_b_indices = 0
-        stride = 3 * 4  # 4 floats * 4 bytes per float
-        weights6 = false
+        shape_type = 'f'
         for e in @elements
             etype = e[0]
-            if etype == 'normal'
-                stride += if @all_f then  3*4  else 4
-            else if etype == 'shape'
-                o_shapes.push stride
-                @shapes[e[1]] = 0
-                @_shape_names.push e[1]
-                stride += 4 * 4
-            else if etype == 'shape_b'
-                o_shapes_b.push stride
-                @shapes[e[1]] = 0
-                @_shape_names.push e[1]
-                stride += 2 * 4
-            else if etype == 'tangent'
-                o_tangent.push stride
-                stride += if @all_f then  4*4  else 4
-            else if etype == 'particles'
-                for i in [0...e[1]]
-                    o_particles.push stride
-                    stride += 3 * 4
-            else if etype == 'uv'
-                o_uvs.push [e[1], stride]
-                stride += 2 * 4
-            else if etype == 'uv_s'
-                o_uvs_s.push [e[1], stride]
-                stride += 2 * 2
-            else if etype == 'color'
-                o_colors.push [e[1], stride]
-                stride += 4
-            else if etype == 'weights'
-                @armature = @parent
-                o_weights = stride
-                stride += 4 * 4
-                o_b_indices = stride
-                stride += if @all_f then  4*4  else 4  # 4 byte indices
-            else if etype == 'weights6' and not @parent_bone
-                weights6 = true
-                @armature = @parent
-                o_weights = stride
-                stride += 4 * 4
-                o_weights2 = stride
-                stride += 2 * 4
-                o_b_indices = stride
-                stride += if @all_f then  4*4  else 4  # 4 byte indices
-                o_b_indices2 = stride
-                stride += if @all_f then  4*4  else 4  # 4 byte indices
-            else
-                console.log "Unknown element" + etype
-        # Special case of no named UV layer in texture
-        # (The first layer can be used named and unnamed at the same time)
-        # TODO: active layer instead of first?
-        if o_uvs.length
-            o_uvs.push ['0', o_uvs[0][1]]
-
-        if o_colors.length
-            o_colors.push ['0', o_colors[0][1]]
-
-        {attrib_pointers} = @data
-        {attrib_bitmasks} = @data
-        mi = 0
-        for mat,mat_idx in materials
-            # vertexAttribPointers:
-            # [location, number of components, type, offset]
-            attribs = [[mat.a_vertex, 3, GL_FLOAT, 0]]
-
-            a_normal = mat.attrib_locs["vnormal"]
-            gl_float_byte = if @all_f then GL_FLOAT else GL_BYTE
-            gl_float_unsigned_byte = if @all_f then GL_FLOAT else GL_UNSIGNED_BYTE
-            if a_normal != -1
-                attribs.push [a_normal, 3, gl_float_byte, 12]
-
-            i = 0
-            for o in o_shapes
-                attribs.push [mat.attrib_locs["shape"+i], 3, GL_FLOAT, o]
-                attribs.push [mat.attrib_locs["shapenor"+i], 3, GL_BYTE, o+12]
-                i += 1
-            for o in o_shapes_b
-                attribs.push [mat.attrib_locs["shape"+i], 3, GL_BYTE, o]
-                attribs.push [mat.attrib_locs["shapenor"+i], 3, GL_BYTE, o+4]
-                i += 1
-
-            if o_tangent.length and mat.attrib_locs["tangent"]
-                attribs.push [mat.attrib_locs["tangent"], 4, gl_float_byte, o_tangent]
-
-            i = 0
-            for o in o_particles
-                attribs.push [mat.attrib_locs["particle"+i], 3, GL_FLOAT, o]
-                i += 1
-
-            for uv in o_uvs
-                # uv = ['shape_name', offset in bytes]
-                varname = mat.uv_layer_attribs[uv[0]]
-                if varname
-                    attribs.push [mat.attrib_locs[varname], 2, GL_FLOAT, uv[1]]
-
-            for uv in o_uvs_s
-                varname = mat.uv_layer_attribs[uv[0]]
-                if varname
-                    attribs.push [mat.attrib_locs[varname], 2, GL_UNSIGNED_SHORT, uv[1]]
-
-            for color in o_colors
-                varname = mat.color_attribs[color[0]]
-                if varname
-                    attribs.push [mat.attrib_locs[varname], 4, GL_UNSIGNED_BYTE, color[1]]
-
-            if @armature
-                if mat.attrib_locs['weights']
-                    attribs.push([mat.attrib_locs['weights'], 4, GL_FLOAT, o_weights])
-                    if weights6
-                        attribs.push([mat.attrib_locs['weights2'], 2, GL_FLOAT, o_weights2])
-                    attribs.push([mat.attrib_locs['b_indices'], 4, gl_float_unsigned_byte, o_b_indices])
-                    if weights6
-                        attribs.push([mat.attrib_locs['b_indices2'], 2, gl_float_unsigned_byte, o_b_indices2])
-
-            bitmask = 0
-            for attr in reversed attribs
-                if attr[0] != -1
-                    bitmask |= 1<<attr[0]
+            switch etype
+                when 'normal'
+                    layout.push name: 'vnormal', type: 'b', count: 3, offset: stride
+                    stride += 4
+                when 'shape'
+                    num = @_shape_names.length
+                    layout.push name: 'shape'+num, type: 'f', count: 3, offset: stride
+                    layout.push name: 'shapenor'+num, type: 'b', count: 3, offset: stride + 12
+                    @_shape_names.push e[1]
+                    shape_type = 'f'
+                    stride += 4 * 4
+                when 'shape_b'
+                    num = @_shape_names.length
+                    layout.push name: 'shape'+num, type: 'b', count: 3, offset: stride
+                    layout.push name: 'shapenor'+num, type: 'b', count: 3, offset: stride + 4
+                    @_shape_names.push e[1]
+                    shape_type = 'b'
+                    stride += 2 * 4
+                when 'tangent'
+                    layout.push name: 'tangent', type: 'b', count: 4, offset: stride
+                    stride += 4
+                when 'uv'
+                    # NOTE: invalid characters will be replaced when
+                    # this is implemented on export.
+                    # The only allowed characters are [_A-Za-z0-9]
+                    layout.push name: 'uv_'+e[1].replace(/[^_A-Za-z0-9]/g, ''), type: 'f', count: 2, offset: stride
+                    stride += 2 * 4
+                when 'uv_s'
+                    layout.push name: 'uv_'+e[1], type: 'H', count: 2, offset: stride
+                    #o_uvs_s.push [e[1], stride]
+                    stride += 2 * 2
+                when 'color'
+                    layout.push name: 'vc_'+e[1].replace(/[^_A-Za-z0-9]/g, ''), type: 'B', count: 4, offset: stride
+                    stride += 4
+                when 'weights'
+                    @armature = @parent
+                    layout.push name: 'weights', type: 'f', count: 4, offset: stride
+                    stride += 4 * 4
+                    layout.push name: 'b_indices', type: 'B', count: 4, offset: stride
+                    stride += 4  # 4 byte indices
                 else
-                    attribs.pop attribs.indexOf attr
-            if not attrib_pointers[mat_idx]
-                attrib_pointers.push attribs
-                attrib_bitmasks.push bitmask
-            else
-                # We do it this way because the same data may be shared
-                # between meshes with different materials
-                # (we're assuming they're compatible)
-                attrib_pointers[mat_idx] = attribs
-                attrib_bitmasks[mat_idx] = bitmask
-            mi += 1
+                    console.log "Unknown element" + etype
 
-        num_values = 0
-        for m in @materials
-            num_values = Math.max num_values, m.u_custom.length
-        if @custom_uniform_values.length == 0
-            @custom_uniform_values = cuv = []
-            for i in [0...num_values]
-                cuv.push null
-        return true
+        @_signature = JSON.stringify layout
+        vertex_modifiers = []
+        if @_shape_names.length != 0
+            # New shape keys format
+            keys = {}
+            for name,index in @_shape_names
+                keys[name] = {value: 0, index}
+            vertex_modifiers.push m = new ShapeKeyModifier {
+                count: @_shape_names.length
+                data_type: shape_type
+                keys: keys
+            }
+            @_signature += m.signature
+        if @armature and @parent_bone_index == -1
+            vertex_modifiers.push m = new ArmatureModifier {
+                armature: @armature
+                data_type: 'f'
+            }
+            @_signature += m.signature
+
+        @layout = layout
+        @vertex_modifiers = vertex_modifiers
+        return
+
 
     # min_length_px is the minimum length of the average polygon, in screen pixels
     get_lod_mesh: (viewport, min_length_px) ->
@@ -438,7 +331,7 @@ class Mesh extends GameObject
             for lod in @lod_objects by -1 # from highest to lowest
                 ob = lod.object
                 visual_size_px = ob.avg_poly_length * poly_length_to_visual_size
-                if not amesh.data? or (ob.avg_poly_length > biggest_length and visual_size_px < min_length_px and ob.data?.attrib_pointers)
+                if not amesh.data? or (ob.avg_poly_length > biggest_length and visual_size_px < min_length_px)
                     biggest_length = ob.avg_poly_length
                     @last_lod_object = amesh = ob
 

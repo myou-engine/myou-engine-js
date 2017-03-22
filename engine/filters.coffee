@@ -1,4 +1,4 @@
-{Material} = require './material.coffee'
+{Shader} = require './material.coffee'
 
 box_filter_code = """
     return (get(-1,-1)+get(0,-1)+get(1,-1)+
@@ -49,7 +49,7 @@ barrel_filter_chromeab_code = """
                 gettex(rvec_blue+asdf).b+gettex(rvec_blue-asdf).b)*0.5;
     """
 
-class Filter extends Material
+class Filter extends Shader
 
     # In the filters use:
     # get(x, y)     to get the pixel at the relative position
@@ -107,7 +107,8 @@ class Filter extends Material
 
 
         gl = render_manager.gl
-        super render_manager.context, {name, vertex: vs, fragment: fs}
+        super render_manager.context, {name, vertex: vs, fragment: fs}, null, \
+            [{"name":"vertex","type":"f","count":3,"offset":0}], []
 
         prog = @._program
         gl.uniform1i gl.getUniformLocation(prog, 'source'), 0

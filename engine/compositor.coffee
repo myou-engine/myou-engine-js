@@ -157,6 +157,7 @@ class Compositor
             for varname of @options.uniforms
                 uniforms.push {varname}
 
+            # TODO: Change to Shader and fix stuff
             material = new material_module.Material @context, {
                 name: filter_name+((Math.random()*65536)|0)
                 uniforms: uniforms

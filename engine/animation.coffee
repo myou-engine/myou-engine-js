@@ -236,10 +236,13 @@ class Animation
                 else if type == 'pose'
                     target = ob.bones[name]
                 else if type == 'shape'
-                    target = ob.shapes
-                    prop = name
+                    # TODO: Shape keys may not be the first modifier
+                    target = ob.vertex_modifiers[0]?.keys?[name]
+                    prop = 'value'
                 else
                     console.log "Unknown channel type:", type
+                if not target
+                    continue
                 v = blend
                 if v.length == 1
                     target[prop] = v[0]

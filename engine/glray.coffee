@@ -76,8 +76,10 @@ class GLRay
         if (@max_distance/@max_distance) != 1
             console.warn "GLRay: max_distance of #{@max_distance} is invalid. Defaulting to 10."
             @max_distance = 10
-        @mat = new Material(@context, {
-            name: 'gl_ray', vertex: gl_ray_vs(@max_distance), fragment: gl_ray_fs(@max_distance)})
+        @mat = new Shader(@context, {
+            name: 'gl_ray', vertex: gl_ray_vs(@max_distance), fragment: gl_ray_fs(@max_distance)},
+            [{"name":"vertex","type":"f","count":3,"offset":0},
+             {"name":"vnormal","type":"b","count":4,"offset":12}],[])
         @m4 = mat4.create()
         @world2cam = mat4.create()
         @world2cam_mx = mat4.create()
@@ -181,8 +183,8 @@ class GLRay
         gl = @context.render_manager.gl
         {scene, camera, m4, mat, world2cam, world2cam_mx} = @
         mat.use()
-        attr_loc_vertex = mat.a_vertex
-        attr_loc_normal = this.mat.attrib_locs.vnormal
+        attr_loc_vertex = mat.attrib_locs[0][0]
+        attr_loc_normal = mat.attrib_locs[1][0]
         @buffer.enable()
         restore_near = false
 
@@ -219,6 +221,7 @@ class GLRay
         @context.render_manager.change_enabled_attributes(1|2)
 
         # Rendering a few meshes at a time
+        # TODO: This is all broken now.
         part = (@meshes.length / @render_steps | 0) + 1
         if @step < @render_steps
             for mesh in @meshes[@step * part ... (@step + 1) * part]

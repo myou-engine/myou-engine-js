@@ -123,8 +123,8 @@ class Framebuffer
         gl.bindBuffer gl.ARRAY_BUFFER, quad
         gl.activeTexture gl.TEXTURE0
         gl.bindTexture gl.TEXTURE_2D, @texture
-        @context.render_manager.change_enabled_attributes 1<<filter.a_vertex
-        gl.vertexAttribPointer filter.a_vertex, 3.0, gl.FLOAT, false, 0, 0
+        @context.render_manager.change_enabled_attributes filter.attrib_bitmask
+        gl.vertexAttribPointer filter.attrib_pointers[0][0], 3.0, gl.FLOAT, false, 0, 0
         gl.drawArrays gl.TRIANGLE_STRIP, 0, 4
 
     destroy: ->

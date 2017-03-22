@@ -273,9 +273,10 @@ class RenderManager
         # Write fb_size to all materials that require it
         for k, scene of @context.scenes
             for kk, mat of scene.materials
-                if mat.u_fb_size?
-                    mat.use()
-                    @gl.uniform2f mat.u_fb_size, minx, miny
+                for sig,shader of mat.shaders
+                    if shader.u_fb_size?
+                        shader.use()
+                        @gl.uniform2f shader.u_fb_size, minx, miny
         return
 
     change_enabled_attributes: (bitmask)->
@@ -345,7 +346,7 @@ class RenderManager
         @compiled_shaders_this_frame = 0
 
     # Returns: whether the frame should countinue
-    draw_mesh: (mesh, mesh2world, pass_=-1)->
+    draw_mesh: (mesh, mesh2world, pass_=-1, material_override, world2cam_override, projection_override)->
         gl = @gl
         bound_textures = @bound_textures
         m4 = @_m4
@@ -371,18 +372,12 @@ class RenderManager
         mesh.culled_in_last_frame = false
 
         # Select alternative mesh / LoD
-        if @render_tick != mesh.last_lod_tick
+        amesh = mesh.last_lod_object
+        if not amesh? or @render_tick != mesh.last_lod_tick
             amesh = mesh.get_lod_mesh(@_vp, @context.mesh_lod_min_length_px)
             if not amesh.data
                 return
             mesh.last_lod_tick = @render_tick
-        else
-            amesh = mesh.last_lod_object
-
-        # Reconfigure materials of mesh if they're missing
-        if amesh.materials.length != amesh.material_names.length
-            if not amesh.configure_materials()
-                return
 
         flip_normals = mesh._flip
         if @flip != flip_normals
@@ -399,8 +394,10 @@ class RenderManager
             if not (pass_ == -1 or mesh.passes[submesh_idx] == pass_)
                 continue
 
-
-            mat.use()
+            if material_override?
+                mat = material_override
+            shader = mat.get_shader(mesh)
+            shader.use()
 
             if mat.double_sided == @cull_face_enabled
                 @cull_face_enabled = not @cull_face_enabled
@@ -411,24 +408,24 @@ class RenderManager
             #     mat.group_id = mesh.group_id
             #     gl.uniform1f(mat.u_group_id, mat.group_id)
 
-            gl.uniformMatrix4fv mat.u_projection_matrix, false, cam.projection_matrix
+            gl.uniformMatrix4fv shader.u_projection_matrix, false, projection_override or cam.projection_matrix
             # not doing this mirrored can make something fail (shadows?)
-            gl.uniformMatrix4fv mat.u_inv_model_view_matrix, false, @_cam2world
+            gl.uniformMatrix4fv shader.u_inv_model_view_matrix, false, @_cam2world
 
-            if mat.u_var_object_matrix?
-                gl.uniformMatrix4fv mat.u_var_object_matrix, false, mesh2world
+            if shader.u_var_object_matrix?
+                gl.uniformMatrix4fv shader.u_var_object_matrix, false, mesh2world
 
-            if mat.u_var_inv_object_matrix?
+            if shader.u_var_inv_object_matrix?
                 mat4.invert m4, mesh2world
-                gl.uniformMatrix4fv mat.u_var_inv_object_matrix, false, m4
+                gl.uniformMatrix4fv shader.u_var_inv_object_matrix, false, m4
 
-            if mat.u_color?
-                gl.uniform4fv mat.u_color, mesh.color
+            if shader.u_color?
+                gl.uniform4fv shader.u_color, mesh.color
 
-            if mat.u_ambient?
-                gl.uniform4fv mat.u_ambient, mesh.scene.ambient_color
+            if shader.u_ambient?
+                gl.uniform4fv shader.u_ambient, mesh.scene.ambient_color
 
-            for params in mat.shading_params
+            for params in shader.shading_params
                 {uniforms: {diffcol,diffint,speccol,specint,hardness,emit,alpha}} = params
                 if diffcol?
                     gl.uniform3fv diffcol, params.diffuse_color
@@ -448,28 +445,28 @@ class RenderManager
             # TODO: would it be better to generate
             # a JS function that is called with all assignments at once?
             # (including also all other uniforms)
-            for i in [0...mat.u_custom.length]
+            for i in [0...shader.u_custom.length]
                 cv = mesh.custom_uniform_values[i]
                 if cv
                     if cv.length?
-                        @uniform_functions[cv.length] mat.u_custom[i], cv
+                        @uniform_functions[cv.length] shader.u_custom[i], cv
                     else
-                        gl.uniform1f mat.u_custom[i], cv
+                        gl.uniform1f shader.u_custom[i], cv
 
-            for lavars in mat.lamps
+            for lavars in shader.lamps
                 lamp = lavars[0]
                 lavars[1]? and gl.uniform3fv lavars[1], lamp._view_pos
                 lavars[2]? and gl.uniform3fv lavars[2], lamp.color
                 # if gl.getError() != gl.NO_ERROR:
-                #     console.error('Error with', mesh.name, mat.name)
+                #     console.error('Error with', mesh.name, shader.name)
                 lavars[3]? and gl.uniform4fv lavars[3], lamp._color4
                 lavars[4]? and gl.uniform1f lavars[4], lamp.falloff_distance
                 lavars[5]? and gl.uniform3fv lavars[5], lamp._dir
                 lavars[6]? and gl.uniformMatrix4fv lavars[6], false, lamp._cam2depth
                 lavars[7]? and gl.uniform1f lavars[7], lamp.energy
 
-            for i in [0...mat.textures.length]
-                tex = mat.textures[i]
+            for i in [0...shader.textures.length]
+                tex = shader.textures[i]
                 if tex.loaded
                     gl_tex = tex.gl_tex
                 else
@@ -487,54 +484,24 @@ class RenderManager
                     gl.bindTexture gl.TEXTURE_2D, gl_tex
                     bound_textures[i] = gl_tex
 
-            if mat.u_shapef.length != 0
-                i = 0
-                for shape in mesh._shape_names
-                    # shape = ['shape_name', offset in bytes, [attribute locations]]
-                    influence = mesh.shapes[shape]
-                    gl.uniform1f mat.u_shapef[i], influence
-                    i += 1
-                # Set unused shape slots to 0
-                while i<mat.u_shapef.length
-                    gl.uniform1f mat.u_shapef[i], 0
-                    i += 1
-                if amesh.shape_multiplier != mat.shape_multiplier
-                    mat.shape_multiplier = amesh.shape_multiplier
-                    gl.uniform1f mat.u_shape_multiplier, amesh.shape_multiplier
+            mds = shader.modifier_data_store
+            for modifier,i in mesh.vertex_modifiers
+                modifier.update_uniforms gl, mds[i]
 
-            if mat.u_uv_rect?
+            if shader.u_uv_rect?
                 [x,y,w,h] = mesh.uv_rect
                 x += mesh.uv_right_eye_offset[0] * @_right_eye_factor
                 y += mesh.uv_right_eye_offset[1] * @_right_eye_factor
-                gl.uniform4f mat.u_uv_rect, x, y, w, h
-
-            if amesh.armature? and mesh.parent_bone_index == -1
-                bones = amesh.armature.deform_bones
-                ## Commented lines sets a float array instead of a matrix array
-                ## Useful for reducing calls
-                ## (TODO: flatten list at source and compare performance)
-                #flat = new Float32Array(mat.u_bones.length)
-                #i = 0
-                #while i < Math.floor(mat.num_bone_uniforms/16):
-                    #j = i * 16
-                    #cosa.subarray(j).set(m)
-                    #i+=1
-                #gl.uniform1fv(mat.u_bones[j], flat)
-
-                for i in [0...mat.num_bone_uniforms]
-                    m = bones[i].ol_matrix
-                    gl.uniformMatrix4fv mat.u_bones[i], false, m
+                gl.uniform4f shader.u_uv_rect, x, y, w, h
 
             data = amesh.data
-            attrib_pointers = data.attrib_pointers[submesh_idx]
-            attrib_bitmasks = data.attrib_bitmasks[submesh_idx]
             stride = data.stride
             array_buffer = data.vertex_buffers[submesh_idx]
             if not array_buffer?
                 continue
             gl.bindBuffer gl.ARRAY_BUFFER, array_buffer
-            @change_enabled_attributes attrib_bitmasks
-            for attr in attrib_pointers
+            @change_enabled_attributes shader.attrib_bitmask
+            for attr in shader.attrib_pointers
                 # [location, number of components, type, offset]
                 gl.vertexAttribPointer attr[0], attr[1], attr[2], false, stride, attr[3]
 
@@ -543,17 +510,17 @@ class RenderManager
             num_indices = data.num_indices[submesh_idx]
             # num_indices = (data.num_indices[submesh_idx] * @_polygon_ratio)|0
             if mirrors & 1
-                mat4.multiply m4, @_world2cam, mesh2world
-                gl.uniformMatrix4fv mat.u_model_view_matrix, false, m4
+                mat4.multiply m4, world2cam_override or @_world2cam, mesh2world
+                gl.uniformMatrix4fv shader.u_model_view_matrix, false, m4
                 mat3.multiply m3, @_world2cam3, mesh.normal_matrix
-                if mat.u_normal_matrix?
-                    gl.uniformMatrix3fv mat.u_normal_matrix, false, m3
+                if shader.u_normal_matrix?
+                    gl.uniformMatrix3fv shader.u_normal_matrix, false, m3
                 gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
             # if mirrors & 178
             #     mat4.multiply m4, @_world2cam_mx, mesh2world
-            #     gl.uniformMatrix4fv mat.u_model_view_matrix, false, m4
+            #     gl.uniformMatrix4fv shader.u_model_view_matrix, false, m4
             #     mat3.multiply m3, @_world2cam3_mx, mesh.normal_matrix
-            #     gl.uniformMatrix3fv mat.u_normal_matrix, false, m3
+            #     gl.uniformMatrix3fv shader.u_normal_matrix, false, m3
             #     gl.frontFace 2304 # gl.CW
             #     gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
             #     gl.frontFace 2305 # gl.CCW
@@ -568,18 +535,6 @@ class RenderManager
             #     }
             #     console.log ('GL Error ' + errcodes[error] + ' when drawing ' + mesh.name +
             #            ' (' + mesh.mesh_name + ') with ' + mesh.material_names[submesh_idx])
-
-            ## shells technique for strand rendering (WIP)
-            #h = mat.u_strand
-            #if h?:
-                #steps = 10
-                #i = 0
-                #while i < steps:
-                    ##gl.uniform1f(h, 1-(Math.pow(steps-i, 2)/(steps*steps)))
-                    #gl.uniform1f(h, (i+1)/steps)
-                    #gl.drawElements(data.draw_method, data.num_indices[submesh_idx], gl.UNSIGNED_SHORT, 0)
-                    #i+=1
-                #gl.uniform1f(h, 0)
 
             # @meshes_drawn += 1
             # @triangles_drawn += num_indices * 0.33333333333333333
@@ -693,29 +648,12 @@ class RenderManager
                 gl.clearColor 1,1,1,1  # TODO: which color should we use?
                 gl.clear gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT
                 mat = lamp._shadow_material
-                mat.use()
                 mat4.invert world2light, lamp.world_matrix
 
                 for ob in scene.mesh_passes[0]
                     data = ob.get_lod_mesh(@_vp, mesh_lod_min_length_px).data
-                    if ob.render and ob.visible and data and data.attrib_pointers.length != 0 and not ob.culled_in_last_frame
-                        mat4.multiply m4, world2light, ob.world_matrix
-                        #draw_mesh ob, ob.world_matrix, world2light, mat
-                        gl.uniformMatrix4fv mat.u_model_view_matrix, false, m4
-                        gl.uniformMatrix4fv mat.u_projection_matrix, false, lamp._projection_matrix
-
-                        for i in [0...data.vertex_buffers.length]
-                            gl.bindBuffer gl.ARRAY_BUFFER, data.vertex_buffers[i]
-                            @change_enabled_attributes 1
-                            # Vertex attributes are always the same (3 floats)
-                            # change this if this is no longer true
-                            # (done this way to avoid unconfigured materials,
-                            # alternatively we may continue the loop)
-                            # attr = data.attrib_pointers[i][0] # Vertex attribute
-                            # gl.vertexAttribPointer attr[0], attr[1], attr[2], false, data.stride, attr[3]
-                            gl.vertexAttribPointer 0, 3, 5126, false, data.stride, 0
-                            gl.bindBuffer gl.ELEMENT_ARRAY_BUFFER, data.index_buffers[i]
-                            gl.drawElements data.draw_method, data.num_indices[i], gl.UNSIGNED_SHORT, 0
+                    if ob.visible and data and not ob.culled_in_last_frame
+                        @draw_mesh ob, ob.world_matrix, -1, mat, world2light, lamp._projection_matrix
 
                 lamp.shadow_fb.enable()
                 @common_shadow_fb.draw_with_filter @shadow_box_filter, [0, 0, size, size]
@@ -1002,7 +940,7 @@ class Debug
         for ob in [box, cylinder, sphere, arrow, bone]
             ob.elements = []
             ob.stride = 4
-            ob.configure_materials [mat]
+            ob.materials = [mat]
             ob.color = vec4.create 1,1,1,1
             ob.data.draw_method = @context.render_manager.gl.LINES
             ob.scale = [1,1,1]
@@ -1023,7 +961,7 @@ class Debug
         mesh.offsets = [0, 0, va.length, ia.length]
         mesh.load_from_va_ia va, ia
         mesh.elements = []
-        mesh.configure_materials [@material]
+        mesh.materials = [@material]
         mesh.color = vec4.create 1,1,1,1
         mesh.data.draw_method = render_manager.gl.LINES
         mesh.scale = vec3.create 1,1,1

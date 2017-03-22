@@ -12,6 +12,7 @@
 {physics_engine_url, physics_engine_init, PhysicsWorld, set_gravity} = require './physics.coffee'
 {fetch_objects} = require './fetch_assets.coffee'
 {Texture} = require './texture.coffee'
+{Material} = require './material.coffee'
 
 if process.browser
     # for loading ammo.js relative to the output .js
@@ -53,6 +54,12 @@ load_scene = (name, filter, use_physics, context) ->
         else
             return Promise.resolve(scene)
 
+blender_attr_types =
+    5: 'UV'
+    6: 'VCOL'
+    18: 'TANGENT'
+    14: 'ORCO'
+
 load_datablock = (scene, data, context) ->
     # TODO: This has grown a little too much
     # We should use switch
@@ -81,13 +88,27 @@ load_datablock = (scene, data, context) ->
     else if data.type=='MATERIAL'
         if not data.fragment.splice?
             data.fragment = [context.SHADER_LIB, data.fragment]
-        scene.unloaded_material_data[data.name] = data
-        # only necessary when live updating a material
-        old_mat = scene.materials[data.name]
-        if old_mat?
-            old_mat.destroy()
-            for u in old_mat.users
-                u.materials = []
+        # Converting blender attributes into myou's definition of varyings
+        if not data.varyings?
+            data.varyings = for a in data.attributes when a.type < 77
+                {
+                    type: blender_attr_types[a.type] or "#{a.type}"
+                    varname: 'var'+a.varname[3...]
+                    attname: (a.name or '').replace(/[^_A-Za-z0-9]/g, '')
+                }
+            data.varyings.push type: 'VIEW_POSITION', varname: 'varposition'
+            data.varyings.push type: 'VIEW_NORMAL', varname: 'varnormal'
+            data.attributes = null
+        mat = scene.materials[data.name]
+        if mat
+            console.log("A stub of #{data.name} was made already")
+            # A stub was made when loading a mesh
+            # due to the old scene format
+            mat.data = data
+        else
+            console.log "creating mat #{data.name}"
+            new Material(context, name, data, scene)
+
     else if data.type=='SHADER_LIB'
         context.SHADER_LIB = data.code
     else if data.type=='JSCODE'
@@ -130,7 +151,9 @@ load_object = (data, scene) ->
                 ob.offsets = data.offsets
                 ob.stride = data.stride
                 ob.mesh_name = data.mesh_name
-                ob.material_names = data.materials
+                ob.materials = for mat_name in data.materials
+                    scene.materials[mat_name] or new Material(
+                        context, mat_name, console.log('making stub for '+mat_name), scene)
                 ob.all_f = data.all_f
                 ob.shape_multiplier = data.shape_multiplier or 1
                 if data.uv_rect?

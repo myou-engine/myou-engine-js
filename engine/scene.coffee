@@ -26,7 +26,6 @@ class Scene
         @kinematic_characters = []
         @debug_physics = false
         @materials = {}
-        @unloaded_material_data = {}
         @active_camera = null
         @physics_enabled = false
         @world = null

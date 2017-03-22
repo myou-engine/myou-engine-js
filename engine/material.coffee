@@ -8,76 +8,6 @@ _active_program = null
 
 console_error = console.error.bind(console)
 
-## Run this in blender to get these constants:
-# print('\n'.join(sorted([" '%i': '%s',"%(v,k)
-# for k,v in gpu.__dict__.items()
-# if isinstance(v,int)])))
-
-gpu_constants =
- '0': 'GPU_DYNAMIC_NONE',
- '131072': 'GPU_DYNAMIC_GROUP_LAMP',
- '131073': 'GPU_DYNAMIC_LAMP_DYNVEC',
- '131074': 'GPU_DYNAMIC_LAMP_DYNCO',
- '131075': 'GPU_DYNAMIC_LAMP_DYNIMAT',
- '131076': 'GPU_DYNAMIC_LAMP_DYNPERSMAT',
- '131077': 'GPU_DYNAMIC_LAMP_DYNENERGY',
- '131078': 'GPU_DYNAMIC_LAMP_DYNCOL',
- '131079': 'GPU_DYNAMIC_LAMP_DISTANCE',
- '131080': 'GPU_DYNAMIC_LAMP_ATT1',
- '131081': 'GPU_DYNAMIC_LAMP_ATT2',
- '131082': 'GPU_DYNAMIC_LAMP_SPOTSIZE',
- '131083': 'GPU_DYNAMIC_LAMP_SPOTBLEND',
- '131084': 'GPU_DYNAMIC_LAMP_SPOTSCALE',
- '196608': 'GPU_DYNAMIC_GROUP_OBJECT',
- '196609': 'GPU_DYNAMIC_OBJECT_VIEWMAT',
- '196610': 'GPU_DYNAMIC_OBJECT_MAT',
- '196611': 'GPU_DYNAMIC_OBJECT_VIEWIMAT',
- '196612': 'GPU_DYNAMIC_OBJECT_IMAT',
- '196613': 'GPU_DYNAMIC_OBJECT_COLOR',
- '196614': 'GPU_DYNAMIC_OBJECT_AUTOBUMPSCALE',
- '196615': 'GPU_DYNAMIC_OBJECT_LOCTOVIEWMAT',
- '196616': 'GPU_DYNAMIC_OBJECT_LOCTOVIEWIMAT',
- '262144': 'GPU_DYNAMIC_GROUP_SAMPLER',
- '262145': 'GPU_DYNAMIC_SAMPLER_2DBUFFER',
- '262146': 'GPU_DYNAMIC_SAMPLER_2DIMAGE',
- '262147': 'GPU_DYNAMIC_SAMPLER_2DSHADOW',
- '327680': 'GPU_DYNAMIC_GROUP_MIST',
- '327681': 'GPU_DYNAMIC_MIST_ENABLE',
- '327682': 'GPU_DYNAMIC_MIST_START',
- '327683': 'GPU_DYNAMIC_MIST_DISTANCE',
- '327684': 'GPU_DYNAMIC_MIST_INTENSITY',
- '327685': 'GPU_DYNAMIC_MIST_TYPE',
- '327686': 'GPU_DYNAMIC_MIST_COLOR',
- '393216': 'GPU_DYNAMIC_GROUP_WORLD',
- '393217': 'GPU_DYNAMIC_HORIZON_COLOR',
- '393218': 'GPU_DYNAMIC_AMBIENT_COLOR',
- '393219': 'GPU_DYNAMIC_ZENITH_COLOR',
- '458752': 'GPU_DYNAMIC_GROUP_MAT',
- '458753': 'GPU_DYNAMIC_MAT_DIFFRGB',
- '458754': 'GPU_DYNAMIC_MAT_REF',
- '458755': 'GPU_DYNAMIC_MAT_SPECRGB',
- '458756': 'GPU_DYNAMIC_MAT_SPEC',
- '458757': 'GPU_DYNAMIC_MAT_HARD',
- '458758': 'GPU_DYNAMIC_MAT_EMIT',
- '458759': 'GPU_DYNAMIC_MAT_AMB',
- '458760': 'GPU_DYNAMIC_MAT_ALPHA',
- '65536': 'GPU_DYNAMIC_GROUP_MISC',
-
-CD_MCOL = 6
-CD_MTFACE = 5
-CD_ORCO = 14
-CD_TANGENT = 18
-CD_SHAPE_KEY = 99 # not supplied by blender but by the export script
-CD_ARMATURE_DEFORM = 88 # not supplied by blender but by the export script
-CD_ARMATURE_DEFORM_6 = 86 # not supplied by blender but by the export script
-GPU_DATA_1I = 1
-GPU_DATA_1F = 2
-GPU_DATA_2F = 3
-GPU_DATA_3F = 4
-GPU_DATA_4F = 5
-GPU_DATA_9F = 6
-GPU_DATA_16F = 7
-GPU_DATA_4UB = 8
 GPU_DYNAMIC_AMBIENT_COLOR = 393218
 GPU_DYNAMIC_GROUP_LAMP = 131072
 GPU_DYNAMIC_GROUP_MAT = 458752
@@ -154,9 +84,36 @@ class ShadingParams
             emit: ""
             alpha: ""
 
-id = 0
+GL_BYTE = 0x1400
+GL_UNSIGNED_BYTE = 0x1401
+GL_SHORT = 0x1402
+GL_UNSIGNED_SHORT = 0x1403
+GL_INT = 0x1404
+GL_UNSIGNED_INT = 0x1405
+GL_FLOAT = 0x1406
+attr_types = {'f': GL_FLOAT, 'b': GL_BYTE, 'B': GL_UNSIGNED_BYTE, 'H': GL_UNSIGNED_SHORT,}
 
 class Material
+    constructor: (@context, @name, @data, @scene) ->
+        @shaders = []
+        @users = []
+        @scene?.materials[@name] = this
+        @last_shader = null # TODO: workaround for short term compatibility problems
+
+    get_shader: (mesh) ->
+        if not mesh._signature
+            mesh.ensure_layout_and_modifiers()
+        shader = @shaders[mesh._signature]
+        if not shader?
+            shader = @shaders[mesh._signature] = new Shader(@context, @data, @scene, mesh.layout, mesh.vertex_modifiers)
+            shader.material = this
+            @last_shader = shader
+        return shader
+
+id = 0
+
+class Shader
+    # TODO: These comments are obsolete, but still somewhat useful.
     # data is an object with:
     # * vertex: string with vertex shader code
     #       (optional, auto generated here for blender materials)
@@ -172,21 +129,12 @@ class Material
     #             here, it must be defined in context.textures
     #   }
     #   Data type of each uniform is inferred from the type or the custom value.
-    # * attributes: list of vertex attributes, each have this format:
-    #   {
-    #       varname: name of GLSL variable
-    #       type: one of these:
-    #        * CD_MTFACE: Texture UV coordinates, vec2
-    #        * CD_MCOL: Vertex color, vec4
-    #        * CD_TANGENT: Vertex tangent vector (for normal mapping), vec4
-    #        * there are more types but of limited use outside Blender for now
-    #   }
-    #   There are two implicit vec3 attributes: vertex, vnormal.
-    constructor: (@context, @data, @scene) ->
+    # * varyings: list of varyings, TODO. See loader.coffee:93
+    constructor: (@context, @data, @scene, @layout, vertex_modifiers) ->
         @id = id++
         if @context.all_materials.indexOf(@) == -1
             @context.all_materials.push @
-        {@name, uniforms, attributes, params=[]} = @data
+        {@name, uniforms, varyings, params=[]} = @data
         @shading_params_dict = {}
         @shading_params = for p in params
             @shading_params_dict[p.name] = new ShadingParams p
@@ -198,21 +146,16 @@ class Material
         lamps = {} # lamp_name: {varpos, varcolor3, varcolor4, dist}
         @lamps = []  # [[lamp, varpos, varcolor3, varcolor4, dist], ...]
         @is_shadow_material = false  # actually not used
-        @attrib_locs = {"vnormal": -1}
         @users = []
-        @uniforms_config = uniforms
-        @attributes_config = attributes
-        @shape_multiplier = 1
         @group_id = -1
         @double_sided = Boolean @data.double_sided
+        @material = null
 
         var_model_view_matrix = "model_view_matrix"
         var_inv_model_view_matrix = ""
         var_object_matrix = ""
         var_inv_object_matrix = ""
         var_color = ""
-        var_strand = ""
-        var_strand_type = "float"
         var_ambient = ""
         var_mistcol = ""
         var_mistdist = ""
@@ -334,9 +277,6 @@ class Material
                     var_miststart = u.varname
                 when GPU_DYNAMIC_MIST_TYPE
                     var_misttype = u.varname
-                when 77 # position in strand (0-1)
-                    var_strand = u.varname
-                    var_strand_type = u.gltype
                 when -1 # custom
                     var_custom.push u.varname
                 when undefined # custom
@@ -349,191 +289,111 @@ class Material
                             data: [0,0,0,[0,0],[0,0,0],[0,0,0,0]][u.datatype]}
                     # console.log u
                     console.log "Warning: unknown uniform", u.varname, \
-                        gpu_constants[u.type] or u.type, "of data type", \
+                        u.type, "of data type", \
                         ['0','1i','1f','2f','3f','4f','m3','m4','4ub'][u.datatype]
 
-        uniform_decl = ""
-        attribute_decl = ""
-        attribute_asgn = ""
-        armature_deform_code = ""
-        extrude_code = ""
-        num_shapes = 0
-        num_bones = 0
-        num_particles = 0
-        @num_bone_uniforms = 0
-
-        for a in attributes or []
-            v = 'var' + a.varname[3...]
-            switch a.type
-                when CD_MTFACE # UV layer
-                    @uv_layer_attribs[a.name] = a.varname
-                    attribute_decl += "attribute vec2 "+a.varname+";\n"\
-                        +"varying vec2 "+v+";\n"
-                    attribute_asgn += v+"="+a.varname+"*uv_rect.zw+uv_rect.xy;\n"
-                    @attrib_locs[a.varname] = -1
-                when CD_MCOL # Vertex color
-                    @color_attribs[a.name] = a.varname
-                    attribute_decl += "attribute vec4 "+a.varname+";\n"\
-                        +"varying vec4 "+v+";\n"
-                    attribute_asgn += v+"="+a.varname+";\n"
-                    @attrib_locs[a.varname] = -1
-                when CD_TANGENT # tangent vectors
-                    attribute_decl += "attribute vec4 tangent;\n"\
-                        +"varying vec4 "+v+";\n"
-                    #attribute_asgn += v+".xyz = normalize("\
-                        #+var_model_view_matrix+"*vec4(tangent,0.0)).xyz;\n"
-                    attribute_asgn += v+".xyz = normalize(("+var_model_view_matrix+"*vec4(tangent.xyz,0)).xyz);\n"
-                    attribute_asgn += v+".w = tangent.w;\n"
-                    @attrib_locs['tangent'] = -1
-                when CD_SHAPE_KEY # shape key
-                    num_shapes = a.count
-                    for i in [0...num_shapes]
-                        attribute_decl += "attribute vec3 shape"+i+";\n"
-                        attribute_decl += "attribute vec3 shapenor"+i+";\n"
-                        @attrib_locs["shape"+i] = -1
-                        @attrib_locs["shapenor"+i] = -1
-                    uniform_decl += "uniform float shapef["+num_shapes+"];"
-                when CD_ARMATURE_DEFORM # armature deform
-                    num_bones = a.count
-                    @num_bone_uniforms = num_bones
-                    attribute_decl += "attribute vec4 weights;\n"
-                    attribute_decl += "attribute vec4 b_indices;\n"
-                    @attrib_locs["weights"] = -1
-                    @attrib_locs["b_indices"] = -1
-                    uniform_decl += "uniform mat4 bones["+@num_bone_uniforms+"];\n"
-                    armature_deform_code = ("""
-                    vec4 blendco = vec4(0);
-                    vec3 blendnor = vec3(0);
-                    mat4 m;
-                    ivec4 inds = ivec4(b_indices);
-                    int idx;
-                    for(int i=0; i<4; ++i){
-                        m = bones[inds[i]];
-                        blendco += m * co4 * weights[i];
-                        blendnor += mat3(m[0].xyz, m[1].xyz, m[2].xyz) * normal * weights[i];
-                    }
-                    co4 = blendco; normal = blendnor;
-                    """)
-                    # TODO: Allowing deformed mesh transformation in an efficient manner
-                    # When mesh local transformation is not zero, add a matrix uniform that
-                    # holds mesh -> armature transformation and use that in the code above
-                    # but add an optimization pass at export to apply mesh transformations
-                    # where possible.
-                when CD_ARMATURE_DEFORM_6 # armature deform, 6 weights
-                    num_bones = a.count
-                    @num_bone_uniforms = num_bones
-                    attribute_decl += "attribute vec4 weights;\n"
-                    attribute_decl += "attribute vec4 weights2;\n"
-                    attribute_decl += "attribute vec4 b_indices;\n"
-                    attribute_decl += "attribute vec4 b_indices2;\n"
-                    @attrib_locs["weights"] = -1
-                    @attrib_locs["weights2"] = -1
-                    @attrib_locs["b_indices"] = -1
-                    @attrib_locs["b_indices2"] = -1
-                    uniform_decl += "uniform mat4 bones["+@num_bone_uniforms+"];\n"
-                    armature_deform_code = ("""
-                    vec4 blendco = vec4(0);
-                    vec3 blendnor = vec3(0);
-                    mat4 m;
-                    ivec4 inds = ivec4(b_indices);
-                    for(int i=0; i<4; ++i){
-                        m = bones[inds[i]];
-                        blendco += m * co4 * weights[i];
-                        blendnor += mat3(m[0].xyz, m[1].xyz, m[2].xyz) * normal * weights[i];
-                    }
-                    inds = ivec4(b_indices2);
-                    for(int i=0; i<2; ++i){
-                        m = bones[inds[i]];
-                        blendco += m * co4 * weights2[i];
-                        blendnor += mat3(m[0].xyz, m[1].xyz, m[2].xyz) * normal * weights2[i];
-                    }
-                    co4 = blendco; normal = blendnor;
-                    """)
-                when 77 # particle hair
-                    if var_strand == ""
-                        var_strand = "strand"
-                    uniform_decl += "uniform "+var_strand_type+" "+var_strand+";\n"
-                    num_particles = a.count
-                    for i in [0...num_particles]
-                        attribute_decl += "attribute vec3 particle"+i+";\n"
-                        @attrib_locs["particle"+i] = -1
-                when CD_ORCO
-                    # original coordinates (TODO: divide by dimensions)
-                    attribute_decl += "varying vec3 "+v+";\n"
-                    attribute_asgn += v+" = co;\n"
-                else
-                    console.warn "Warning: unknown attribute type", a.type
-
-        shape_key_code = ""
-        if num_shapes
-            shape_key_code = """float relf = 0.0;
-            vec3 n;
-                """
-            for i in [0...num_shapes]
-                shape_key_code += """co += shape"""+i+""" * shapef["""+i+"""] * shape_multiplier;
-                relf += shapef["""+i+"""];
-                """
-            # Interpolating normals instead of re-calculating them is wrong
-            # But it's fast and completely unnoticeable in most cases
-            shape_key_code += "normal *= clamp(1.0 - relf, 0.0, 1.0);\n"
-            for i in [0...num_shapes]
-                shape_key_code += """
-                n = shapenor"""+i+""" * 0.007874;
-                normal += n * max(0.0, shapef["""+i+"""]);
-                """
-            # TODO: interleave fors for efficency, adding an uniform with the sum?
-            #       saving all uniforms in a single matrix?
-            #       (so only one gl.uniform16fv is enough)
-            vnormal = "vnormal * 0.007874"
+        if @data.vertex
+            vs = @data.vertex
         else
-            # Not divided by 128 because it will be normalized anyway
-            vnormal = "vnormal"
+            {has_normal=true} = @data
 
-        if num_particles
-            strnd = var_strand
-            if var_strand_type!="float" then strnd += ".x"
-            extrude_code = """
-            co4 = vec4(mix(co4.xyz, particle0, """+strnd+""") ,1.0);
-            """
+            vs_head = ["""
+            #ifdef GL_ES
+            precision highp float;
+            precision highp int;
+            #endif
+            uniform mat4 """+var_model_view_matrix+""";
+            uniform mat4 projection_matrix;
+            uniform mat3 normal_matrix;
+            uniform float shape_multiplier;
+            uniform vec4 uv_rect;"""]
 
-        # TODO: find which uniform
-        # has conflicting precision between VS and FS in ANGLE/win32
-        @vs_code = vs = @data.vertex or """
-        #ifdef GL_ES
-        precision highp float;
-        precision highp int;
-        #endif
-        uniform mat4 """+var_model_view_matrix+""";
-        uniform mat4 projection_matrix;
-        uniform mat3 normal_matrix;
-        uniform float shape_multiplier;
-        uniform vec4 uv_rect;
-        attribute vec3 vertex;
-        attribute vec3 vnormal;
-        varying vec3 varposition;
-        varying vec3 varnormal;
-        """+attribute_decl+"""
-        """+uniform_decl+"""
-        void main()
-        {
-            vec3 co = vertex;
-            vec3 normal = """ + vnormal + """;
-            """ + shape_key_code + attribute_asgn + """
-            vec4 co4 = vec4(co, 1.0);
-            """ + armature_deform_code + """
-            """ + extrude_code + """
-            vec4 global_co = """+var_model_view_matrix+""" * co4;
-            varposition = global_co.xyz;
-            varnormal = normalize(normal_matrix * normal);
-            gl_Position = projection_matrix * global_co;
-        }"""
+            #count_to_type = ['','float','vec2','vec3','vec4',
+            #    '','','','','mat3','','','','','','','mat4']
+
+            attribute_names = []
+            attribute_lines = for {name, count} in @layout
+                attribute_names.push name
+                "attribute vec#{count} #{name};"
+
+            varyings_decl = []
+            varyings_assign = []
+            for v in varyings or []
+                {varname} = v
+                switch v.type
+                    when 'VIEW_POSITION' # Position relative to the camera
+                        varyings_decl.push "varying vec3 #{varname};"
+                        varyings_assign.push "#{varname} = view_co.xyz;"
+                    when 'PROJ_POSITION' # Position relative to screen with 4th component
+                        varyings_decl.push "varying vec4 #{varname};"
+                        varyings_assign.push "#{varname} = proj_co;"
+                    when 'VIEW_NORMAL' # Normal relative to the camera
+                        varyings_decl.push "varying vec3 #{varname};"
+                        varyings_assign.push "#{varname} = normalize(normal_matrix * normal);"
+                    when 'UV' # UV layer
+                        uv_name = 'uv_' + v.attname
+                        if uv_name not in attribute_names
+                            # When the UV doesn't exist or is empty, we just use the first
+                            # layer in the list or a null vector
+                            uv_name = 'vec2(0.0)'
+                            for aname in attribute_names when /^uv_/.test aname
+                                uv_name = aname
+                                break
+                        varyings_decl.push "varying vec2 #{varname};"
+                        varyings_assign.push "#{varname} = #{uv_name} * uv_rect.zw + uv_rect.xy;"
+                    when 'VCOL' # Vertex color
+                        vc_name = 'vc_' + v.attname
+                        if vc_name not in attribute_names
+                            vc_name = 'vec4(0.0)'
+                            for aname in attribute_names when /^vc_/.test aname
+                                vc_name = aname
+                                break
+                        varyings_decl.push "varying vec4 #{varname};"
+                        varyings_assign.push "#{varname} = #{vc_name}/255.0;"
+                    when 'TANGENT' # tangent vectors
+                        varyings_decl.push "varying vec4 #{varname};"
+                        varyings_assign.push "#{varname}.xyz = normalize((#{var_model_view_matrix}*vec4(tangent.xyz,0)).xyz);"
+                        varyings_assign.push "#{varname}.w = tangent.w;"
+                    when 'ORCO'
+                        # original coordinates or "generated"
+                        # TODO: add an uniform for co-center/dimensions instead of just co
+                        # TODO: get coordinate before modifiers, but only if necessary
+                        varyings_decl.push "varying vec3 #{varname};"
+                        varyings_assign.push "#{varname} = co.xyz;"
+                    else
+                        console.warn "Warning: unknown varying type #{v.type}"
+
+            modifiers_uniforms = []
+            modifiers_bodies = []
+            for m in vertex_modifiers
+                {uniform_lines, body_lines} = m.get_code()
+                modifiers_uniforms = modifiers_uniforms.concat uniform_lines
+                modifiers_bodies = modifiers_bodies.concat body_lines
+
+            vs_body = [
+                'void main(){'
+                "vec4 co = vec4(vertex, 1.0);"
+                "vec3 normal = vnormal;"
+                modifiers_bodies...
+                "vec4 view_co = #{var_model_view_matrix} * co;"
+                "vec4 proj_co = projection_matrix * view_co;"
+                varyings_assign...
+                "gl_Position = proj_co;\n}"
+            ].join('\n  ')
+
+            vs = vs_head.concat(
+                attribute_lines, modifiers_uniforms, varyings_decl, vs_body
+            ).join '\n'
+
+        @vs_code = vs
 
         vertex_shader = gl.createShader gl.VERTEX_SHADER
         gl.shaderSource vertex_shader, vs
         gl.compileShader vertex_shader
 
         if not gl.getShaderParameter(vertex_shader, gl.COMPILE_STATUS) and not gl.isContextLost()
-            #console.log vs
+            i=0
+            console.log vs.replace(/^/mg, (d)->++i+' ')
             error_msg = """Error compiling vertex shader of material #{@name}
             #{gl.getShaderInfoLog vertex_shader}"""
             # ext = gl.getExtension "WEBGL_debug_shaders"
@@ -542,6 +402,7 @@ class Material
             gl.deleteShader vertex_shader
             @context.MYOU_PARAMS.on_shader_failed?()
             (material_promises[@name]?.functions.reject or console_error)(error_msg)
+            debugger
             return
 
         @fs_code = @data.fragment
@@ -591,11 +452,9 @@ class Material
         @u_model_view_matrix = gl.getUniformLocation prog, var_model_view_matrix
         @u_projection_matrix = gl.getUniformLocation prog, "projection_matrix"
         @u_normal_matrix = gl.getUniformLocation prog, "normal_matrix"
-        @u_shape_multiplier = gl.getUniformLocation prog, "shape_multiplier"
         @u_uv_rect = gl.getUniformLocation prog, "uv_rect"
         @u_group_id = gl.getUniformLocation prog, "group_id"
         @u_mesh_id = gl.getUniformLocation prog, "mesh_id"
-        @u_shape_multiplier? and gl.uniform1f @u_shape_multiplier, @shape_multiplier
         @u_uv_rect? and gl.uniform4f @u_uv_rect, 0, 0, 1, 1
 
         # these getUniformLocation may yield null
@@ -604,7 +463,6 @@ class Material
         @u_var_inv_object_matrix = gl.getUniformLocation prog, var_inv_object_matrix
         @u_color = gl.getUniformLocation prog, var_color
         @u_fb_size = gl.getUniformLocation prog, "fb_size"
-        @u_strand = gl.getUniformLocation prog, var_strand
         @u_ambient = gl.getUniformLocation prog, var_ambient
         for params in @shading_params
             params.uniforms.diffcol = gl.getUniformLocation prog, params.vars.diffcol
@@ -614,7 +472,7 @@ class Material
             params.uniforms.hardness = gl.getUniformLocation prog, params.vars.hardness
             params.uniforms.emit = gl.getUniformLocation prog, params.vars.emit
             params.uniforms.alpha = gl.getUniformLocation prog, params.vars.alpha
-        
+
         @u_mistcol = gl.getUniformLocation prog, var_mistcol
         @u_mistdist = gl.getUniformLocation prog, var_mistdist
         @u_mistenable = gl.getUniformLocation prog, var_mistenable
@@ -623,12 +481,10 @@ class Material
         @u_misttype = gl.getUniformLocation prog, var_misttype
         if @u_mistenable?
             gl.uniform1f @u_mistenable, 0
-        @u_shapef = []
-        for i in [0...num_shapes]
-            @u_shapef[i] = gl.getUniformLocation prog, "shapef["+i+"]"
-        @u_bones = []
-        for i in [0...@num_bone_uniforms]
-            @u_bones[i] = gl.getUniformLocation prog, "bones["+i+"]"
+
+        @modifier_data_store = for m in vertex_modifiers
+            m.get_data_store gl, prog
+
         @u_custom = []
         for v in var_custom
             @u_custom.push gl.getUniformLocation(prog, v)
@@ -639,13 +495,16 @@ class Material
         if fb and @u_fb_size?
             gl.uniform2f @u_fb_size, fb.size_x, fb.size_y
 
-        # getAttribLocation returns -1 if not present (instead of null)
-        @a_vertex = gl.getAttribLocation prog, "vertex"
-        gl.enableVertexAttribArray @a_vertex
-
-        for a_name of @attrib_locs
-           a = gl.getAttribLocation(prog, a_name)|0
-           @attrib_locs[a_name] = a
+        # vertexAttribPointers:
+        # [location, number of components, GL type, offset]
+        @attrib_pointers = attrib_pointers = []
+        attrib_bitmask = 0
+        for {name, count, type, offset} in @layout
+            loc = gl.getAttribLocation(prog, name)|0
+            if loc != -1
+                attrib_pointers.push [loc, count, attr_types[type], offset]
+                attrib_bitmask |= 1<<loc
+        @attrib_bitmask = attrib_bitmask
 
         for i in [0...tex_uniforms.length]
             gl.uniform1i gl.getUniformLocation(prog, tex_uniforms[i]), i
@@ -738,10 +597,8 @@ class Material
 
 
 
-module.exports = {Material,
-CD_MCOL, CD_MTFACE, CD_ORCO, CD_TANGENT, CD_SHAPE_KEY, CD_ARMATURE_DEFORM,
-CD_ARMATURE_DEFORM_6, GPU_DATA_1I, GPU_DATA_1F, GPU_DATA_2F, GPU_DATA_3F,
-GPU_DATA_4F, GPU_DATA_9F, GPU_DATA_16F, GPU_DATA_4UB, GPU_DYNAMIC_AMBIENT_COLOR,
+module.exports = {Material, Shader,
+GPU_DYNAMIC_AMBIENT_COLOR,
 GPU_DYNAMIC_GROUP_LAMP, GPU_DYNAMIC_GROUP_MAT, GPU_DYNAMIC_GROUP_MISC,
 GPU_DYNAMIC_GROUP_MIST, GPU_DYNAMIC_GROUP_OBJECT, GPU_DYNAMIC_GROUP_SAMPLER,
 GPU_DYNAMIC_GROUP_WORLD, GPU_DYNAMIC_HORIZON_COLOR, GPU_DYNAMIC_LAMP_ATT1,
