@@ -1,3 +1,6 @@
+
+require './node_fetch_file.coffee'
+
 require './stdlib.coffee'
 
 # Browser prefix management

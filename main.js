@@ -11,6 +11,5 @@ if(process.browser || process.android){
     //Electron code
     var req = eval('require');
     req('coffee-script/register');
-    req('./engine/node_fetch_file.coffee');
     module.exports = req('./pack.coffee');
 }
