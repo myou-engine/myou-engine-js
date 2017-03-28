@@ -283,7 +283,7 @@ class Mesh extends GameObject
             @_signature += m.signature
 
         @layout = layout
-        @vertex_modifiers = vertex_modifiers
+        @vertex_modifiers = vertex_modifiers.concat @vertex_modifiers or []
         return
 
 
