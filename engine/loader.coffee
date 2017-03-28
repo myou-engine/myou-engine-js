@@ -101,7 +101,6 @@ load_datablock = (scene, data, context) ->
             data.attributes = null
         mat = scene.materials[data.name]
         if mat
-            console.log("A stub of #{data.name} was made already")
             # A stub was made when loading a mesh
             # due to the old scene format
             mat.data = data
@@ -153,7 +152,7 @@ load_object = (data, scene) ->
                 ob.mesh_name = data.mesh_name
                 ob.materials = for mat_name in data.materials
                     scene.materials[mat_name] or new Material(
-                        context, mat_name, console.log('making stub for '+mat_name), scene)
+                        context, mat_name, null, scene)
                 ob.all_f = data.all_f
                 ob.shape_multiplier = data.shape_multiplier or 1
                 if data.uv_rect?
