@@ -245,6 +245,8 @@ class Scene
             ob.render = false
 
     enable_render: ->
+        if not @active_camera?
+            console.warn "Scene '#{@name}' has no active camera, nothing will be rendered."
         @enabled = true
         return @
 
@@ -253,6 +255,7 @@ class Scene
         return @
 
     enable_physics: ->
+        # TODO: Warn if physics are disabled
         @physics_enabled = true
         return @
 
