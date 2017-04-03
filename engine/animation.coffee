@@ -69,7 +69,8 @@ class Animation
         # - members usually assigned in step()
         # - members used in apply()
         # - methods for regular usage, that can be chained
-        {exclude=[], start_marker, end_marker} = options or {}
+        {exclude=[], start_marker, end_marker, strip_name_filter=/^/} = options or {}
+        @_strip_name_filter = strip_name_filter
         full_exclude_list = []
         for thing in exclude
             if thing.length?
@@ -78,6 +79,7 @@ class Animation
                 full_exclude_list = full_exclude_list.concat thing.objects
             else
                 full_exclude_list.push thing
+        @strips = []
         @objects = for ob in objects when ob not in exclude
             # TODO: Shall we do this when there are strips too?
             if ob.animation_strips.length == 0 and ob.actions.length != 0
@@ -93,7 +95,11 @@ class Animation
                     reversed: false
                     extrapolation: 'HOLD'
                     blend_type: 'REPLACE'
+                    name: ''
                 }
+            for strip in ob.animation_strips
+                if strip_name_filter.test (strip.name or '')
+                    @strips.push strip
             ob
         {@scene, scene: {@context}} = @objects[0]
         # Position in animation frames, usually assigned in step(),
@@ -118,10 +124,13 @@ class Animation
         @_index = -1
 
     has_strips: ->
+        @strips.length != 0
+
+    debug_strip_filters: ->
         for ob in @objects
-            if ob.animation_strips.length != 0
-                return true
-        return false
+            for strip in ob.animation_strips
+                console.log @_strip_name_filter, strip.name, @_strip_name_filter.test (strip.name or '')
+        return
 
     play: ->
         if not @playing
@@ -162,7 +171,7 @@ class Animation
         for ob in @objects
             # TODO: optimize
             affected_channels = {}
-            for strip in ob.animation_strips
+            for strip in ob.animation_strips when strip in @strips
                 {frame_start, frame_end, action_frame_start, action_frame_end} = strip
                 strip_pos = @pos - frame_start
                 strip_pos_reverse = frame_end - @pos
