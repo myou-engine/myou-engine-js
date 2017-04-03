@@ -140,8 +140,6 @@ class Shader
             @shading_params_dict[p.name] = new ShadingParams p
         gl = @context.render_manager.gl
         @textures = []
-        @uv_layer_attribs = {} #name of attribute for each uv layer
-        @color_attribs = {}    #name of attribute for each vcol
         tex_uniforms = []
         lamps = {} # lamp_name: {varpos, varcolor3, varcolor4, dist}
         @lamps = []  # [[lamp, varpos, varcolor3, varcolor4, dist], ...]
