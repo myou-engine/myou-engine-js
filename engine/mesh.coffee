@@ -65,6 +65,7 @@ class MeshData
         @hash = ''
         @varray = null  # Vertex array with all submeshes
         @iarray = null  # Submesh-based indices
+        @varray_byte = null
         # One of each per material
         @vertex_buffers = []
         @index_buffers = []
@@ -151,12 +152,12 @@ class Mesh extends GameObject
         data.users.push @
         data.varray = va
         data.iarray = ia
+        data.varray_byte = bytes = new Uint8Array va.buffer, va.byteOffset, va.byteLength
         # If mesh has a mesh_id, we'll assign it to the 4th byte of the normal (usually 0)
         if @mesh_id
             mesh_id = @mesh_id|0
-            bytes = new Uint8Array va.buffer, va.byteOffset, va.byteLength
             if bytes[15] != mesh_id
-                i=0
+                i = 15
                 while i < bytes.length
                     bytes[i] = mesh_id
                     i+=@stride

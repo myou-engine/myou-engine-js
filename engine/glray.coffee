@@ -1,6 +1,6 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 {Framebuffer} = require './framebuffer.coffee'
-{Material} = require './material.coffee'
+{Shader} = require './material.coffee'
 
 # TODO: assign different group_ids to mirrored and linked meshes
 # TODO: use depth buffer instead of short depth when available
@@ -18,9 +18,9 @@ varying float mesh_id;
 void main(){
     vec4 pos = model_view_matrix * vec4(vertex, 1.0);
     pos.z = min(pos.z, #{max_distance.toFixed(20)});
-    gl_Position = projection_matrix * pos;
     mesh_id = vnormal.w;
     vardepth = -pos.z;
+    gl_Position = projection_matrix * pos;
 }
 """
     return shader
@@ -31,7 +31,7 @@ gl_ray_fs = (max_distance) ->
     shader = """
 precision highp float;
 varying float vardepth;
-uniform float mesh_id;
+varying float mesh_id;
 uniform float group_id;
 
 void main(){
@@ -78,6 +78,7 @@ class GLRay
             @max_distance = 10
         @mat = new Shader(@context, {
             name: 'gl_ray', vertex: gl_ray_vs(@max_distance), fragment: gl_ray_fs(@max_distance)},
+            null,
             [{"name":"vertex","type":"f","count":3,"offset":0},
              {"name":"vnormal","type":"b","count":4,"offset":12}],[])
         @m4 = mat4.create()
@@ -183,8 +184,8 @@ class GLRay
         gl = @context.render_manager.gl
         {scene, camera, m4, mat, world2cam, world2cam_mx} = @
         mat.use()
-        attr_loc_vertex = mat.attrib_locs[0][0]
-        attr_loc_normal = mat.attrib_locs[1][0]
+        attr_loc_vertex = mat.attrib_pointers[0][0]
+        attr_loc_normal = mat.attrib_pointers[1][0]
         @buffer.enable()
         restore_near = false
 
@@ -218,7 +219,7 @@ class GLRay
             camera.recalculate_projection()
 
         # Enable vertex+normal
-        @context.render_manager.change_enabled_attributes(1|2)
+        @context.render_manager.change_enabled_attributes(mat.attrib_bitmask)
 
         # Rendering a few meshes at a time
         # TODO: This is all broken now.
@@ -226,7 +227,7 @@ class GLRay
         if @step < @render_steps
             for mesh in @meshes[@step * part ... (@step + 1) * part]
                 data = mesh.last_lod_object?.data or mesh.data
-                if data and data.attrib_pointers.length != 0 and not mesh.culled_in_last_frame
+                if data and not mesh.culled_in_last_frame
                     # We're doing the same render commands as the engine,
                     # except that we only set the attribute and uniforms we use
                     if mat.u_group_id? and mat.group_id != mesh.group_id
@@ -237,14 +238,12 @@ class GLRay
                         gl.uniform1f(mat.u_mesh_id, mat.mesh_id)
                     mesh2world = mesh.world_matrix
                     data = mesh.last_lod_object?.data or mesh.data
-                    for submesh_idx in [0...data.attrib_pointers.length]
+                    for submesh_idx in [0...data.vertex_buffers.length]
                         gl.bindBuffer(gl.ARRAY_BUFFER, data.vertex_buffers[submesh_idx])
                         # vertex attribute
-                        attr = data.attrib_pointers[submesh_idx][0]
-                        gl.vertexAttribPointer(attr_loc_vertex, attr[1], attr[2], false, data.stride, attr[3])
+                        gl.vertexAttribPointer(attr_loc_vertex, 3, 5126, false, data.stride, 0)
                         # vnormal attribute (necessary for mesh_id), length of attribute 4 instead of 3
                         # and type UNSIGNED_BYTE instead of BYTE
-                        attr = data.attrib_pointers[submesh_idx][1]
                         gl.vertexAttribPointer(attr_loc_normal, 4, 5121, false, data.stride, 12)
                         # draw mesh
                         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, data.index_buffers[submesh_idx])
