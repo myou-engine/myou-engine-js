@@ -103,7 +103,7 @@ load_datablock = (scene, data, context) ->
         if mat
             # A stub was made when loading a mesh
             # due to the old scene format
-            mat.data = data
+            mat.set_data data
         else
             console.log "creating mat #{data.name}"
             new Material(context, name, data, scene)

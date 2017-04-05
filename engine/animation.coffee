@@ -69,7 +69,14 @@ class Animation
         # - members usually assigned in step()
         # - members used in apply()
         # - methods for regular usage, that can be chained
-        {exclude=[], start_marker, end_marker, strip_name_filter=/^/} = options or {}
+        {
+            exclude=[],
+            start_marker,
+            end_marker,
+            strip_name,
+            strip_name_filter=/^/,
+        } = options or {}
+        @_strip_name = strip_name
         @_strip_name_filter = strip_name_filter
         full_exclude_list = []
         for thing in exclude
@@ -79,6 +86,8 @@ class Animation
                 full_exclude_list = full_exclude_list.concat thing.objects
             else
                 full_exclude_list.push thing
+        strips_start = 1e999
+        strips_end = -1e999
         @strips = []
         @objects = for ob in objects when ob not in exclude
             # DEPRECATED
@@ -98,8 +107,11 @@ class Animation
                     name: ''
                 }
             for strip in ob.animation_strips
-                if strip_name_filter.test (strip.name or '')
+                if (not strip_name? or strip_name==strip.name) and \
+                        strip_name_filter.test (strip.name or '')
                     @strips.push strip
+                    strips_start = Math.min(strip.frame_start, strips_start)
+                    strips_end = Math.min(strip.frame_start, strips_end)
             ob
         {@scene, scene: {@context}} = @objects[0]
         # Position in animation frames, usually assigned in step(),
@@ -109,13 +121,18 @@ class Animation
         @last_eval = performance.now()
         # All the rest are only used in step()
         @speed = 0
-        # Set start_frame and end_frame
-        # from markers (if any) or from scene
-        {markers_by_name, frame_start, frame_end} = @scene
-        @start_frame = frame_start
+        # Set start_frame and end_frame with this priority:
+        # * from markers (if any)
+        # * from scene (if objects is scene.children or there are no strips)
+        # * from strip extents
+        {markers_by_name, frame_start, frame_end, children} = @scene
+        @start_frame = strips_start
+        @end_frame = strips_end
+        if objects == children or strips_start > strips_end
+            @start_frame = frame_start
+            @end_frame = frame_end
         if start_marker? and markers_by_name[start_marker]?
             @start_frame = markers_by_name[start_marker].frame
-        @end_frame = frame_end
         if end_marker? and markers_by_name[end_marker]?
             @end_frame = markers_by_name[end_marker].frame
         @init()
@@ -129,7 +146,9 @@ class Animation
     debug_strip_filters: ->
         for ob in @objects
             for strip in ob.animation_strips
-                console.log @_strip_name_filter, strip.name, @_strip_name_filter.test (strip.name or '')
+                test = (not @_strip_name? or @_strip_name == strip.name) and \
+                    @_strip_name_filter.test (strip.name or '')
+                console.log @_strip_name, @_strip_name_filter, strip.name, test
         return
 
     play: ->
@@ -168,7 +187,7 @@ class Animation
 
     apply: ->
         {actions} = @context
-        for ob in @objects
+        for ob in @objects when ob.animation_strips?
             # TODO: optimize
             affected_channels = {}
             for strip in ob.animation_strips when strip in @strips
@@ -238,16 +257,20 @@ class Animation
                 is_quat = prop == 'rotation'
                 if prop == 'rotation_euler'
                     prop = 'rotation'
-                if type == 'object'
-                    target = ob
-                else if type == 'pose'
-                    target = ob.bones[name]
-                else if type == 'shape'
-                    # TODO: Shape keys may not be the first modifier
-                    target = ob.vertex_modifiers[0]?.keys?[name]
-                    prop = 'value'
-                else
-                    console.log "Unknown channel type:", type
+                switch type
+                    when 'object'
+                        target = ob
+                    when 'pose'
+                        target = ob.bones[name]
+                    when 'shape'
+                        # TODO: Shape keys may not be the first modifier
+                        target = ob.vertex_modifiers[0]?.keys?[name]
+                        prop = 'value'
+                    when 'material'
+                        target = ob.inputs[prop]
+                        prop = 'value'
+                    else
+                        console.log "Unknown channel type:", type
                 if not target
                     continue
                 v = blend

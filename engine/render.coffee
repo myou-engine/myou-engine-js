@@ -445,13 +445,12 @@ class RenderManager
             # TODO: would it be better to generate
             # a JS function that is called with all assignments at once?
             # (including also all other uniforms)
-            for i in [0...shader.u_custom.length]
-                cv = mesh.custom_uniform_values[i]
-                if cv
-                    if cv.length?
-                        @uniform_functions[cv.length] shader.u_custom[i], cv
-                    else
-                        gl.uniform1f shader.u_custom[i], cv
+            for u,i in shader.u_custom when u?
+                {value, type} = mat._input_list[i]
+                if value.length?
+                    @uniform_functions[type] u, value
+                else
+                    @uniform_functions[type] u, new Float32Array([value, 0, 0, 0])
 
             for lavars in shader.lamps
                 lamp = lavars[0]

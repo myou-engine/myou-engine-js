@@ -98,6 +98,7 @@ class Material
         @shaders = []
         @users = []
         @scene?.materials[@name] = this
+        @set_data @data
         @last_shader = null # TODO: workaround for short term compatibility problems
 
     get_shader: (mesh) ->
@@ -109,6 +110,17 @@ class Material
             shader.material = this
             @last_shader = shader
         return shader
+
+    set_data: (@data) ->
+        @inputs = {}
+        @_input_list = []
+        for u in @data?.uniforms or [] when u.type == -1
+            path = u.path or u.index
+            value = if u.value.length? then new Float32Array(u.value) else u.value
+            @_input_list.push @inputs[path] = {value, type: u.count}
+        @animation_strips = @data?.animation_strips
+        return
+
 
 id = 0
 
