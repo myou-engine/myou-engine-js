@@ -81,8 +81,8 @@ class Animation
                 full_exclude_list.push thing
         @strips = []
         @objects = for ob in objects when ob not in exclude
-            # TODO: Shall we do this when there are strips too?
-            if ob.animation_strips.length == 0 and ob.actions.length != 0
+            # DEPRECATED
+            if ob.actions?.length
                 ob.animation_strips.push {
                     action: ob.actions[0]
                     frame_start: 0
