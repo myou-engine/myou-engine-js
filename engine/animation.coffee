@@ -177,8 +177,6 @@ class Animation
                 strip_pos_reverse = frame_end - @pos
                 blend_factor = clamp(strip_pos/strip.blend_in, 0, 1) * \
                               clamp(strip_pos_reverse/strip.blend_out, 0, 1)
-                if blend_factor < 0.0000000000001
-                    continue
                 if strip.reversed
                     [strip_pos, strip_pos_reverse] = [strip_pos_reverse, strip_pos]
                 switch strip.extrapolation
