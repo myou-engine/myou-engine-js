@@ -347,6 +347,11 @@ class RenderManager
 
     # Returns: whether the frame should countinue
     draw_mesh: (mesh, mesh2world, pass_=-1, material_override, world2cam_override, projection_override)->
+        # TODO: check epsilon, probably better to check sum of absolutes instead of sqrLen
+        if vec3.sqrLen mesh.scale < 0.000001
+            mesh.culled_in_last_frame = true
+            return
+
         gl = @gl
         bound_textures = @bound_textures
         m4 = @_m4
