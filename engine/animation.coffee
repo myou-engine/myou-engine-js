@@ -278,9 +278,7 @@ class Animation
                     target[prop] = v[0]
                 else
                     p = target[prop]
-                    # TODO: workaround for specific issue
-                    # remove after fixing issue or next week
-                    for j in [0...(p.anim_length or v.length)]
+                    for j in [0...v.length]
                         p[j] = v[j]
                     if is_quat
                         quat.normalize p, p
