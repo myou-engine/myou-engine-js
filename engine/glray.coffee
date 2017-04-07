@@ -84,10 +84,8 @@ class GLRay
         @m4 = mat4.create()
         @world2cam = mat4.create()
         @world2cam_mx = mat4.create()
-        @cam_pos = vec3.create()
-        @cam_rot = quat.create()
-        @last_cam_pos = vec3.create()
-        @last_cam_rot = quat.create()
+        @cam2world = mat4.create()
+        @last_cam2world = mat4.create()
         @meshes = []
         @sorted_meshes = null
         @mesh_by_id = [] #sparse array with all meshes by group_id<<8|mesh_id
@@ -170,15 +168,14 @@ class GLRay
         point[0] = xf*depth
         point[1] = yf*depth
         point[2] = -depth
-        vec3.transformQuat(point, point, @last_cam_rot)
-        vec3.add(point, point, @last_cam_pos)
+        vec3.transformMat4(point, point, @last_cam2world)
         # we do this instead of just passing depth to use the current camera position
         # TODO: move this out of this function to perform it only when it's used?
-        distance = vec3.distance(point, cam.position)
+        distance = vec3.distance(point, cam.world_matrix.subarray(12,15))
         # I don't know why does this happen
         if isNaN distance
             return null
-        return {object, point, distance, normal: vec3.clone(point)}
+        return {object, point, distance}
 
     do_step: ->
         gl = @context.render_manager.gl
@@ -204,8 +201,7 @@ class GLRay
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
             mat4.copy(world2cam, @context.render_manager._world2cam)
             mat4.copy(world2cam_mx, @context.render_manager._world2cam_mx)
-            vec3.copy(@cam_pos, camera.position)
-            quat.copy(@cam_rot, camera.rotation)
+            mat4.copy(@cam2world, camera.world_matrix)
             # Assuming perspective projection and no shifting
             @inv_proj_x = camera.projection_matrix_inv[0]
             @inv_proj_y = camera.projection_matrix_inv[5]
@@ -271,8 +267,7 @@ class GLRay
             # console.log((performance.now() - t).toFixed(2) + ' ms')
             @step = 0
             @rounds += 1
-            vec3.copy(@last_cam_pos, @cam_pos)
-            quat.copy(@last_cam_rot, @cam_rot)
+            mat4.copy(@last_cam2world, @cam2world)
             @draw_debug_canvas()
         return
 
