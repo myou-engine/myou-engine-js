@@ -103,7 +103,6 @@ class Mesh extends GameObject
         @materials = []
         @passes = [0]
         @armature = null
-        @sort_dot = 0
         @uv_rect = vec4.fromValues 0, 0, 1, 1 # x, y, w, h
         @uv_right_eye_offset = [0, 0]
         #TODO move to MeshData
