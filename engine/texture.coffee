@@ -125,6 +125,9 @@ class Texture
                     @image.onload = =>
                         @context.main_loop.add_frame_callback =>
                             {@width, @height} = @image
+                            if nearest_POT(@width) != @width or nearest_POT(@height) != @height
+                                @loaded = false
+                                reject "Texture #{@name} has non-power-of-two size #{@width}x#{@height}"
                             @type = 'image'
                             @restore() #TODO: use @upload and @configure instead when possible
                             resolve @
@@ -315,5 +318,14 @@ get_texture_from_path_legacy = (name, path, filter, wrap, file_size=0, context) 
     tex = new Texture context, {name, formats, wrap, filter}
     context.textures[name] = tex
     return tex
+
+next_POT = (x) ->
+    x = Math.max(0, x-1)
+    return Math.pow(2, Math.floor(Math.log(x)/Math.log(2))+1)
+
+nearest_POT = (x) ->
+    x = Math.max(0, x)
+    return Math.pow(2, Math.round(Math.log(x)/Math.log(2)))
+
 
 module.exports = {Texture, get_texture_from_path_legacy}
