@@ -362,8 +362,14 @@ class Shader
                         varyings_assign.push "#{varname} = #{vc_name}/255.0;"
                     when 'TANGENT' # tangent vectors
                         varyings_decl.push "varying vec4 #{varname};"
-                        varyings_assign.push "#{varname}.xyz = normalize((#{var_model_view_matrix}*vec4(tangent.xyz,0)).xyz);"
-                        varyings_assign.push "#{varname}.w = tangent.w;"
+                        if 'tangent' in attribute_names
+                            varyings_assign.push "#{varname}.xyz = normalize((#{var_model_view_matrix}*vec4(tangent.xyz,0)).xyz);"
+                            varyings_assign.push "#{varname}.w = tangent.w;"
+                        else
+                            console.error "Material #{@name} expects tangents, mesh doesn't have any"
+                            varyings_assign.push "#{varname}.xyz = normalize(vnormal);"
+                            varyings_assign.push "#{varname}.w = 1.0;"
+
                     when 'ORCO'
                         # original coordinates or "generated"
                         # TODO: add an uniform for co-center/dimensions instead of just co
