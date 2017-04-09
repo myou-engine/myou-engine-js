@@ -1,7 +1,6 @@
 
 # TODO: Remove this file, organizing things better
 
-TimSort = require 'timsort'
 window.PI_2 = Math.PI * 2
 
 window.closest_pow2 = (n)->
@@ -17,11 +16,6 @@ window.interpolate = (t, p0, p1, p2, p3)->
     c3 = -p0 + 3.0 * p1 - 3.0 * p2 + p3
 
     return c0 + t * c1 + t2 * c2 + t3 * c3
-
-window.timsort_sqdist = (arr) ->
-    TimSort.sort arr, (a,b)-> a._sqdist - b._sqdist
-
-window.timsort_numeric = TimSort.sort
 
 window.randInt = (min, max) ->
     range = max - min

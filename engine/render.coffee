@@ -1,4 +1,5 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+timsort = require 'timsort'
 {Filter, box_filter_code} = require './filters.coffee'
 {Compositor, box_filter_code} = require './filters.coffee'
 {Framebuffer, MainFramebuffer} = require './framebuffer.coffee'
@@ -698,7 +699,8 @@ class RenderManager
 
         # PASS 0  (solid objects)
         if passes.indexOf(0) >= 0
-            scene.mesh_passes[0].sort sort_by_mat_id
+            # TODO: profile with timsort, etc
+            # scene.mesh_passes[0].sort sort_by_mat_id
             for ob in scene.mesh_passes[0]
                 if ob.visible == true and not ob.bg and not ob.fg and ob.render
                     @draw_mesh(ob, ob.world_matrix, 0)
@@ -717,19 +719,12 @@ class RenderManager
                     x = -x
                 ob._sqdist = - (x*z[0] + v[1]*z[1] + v[2]*z[2]) - (ob.zindex * (ob.dimensions[0]+ob.dimensions[1]+ob.dimensions[2])*0.166666)
                 # ob._sqdist = -vec3.dot(s,z) - (ob.zindex * (ob.dimensions[0]+ob.dimensions[1]+ob.dimensions[2])*0.166666)
-            timsort_sqdist scene.mesh_passes[1]
+            timsort.sort scene.mesh_passes[1], (a,b)-> a._sqdist - b._sqdist
 
-        for ob in scene.mesh_passes[1]
-            if ob.visible == true and ob.render
-                @draw_mesh(ob, ob.world_matrix, 1)
+            for ob in scene.mesh_passes[1]
+                if ob.visible == true and ob.render
+                    @draw_mesh(ob, ob.world_matrix, 1)
 
-                #if ob.dupli_group?
-                    #for sphere in groups[ob.dupli_group]
-                        #mat4.multiply m4, world2cam, ob.world_matrix
-                        #mat4.multiply m4, m4, sphere.world_matrix
-                        #@draw_mesh sphere, ob.world_matrix, m4
-
-        if scene.mesh_passes[1].length
             gl.disable gl.BLEND
             gl.depthMask true
 
@@ -971,8 +966,6 @@ class Debug
         mesh.scale = vec3.create 1,1,1
         mesh._update_matrices()
         return mesh
-
-#TODO: TimSort
 
 sort_by_mat_id = (a,b) ->
     id_a = (a.materials[0]?.id) + a._flip<<30 # boolean coerced into 1 or 0
