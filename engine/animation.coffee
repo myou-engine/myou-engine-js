@@ -38,13 +38,13 @@ class Action
             #            0    1    2    3     4    5    6    7
             #           \_____________first_spline____________/
             last_x = ch[ch.length-4]
-            if time > last_x
+            if time >= last_x
                 ret_vec.push ch[ch.length-3]
             else if time <= ch[2]
                 ret_vec.push ch[3]
             else
                 idx = 2      # first point X
-                while ch[idx] < time
+                while ch[idx] <= time
                     idx += 6 # next point X
                 spline = ch[idx-6...idx+2]
 
