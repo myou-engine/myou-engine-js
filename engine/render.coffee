@@ -392,6 +392,11 @@ class RenderManager
             else
                 gl.frontFace 2305 # gl.CCW
 
+        [inv_radius_x, inv_radius_y, inv_radius_z] = mesh.dimensions
+        inv_radius_x = 2/inv_radius_x
+        inv_radius_y = 2/inv_radius_y
+        inv_radius_z = 2/inv_radius_z
+
         # Main routine for each submesh
         submesh_idx = -1
 
@@ -427,6 +432,10 @@ class RenderManager
 
             if shader.u_color?
                 gl.uniform4fv shader.u_color, mesh.color
+
+            if shader.u_mesh_center?
+                gl.uniform3fv shader.u_mesh_center, mesh.center
+                gl.uniform3f shader.u_mesh_inv_dimensions, inv_radius_x, inv_radius_y, inv_radius_z
 
             if shader.u_ambient?
                 gl.uniform4fv shader.u_ambient, mesh.scene.ambient_color

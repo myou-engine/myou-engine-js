@@ -326,6 +326,13 @@ class Shader
                 attribute_names.push name
                 "attribute vec#{count} #{name};"
 
+            modifiers_uniforms = []
+            modifiers_bodies = []
+            for m in vertex_modifiers
+                {uniform_lines, body_lines} = m.get_code()
+                modifiers_uniforms = modifiers_uniforms.concat uniform_lines
+                modifiers_bodies = modifiers_bodies.concat body_lines
+
             varyings_decl = []
             varyings_assign = []
             for v in varyings or []
@@ -371,20 +378,13 @@ class Shader
                             varyings_assign.push "#{varname}.w = 1.0;"
 
                     when 'ORCO'
-                        # original coordinates or "generated"
-                        # TODO: add an uniform for co-center/dimensions instead of just co
-                        # TODO: get coordinate before modifiers, but only if necessary
+                        # original coordinates or "generated", relative to the bounding box of the mesh
+                        modifiers_uniforms.push "uniform vec3 mesh_center, mesh_inv_dimensions;"
+                        modifiers_bodies.unshift "vec3 orco = (co.xyz - mesh_center) * mesh_inv_dimensions;"
                         varyings_decl.push "varying vec3 #{varname};"
-                        varyings_assign.push "#{varname} = co.xyz;"
+                        varyings_assign.push "#{varname} = orco.xyz;"
                     else
                         console.warn "Warning: unknown varying type #{v.type}"
-
-            modifiers_uniforms = []
-            modifiers_bodies = []
-            for m in vertex_modifiers
-                {uniform_lines, body_lines} = m.get_code()
-                modifiers_uniforms = modifiers_uniforms.concat uniform_lines
-                modifiers_bodies = modifiers_bodies.concat body_lines
 
             vs_body = [
                 'void main(){'
@@ -477,6 +477,9 @@ class Shader
         @u_inv_model_view_matrix = gl.getUniformLocation prog, var_inv_model_view_matrix
         @u_var_object_matrix = gl.getUniformLocation prog, var_inv_object_matrix
         @u_var_inv_object_matrix = gl.getUniformLocation prog, var_inv_object_matrix
+        @u_color = gl.getUniformLocation prog, var_color
+        @u_mesh_center = gl.getUniformLocation prog, "mesh_center"
+        @u_mesh_inv_dimensions = gl.getUniformLocation prog, "mesh_inv_dimensions"
         @u_color = gl.getUniformLocation prog, var_color
         @u_fb_size = gl.getUniformLocation prog, "fb_size"
         @u_ambient = gl.getUniformLocation prog, var_ambient
