@@ -538,8 +538,8 @@ class RenderManager
             #         '1282': 'INVALID_OPERATION',
             #         '1205': 'OUT_OF_MEMORY'
             #     }
-            #     console.log ('GL Error ' + errcodes[error] + ' when drawing ' + mesh.name +
-            #            ' (' + mesh.mesh_name + ') with ' + mesh.material_names[submesh_idx])
+            #     console.error ('GL Error ' + errcodes[error] + ' when drawing ' + mesh.name +
+            #             ' (' + mesh.mesh_name + ') with ' + mat.name)
 
             # @meshes_drawn += 1
             # @triangles_drawn += num_indices * 0.33333333333333333
