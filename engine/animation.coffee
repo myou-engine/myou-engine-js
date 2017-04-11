@@ -194,8 +194,11 @@ class Animation
                 {frame_start, frame_end, action_frame_start, action_frame_end} = strip
                 strip_pos = @pos - frame_start
                 strip_pos_reverse = frame_end - @pos
-                blend_factor = clamp(strip_pos/strip.blend_in, 0, 1) * \
-                              clamp(strip_pos_reverse/strip.blend_out, 0, 1)
+                blend_factor = 1
+                if strip.blend_in != 0
+                    blend_factor *= clamp(strip_pos/strip.blend_in, 0, 1)
+                if strip.blend_out != 0
+                    blend_factor *= clamp(strip_pos_reverse/strip.blend_out, 0, 1)
                 if strip.reversed
                     [strip_pos, strip_pos_reverse] = [strip_pos_reverse, strip_pos]
                 switch strip.extrapolation
