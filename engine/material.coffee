@@ -98,6 +98,7 @@ class Material
         @shaders = []
         @users = []
         @scene?.materials[@name] = this
+        @render_scene = @scene # Materials can be used in other scenes when cloning
         @set_data @data
         @last_shader = null # TODO: workaround for short term compatibility problems
 
@@ -106,7 +107,7 @@ class Material
             mesh.ensure_layout_and_modifiers()
         shader = @shaders[mesh._signature]
         if not shader?
-            shader = @shaders[mesh._signature] = new Shader(@context, @data, @scene, mesh.layout, mesh.vertex_modifiers)
+            shader = @shaders[mesh._signature] = new Shader(@context, @data, this, mesh.layout, mesh.vertex_modifiers)
             shader.material = this
             @last_shader = shader
         return shader
@@ -120,6 +121,13 @@ class Material
             @_input_list.push @inputs[path] = {value, type: u.count}
         @animation_strips = @data?.animation_strips
         return
+
+    clone_to_scene: (scene) ->
+        n = new Material(@context, @name, @data, null)
+        n.scene = @scene
+        n.render_scene = scene
+        # TODO: Handle lights of new scene
+        return n
 
 
 id = 0
@@ -142,7 +150,7 @@ class Shader
     #   }
     #   Data type of each uniform is inferred from the type or the custom value.
     # * varyings: list of varyings, TODO. See loader.coffee:93
-    constructor: (@context, @data, @scene, @layout, vertex_modifiers) ->
+    constructor: (@context, @data, @material, @layout, @vertex_modifiers) ->
         @id = id++
         if @context.all_materials.indexOf(@) == -1
             @context.all_materials.push @
@@ -159,7 +167,8 @@ class Shader
         @users = []
         @group_id = -1
         @double_sided = Boolean @data.double_sided
-        @material = null
+        @scene = @material?.scene
+        render_scene = @material?.render_scene
 
         var_model_view_matrix = "model_view_matrix"
         var_inv_model_view_matrix = ""
@@ -228,7 +237,7 @@ class Shader
                 # GPU_DYNAMIC_SAMPLER_2DBUFFER = 12,
                 # And 15 was distance wrongly, it's GPU_DYNAMIC_OBJECT_AUTOBUMPSCALE
                 when 14, GPU_DYNAMIC_SAMPLER_2DSHADOW
-                    @textures.push @scene.objects[u.lamp].shadow_texture
+                    @textures.push render_scene.objects[u.lamp].shadow_texture
                     tex_uniforms.push u.varname
                 when 13, GPU_DYNAMIC_SAMPLER_2DIMAGE, GPU_DYNAMIC_SAMPLER_2DBUFFER # 2D image
                     if not u.image?
@@ -328,7 +337,7 @@ class Shader
 
             modifiers_uniforms = []
             modifiers_bodies = []
-            for m in vertex_modifiers
+            for m in @vertex_modifiers
                 {uniform_lines, body_lines} = m.get_code()
                 modifiers_uniforms = modifiers_uniforms.concat uniform_lines
                 modifiers_bodies = modifiers_bodies.concat body_lines
@@ -501,7 +510,7 @@ class Shader
         if @u_mistenable?
             gl.uniform1f @u_mistenable, 0
 
-        @modifier_data_store = for m in vertex_modifiers
+        @modifier_data_store = for m in @vertex_modifiers
             m.get_data_store gl, prog
 
         @u_custom = []
@@ -531,7 +540,7 @@ class Shader
         # TODO: only ~half of those vars are present
         for i, lamp_data of lamps
             @lamps.push([
-                @scene.objects[i],
+                render_scene.objects[i],
                 gl.getUniformLocation(prog, lamp_data.varpos),
                 gl.getUniformLocation(prog, lamp_data.varcolor3),
                 gl.getUniformLocation(prog, lamp_data.varcolor4),
@@ -553,7 +562,7 @@ class Shader
         return prog
 
     reupload: ->
-        @constructor(@context, @data, @scene)
+        @constructor(@context, @data, @material, @layout, @vertex_modifiers)
 
     destroy: ->
         @context.render_manager.gl.deleteProgram @_program
@@ -570,29 +579,6 @@ class Shader
     debug_set_custom_uniform: (utype, index, value)->
         @context.render_manager.gl.useProgram @_program
         @context.render_manager.gl['uniform'+utype](@u_custom[index], value)
-
-    clone_to_scene: (scene)->
-        # The only reason we have for cloning a material is to change the lamps
-        # to the ones of a different scene. And you can only do it if there are
-        # lamps of the same type in the target scene.
-        dest_scene_lamps = scene.lamps[...]
-        cloned = scene.materials[@name] = Object.create @
-        lamps = cloned.lamps = []
-        for l in @lamps
-            # First we clone the lamp reference and properties...
-            l = l[...]
-            # ...then we find an appropiate lamp
-            if l[0]
-                for dlamp in dest_scene_lamps
-                    if dlamp.lamp_type == l[0].lamp_type
-                        # console.log 'found matching lamp', dlamp.name, l[0].name
-                        l[0] = dlamp
-                        dest_scene_lamps.remove dlamp
-                        break
-            lamps.push l
-            # If matches weren't found, fat chance. We're not warning.
-
-        return cloned
 
     debug_blender_material: (varnum) ->
         if not @fs_code.splice
