@@ -23,10 +23,15 @@ load_scene = (name, filter, options, context) ->
     scene = context.scenes[name]
     if scene
         return Promise.resolve(scene)
-    {use_physics, data_dir=context.MYOU_PARAMS.data_dir} = options
+    {
+        use_physics
+        data_dir=context.MYOU_PARAMS.data_dir
+        original_scene_name=name
+    } = options
     scene = new Scene context, name
     scene.data_dir = data_dir
-    url = "#{scene.data_dir}/scenes/#{name}/all.json"
+    scene.original_scene_name = original_scene_name
+    url = "#{scene.data_dir}/scenes/#{original_scene_name}/all.json"
     return fetch(url).then (response) ->
         if not response.ok
             return Promise.reject "Scene '#{name}' could not be loaded from URL '#{url}' with error '#{response.status} #{response.statusText}'"

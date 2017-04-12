@@ -52,6 +52,7 @@ class Scene
         @markers_by_name = {}
         @extra_data = null
         @data_dir = ''
+        @original_scene_name = ''
 
     set_gravity: (gravity)->
         g = @gravity
