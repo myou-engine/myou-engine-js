@@ -19,13 +19,14 @@ if process.browser
     scripts = document.querySelectorAll 'script'
     current_script_path = scripts[scripts.length-1].src?.split('/')[...-1].join('/') or ''
 
-load_scene = (name, filter, use_physics, context) ->
+load_scene = (name, filter, options, context) ->
     scene = context.scenes[name]
     if scene
         return Promise.resolve(scene)
+    {use_physics, data_dir=context.MYOU_PARAMS.data_dir} = options
     scene = new Scene context, name
-    #TODO: check if scene has some physic object
-    url = "#{context.MYOU_PARAMS.data_dir}/scenes/#{name}/all.json"
+    scene.data_dir = data_dir
+    url = "#{scene.data_dir}/scenes/#{name}/all.json"
     return fetch(url).then (response) ->
         if not response.ok
             return Promise.reject "Scene '#{name}' could not be loaded from URL '#{url}' with error '#{response.status} #{response.statusText}'"
@@ -83,7 +84,7 @@ load_datablock = (scene, data, context) ->
         scene.extra_data = data.extra_data
 
     else if data.type=='TEXTURE'
-        context.textures[data.name] = new Texture(context, data)
+        scene.textures[data.name] = new Texture(scene, data)
 
     else if data.type=='MATERIAL'
         if not data.fragment.splice?

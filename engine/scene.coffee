@@ -26,6 +26,7 @@ class Scene
         @kinematic_characters = []
         @debug_physics = false
         @materials = {}
+        @textures = {}
         @active_camera = null
         @physics_enabled = false
         @world = null
@@ -50,6 +51,7 @@ class Scene
         @markers = []
         @markers_by_name = {}
         @extra_data = null
+        @data_dir = ''
 
     set_gravity: (gravity)->
         g = @gravity

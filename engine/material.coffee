@@ -138,7 +138,7 @@ class Shader
     #             to have it assigned to some scene parameter
     #             Otherwise, mesh.custom_uniform_values will be used instead.
     #       image: If type is GPU_DYNAMIC_SAMPLER_2DIMAGE, put the texture name
-    #             here, it must be defined in context.textures
+    #             here, it must be defined in scene.textures
     #   }
     #   Data type of each uniform is inferred from the type or the custom value.
     # * varyings: list of varyings, TODO. See loader.coffee:93
@@ -235,12 +235,12 @@ class Shader
                         # This means sampler defined elsewhere (in compositor)
                         tex_uniforms.push u.varname
                         continue
-                    tex = @context.textures[u.image]
+                    tex = @scene?.textures[u.image]
                     if not tex?
                         if not u.filepath
                             throw "Texture #{u.image} not found (in material #{@name})."
                         tex = texture.get_texture_from_path_legacy u.image,
-                            u.filepath, u.filter, u.wrap, u.size, @context
+                            u.filepath, u.filter, u.wrap, u.size, @scene or @context
                     # Defaults to texture stored settings
                     {wrap=tex.wrap, filter=tex.filter, use_mipmap=tex.use_mipmap} = u
                     # Check for mismatch between material textures and warn about it

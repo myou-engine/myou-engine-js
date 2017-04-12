@@ -24,11 +24,11 @@ fetch_textures_of_material = (scene, mat, ob_name="") ->
         Promise.all(for u in mat.data.uniforms \
             when (u.type == 13 or u.type == 262146 or u.type == 262145) and scene
                 # 2D image, see constants in material.py
-                tex = scene.context.textures[u.image]
+                tex = scene.textures[u.image]
                 if not tex?
                     if not u.filepath
                         throw "Texture #{u.image} not found (in material #{mat_name})."
-                    tex = texture.get_texture_from_path_legacy u.image, u.filepath, u.filter, u.wrap, u.size, scene.context
+                    tex = texture.get_texture_from_path_legacy u.image, u.filepath, u.filter, u.wrap, u.size, scene
                 tex.load()
                 tex.ob_user_names.push ob_name
         )
@@ -63,7 +63,6 @@ fetch_mesh = (mesh_object, options={}) ->
         fetch_promise = if file_name of fetch_promises
             fetch_promises[file_name]
         else
-            base = context.MYOU_PARAMS.data_dir + '/scenes/'
             embed_mesh = context.embed_meshes[mesh_object.hash]
             if embed_mesh?
                 buffer = (new Uint32Array(embed_mesh.int_list)).buffer
@@ -71,6 +70,7 @@ fetch_mesh = (mesh_object, options={}) ->
                 console.log 'loaded as int list'
                 Promise.resolve(buffer)
             else
+                base = mesh_object.scene.data_dir + '/scenes/'
                 uri = base + mesh_object.scene.name + '/' + file_name + '.mesh'
                 fetch(uri).then (response)->
                     if not response.ok

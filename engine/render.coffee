@@ -194,14 +194,16 @@ class RenderManager
 
     clear_context: ->
         @context_lost_count += 1
-        for k, t of @textures
-            t.gl_tex = null
+        for scene in @context.scenes
+            for k, t of scene.textures
+                t.gl_tex = null
         return
 
     restore_context: ->
         @initialize()
-        for k, t of @context.textures
-            t.reupload()
+        for scene in @context.scenes
+            for k, t of scene.textures
+                t.reupload()
         for m in @context.all_materials
             m.reupload()
         for k, m in @context.mesh_datas

@@ -19,7 +19,6 @@ class Myou
         @actions = {}
         @groups = {}
         @log = []
-        @textures = {}
         @video_textures = {}
         @debug_loader = null
         @canvas = null
@@ -75,8 +74,10 @@ class Myou
         @mesh_factory = new MeshFactory @
         @main_loop.run()
 
-    load_scene: (name, load_physics=true) ->
-        return loader.load_scene(name, null, load_physics, @)
+    load_scene: (name, options={load_physics: true}) ->
+        if typeof options != 'object'
+            options = {load_physics: options}
+        return loader.load_scene(name, null, options, @)
 
     update_canvas_rect:  =>
         @canvas_rect = @canvas.getClientRects()[0]

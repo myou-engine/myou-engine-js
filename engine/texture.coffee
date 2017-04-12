@@ -18,8 +18,9 @@
 # Look at image.py in the exporter for more info.
 
 class Texture
-    constructor: (@context, tex_data) ->
+    constructor: (@scene, tex_data) ->
         @type = 'TEXTURE'
+        {@context} = @scene
         {
             @name
             @formats # See above
@@ -56,7 +57,7 @@ class Texture
         # # We're using @restore() for now, which does this for us
         # if not @gl_tex?
         #     @gl_tex = gl.createTexture()
-        base = @context.MYOU_PARAMS.data_dir + '/textures/'
+        base = @scene.data_dir + '/textures/'
         {jpeg, png, rgb565, dxt1, dxt5, etc1, etc2, pvrtc, astc, mp4, ogv, ogg, webm, mov} = @formats
         image_list = jpeg or png
         # TODO!! Select format depending on browser support
@@ -292,8 +293,9 @@ class Texture
         log2h = Math.log(height)/Math.log(2)
         return (log2w|0) == log2w and (log2h|0) == log2h
 
-get_texture_from_path_legacy = (name, path, filter, wrap, file_size=0, context) ->
-    # This assumes we already checked context.textures
+get_texture_from_path_legacy = (name, path, filter, wrap, file_size=0, scene) ->
+    # This assumes we already checked scene.textures
+    {context} = scene
     formats = {}
     is_data_uri = /^data:/.test path
     if is_data_uri
@@ -315,8 +317,8 @@ get_texture_from_path_legacy = (name, path, filter, wrap, file_size=0, context) 
         else
             file_name = path
         formats[extension] = [{width: 0, height: 0, file_size, file_name, data_uri}]
-    tex = new Texture context, {name, formats, wrap, filter}
-    context.textures[name] = tex
+    tex = new Texture scene, {name, formats, wrap, filter}
+    scene.textures[name] = tex
     return tex
 
 next_POT = (x) ->
