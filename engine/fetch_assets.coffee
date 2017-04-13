@@ -72,7 +72,7 @@ fetch_mesh = (mesh_object, options={}) ->
             else
                 scene = mesh_object.original_scene or mesh_object.scene
                 base = scene.data_dir + '/scenes/'
-                uri = base + scene.name + '/' + file_name + '.mesh'
+                uri = base + scene.original_scene_name + '/' + file_name + '.mesh'
                 fetch(uri).then (response)->
                     if not response.ok
                         return Promise.reject "Mesh '#{mesh_object.name}' could not be loaded from URL '#{uri}' with error '#{response.status} #{response.statusText}'"
