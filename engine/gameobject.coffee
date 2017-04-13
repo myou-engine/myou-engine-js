@@ -40,6 +40,7 @@ class GameObject
         @offset_scale = vec3.fromValues 1, 1, 1
         @matrix_parent_inverse = mat4.create()
         @scene = null
+        @original_scene = null
         @dupli_group = null
         @visible = true
         @render = true

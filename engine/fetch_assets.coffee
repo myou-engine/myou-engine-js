@@ -70,8 +70,9 @@ fetch_mesh = (mesh_object, options={}) ->
                 console.log 'loaded as int list'
                 Promise.resolve(buffer)
             else
-                base = mesh_object.scene.data_dir + '/scenes/'
-                uri = base + mesh_object.scene.name + '/' + file_name + '.mesh'
+                scene = mesh_object.original_scene or mesh_object.scene
+                base = scene.data_dir + '/scenes/'
+                uri = base + scene.name + '/' + file_name + '.mesh'
                 fetch(uri).then (response)->
                     if not response.ok
                         return Promise.reject "Mesh '#{mesh_object.name}' could not be loaded from URL '#{uri}' with error '#{response.status} #{response.statusText}'"

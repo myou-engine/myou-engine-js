@@ -61,7 +61,8 @@ class Scene
             set_gravity @world, g[0],g[1],g[2]
 
     add_object: (ob, name='no_name', parent_name='', parent_bone)->
-        ob.scene = @  #TODO: use weak refs
+        ob.original_scene = ob.original_scene or ob.scene or @
+        ob.scene = @
 
         @children.push ob
         if not ob.static
