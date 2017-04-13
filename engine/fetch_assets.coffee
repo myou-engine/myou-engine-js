@@ -24,7 +24,7 @@ fetch_textures_of_material = (scene, mat, ob_name="") ->
         Promise.all(for u in mat.data.uniforms \
             when (u.type == 13 or u.type == 262146 or u.type == 262145) and scene
                 # 2D image, see constants in material.py
-                tex = scene.textures[u.image]
+                tex = mat.scene.textures[u.image]
                 if not tex?
                     if not u.filepath
                         throw "Texture #{u.image} not found (in material #{mat_name})."
@@ -126,7 +126,7 @@ fetch_objects = (object_list, options={}) ->
             for mat in ob.materials
                 # TODO: we'll assume here there's only one shader per material for now
                 shader = mat.last_shader
-                if not shader
+                if not shader and mat.scene?
                     # TODO: add this back when we can ensure
                     # it is drawn at least once, to force loading into the GPU
                     ###
