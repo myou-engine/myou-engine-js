@@ -516,6 +516,20 @@ class Shader
         @u_custom = []
         for v in var_custom
             @u_custom.push gl.getUniformLocation(prog, v)
+        if @material?
+            uniform_assign_code = for {value, type},i in @material._input_list \
+                when @u_custom[i]?
+                    if value.length?
+                        "gl.uniform#{value.length}fv(u_custom[#{i}], input_list[#{i}].value);"
+                    else if type == 1
+                        "gl.uniform1f(u_custom[#{i}], input_list[#{i}].value);"
+                    else
+                        filler = ([0,0,0,0][...type]+'')[1...]
+                        "gl.uniform#{type}fv(u_custom[#{i}], [input_list[#{i}].value#{filler}]);"
+            @uniform_assign_func = new Function 'gl', 'u_custom', 'input_list', uniform_assign_code.join '\n'
+        else
+            @uniform_assign_func = ->
+
         for v in zero_var
             gl['uniform'+v.type](gl.getUniformLocation(prog, v.name), v.data)
 

@@ -177,14 +177,6 @@ class RenderManager
         gl.bufferData gl.ARRAY_BUFFER, new(Float32Array)([0,1,0,0,0,0,1,1,0,1,0,0]), gl.STATIC_DRAW
         gl.bindBuffer gl.ARRAY_BUFFER, null
 
-        @uniform_functions = [
-            (l,v) -> gl.uniform1f l,v
-            (l,v) -> gl.uniform1f l,v
-            (l,v) -> gl.uniform2fv l,v
-            (l,v) -> gl.uniform3fv l,v
-            (l,v) -> gl.uniform4fv l,v
-        ]
-
         @white_texture = tex = gl.createTexture()
         gl.bindTexture gl.TEXTURE_2D, tex
         gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([1,1,1,1])
@@ -459,15 +451,7 @@ class RenderManager
                 if alpha?
                     gl.uniform1f alpha, params.alpha
 
-            # TODO: would it be better to generate
-            # a JS function that is called with all assignments at once?
-            # (including also all other uniforms)
-            for u,i in shader.u_custom when u?
-                {value, type} = mat._input_list[i]
-                if value.length?
-                    @uniform_functions[type] u, value
-                else
-                    @uniform_functions[type] u, new Float32Array([value, 0, 0, 0])
+            shader.uniform_assign_func(gl, shader.u_custom, mat._input_list)
 
             for lavars in shader.lamps
                 lamp = lavars[0]
