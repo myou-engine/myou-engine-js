@@ -443,7 +443,10 @@ class GameObject
     clone: (scene=this.scene, recursive=false) ->
         n = Object.create @
         if recursive
-            n.children = for child in @children then child.clone(scene, true)
+            n.children = for child in @children
+                child.clone(scene, true)
+                child.parent = n
+                child
         else
             n.children = []
         n.position = vec3.clone @position
