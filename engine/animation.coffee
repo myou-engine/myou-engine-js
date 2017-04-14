@@ -111,7 +111,7 @@ class Animation
                         strip_name_filter.test (strip.name or '')
                     @strips.push strip
                     strips_start = Math.min(strip.frame_start, strips_start)
-                    strips_end = Math.min(strip.frame_end, strips_end)
+                    strips_end = Math.max(strip.frame_end, strips_end)
             ob
         {@scene, scene: {@context}} = @objects[0]
         # Position in animation frames, usually assigned in step(),
