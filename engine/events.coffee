@@ -77,7 +77,7 @@ class Events
 
         touch_start = (event)=>
             event.preventDefault()
-            for t in event.touches
+            for t in event.target.touches
                 touch = {}
                 touch.touching = true
                 touch.id = t.identifier
@@ -96,7 +96,7 @@ class Events
                 touch.movement_since_touch = 0
                 touch.touch_target = touch.target = t.target
                 @touch.touch_events[touch.id] = touch
-            @touch.touches = event.touches.length
+            @touch.touches = event.target.touches.length
 
         if enable_touch
             root_element.addEventListener 'touchstart', touch_start, false
@@ -105,7 +105,7 @@ class Events
             event.preventDefault()
             for touch in @touch.touch_events
                 touch.touching = 0
-            for t in event.touches
+            for t in event.target.touches
                 touch = @touch.touch_events[t.identifier]
                 touch.touching = true
                 touch.force = 0
@@ -113,16 +113,17 @@ class Events
                 touch.radius_y = 0
                 touch.rel_x = 0
                 touch.rel_y = 0
-            @touch.touches = event.touches.length
+            @touch.touches = event.target.touches.length
 
         if enable_touch
             root_element.addEventListener 'touchend', touch_end, false
+            root_element.addEventListener 'touchleave', touch_end, false
             root_element.addEventListener 'touchcancel', touch_end, false
 
         touch_move = (event)=>
             event.preventDefault()
 
-            for t in event.touches
+            for t in event.target.touches
                 touch = {}
                 touch.id = t.identifier
                 touch.touching = true
@@ -146,7 +147,7 @@ class Events
                     touch.rel_y = 0
                 touch.movement_since_touch = Math.abs(touch.rel_x) + Math.abs(touch.rel_y)
                 @touch.touch_events[touch.id] = touch
-            @touch.touches = event.touches.length
+            @touch.touches = event.target.touches.length
 
         if enable_touch
             root_element.addEventListener 'touchmove', touch_move, false
