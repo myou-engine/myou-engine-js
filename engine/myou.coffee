@@ -32,6 +32,12 @@ context_dependent_modules = [
     GameObject, GLRay, Lamp, Material, Mesh, ParticleSystem, Scene
 ]
 
+# Using objects as dicts by disabling hidden object optimization
+dict = ->
+    d = {}
+    delete d.x
+    d
+
 class Myou
     physics:physics
     sensors:sensors
@@ -49,22 +55,23 @@ class Myou
             throw "Missing root DOM element, got null or undefined"
         if not options?
             throw "Missing options"
-        @scenes = {}
+        @scenes = dict()
         @loaded_scenes = []
         @active_sprites = []
-        @objects = {}
-        @actions = {}
-        @groups = {}
+        @objects = dict()
+        @actions = dict()
+        @groups = dict()
         @log = []
-        @video_textures = {}
+        @video_textures = dict()
         @debug_loader = null
         @canvas = null
         @root = null
         @all_materials = []
-        @mesh_datas = {}
-        @embed_meshes = {}
+        @mesh_datas = dict()
+        @embed_meshes = dict()
         @SHADER_LIB = ''
-        @active_animations = []
+        @active_animations = dict()
+
         @root = root
         @options = @MYOU_PARAMS = options
         @use_physics = not options.disable_physics
