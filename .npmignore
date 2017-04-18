@@ -1,0 +1,26 @@
+/**/node_modules/*
+/node_modules/
+/_cache/*
+
+#webpack builds
+**/build/*
+/example/build/*
+
+#temporal files
+*.blend1
+*.blend2
+/assets/*
+*~
+.directory
+*.orig
+*.rej
+__pycache__
+
+#log files
+npm-debug.log
+
+#local files
+local/
+*.local.*
+Thumbs.db
+*.local
