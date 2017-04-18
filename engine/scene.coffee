@@ -243,10 +243,12 @@ class Scene
     enable_objects_render: (list)->
         for ob in list
             ob.render = true
+        return
 
     disable_objects_render: (list)->
         for ob in list
             ob.render = false
+        return
 
     enable_render: ->
         if not @active_camera?
