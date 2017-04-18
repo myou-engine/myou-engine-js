@@ -4,7 +4,7 @@ var webpack = require('webpack');
 module.exports = {
     context: __dirname,
     entry: [
-        __dirname + '/main.js',
+        __dirname + '/pack.coffee',
     ],
     stats: {
         colors: true,
@@ -15,7 +15,7 @@ module.exports = {
             {
                 test: /\.coffee$/,
                 loaders: [
-                    'source-map-loader',
+                    'coffee-loader',
                 ]
             },
         ]
@@ -23,10 +23,8 @@ module.exports = {
     output: {
         path: __dirname + '/dist/',
         filename: 'myou.js',
-        library: 'myou',
-        libraryTarget: 'umd'
+        library: 'MyouEngine',
     },
-    devtool: 'inline-source-map',
     plugins: [
         new webpack.BannerPlugin([
             '"use strict";',

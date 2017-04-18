@@ -3,10 +3,7 @@ if ((typeof window === "undefined" || window === null) && typeof global !== "und
 }
 if(process.browser || process.android){
     //Webpack code
-    if(!window.fetch){
-        require('whatwg-fetch');
-    }
-    module.exports = require('./noco-loader!./pack.coffee');
+    module.exports = require('./dist/myou.js');
 }else {
     //Electron code
     var req = eval('require');

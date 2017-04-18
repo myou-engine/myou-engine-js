@@ -1,4 +1,7 @@
 
+if not window.fetch?
+    require 'whatwg-fetch'
+
 require './node_fetch_file.coffee'
 
 require './stdlib.coffee'
