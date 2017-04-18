@@ -1,6 +1,5 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 {Action} = require './animation.coffee'
-{Group} = require './group.coffee'
 {Viewport} = require './viewport.coffee'
 {Camera} = require './camera.coffee'
 {Lamp} = require './lamp.coffee'
@@ -120,7 +119,7 @@ load_datablock = (scene, data, context) ->
         window.eval data.code
 
     else if data.type=='ACTION'
-        context.actions[data.name] = new Action data.name, data.channels, (data.markers or []), scene
+        context.actions[data.name] = new Action data.name, data.channels, (data.markers or [])
 
     else if data.type=='EMBED_MESH'
         context.embed_meshes[data.hash] = data

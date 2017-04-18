@@ -6,7 +6,44 @@ loader = require './loader.coffee'
 vr = require './webvr.coffee'
 {MeshFactory} = require './mesh_factory.coffee'
 
+physics = require './physics.coffee'
+sensors = require './sensors.coffee'
+actuators = require './actuators.coffee'
+{fetch_objects} = require './fetch_assets.coffee'
+{Action, Animation, LoopedAnimation, FiniteAnimation} = require './animation.coffee'
+{Viewport} = require './viewport.coffee'
+{Texture} = require './texture.coffee'
+
+{Armature} = require './armature.coffee'
+{Camera} = require './camera.coffee'
+{Compositor} = require './compositor.coffee'
+{Curve} = require './curve.coffee'
+{Framebuffer} = require './framebuffer.coffee'
+{GameObject} = require './gameobject.coffee'
+{GLRay} = require './glray.coffee'
+{Lamp} = require './lamp.coffee'
+{Material} = require './material.coffee'
+{Mesh} = require './mesh.coffee'
+{ParticleSystem} = require './particles.coffee'
+{Scene} = require './scene.coffee'
+
+context_dependent_modules = [
+    Armature, Camera, Compositor, Curve, Framebuffer,
+    GameObject, GLRay, Lamp, Material, Mesh, ParticleSystem, Scene
+]
+
 class Myou
+    physics:physics
+    sensors:sensors
+    actuators:actuators
+    fetch_objects:fetch_objects
+    Action:Action
+    Animation:Animation
+    LoopedAnimation:LoopedAnimation
+    FiniteAnimation:FiniteAnimation
+    Viewport:Viewport
+    Texture:Texture
+
     constructor: (root, options)->
         if not root?
             throw "Missing root DOM element, got null or undefined"
@@ -38,6 +75,11 @@ class Myou
         # VR
         @_HMD = @_vrscene = null
         @use_VR_position = true
+
+
+        # Adding context to context_dependent_modules
+        for cls in context_dependent_modules
+            @[cls.name] = cls.bind cls, @
 
         # The root element needs to be positioned, so the mouse events (layerX/Y) are
         # registered correctly, and the canvas is scaled inside

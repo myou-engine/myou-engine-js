@@ -12,7 +12,7 @@ class Action
     # 'pose', bone_name, 'location', [...]
     # 'shape', shape_name, '', [[keys]]
 
-    constructor: (name, channels, markers=[], @scene)->
+    constructor: (name, channels, markers=[])->
         @name = name
         @channels = {}
         @markers = markers

@@ -264,4 +264,4 @@ class BoneConstraints
             r = bones[i].final_rotation
             quat.mul r, q, r
 
-module.exports = {Armature, Bone, BoneConstraints}
+module.exports = {Armature}

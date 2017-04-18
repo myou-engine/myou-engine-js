@@ -1,8 +1,5 @@
 material_module = require './material.coffee'
 {Framebuffer} = require './framebuffer.coffee'
-compositor_shaders =
-    FXAA: require './compositor_shaders/FXAA.coffee'
-    SSAO: require './compositor_shaders/SSAO.coffee'
 
 ###
 How to use the compositor:
@@ -49,7 +46,7 @@ all of them handle unused buffer borders as if they didn't exist:
     * FOO_orig_px_size: Size of a pixel in FOO.
                   Multiply gl_FragCoord.xy by FOO_orig_px_size to get the actual
                   coordinate to be used with texture2D()
-        
+
 Example:
 
     buffers = {
@@ -94,8 +91,12 @@ Example:
 # '''
 
 class Compositor
+    compositor_shaders:
+        FXAA: require './compositor_shaders/FXAA.coffee'
+        SSAO: require './compositor_shaders/SSAO.coffee'
+
     constructor: (@context, @options)->
-        
+
         vs_code = """precision highp float;
         precision highp int;
         attribute vec3 vertex;
@@ -145,7 +146,7 @@ class Compositor
                         return get_#{name}_from_coord(vec2(x,y));
                     }
                     """
-            
+
             fs_code += '\n' + (filter_options.library or '') + """\n
             vec4 filter(){
                 #{filter_options.code}
@@ -153,7 +154,7 @@ class Compositor
             void main(){
                 gl_FragColor = filter();
             }"""
-            
+
             for varname of @options.uniforms
                 uniforms.push {varname}
 
@@ -166,10 +167,10 @@ class Compositor
             }
             output = @buffers[filter_options.output]
             {vs_code, fs_code, material, output}
-        
-        
+
+
         @assign_uniforms()
-    
+
     assign_uniforms: ->
         {gl} = @context.render_manager
         for {material} in @filters
@@ -187,13 +188,13 @@ class Compositor
                 # u_custom[++i]? and gl.uniform2fv u_custom[i], [] # offset_f
         @custom_uniform_index = i+1
         return
-    
+
     compose: ->
         {gl, uniform_functions} = @context.render_manager
         gl.disable gl.DEPTH_TEST
         # Bind quad mesh
         gl.bindBuffer gl.ARRAY_BUFFER, @context.render_manager.quad
-                
+
         # TODO: For now, we assume that the filters object is ordered
         # but eventually we'll order it in the constructor evaluating dependencies
         for {material, output} in @filters
@@ -225,4 +226,4 @@ class Compositor
         return
 
 
-module.exports = {Compositor, compositor_shaders}
+module.exports = {Compositor}
