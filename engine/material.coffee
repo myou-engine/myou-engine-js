@@ -30,6 +30,9 @@ GPU_DYNAMIC_LAMP_DYNVEC = 131073        #             X      X      X      X
 GPU_DYNAMIC_LAMP_SPOTBLEND = 131083     #                 missing?
 GPU_DYNAMIC_LAMP_SPOTSCALE = 131084     #                    X
 GPU_DYNAMIC_LAMP_SPOTSIZE = 131082      #                    X
+GPU_DYNAMIC_LAMP_COEFFCONST = 13 | GPU_DYNAMIC_GROUP_LAMP
+GPU_DYNAMIC_LAMP_COEFFLIN = 14 | GPU_DYNAMIC_GROUP_LAMP
+GPU_DYNAMIC_LAMP_COEFFQUAD = 15 | GPU_DYNAMIC_GROUP_LAMP
 GPU_DYNAMIC_MAT_ALPHA = 458760
 GPU_DYNAMIC_MAT_AMB = 458759
 GPU_DYNAMIC_MAT_DIFFRGB = 458753
@@ -38,6 +41,7 @@ GPU_DYNAMIC_MAT_HARD = 458757
 GPU_DYNAMIC_MAT_REF = 458754
 GPU_DYNAMIC_MAT_SPEC = 458756
 GPU_DYNAMIC_MAT_SPECRGB = 458755
+GPU_DYNAMIC_MAT_MIR = 9 | GPU_DYNAMIC_GROUP_MAT
 GPU_DYNAMIC_MIST_COLOR = 327686
 GPU_DYNAMIC_MIST_DISTANCE = 327683
 GPU_DYNAMIC_MIST_ENABLE = 327681
@@ -284,6 +288,12 @@ class Shader
                     @shading_params_dict[u.material].vars.emit = u.varname
                 when GPU_DYNAMIC_MAT_ALPHA
                     @shading_params_dict[u.material].vars.alpha = u.varname
+                when GPU_DYNAMIC_MAT_MIR, \
+                        GPU_DYNAMIC_LAMP_COEFFCONST, \
+                        GPU_DYNAMIC_LAMP_COEFFLIN, \
+                        GPU_DYNAMIC_LAMP_COEFFQUAD
+                    # TODO: Use values
+                    var_custom.push u.varname
                 when GPU_DYNAMIC_MIST_COLOR
                     var_mistcol = u.varname
                 when GPU_DYNAMIC_MIST_DISTANCE
