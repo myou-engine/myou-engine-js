@@ -39,7 +39,8 @@ class Events
 
         @touch =
             #touch events is a list of the captured touch events
-            touch_events:[]
+            touch_events:{}
+            first_touch_event: null
             #number of current touches
             touches:0
 
@@ -96,6 +97,8 @@ class Events
                 touch.movement_since_touch = 0
                 touch.touch_target = touch.target = t.target
                 @touch.touch_events[touch.id] = touch
+                if not @touch.first_touch_event?
+                    @touch.first_touch_event = touch
             @touch.touches = event.targetTouches.length
 
         if enable_touch
@@ -103,8 +106,8 @@ class Events
 
         touch_end = (event)=>
             event.preventDefault()
-            for touch in @touch.touch_events
-                touch.touching = 0
+            for id,touch of @touch.touch_events
+                touch.touching = false
             for t in event.targetTouches
                 touch = @touch.touch_events[t.identifier]
                 touch.touching = true
@@ -113,6 +116,10 @@ class Events
                 touch.radius_y = 0
                 touch.rel_x = 0
                 touch.rel_y = 0
+            for id,touch of @touch.touch_events when not touch.touching
+                delete @touch.touch_events[id]
+            if event.targetTouches.length == 0
+                @touch.first_touch_event = null
             @touch.touches = event.targetTouches.length
 
         if enable_touch
