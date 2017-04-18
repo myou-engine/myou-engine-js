@@ -43,8 +43,6 @@ class Texture
         @buffers = []
         @offset = 0
         @gl_format = @gl_internal_format = @gl_type = 0
-        if not @name
-            debugger
 
     load: ->
         # TODO: better define how we do this
@@ -247,6 +245,20 @@ class Texture
                 if @use_mipmap
                     gl.generateMipmap gl.TEXTURE_2D
         gl.bindTexture gl.TEXTURE_2D, null
+
+    unload: ->
+        if @gl_tex?
+            @context.render_manager.gl.deleteTexture @gl_tex
+        @image?.src = ''
+        @gl_tex = null
+        @loaded = false
+        @type = ''
+        @width = @height = 0
+        @image = null
+        @video = null
+        @buffers = []
+        @offset = 0
+        @gl_format = @gl_internal_format = @gl_type = 0
 
     configure: ->
         {gl, extensions} = @context.render_manager

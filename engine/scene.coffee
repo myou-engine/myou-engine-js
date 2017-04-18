@@ -240,6 +240,38 @@ class Scene
         # Meshes should always return data's promises
         return fetch_objects(list, options).then(=>@)
 
+    unload_invisible_objects: (options) ->
+        invisible_objects = for ob in @children when not ob.visible and ob.data then ob
+        @unload_objects invisible_objects, options
+
+    unload_objects: (list, options={}) ->
+        # TODO: Cancel/ignore pending fetches!!
+        # TODO: Add unique IDs to speed up presence lookup in lists?
+        # TODO: Textures will be moved from shader to material.
+        # TODO: Have an option for just unloading from GPU?
+        {unload_textures=true} = options
+        used_textures = []
+        if unload_textures
+            for _,ob of @context.objects when ob.type=='MESH' and ob not in list
+                for mat in ob.materials
+                    for tex in mat.last_shader?.textures or []
+                        used_textures.push tex
+        for ob in list
+            ob.data?.remove ob
+            if unload_textures
+                for mat in ob.materials
+                    for tex in mat.last_shader?.textures or []
+                        if tex not in used_textures
+                            tex.unload()
+            for lod_ob in ob.lod_objects or []
+                lod_ob.object.data?.remove ob
+                # We're assuming lod objects have same materials
+                # NOTE: should we?
+        return
+
+    unload_all: ->
+        @unload_objects @children
+
     enable_objects_render: (list)->
         for ob in list
             ob.render = true

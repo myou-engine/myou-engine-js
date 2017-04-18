@@ -89,9 +89,17 @@ class MeshData
         return
 
     remove: (ob)->
-        @users.remove ob.data
-        if @users.length==0
-            delete @context.meshes[@hash]
+        idx = @users.indexOf ob
+        while idx != -1
+            @users.splice idx,1
+            idx = @users.indexOf ob
+        if @users.length == 0
+            gl = @context.render_manager.gl
+            for buf in @vertex_buffers
+                gl.deleteBuffer buf
+            for buf in @index_buffers
+                gl.deleteBuffer buf
+            delete @context.mesh_datas[@hash]
 
 
 class Mesh extends GameObject

@@ -110,7 +110,6 @@ load_datablock = (scene, data, context) ->
             # due to the old scene format
             mat.set_data data
         else
-            console.log "creating mat #{data.name}"
             new Material(context, name, data, scene)
 
     else if data.type=='SHADER_LIB'
