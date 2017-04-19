@@ -41,6 +41,7 @@ class Events
             #touch events is a list of the captured touch events
             touch_events:{}
             first_touch_event: null
+            last_touch_event: null
             #number of current touches
             touches:0
 
@@ -99,6 +100,7 @@ class Events
                 @touch.touch_events[touch.id] = touch
                 if not @touch.first_touch_event?
                     @touch.first_touch_event = touch
+                @touch.last_touch_event = touch
             @touch.touches = event.targetTouches.length
 
         if enable_touch
