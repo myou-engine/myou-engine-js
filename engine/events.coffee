@@ -149,7 +149,7 @@ class Events
                 touch.y = t.clientY - root_element.rect.top
                 touch.rel_x = rel_x
                 touch.rel_y = rel_y
-                touch.movement_since_touch = Math.abs(rel_x) + Math.abs(rel_y)
+                touch.movement_since_touch += Math.abs(rel_x) + Math.abs(rel_y)
                 @touch.touch_events[touch.id] = touch
             @touch.touches = event.targetTouches.length
 
