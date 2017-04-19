@@ -348,7 +348,7 @@ class Mesh extends GameObject
 
     clone: (scene, recursive) ->
         clone = super scene, recursive
-        clone.uv_rect = @uv_rect[...]
+        clone.uv_rect = vec4.clone @uv_rect
         clone.uv_right_eye_offset = @uv_right_eye_offset[...]
         return clone
 
