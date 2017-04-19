@@ -79,7 +79,7 @@ class Events
         touch_start = (event)=>
             event.preventDefault()
             for t in event.targetTouches
-                touch = {}
+                touch = @touch.touch_events[t.identifier] or {}
                 touch.touching = true
                 touch.id = t.identifier
                 touch.client_x = t.clientX
@@ -108,16 +108,13 @@ class Events
             event.preventDefault()
             for id,touch of @touch.touch_events
                 touch.touching = false
-            for t in event.targetTouches
-                touch = @touch.touch_events[t.identifier]
-                touch.touching = true
-                touch.force = 0
-                touch.radius_x = 0
-                touch.radius_y = 0
-                touch.rel_x = 0
-                touch.rel_y = 0
+            touch_start(event)
             for id,touch of @touch.touch_events when not touch.touching
+                if @touch.first_touch_event == touch
+                    @touch.first_touch_event = null
                 delete @touch.touch_events[id]
+            if @touch.first_touch_event == null and event.targetTouches.length != 0
+                @touch.first_touch_event = @touch.touch_events[event.targetTouches.identifier]
             if event.targetTouches.length == 0
                 @touch.first_touch_event = null
             @touch.touches = event.targetTouches.length
@@ -131,7 +128,11 @@ class Events
             event.preventDefault()
 
             for t in event.targetTouches
-                touch = {}
+                touch = @touch.touch_events[t.identifier] or {}
+                x = t.clientX
+                y = t.clientY
+                rel_x = x - (touch.client_x or 0)
+                rel_y = y - (touch.client_y or 0)
                 touch.id = t.identifier
                 touch.touching = true
                 touch.client_x = t.clientX
@@ -144,15 +145,9 @@ class Events
                 touch.rotation_angle = t.rotationAngle
                 touch.x = t.clientX - root_element.rect.left
                 touch.y = t.clientY - root_element.rect.top
-                x = t.clientX
-                y = t.clientY
-                if @touch.touch_events[touch.id]?
-                    touch.rel_x = x - @touch.touch_events[touch.id].client_x
-                    touch.rel_y = y - @touch.touch_events[touch.id].client_y
-                else
-                    touch.rel_x = 0
-                    touch.rel_y = 0
-                touch.movement_since_touch = Math.abs(touch.rel_x) + Math.abs(touch.rel_y)
+                touch.rel_x = rel_x
+                touch.rel_y = rel_y
+                touch.movement_since_touch = Math.abs(rel_x) + Math.abs(rel_y)
                 @touch.touch_events[touch.id] = touch
             @touch.touches = event.targetTouches.length
 
