@@ -60,6 +60,8 @@ class Action
                 ret_vec.push v
         return ret_vec
 
+auto_id = 0
+
 # An animation is a group of actions (usually one of them) with settings
 # such as start, end, fade in/out, etc.
 class Animation
@@ -156,15 +158,13 @@ class Animation
             @last_eval = performance.now()
             @playing = true
         if @_index == -1
-            {active_animations} = @context
-            @_index = active_animations.length
-            active_animations.push @
+            @context.active_animations[@_index = auto_id++] = @
         return @
 
     pause: ->
         @playing = false
         if @_index != -1
-            @context.active_animations.splice @_index, 1
+            delete @context.active_animations[@_index]
             @_index = -1
         return @
 
@@ -329,7 +329,7 @@ class FiniteAnimation extends Animation
 
 evaluate_all_animations = (context, frame_duration_ms)->
     now = performance.now()
-    for anim in context.active_animations
+    for _,anim of context.active_animations
         delta = now - anim.last_eval
         anim.step(delta * 0.001 * anim.scene.anim_fps)
         anim.last_eval = now
