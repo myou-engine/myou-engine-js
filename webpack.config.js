@@ -23,7 +23,8 @@ module.exports = {
     output: {
         path: __dirname + '/dist/',
         filename: 'myou.js',
-        library: 'MyouEngine',
+        // export commonjs2 and var at the same time
+        library: 'MyouEngine = module.exports',
     },
     plugins: [
         new webpack.BannerPlugin([
@@ -33,7 +34,6 @@ module.exports = {
             ' *',
             ' * Copyright (c) 2016 by Alberto Torres Ruiz <kungfoobar@gmail.com>',
             ' * Copyright (c) 2016 by Julio Manuel López Tercero <julio@pixelements.net>',
-            ' *',
             ' *',
             ' * Permission is hereby granted, free of charge, to any person obtaining a copy',
             ' * of this software and associated documentation files (the "Software"), to deal',
