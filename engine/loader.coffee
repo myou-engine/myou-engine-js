@@ -10,7 +10,7 @@
 {Armature} = require './armature.coffee'
 {physics_engine_url, physics_engine_init, PhysicsWorld, set_gravity} = require './physics.coffee'
 {fetch_objects} = require './fetch_assets.coffee'
-{Texture} = require './texture.coffee'
+{Texture, get_texture_from_path_legacy} = require './texture.coffee'
 {Material} = require './material.coffee'
 
 if process.browser
@@ -91,8 +91,6 @@ load_datablock = (scene, data, context) ->
         scene.textures[data.name] = new Texture(scene, data)
 
     else if data.type=='MATERIAL'
-        if not data.fragment.splice?
-            data.fragment = [context.SHADER_LIB, data.fragment]
         # Converting blender attributes into myou's definition of varyings
         if not data.varyings?
             data.varyings = for a in data.attributes when a.type < 77
@@ -104,13 +102,62 @@ load_datablock = (scene, data, context) ->
             data.varyings.push type: 'VIEW_POSITION', varname: 'varposition'
             data.varyings.push type: 'VIEW_NORMAL', varname: 'varnormal'
             data.attributes = null
+            data.material_type = data.material_type or 'BLENDER_INTERNAL'
+
+        # Convert shader params into inputs
+        if data.material_type == 'BLENDER_INTERNAL'
+            params = {}
+            for p in data.params or []
+                params[p.name] = p
+            input_names = ['', 'diffuse_color', 'diffuse_intensity', 'specular_color', 'specular_intensity', 'specular_hardness', 'emit', 'ambient', 'alpha', 'mir']
+            input_types = [1, 3, 1, 3, 1, 1, 1, 1, 1, 1]
+            for u in data.uniforms
+                if u.material
+                    prefix = ''
+                    if u.material != data.name
+                        prefix = u.material + '_'
+                    iname = input_names[u.type&15]
+                    u.path = prefix + iname
+                    u.value = params[u.material][iname] or 0
+                    u.count = input_types[u.type&15]
+                    u.type = -1
+
         mat = scene.materials[data.name]
         if mat
             # A stub was made when loading a mesh
             # due to the old scene format
             mat.set_data data
         else
-            new Material(context, name, data, scene)
+            mat = new Material(context, data.name, data, scene)
+
+        if data.material_type == 'BLENDER_INTERNAL'
+            # Assuming old format of textures
+            # Assign texture settings, check mismatch between users and warn
+            for u in data.uniforms
+                {type} = u
+                if type == 13 or type == 0x40001 or type == 0x40002
+                    tex = scene.textures[u.image]
+                    if not tex?
+                        if not u.filepath
+                            throw "Texture #{u.image} not found (in material #{data.name})."
+                        # Currently, this is only used for ramps
+                        tex = get_texture_from_path_legacy u.image,
+                            u.filepath, u.filter, u.wrap, u.size, scene
+                    # Defaults to texture stored settings
+                    {wrap=tex.wrap, filter=tex.filter, use_mipmap=tex.use_mipmap} = u
+                    # Check for mismatch between material textures and warn about it
+                    if tex.users.length != 0 and \
+                            (tex.wrap != wrap or tex.filter != filter or
+                            tex.use_mipmap != use_mipmap)
+                        other_mat = tex.users[tex.users.length-1]
+                        console.warn "Texture #{u.image} have different settings
+                            in materials #{other_mat.name} and #{data.name}"
+                    # Overwrite settings
+                    tex.wrap = wrap
+                    tex.filter = filter
+                    tex.use_mipmap = use_mipmap
+                    tex.users.push mat
+
 
     else if data.type=='SHADER_LIB'
         context.SHADER_LIB = data.code

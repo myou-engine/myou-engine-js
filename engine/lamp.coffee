@@ -19,6 +19,8 @@ class Lamp extends GameObject
         @_color4 = vec4.fromValues 1,1,1,1
         @color = @_color4.subarray 0,3
         @energy = 1
+        @spot_size = 1.3
+        @spot_blend = 0.15
         @_view_pos = vec3.create()
         @_dir = vec3.create()
         @_depth_matrix = mat4.create()
@@ -54,7 +56,7 @@ class Lamp extends GameObject
             gl_FragColor = vec4(depth #{extra_bias}, pow(depth, 2.0) + 0.25*(dx*dx + dy*dy), 0.0, 1.0);
         }"""
 
-        mat = new Material @context, @name+'_shadow', {fragment: fs, varyings}
+        mat = new Material @context, @name+'_shadow', {fragment: fs, varyings, material_type: 'PLAIN_SHADER'}
         mat.is_shadow_material = true
         @_shadow_material = mat
 

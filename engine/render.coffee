@@ -408,75 +408,24 @@ class RenderManager
                 @cull_face_enabled = not @cull_face_enabled
                 @set_cull_face @cull_face_enabled
 
-            # # mesh_id/group_id are not used during regular rendering
-            # if mat.u_group_id? and mat.group_id != mesh.group_id:
-            #     mat.group_id = mesh.group_id
-            #     gl.uniform1f(mat.u_group_id, mat.group_id)
-
+            # Assigning uniforms of the 3 main matrices:
+            # model_view_matrix, normal_matrix and projection_matrix
+            mat4.multiply m4, world2cam_override or @_world2cam, mesh2world
+            gl.uniformMatrix4fv shader.u_model_view_matrix, false, m4
+            mat3.multiply m3, @_world2cam3, mesh.normal_matrix
+            if shader.u_normal_matrix?
+                gl.uniformMatrix3fv shader.u_normal_matrix, false, m3
             gl.uniformMatrix4fv shader.u_projection_matrix, false, projection_override or cam.projection_matrix
-            # not doing this mirrored can make something fail (shadows?)
-            gl.uniformMatrix4fv shader.u_inv_model_view_matrix, false, @_cam2world
 
-            if shader.u_var_object_matrix?
-                gl.uniformMatrix4fv shader.u_var_object_matrix, false, mesh2world
-
-            if shader.u_var_inv_object_matrix?
-                mat4.invert m4, mesh2world
-                gl.uniformMatrix4fv shader.u_var_inv_object_matrix, false, m4
-
-            if shader.u_color?
-                gl.uniform4fv shader.u_color, mesh.color
-
-            if shader.u_mesh_center?
-                gl.uniform3fv shader.u_mesh_center, mesh.center
-                gl.uniform3f shader.u_mesh_inv_dimensions, inv_radius_x, inv_radius_y, inv_radius_z
-
-            if shader.u_ambient?
-                gl.uniform4fv shader.u_ambient, mesh.scene.ambient_color
-
-            for params in shader.shading_params
-                {uniforms: {diffcol,diffint,speccol,specint,hardness,emit,alpha}} = params
-                if diffcol?
-                    gl.uniform3fv diffcol, params.diffuse_color
-                if diffint?
-                    gl.uniform1f diffint, params.diffuse_intensity
-                if speccol?
-                    gl.uniform3fv speccol, params.specular_color
-                if specint?
-                    gl.uniform1f specint, params.specular_intensity
-                if hardness?
-                    gl.uniform1f hardness, params.specular_hardness
-                if emit?
-                    gl.uniform1f emit, params.emit
-                if alpha?
-                    gl.uniform1f alpha, params.alpha
-
-            shader.uniform_assign_func(gl, shader.u_custom, mat._input_list)
-
-            for lavars in shader.lamps
-                lamp = lavars[0]
-                lavars[1]? and gl.uniform3fv lavars[1], lamp._view_pos
-                lavars[2]? and gl.uniform3fv lavars[2], lamp.color
-                # if gl.getError() != gl.NO_ERROR:
-                #     console.error('Error with', mesh.name, shader.name)
-                lavars[3]? and gl.uniform4fv lavars[3], lamp._color4
-                lavars[4]? and gl.uniform1f lavars[4], lamp.falloff_distance
-                lavars[5]? and gl.uniform3fv lavars[5], lamp._dir
-                lavars[6]? and gl.uniformMatrix4fv lavars[6], false, lamp._cam2depth
-                lavars[7]? and gl.uniform1f lavars[7], lamp.energy
-
+            # Enabling textures and assigning their respective uniforms
+            # TODO: change the oldest texture and appropiate uniform
+            # instead of have them preassigned sequentially
             for i in [0...shader.textures.length]
                 tex = shader.textures[i]
                 if tex.loaded
                     gl_tex = tex.gl_tex
                 else
                     gl_tex = @blank_texture
-                #if tex.name == 'special:fb':
-                    #gl.activeTexture(gl.TEXTURE0 + i)
-                    #active_texture = i
-                    #gl.bindTexture(gl.TEXTURE_2D, filter_fb.texture)
-
-                #else
                 if bound_textures[i] != gl_tex
                     if active_texture != i
                         gl.activeTexture gl.TEXTURE0 + i
@@ -484,16 +433,27 @@ class RenderManager
                     gl.bindTexture gl.TEXTURE_2D, gl_tex
                     bound_textures[i] = gl_tex
 
+            # Assigning uniforms of vertex modifiers
             mds = shader.modifier_data_store
             for modifier,i in mesh.vertex_modifiers
                 modifier.update_uniforms gl, mds[i]
 
+            # Assigning the rest of the uniforms (except
+            shader.uniform_assign_func(gl,
+                shader.uniform_locations, mesh,
+                shader.lamps, mat._input_list, this)
+
+            # TODO: move this elsewhere
             if shader.u_uv_rect?
                 [x,y,w,h] = mesh.uv_rect
                 x += mesh.uv_right_eye_offset[0] * @_right_eye_factor
                 y += mesh.uv_right_eye_offset[1] * @_right_eye_factor
                 gl.uniform4f shader.u_uv_rect, x, y, w, h
+            if shader.u_mesh_center?
+                gl.uniform3fv shader.u_mesh_center, mesh.center
+                gl.uniform3f shader.u_mesh_inv_dimensions, inv_radius_x, inv_radius_y, inv_radius_z
 
+            # Bind vertex buffer, assign attribute pointers
             data = amesh.data
             stride = data.stride
             array_buffer = data.vertex_buffers[submesh_idx]
@@ -505,25 +465,11 @@ class RenderManager
                 # [location, number of components, type, offset]
                 gl.vertexAttribPointer attr[0], attr[1], attr[2], false, stride, attr[3]
 
+            # Bind index buffer, draw
             gl.bindBuffer gl.ELEMENT_ARRAY_BUFFER, data.index_buffers[submesh_idx]
-            mirrors = mesh.mirrors
-            num_indices = data.num_indices[submesh_idx]
-            # num_indices = (data.num_indices[submesh_idx] * @_polygon_ratio)|0
-            if mirrors & 1
-                mat4.multiply m4, world2cam_override or @_world2cam, mesh2world
-                gl.uniformMatrix4fv shader.u_model_view_matrix, false, m4
-                mat3.multiply m3, @_world2cam3, mesh.normal_matrix
-                if shader.u_normal_matrix?
-                    gl.uniformMatrix3fv shader.u_normal_matrix, false, m3
-                gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
-            # if mirrors & 178
-            #     mat4.multiply m4, @_world2cam_mx, mesh2world
-            #     gl.uniformMatrix4fv shader.u_model_view_matrix, false, m4
-            #     mat3.multiply m3, @_world2cam3_mx, mesh.normal_matrix
-            #     gl.uniformMatrix3fv shader.u_normal_matrix, false, m3
-            #     gl.frontFace 2304 # gl.CW
-            #     gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
-            #     gl.frontFace 2305 # gl.CCW
+            num_indices = data.num_indices[submesh_idx] # * @_polygon_ratio)|0
+            gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
+
             ## TODO: Enable in debug mode, silence after n errors
             # error = gl.getError()
             # if error != gl.NO_ERROR
