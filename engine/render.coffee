@@ -5,9 +5,6 @@ timsort = require 'timsort'
 {Framebuffer, MainFramebuffer} = require './framebuffer.coffee'
 {Mesh} = require './mesh.coffee'
 {Material} = require './material.coffee'
-MIRROR_MASK_X = 2|16|32|128 #178
-MIRROR_MASK_Y = 4|16|64|128 #212
-MIRROR_MASK_Z = 8|32|64|128 #232
 VECTOR_MINUS_Z = vec3.fromValues 0,0,-1
 
 
@@ -915,8 +912,5 @@ sort_by_mat_id = (a,b) ->
 
 module.exports = {
     RenderManager,
-    MIRROR_MASK_X
-    MIRROR_MASK_Y,
-    MIRROR_MASK_Z,
     VECTOR_MINUS_Z
 }
