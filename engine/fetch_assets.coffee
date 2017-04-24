@@ -113,7 +113,7 @@ fetch_mesh = (mesh_object, options={}) ->
 # This returns a promise of all things necessary to display the object
 # (meshes, textures, materials)
 fetch_objects = (object_list, options={}) ->
-    {render} = options
+    {render, fetch_textures=true} = options
     if not object_list.length
         return Promise.resolve()
 
@@ -127,7 +127,7 @@ fetch_objects = (object_list, options={}) ->
             for mat in ob.materials
                 # TODO: we'll assume here there's only one shader per material for now
                 shader = mat.last_shader
-                if not shader and mat.scene?
+                if not shader and mat.scene? and fetch_textures
                     # TODO: add this back when we can ensure
                     # it is drawn at least once, to force loading into the GPU
                     ###
