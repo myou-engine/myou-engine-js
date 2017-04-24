@@ -399,6 +399,8 @@ class RenderManager
             if material_override?
                 mat = material_override
             shader = mat.get_shader(mesh)
+            if not shader._program?
+                continue
             shader.use()
 
             if mat.double_sided == @cull_face_enabled
