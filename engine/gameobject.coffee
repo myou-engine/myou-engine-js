@@ -473,8 +473,8 @@ class GameObject
 
         # Warning! This only works reliably
         # if the target scene have the same type of lamps!
+        n.materials = materials = n.materials?[...]
         if n.materials and scene != this.scene
-            n.materials = materials = n.materials[...]
             for i in [0...materials.length]
                 mat = materials[i] = materials[i].clone_to_scene scene
 
