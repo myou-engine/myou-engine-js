@@ -193,10 +193,8 @@ class BlenderInternalMaterial
                     console.log "Warning: unknown uniform", u.varname, \
                         u.type>>16, u.type&0xffff, "of data type", \
                         ['0','1i','1f','2f','3f','4f','m3','m4','4ub'][u.datatype]
-        func = new Function 'gl', 'locations', 'ob', 'lamps', 'input_list', 'render', code.join '\n'
+        func = new Function 'gl', 'locations', 'ob', 'lamps', 'input_list', 'render', 'mat4', code.join '\n'
         {uniform_assign_func: func, uniform_locations: locations, lamps, textures}
 
 
 module.exports = {BlenderInternalMaterial}
-
-

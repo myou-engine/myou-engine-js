@@ -441,7 +441,7 @@ class RenderManager
             # Assigning the rest of the uniforms (except
             shader.uniform_assign_func(gl,
                 shader.uniform_locations, mesh,
-                shader.lamps, mat._input_list, this)
+                shader.lamps, mat._input_list, this, mat4)
 
             # TODO: move this elsewhere
             if shader.u_uv_rect?
