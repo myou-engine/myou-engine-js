@@ -242,7 +242,7 @@ class Shader
 
         if not gl.getProgramParameter(prog, gl.LINK_STATUS) and not gl.isContextLost()
             error_msg = """Error linking shader of material #{@name}
-            #{JSON.stringify attributes}
+            #{JSON.stringify varyings}
             #{gl.getProgramInfoLog prog}"""
             #ext = gl.getExtension "WEBGL_debug_shaders"
             #if ext console.log ext.getTranslatedShaderSource vertex_shader

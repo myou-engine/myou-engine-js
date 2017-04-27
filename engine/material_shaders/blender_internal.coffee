@@ -167,7 +167,7 @@ class BlenderInternalMaterial
                 when GPU_DYNAMIC_LAMP_COEFFQUAD
                     console.warn u.lamp, 'TODO: lamp coefficient quad'
                 when GPU_DYNAMIC_MIST_COLOR
-                    var_mistcol = u.varname
+                    var_mistcol = u.varname # TODO: mist
                 when GPU_DYNAMIC_MIST_DISTANCE
                     var_mistdist = u.varname
                 when GPU_DYNAMIC_MIST_ENABLE
@@ -178,6 +178,8 @@ class BlenderInternalMaterial
                     var_miststart = u.varname
                 when GPU_DYNAMIC_MIST_TYPE
                     var_misttype = u.varname
+                when GPU_DYNAMIC_HORIZON_COLOR
+                    code.push "gl.uniform3fv(locations[#{loc_idx}], ob.scene.background_color.subarray(0,3));"
                 when -1 # custom
                     {value, type} = @material._input_list[current_input]
                     value_code = "input_list[#{current_input}].value"
@@ -189,7 +191,6 @@ class BlenderInternalMaterial
                         filler = ([0,0,0,0][...type]+'')[1...]
                         "gl.uniform#{type}fv(locations[#{loc_idx}], [#{value_code}#{filler}]);"
                 else
-                    console.log u
                     console.log "Warning: unknown uniform", u.varname, \
                         u.type>>16, u.type&0xffff, "of data type", \
                         ['0','1i','1f','2f','3f','4f','m3','m4','4ub'][u.datatype]
