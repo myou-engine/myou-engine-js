@@ -205,9 +205,9 @@ class GLRay
             # Assuming perspective projection and no shifting
             @inv_proj_x = camera.projection_matrix_inv[0]
             @inv_proj_y = camera.projection_matrix_inv[5]
-            @meshes = for m in scene.mesh_passes[0] when m.visible and m.render and m.physics_type != 'NO_COLLISION'
+            @meshes = for m in scene.mesh_passes[0] when m.physics_type != 'NO_COLLISION'
                 m
-            for m in scene.mesh_passes[1] when m.visible and m.render and m.alpha >= @alpha_treshold and m.physics_type != 'NO_COLLISION'
+            for m in scene.mesh_passes[1] when m.alpha >= @alpha_treshold and m.physics_type != 'NO_COLLISION'
                 @meshes.push (m)
 
         gl.uniformMatrix4fv(mat.u_projection_matrix, false, camera.projection_matrix)
