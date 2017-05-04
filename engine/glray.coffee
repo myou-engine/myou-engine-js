@@ -223,7 +223,7 @@ class GLRay
         if @step < @render_steps
             for mesh in @meshes[@step * part ... (@step + 1) * part]
                 data = mesh.last_lod_object?.data or mesh.data
-                if data and not mesh.culled_in_last_frame
+                if data and not (mesh.culled_in_last_frame ^ mesh.visible)
                     # We're doing the same render commands as the engine,
                     # except that we only set the attribute and uniforms we use
                     if mat.u_group_id? and mat.group_id != mesh.group_id
