@@ -99,6 +99,7 @@ class Shader
 
         if @data.vertex
             vs = @data.vertex
+            var_model_view_matrix = 'model_view_matrix'
         else
             {has_normal=true} = @data
             var_model_view_matrix = generator.get_model_view_matrix_name()
