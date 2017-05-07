@@ -26,6 +26,9 @@ class Lamp extends GameObject
         @_depth_matrix = mat4.create()
         @_cam2depth = mat4.create()
         @_projection_matrix = mat4.create()
+        @size_x = 0
+        @size_y = 0
+
 
     #Avoid physical lamps and cameras
     instance_physics: ->

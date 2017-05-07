@@ -321,6 +321,8 @@ load_object = (data, scene) ->
         if data.energy?
             ob.energy = data.energy
         ob.falloff_distance = data.falloff_distance
+        ob.size_x = data.size_x
+        ob.size_y = data.size_y
 
     else if data.type=='ARMATURE'
         if not ob

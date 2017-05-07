@@ -14,6 +14,10 @@
 #         {width: 16, height: 16, file_name: 'foo-16x16.png'},
 #         {width: 256, height: 256, file_name: 'foo.png'},
 #     ]
+#     raw_pixels: [
+#         # raw RGBA pixels
+#         {width: 256, height: 256, pixels: [0,0,0,0, ...]},
+#     ]
 # }
 # Look at image.py in the exporter for more info.
 
@@ -28,6 +32,7 @@ class Texture
             @filter=true # enable bilinear filtering
             @use_mipmap=true # TODO: currently not exported!
         } = tex_data
+        @gl_target = 3553 # gl.TEXTURE_2D
         @gl_tex = null
         @loaded = false
         @promise = null
@@ -56,7 +61,8 @@ class Texture
         # if not @gl_tex?
         #     @gl_tex = gl.createTexture()
         base = @scene.data_dir + '/textures/'
-        {jpeg, png, rgb565, dxt1, dxt5, etc1, etc2, pvrtc, astc, mp4, ogv, ogg, webm, mov} = @formats
+        {raw_pixels, jpeg, png, rgb565, dxt1, dxt5, etc1, etc2,
+         pvrtc, astc, mp4, ogv, ogg, webm, mov} = @formats
         image_list = jpeg or png
         # TODO!! Select format depending on browser support
         # TODO!! Or add all files as <source> inside the <video>
@@ -64,8 +70,22 @@ class Texture
         # (also, if both images and videos are available,
         # should the image be shown until the video starts?)
 
-        # Trying formats from best to worst
-        if astc? and extensions.compressed_texture_astc
+        # Trying formats from best to worst download times
+        if raw_pixels?
+            if not raw_pixels.width?
+                raw_pixels = raw_pixels[0]
+            @promise = new Promise (resolve, reject) =>
+                {@width=0, @height=0, pixels} = raw_pixels
+                if @width==0 or @height==0
+                    reject "Texture #{name} has no width or height."
+                buffer = pixels.buffer or (new Uint8Array(pixels)).buffer
+                @type = 'buffers'
+                @gl_format = @gl_internal_format = gl.RGBA
+                @gl_type = gl.UNSIGNED_BYTE
+                @buffers = [buffer]
+                @restore() #TODO: use @upload and @configure instead when possible
+                resolve @
+        else if astc? and extensions.compressed_texture_astc
             # NOTE: Assuming a single element in the list
             if @promise
                 return @promise
@@ -219,9 +239,12 @@ class Texture
         gl.bindTexture gl.TEXTURE_2D, @gl_tex
         switch @type
             when 'buffers'
+                T = Uint16Array
+                if @gl_type == gl.UNSIGNED_BYTE
+                    T = Uint8Array
                 for buffer, i in @buffers
                     gl.texImage2D(gl.TEXTURE_2D, i, @gl_internal_format, @width>>i, @height>>i, 0,
-                        @gl_format, @gl_type, new Uint16Array(@buffers[0]))
+                        @gl_format, @gl_type, new T(@buffers[0]))
                 if @buffers.length == 1 and @use_mipmap
                     gl.generateMipmap gl.TEXTURE_2D
             when 'compressed'

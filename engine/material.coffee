@@ -14,10 +14,12 @@ GL_FLOAT = 0x1406
 attr_types = {'f': GL_FLOAT, 'b': GL_BYTE, 'B': GL_UNSIGNED_BYTE, 'H': GL_UNSIGNED_SHORT,}
 
 {BlenderInternalMaterial} = require('./material_shaders/blender_internal')
+{BlenderCyclesPBRMaterial} = require('./material_shaders/blender_cycles_pbr')
 {PlainShaderMaterial} = require('./material_shaders/plain')
 
 material_types =
     BLENDER_INTERNAL: BlenderInternalMaterial
+    BLENDER_CYCLES_PBR: BlenderCyclesPBRMaterial
     PLAIN_SHADER: PlainShaderMaterial
 
 class Material

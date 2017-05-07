@@ -61,6 +61,7 @@ class RenderManager
         @width = width
         @height = height
         @main_fb = new MainFramebuffer @context
+        @temporary_framebuffers = {}
         @viewports = []
         @render_tick = 0
         @context_lost_count = 0
@@ -73,6 +74,7 @@ class RenderManager
         @background_alpha = if ba? then ba else 1
         @compiled_shaders_this_frame = 0
         @use_frustum_culling = true
+        @probes = []
 
         # Temporary variables
         @_cam2world = mat4.create()
@@ -121,6 +123,7 @@ class RenderManager
                                     gl.getExtension("MOZ_EXT_texture_filter_anisotropic")
             lose_context: gl.getExtension "WEBGL_lose_context"
             depth_texture: gl.getExtension "WEBGL_depth_texture"
+            shader_texture_lod: gl.getExtension "EXT_shader_texture_lod"
         if @no_s3tc
             @extensions['compressed_texture_s3tc'] = null
 
@@ -293,6 +296,11 @@ class RenderManager
     draw_all: ()->
         # TODO: skip disabled scenes
 
+        # TODO: calculate all matrices first
+        # TODO: have a list of objects instead?
+        for probe in @probes
+            probe.render()
+
         @frame_start = performance.now()
         @render_tick += 1
         @triangles_drawn = 0
@@ -422,14 +430,15 @@ class RenderManager
             for i in [0...shader.textures.length]
                 tex = shader.textures[i]
                 if tex.loaded
-                    gl_tex = tex.gl_tex
+                    {gl_tex, gl_target} = tex
                 else
                     gl_tex = @blank_texture
+                    gl_target = gl.TEXTURE_2D
                 if bound_textures[i] != gl_tex
                     if active_texture != i
                         gl.activeTexture gl.TEXTURE0 + i
                         active_texture = i
-                    gl.bindTexture gl.TEXTURE_2D, gl_tex
+                    gl.bindTexture gl_target, gl_tex
                     bound_textures[i] = gl_tex
 
             # Assigning uniforms of vertex modifiers
@@ -438,9 +447,7 @@ class RenderManager
                 modifier.update_uniforms gl, mds[i]
 
             # Assigning the rest of the uniforms (except
-            shader.uniform_assign_func(gl,
-                shader.uniform_locations, mesh,
-                shader.lamps, mat._input_list, this, mat4)
+            shader.uniform_assign_func(gl, shader, mesh, this, mat4)
 
             # TODO: move this elsewhere
             if shader.u_uv_rect?
@@ -736,6 +743,51 @@ class RenderManager
                     @draw_mesh dob, mm4
 
             gl.enable gl.DEPTH_TEST
+
+    draw_cubemap: (scene, cubemap, position, near, far) ->
+        # TODO
+        # * use frustum culling
+        # * override LoD detection or set a camera for this
+        {gl, use_frustum_culling} = @
+        @use_frustum_culling = false
+
+        world2cube = mat4.create()
+        proj = mat4.frustum mat4.create(),-near,near,-near,near,near,far
+
+        fb = @temporary_framebuffers[cubemap.size]
+        if not fb
+            fb = @temporary_framebuffers[cubemap.size] = new Framebuffer @context,
+                {size: [cubemap.size,cubemap.size], use_depth: true, \
+                 color_type: 'UNSIGNED_BYTE', depth_type: 'UNSIGNED_SHORT'}
+        cubemap.fill_color [0,0,1]
+        fb.enable()
+        for side in [0...6]
+            fb.bind_to_cubemap_side cubemap, side
+            if side != 99
+                dir = [[1.0, 0.0, 0.0],[-1.0, 0.0, 0.0],[0.0, 1.0, 0.0],
+                    [0.0, -1.0, 0.0],[0.0, 0.0, 1.0],[0.0, 0.0, -1.0]][side]
+                up = [[0.0, -1.0, 0.0],[0.0, -1.0, 0.0],[0.0, 0.0, 1.0],
+                    [0.0, 0.0, -1.0],[0.0, -1.0, 0.0],[0.0, -1.0, 0.0]][side]
+                mat4.lookAt world2cube, [0,0,0], dir, up
+                world2cube[12] = position[0]
+                world2cube[13] = position[1]
+                world2cube[14] = position[2]
+                [r,g,b] = scene.background_color
+                gl.clearColor r,g,b,1
+                gl.clear gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT
+                for ob in scene.mesh_passes[0] when ob!=scene.objects.Suzanne
+                    if ob.visible and ob.data
+                        @draw_mesh ob, ob.world_matrix, -1, null, world2cube, proj
+            else
+                gl.clearColor Math.random(),Math.random(),Math.random(),1
+                gl.clear gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT
+
+        fb.unbind_cubemap()
+        fb.disable()
+        cubemap.bind_and_generate_mipmap()
+        @use_frustum_culling = use_frustum_culling
+        return
+
 
     type_debug: ()->
         # This function makes sure that all vectors/matrices are typed arrays

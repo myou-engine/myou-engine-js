@@ -27,6 +27,8 @@ class Framebuffer
             depth_type=null
         } = @options
         [@size_x, @size_y] = size
+        if not @size_x or not @size_y
+            throw "Invalid framebuffer size"
         @texture = tex = gl.createTexture()
         gl.bindTexture gl.TEXTURE_2D, tex
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR
@@ -52,15 +54,15 @@ class Framebuffer
         gl.texImage2D gl.TEXTURE_2D, 0, internal_format, @size_x, @size_y, 0, tex_format, @tex_type, null
 
         @depth_texture = null
-        if depth_type? and extensions.depth_texture and has_float_fb_support
-            depth_tex_type = component_types[depth_type]
-            @depth_texture = gl.createTexture()
-            gl.bindTexture gl.TEXTURE_2D, @depth_texture
-            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST
-            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST
-            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE
-            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE
-            gl.texImage2D gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, @size_x, @size_y, 0, gl.DEPTH_COMPONENT, depth_tex_type, null
+#         if depth_type? and extensions.depth_texture and has_float_fb_support
+#             depth_tex_type = component_types[depth_type]
+#             @depth_texture = gl.createTexture()
+#             gl.bindTexture gl.TEXTURE_2D, @depth_texture
+#             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST
+#             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST
+#             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE
+#             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE
+#             gl.texImage2D gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, @size_x, @size_y, 0, gl.DEPTH_COMPONENT, depth_tex_type, null
 
 
         @framebuffer = fb = gl.createFramebuffer()
@@ -126,6 +128,28 @@ class Framebuffer
         @context.render_manager.change_enabled_attributes filter.attrib_bitmask
         gl.vertexAttribPointer filter.attrib_pointers[0][0], 3.0, gl.FLOAT, false, 0, 0
         gl.drawArrays gl.TRIANGLE_STRIP, 0, 4
+
+    bind_to_cubemap_side: (cubemap, side) ->
+        # NOTE: It has to be enabled
+        {gl} = @context.render_manager
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
+            gl.TEXTURE_CUBE_MAP_POSITIVE_X+side, cubemap.gl_tex, 0)
+
+    unbind_cubemap: ->
+        {gl} = @context.render_manager
+        gl.framebufferTexture2D gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, @texture, 0
+
+    get_framebuffer_status: ->
+        {gl} = @context.render_manager
+        switch gl.checkFramebufferStatus(gl.FRAMEBUFFER)
+            when gl.FRAMEBUFFER_COMPLETE
+                'COMPLETE'
+            when gl.FRAMEBUFFER_INCOMPLETE_ATTACHMENT
+                'INCOMPLETE_ATTACHMENT'
+            when gl.FRAMEBUFFER_INCOMPLETE_DIMENSIONS
+                'INCOMPLETE_DIMENSIONS'
+            when gl.FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT
+                'INCOMPLETE_MISSING_ATTACHMENT'
 
     destroy: ->
         {gl} = @context.render_manager

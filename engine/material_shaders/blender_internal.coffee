@@ -88,6 +88,7 @@ class BlenderInternalMaterial
         lamp_indices = {}
         lamps = []
         current_lamp = null
+        curr_lamp_name = ''
         current_input = -1
         locations = []
         textures = [] # temporary, see TODO in material
@@ -107,7 +108,8 @@ class BlenderInternalMaterial
                 when 6, 7, 9, 10, 11, 16
                     is_lamp = true
             if is_lamp
-                current_lamp = lamp_indices[u.lamp] or current_lamp
+                current_lamp = lamp_indices[u.lamp]
+                curr_lamp_name = u.lamp or curr_lamp_name
                 if not current_lamp?
                     current_lamp = lamp_indices[u.lamp] = lamps.length
                     lamp = objects[u.lamp]
@@ -153,7 +155,7 @@ class BlenderInternalMaterial
                 when 13, GPU_DYNAMIC_SAMPLER_2DIMAGE, GPU_DYNAMIC_SAMPLER_2DBUFFER # 2D image
                     tex = scene?.textures[u.image]
                     if not tex?
-                        throw "Texture #{u.image} not found (in material #{@name})."
+                        throw "Texture #{u.image} not found (in material #{@material.name})."
                     if not tex.loaded
                         tex.load()
                     gl.uniform1i locations[loc_idx], textures.length
@@ -182,7 +184,7 @@ class BlenderInternalMaterial
                     code.push "gl.uniform3fv(locations[#{loc_idx}], ob.scene.background_color.subarray(0,3));"
                 when -1 # custom
                     {value, type} = @material._input_list[current_input]
-                    value_code = "input_list[#{current_input}].value"
+                    value_code = "inputs[#{current_input}].value"
                     code.push if value.length?
                         "gl.uniform#{value.length}fv(locations[#{loc_idx}], #{value_code});"
                     else if type == 1
@@ -194,7 +196,9 @@ class BlenderInternalMaterial
                     console.log "Warning: unknown uniform", u.varname, \
                         u.type>>16, u.type&0xffff, "of data type", \
                         ['0','1i','1f','2f','3f','4f','m3','m4','4ub'][u.datatype]
-        func = new Function 'gl', 'locations', 'ob', 'lamps', 'input_list', 'render', 'mat4', code.join '\n'
+        preamble = 'var locations=shader.uniform_locations,
+            lamps=shader.lamps, inputs=shader.material._input_list;\n'
+        func = new Function 'gl', 'shader', 'ob', 'render', 'mat4', preamble+code.join '\n'
         {uniform_assign_func: func, uniform_locations: locations, lamps, textures}
 
 
