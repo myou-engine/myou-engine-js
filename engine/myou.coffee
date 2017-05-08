@@ -27,10 +27,10 @@ actuators = require './actuators.coffee'
 {ParticleSystem} = require './particles.coffee'
 {Scene} = require './scene.coffee'
 
-context_dependent_modules = [
+context_dependent_modules = {
     Armature, Camera, Compositor, Curve, Framebuffer,
     GameObject, GLRay, Lamp, Material, Mesh, ParticleSystem, Scene
-]
+}
 
 # Using objects as dicts by disabling hidden object optimization
 dict = ->
@@ -85,8 +85,8 @@ class Myou
 
 
         # Adding context to context_dependent_modules
-        for cls in context_dependent_modules
-            @[cls.name] = cls.bind cls, @
+        for name,cls of context_dependent_modules
+            @[name] = cls.bind cls, @
 
         # The root element needs to be positioned, so the mouse events (layerX/Y) are
         # registered correctly, and the canvas is scaled inside
