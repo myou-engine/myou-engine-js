@@ -32,7 +32,7 @@ class GameObject
         @position = vec3.create()
         @rotation = quat.create()
         @radius = 0
-        @rotation_order = 'Q'
+        @rotation_order = 'XYZ'
         @scale = vec3.fromValues 1, 1, 1
         @dimensions = vec3.create()
         @color = vec4.fromValues 1, 1, 1, 1
