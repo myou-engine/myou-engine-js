@@ -255,6 +255,8 @@ class GameObject
                 rot = posrot[1]
                 # TODO: SOFT_BODY, OCCLUDE, NAVMESH
                 if @physics_type == 'RIGID_BODY'
+                    @rotation_order = 'Q'
+                    quat.copy @rotation, rot
                     body = new RigidBody mass, shape, pos, rot, @friction, @elasticity, @form_factor
                     set_linear_factor body, @linear_factor
                     set_angular_factor body, @angular_factor

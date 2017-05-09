@@ -433,7 +433,7 @@ set_angular_factor = (body, factor)->
 
 ob_to_phy = (ob_list)->
     for ob in ob_list
-        if ob.parent
+        if ob.parent or ob.rotation_order != 'Q'
             posrot = ob.get_world_pos_rot()
             pos = posrot[0]
             rot = posrot[1]
