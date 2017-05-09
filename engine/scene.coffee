@@ -166,7 +166,7 @@ class Scene
                 children[index++] = ob
             for c in ob.children
                 reorder c
-        for ob of @children when not ob.parent
+        for ob in @children when not ob.parent
             reorder ob
         @_children_are_ordered = true
 
