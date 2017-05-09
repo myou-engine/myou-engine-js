@@ -405,6 +405,32 @@ class GameObject
             #ppos = @parent.world_matrix.subarray 12,15
             #pos = [pos[0] + ppos[0], pos[1] + ppos[1], pos[2] + ppos[2]]
 
+    set_rotation_order: (order) ->
+        if order == @rotation_order
+            return
+        if order != 'Q'
+            f = quat['to_euler_'+order]
+            if not f?
+                throw "Invalid rotation order.
+                    Should be one of: Q XYZ XZY YXZ YZX ZXY ZYX."
+        q = @rotation
+        if @rotation_order != 'Q'
+            [x,y,z] = q
+            q[0] = q[1] = q[2] = 0
+            q[3] = 1
+            for i in [2..0] by -1
+                switch @rotation_order[i]
+                    when 'X'
+                        quat.rotateX q, q, x
+                    when 'Y'
+                        quat.rotateY q, q, y
+                    when 'Z'
+                        quat.rotateZ q, q, z
+        if f?
+            f(q,q)
+            q[3] = 0
+        @rotation_order = order
+
     update_matrices_recursive: ->
         @parent?.update_matrices_recursive()
         @_update_matrices()

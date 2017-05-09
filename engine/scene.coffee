@@ -133,12 +133,15 @@ class Scene
         if child.parent
             @clear_parent child, keep_transform
         if keep_transform
+            {rotation_order} = child
+            child.set_rotation_order 'Q'
             pos = child.position
             rot = child.rotation
             vec3.sub pos, pos, parent.get_world_position()
             p_rot = quat.invert quat.create(), parent.get_world_rotation()
             vec3.transformQuat pos, pos, p_rot
             quat.mul rot, p_rot, rot
+            child.set_rotation_order rotation_order
         child.parent = parent
         parent.children.push child
         if @auto_updated_children.indexOf(parent) > @auto_updated_children.indexOf(child)
@@ -150,8 +153,11 @@ class Scene
         parent = child.parent
         if parent
             if keep_transform
+                {rotation_order} = child
                 vec3.copy child.position, child.get_world_position()
                 quat.copy child.rotation, child.get_world_rotation()
+                child.rotation_order = 'Q'
+                child.set_rotation_order rotation_order
             parent.children.remove child
         child.parent = null
 
