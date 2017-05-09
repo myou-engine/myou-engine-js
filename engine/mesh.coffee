@@ -113,8 +113,6 @@ class Mesh extends GameObject
         @armature = null
         @uv_rect = vec4.fromValues 0, 0, 1, 1 # x, y, w, h
         @uv_right_eye_offset = [0, 0]
-        #TODO move to MeshData
-        @custom_uniform_values = []
         @active_mesh_index = 0
         @altmeshes = []
         @last_lod_object = null

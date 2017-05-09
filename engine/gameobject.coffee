@@ -1,6 +1,7 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
-{Animation} = require './animation.coffee'
-fetch_assets = require './fetch_assets.coffee'
+{Animation} = require './animation'
+{Cubemap} = require './cubemap'
+fetch_assets = require './fetch_assets'
 {
     update_ob_physics,
 
@@ -14,7 +15,7 @@ fetch_assets = require './fetch_assets.coffee'
     allow_sleeping, make_ghost,
     set_linear_factor, set_angular_factor
 
-} = require './physics.coffee'
+} = require './physics'
 
 
 NO_MIRROR = 1
@@ -54,7 +55,7 @@ class GameObject
         @rotation_matrix = mat3.create()
         @normal_matrix = mat3.create()
         @_m3 = mat3.create()
-        @custom_uniform_values = []
+        @probe = null
         @properties = {}
         @animation_strips = []
         @animations = {}
@@ -433,6 +434,7 @@ class GameObject
             q[3] = 0
         @rotation_order = order
 
+
     update_matrices_recursive: ->
         @parent?.update_matrices_recursive()
         @_update_matrices()
@@ -455,7 +457,6 @@ class GameObject
         # matrix_parent_inverse into a quat?
         wm = @get_world_matrix()
         quat.fromMat3 out, mat3.fromMat4(mat3.create(), wm)
-
 
     get_world_pos_rot: ->
         wm = @get_world_matrix()
@@ -486,7 +487,6 @@ class GameObject
         n.rotation_matrix = mat3.clone @rotation_matrix
         n.normal_matrix = mat3.clone @normal_matrix
         n.color = vec4.clone @color
-        n.custom_uniform_values = @custom_uniform_values[...]
         n.properties = Object.create @properties
         n.actions = @actions[...]
         n.passes = @passes and @passes[...]
@@ -515,8 +515,74 @@ class GameObject
     remove: (recursive) ->
         @scene.remove_object @, recursive
 
-    # delete me
-    set_altmesh: (index) ->
-        set_altmesh @,index
+    instance_probe: ->
+        if @probe
+            return @probe
+        {probe_options} = @properties
+        if probe_options?
+            if probe_options.type == 'OBJECT'
+                ob = @scene.objects[probe_options.object]
+                return @probe = ob.probe or ob.instance_probe()
+            @probe = new Probe @, probe_options
+        return @probe
+
+
+class Probe
+    constructor: (@object, options) ->
+        {@context} = @object
+        {
+            @type
+            object
+            @auto_refresh
+            @compute_sh
+            @double_refresh
+            @same_layers
+            @size
+            @sh_quality
+            @clip_start
+            @clip_end
+            @parallax_type
+            @parallax_volume
+            @reflection_plane
+            # TODO: export these two (they're scene-wide)
+            # TODO: bsdf_samples is hard-coded in the shader
+            # and in get_lutsamples_texture
+            @bsdf_samples = 32
+            @lodbias = -0.5
+        } = options
+        @size = nearest_POT @size
+        @target_object = object
+        @cubemap = new @context.Cubemap {@size}
+#         @cubemap.loaded = false
+        @position = vec3.create()
+        @set_lod_factor()
+        if @auto_refresh
+            @context.render_manager.probes.push @
+        else
+            @render()
+
+    set_lod_factor: ->
+        @lodfactor = 0.5 * Math.log( ( @size*@size / @bsdf_samples ) ) / Math.log(2)
+        @lodfactor -= @lodbias
+
+    render: ->
+        if @size != @cubemap.size
+            @size = nearest_POT @size
+            @cubemap.size = @size
+            @cubemap.set_data()
+            @set_lod_factor()
+        @object.get_world_position(@position)
+        @context.render_manager.draw_cubemap(@object.scene, @cubemap,
+            @position, @clip_start, @clip_end)
+        @cubemap.loaded = true
+
+    destroy: ->
+        if @auto_refresh
+            @context.render_manager.probes.remove @
+        @cubemap.destroy()
+
+nearest_POT = (x) ->
+    x = Math.max(0, x)
+    return Math.pow(2, Math.round(Math.log(x)/Math.log(2)))
 
 module.exports = {GameObject}

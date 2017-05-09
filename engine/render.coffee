@@ -167,20 +167,25 @@ class RenderManager
         # For premul, use  gl.ONE, gl.ONE_MINUS_SRC_ALPHA
         @attrib_bitmask = 0
 
-        @blank_texture = tex = gl.createTexture()
-        gl.bindTexture gl.TEXTURE_2D, tex
-        gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,0,0])
-        gl.bindTexture gl.TEXTURE_2D, null
+
+        @blank_texture = new @context.Texture {@context},
+            formats: raw_pixels: {
+                width: 2, height: 2, pixels: 0 for [0...2*2*4]
+            }
+        @blank_texture.load()
+
+        @white_texture = new @context.Texture {@context},
+            formats: raw_pixels: {
+                width: 2, height: 2, pixels: 255 for [0...2*2*4]
+            }
+        @white_texture.load()
+
+        @blank_cube_texture = new @context.Cubemap size: 16, color: [0,0,0,0]
 
         @quad = gl.createBuffer()
         gl.bindBuffer gl.ARRAY_BUFFER, @quad
         gl.bufferData gl.ARRAY_BUFFER, new(Float32Array)([0,1,0,0,0,0,1,1,0,1,0,0]), gl.STATIC_DRAW
         gl.bindBuffer gl.ARRAY_BUFFER, null
-
-        @white_texture = tex = gl.createTexture()
-        gl.bindTexture gl.TEXTURE_2D, tex
-        gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([1,1,1,1])
-        gl.bindTexture gl.TEXTURE_2D, null
 
         @resize @width, @height, @pixel_ratio_x, @pixel_ratio_y
 
@@ -358,31 +363,37 @@ class RenderManager
         m3 = @_m3
         cam = @_cam
 
-        # Cull object if it's outside camera frustum
-        parented_pos = if mesh.parent then  mesh.get_world_position() else mesh.position
-        pos = vec3.copy @_v, parented_pos
-        if mesh.mirrors == 2
-            pos[0] = -pos[0]
-        vec3.sub pos, pos, cam.position
-        r = mesh.radius
-        distance_to_camera = vec3.dot pos, @camera_z
+        if @use_frustum_culling
+            # Cull object if it's outside camera frustum
+            parented_pos = if mesh.parent then  mesh.get_world_position() else mesh.position
+            pos = vec3.copy @_v, parented_pos
+            if mesh.mirrors == 2
+                pos[0] = -pos[0]
+            vec3.sub pos, pos, cam.position
+            r = mesh.radius
+            distance_to_camera = vec3.dot pos, @camera_z
 
-        if @use_frustum_culling and ((distance_to_camera+r) *
-            (vec3.dot(pos, @_cull_top)+r) *
-            (vec3.dot(pos, @_cull_left)+r) *
-            (vec3.dot(pos, @_cull_right)+r) *
-            (vec3.dot(pos, @_cull_bottom)+r)) < 0
-                mesh.culled_in_last_frame = true
-                return
-        mesh.culled_in_last_frame = false
+            if ((distance_to_camera+r) *
+                (vec3.dot(pos, @_cull_top)+r) *
+                (vec3.dot(pos, @_cull_left)+r) *
+                (vec3.dot(pos, @_cull_right)+r) *
+                (vec3.dot(pos, @_cull_bottom)+r)) < 0
+                    mesh.culled_in_last_frame = true
+                    return
+            mesh.culled_in_last_frame = false
 
         # Select alternative mesh / LoD
-        amesh = mesh.last_lod_object
-        if not amesh? or @render_tick != mesh.last_lod_tick
-            amesh = mesh.get_lod_mesh(@_vp, @context.mesh_lod_min_length_px)
+        if @_vp?.camera?
+            amesh = mesh.last_lod_object
+            if not amesh? or @render_tick != mesh.last_lod_tick
+                amesh = mesh.get_lod_mesh(@_vp, @context.mesh_lod_min_length_px)
+                if not amesh.data
+                    return
+                mesh.last_lod_tick = @render_tick
+        else
+            amesh = mesh.data
             if not amesh.data
                 return
-            mesh.last_lod_tick = @render_tick
 
         flip_normals = mesh._flip
         if @flip != flip_normals
@@ -427,17 +438,20 @@ class RenderManager
             # Enabling textures and assigning their respective uniforms
             # TODO: change the oldest texture and appropiate uniform
             # instead of have them preassigned sequentially
+            # TODO: figure out a way to do object-specific textures
             for i in [0...shader.textures.length]
                 tex = shader.textures[i]
-                if tex.loaded
-                    {gl_tex, gl_target} = tex
-                else
-                    gl_tex = @blank_texture
-                    gl_target = gl.TEXTURE_2D
+                if not tex?
+                    # this means it's the probe cube texture
+                    tex = mesh.probe?.cubemap or @blank_cube_texture
+                if not tex.loaded
+                    tex = @blank_texture
+                {gl_tex, gl_target} = tex
                 if bound_textures[i] != gl_tex
-                    if active_texture != i
-                        gl.activeTexture gl.TEXTURE0 + i
-                        active_texture = i
+#                     if @active_texture != i
+                    gl.activeTexture gl.TEXTURE0 + i
+#                         @active_texture = i
+                    tex.bound_unit = i
                     gl.bindTexture gl_target, gl_tex
                     bound_textures[i] = gl_tex
 
@@ -582,7 +596,7 @@ class RenderManager
         mat4.mul cam.world_to_screen_matrix, cam.projection_matrix, world2cam
 
         @bound_textures.clear()
-        active_texture = -1
+        @active_texture = -1
 
         {mesh_lod_min_length_px} = @context
 
@@ -616,11 +630,7 @@ class RenderManager
                 mat4.multiply lamp._cam2depth, lamp._depth_matrix, m4
 
             # Update lamp view pos and direction
-            vec3.transformMat4 lamp._view_pos, lamp.world_matrix.subarray(12,15), world2cam
-            mat4.multiply m4, world2cam, lamp.world_matrix
-            lamp._dir[0] = -m4[8]
-            lamp._dir[1] = -m4[9]
-            lamp._dir[2] = -m4[10]
+            lamp.recalculate_render_data(world2cam)
 
 
         # Main drawing code to destination buffer (usually the screen)
@@ -754,42 +764,107 @@ class RenderManager
         world2cube = mat4.create()
         proj = mat4.frustum mat4.create(),-near,near,-near,near,near,far
 
+        if cubemap.bound_unit != -1
+            gl.activeTexture gl.TEXTURE0 + cubemap.bound_unit
+            gl.bindTexture gl.TEXTURE_CUBE_MAP, null
+            cubemap.bound_unit = -1
+
         fb = @temporary_framebuffers[cubemap.size]
         if not fb
             fb = @temporary_framebuffers[cubemap.size] = new Framebuffer @context,
                 {size: [cubemap.size,cubemap.size], use_depth: true, \
                  color_type: 'UNSIGNED_BYTE', depth_type: 'UNSIGNED_SHORT'}
-        cubemap.fill_color [0,0,1]
         fb.enable()
         for side in [0...6]
             fb.bind_to_cubemap_side cubemap, side
-            if side != 99
-                dir = [[1.0, 0.0, 0.0],[-1.0, 0.0, 0.0],[0.0, 1.0, 0.0],
-                    [0.0, -1.0, 0.0],[0.0, 0.0, 1.0],[0.0, 0.0, -1.0]][side]
-                up = [[0.0, -1.0, 0.0],[0.0, -1.0, 0.0],[0.0, 0.0, 1.0],
-                    [0.0, 0.0, -1.0],[0.0, -1.0, 0.0],[0.0, -1.0, 0.0]][side]
-                mat4.lookAt world2cube, [0,0,0], dir, up
-                world2cube[12] = position[0]
-                world2cube[13] = position[1]
-                world2cube[14] = position[2]
-                [r,g,b] = scene.background_color
-                gl.clearColor r,g,b,1
-                gl.clear gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT
-                for ob in scene.mesh_passes[0] when ob!=scene.objects.Suzanne
-                    if ob.visible and ob.data
-                        @draw_mesh ob, ob.world_matrix, -1, null, world2cube, proj
-            else
-                gl.clearColor Math.random(),Math.random(),Math.random(),1
-                gl.clear gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT
+            dir = [[1.0, 0.0, 0.0],[-1.0, 0.0, 0.0],[0.0, 1.0, 0.0],
+                [0.0, -1.0, 0.0],[0.0, 0.0, 1.0],[0.0, 0.0, -1.0]][side]
+            up = [[0.0, -1.0, 0.0],[0.0, -1.0, 0.0],[0.0, 0.0, 1.0],
+                [0.0, 0.0, -1.0],[0.0, -1.0, 0.0],[0.0, -1.0, 0.0]][side]
+            dir[0] += position[0]
+            dir[1] += position[1]
+            dir[2] += position[2]
+            mat4.lookAt world2cube, position, dir, up
+            mat4.invert @_cam2world, world2cube
+            mat3.fromMat4 @_world2cam3, world2cube
+            [r,g,b] = scene.background_color
+            gl.clearColor r,g,b,1
+            gl.clear gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT
+            if @do_log?
+                @do_log = side == 0
+            for lamp in scene.lamps
+                lamp.recalculate_render_data world2cube
+            for ob in scene.mesh_passes[0] when ob.probe?.cubemap != cubemap
+                if ob.visible and ob.data
+                    @draw_mesh ob, ob.world_matrix, -1, null, world2cube, proj
+            if @do_log
+                @do_log = false
+                console.log @debug_uniform_logging_get_log()
 
         fb.unbind_cubemap()
         fb.disable()
-        cubemap.bind_and_generate_mipmap()
+        cubemap.generate_mipmap()
         @use_frustum_culling = use_frustum_culling
         return
 
+    debug_uniform_logging: ->
+        # This function logs calls to uniform functions
+        # and it's useful to find uniforms changing when they shouldn't
+        # Usage:
+        #   if @do_log?
+        #     @do_log = true
+        #   [do all things]
+        #   if @do_log
+        #     @do_log = false
+        #     console.log @debug_uniform_logging_get_log()
+        # and then:
+        #   rm.debug_uniform_logging()
+        #   rm.debug_uniform_logging_break(number of uniform)
+        gl = @gl
+        @do_log = false
+        @u_log_break = -1
+        @u_log_number = 0
+        for p in ['uniform1fv', 'uniform2fv', 'uniform3fv', 'uniform4fv']
+            gl['_'+p] = gl[p]
+            gl[p] = do (p) => (l,v) =>
+                if @do_log
+                    if @u_log_number == @u_log_break
+                        debugger
+                        @u_log_break = -1
+                    @u_log += "#{@u_log_number++}: #{v}\n"
+                return gl["_"+p](l,v)
 
-    type_debug: ()->
+        for p in ['uniform1v', 'uniform2v', 'uniform3v', 'uniform4v']
+            gl['_'+p] = gl[p]
+            gl[p] = do (p) => (l,v...) =>
+                if @do_log
+                    if @u_log_number == @u_log_break
+                        debugger
+                        @u_log_break = -1
+                    @u_log += "#{@u_log_number++}: #{v}\n"
+                return gl["_"+p](l,v...)
+
+        for p in ['uniformMatrix3fv', 'uniformMatrix4fv']
+            gl['_'+p] = gl[p]
+            gl[p] = do (p) => (l,t,v)=>
+                if @do_log
+                    if @u_log_number == @u_log_break
+                        debugger
+                        @u_log_break = -1
+                    @u_log += "#{@u_log_number++}: #{v}\n"
+                return gl["_"+p](l,t,v)
+        return
+
+    debug_uniform_logging_get_log: ->
+        {u_log} = @
+        @u_log = ''
+        @u_log_number = 0
+        u_log
+
+    debug_uniform_logging_break: (number) ->
+        @u_log_break = number
+
+    debug_uniform_type: ()->
         # This function makes sure that all vectors/matrices are typed arrays
         gl = @gl
         for p in ['uniform1fv', 'uniform2fv', 'uniform3fv', 'uniform4fv']

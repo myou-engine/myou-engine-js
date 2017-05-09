@@ -34,6 +34,7 @@ class Texture
         } = tex_data
         @gl_target = 3553 # gl.TEXTURE_2D
         @gl_tex = null
+        @bound_unit = -1
         @loaded = false
         @promise = null
         @promised_data = null

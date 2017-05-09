@@ -111,6 +111,7 @@ class Scene
             if ob.data
                 ob.data.remove ob
         if ob.type=='LAMP'
+            ob.destroy_shadow()
             @lamps.remove ob
         if ob.type=='ARMATURE'
             @armatures.remove ob
@@ -121,6 +122,8 @@ class Scene
             @static_ghosts.remove ob
             # TODO: activate any colliding object to activate the whole island
             # TODO: free phy_mesh btVector3
+
+        @probe?.destroy()
 
         if recursive
             children = ob.children

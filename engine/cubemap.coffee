@@ -11,17 +11,23 @@ class Cubemap
             @format=gl.RGBA
             @use_filter=true
             @use_mipmap=true
+            @color
         } = options
         @gl_target = 34067 # gl.TEXTURE_CUBE_MAP
         @gl_tex = null
         @loaded = false
+        @bound_unit = -1
         @instance()
+
 
     instance: (data=null) ->
         {gl} = @context.render_manager
         @gl_tex = gl.createTexture()
         gl.bindTexture gl.TEXTURE_CUBE_MAP, @gl_tex
-        @set_data()
+        if @color?
+            @fill_color(@color)
+        else
+            @set_data(data)
         if @use_filter
             min_filter = mag_filter = gl.LINEAR
             if @use_mipmap
@@ -46,9 +52,13 @@ class Cubemap
         gl.texImage2D(i++, 0, @internal_format, @size, @size, 0, @format, @type, data[3])
         gl.texImage2D(i++, 0, @internal_format, @size, @size, 0, @format, @type, data[4])
         gl.texImage2D(i++, 0, @internal_format, @size, @size, 0, @format, @type, data[5])
+        if @use_mipmap?
+            gl.generateMipmap gl.TEXTURE_CUBE_MAP
         return @
 
     fill_color: (color) ->
+        # NOTE: This was made for test purposes.
+        # It's much better to use render_to_cubemap and clear color
         [r, g, b, a=1] = color
         r = Math.min(Math.max(0,r*255),255)|0
         g = Math.min(Math.max(0,g*255),255)|0
@@ -61,15 +71,24 @@ class Cubemap
             pixels[i+2] = b
             pixels[i+3] = a
         @set_data [pixels, pixels, pixels, pixels, pixels, pixels]
-        @bind_and_generate_mipmap()
 
     bind: ->
         {gl} = @context.render_manager
         gl.bindTexture(gl.TEXTURE_CUBE_MAP, @gl_tex)
 
-    bind_and_generate_mipmap: ->
+    generate_mipmap: ->
         {gl} = @context.render_manager
-        gl.bindTexture(gl.TEXTURE_CUBE_MAP, @gl_tex)
+        gl.activeTexture gl.TEXTURE16
+        gl.bindTexture gl.TEXTURE_CUBE_MAP, @gl_tex
         gl.generateMipmap gl.TEXTURE_CUBE_MAP
+        gl.bindTexture gl.TEXTURE_CUBE_MAP, null
+        @bound_unit = -1
+        return @
+
+    destroy: ->
+        if @gl_tex
+            @context.render_manager.gl.deleteTexture @gl_tex
+        @gl_tex = null
+        @loaded = false
 
 module.exports = {Cubemap}

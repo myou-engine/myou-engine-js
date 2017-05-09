@@ -33,6 +33,25 @@ class Lamp extends GameObject
     #Avoid physical lamps and cameras
     instance_physics: ->
 
+    recalculate_render_data: (world2cam, neg) ->
+        vec3.transformMat4 @_view_pos, @world_matrix.subarray(12,15), world2cam
+
+        # mat4.multiply m4, world2cam, @world_matrix
+        # @_dir[0] = -m4[8]
+        # @_dir[1] = -m4[9]
+        # @_dir[2] = -m4[10]
+        ##We're doing the previous lines, but just for the terms we need
+        a = world2cam
+        b = @world_matrix
+        b0 = b[8]; b1 = b[9]; b2 = b[10]; b3 = b[11]
+        x = b0*a[0] + b1*a[4] + b2*a[8] + b3*a[12]
+        y = b0*a[1] + b1*a[5] + b2*a[9] + b3*a[13]
+        z = b0*a[2] + b1*a[6] + b2*a[10] + b3*a[14]
+        @_dir[0] = -x
+        @_dir[1] = -y
+        @_dir[2] = -z
+        return
+
     init_shadow: ->
         {texture_size, frustum_size, clip_start, clip_end} = @shadow_options
         # This one has no depth because we're using common_shadow_fb,

@@ -1,28 +1,8 @@
 
-{Cubemap} = require '../cubemap'
+
 {vec3} = require 'gl-matrix'
 
-# TODO: The probe object should be owned by an object (or the scene for the bg)
-# and have them created from the objects instead of here
-
 # TODO: Should jitter be generated with a different random distrubition?
-
-class Probe
-    constructor: (@shader, @object, options) ->
-        {@context, @material} = @shader
-        {size} = options
-        @cubemap = new Cubemap @context, {size}
-        @cubemap.loaded = false
-        @position = vec3.create()
-        @probe_clip_start = 0.001
-        @probe_clip_end = 1000
-        @context.render_manager.probes.push @
-
-    render: ->
-        @object.get_world_position(@position)
-        @context.render_manager.draw_cubemap(@material.scene, @cubemap,
-            @position, @probe_clip_start, @probe_clip_end)
-        @cubemap.loaded = true
 
 
 class BlenderCyclesPBRMaterial
@@ -32,8 +12,6 @@ class BlenderCyclesPBRMaterial
             path = u.path or u.index
             value = if u.value.length? then new Float32Array(u.value) else u.value
             _input_list.push inputs[path] = {value, type: u.count}
-        @probe = null
-        @bsdf_samples = 32
         return
 
     get_model_view_matrix_name: ->
@@ -70,7 +48,6 @@ class BlenderCyclesPBRMaterial
             loc_idx = locations.length
             locations.push uloc
             if u.lamp?
-                console.log u.lamp
                 current_lamp = lamp_indices[u.lamp]
                 if not current_lamp?
                     current_lamp = lamp_indices[u.lamp] = lamps.length
@@ -111,20 +88,11 @@ class BlenderCyclesPBRMaterial
         # PBR uniforms are not given as parameters,
         # so we have to figure out if they're present
         # by getting their locations
-        # TODO: load all this from blend, affect code with defines
-        probe_size_refl = 128
-        probe_size_diff = 32
-        @bsdf_samples = 32
-        lodbias = -0.5
-
-        have_shperical_harmonics = have_probe_sampler = false
 
         for i in [0..8]
             unf = 'unfsh'+i
             loc = gl.getUniformLocation program, unf
             if loc?
-                have_shperical_harmonics = true
-                probe_size = probe_size_diff
                 if i == 0
                     code.push "var bg = ob.scene.background_color;"
                     code.push "gl.uniform3f(locations[#{locations.length}],
@@ -134,24 +102,10 @@ class BlenderCyclesPBRMaterial
                     code.push "gl.uniform3f(locations[#{locations.length}], 0, 0, 0);"
                 locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unfprobe')?
-            have_probe_sampler = true
-            probe_size = probe_size_refl
-            gl.uniform1i loc, textures.length
-
-
-        if have_shperical_harmonics or have_probe_sampler
-            # TODO: this should be created from the object
-            for ob in @material.scene.children when ob.type=='MESH' and @material in ob.materials
-                break
-            @probe = new Probe @, ob, size: probe_size, sh: have_shperical_harmonics
-        if have_probe_sampler
-            textures.push @probe.cubemap
-
-        lodfactor = 0.5 * Math.log( ( probe_size*probe_size / @bsdf_samples ) ) / Math.log(2)
-        lodfactor -= lodbias
-        loc = gl.getUniformLocation program, 'unflodfactor'
-        gl.uniform1f(loc, lodfactor)
+        if (loc = gl.getUniformLocation program, 'unflodfactor')?
+            code.push "var probe = ob.probe;"
+            code.push "gl.uniform1f(locations[#{locations.length}], probe&&probe.lodfactor);"
+            locations.push loc
 
         if (loc = gl.getUniformLocation program, 'unfjitter')?
             gl.uniform1i loc, textures.length
@@ -160,6 +114,10 @@ class BlenderCyclesPBRMaterial
         if (loc = gl.getUniformLocation program, 'unflutsamples')?
             gl.uniform1i loc, textures.length
             textures.push get_lutsamples_texture @
+
+        if (loc = gl.getUniformLocation program, 'unfprobe')?
+            gl.uniform1i loc, textures.length
+            textures.push null
 
         # detect presence of any of all the uniforms in the shader
         @unfs = {}
@@ -189,7 +147,8 @@ get_lutsamples_texture = (shader) ->
     if not lutsamples_texture?
         lutsamples_texture = new shader.context.Texture shader.material.scene,
             formats: raw_pixels: {
-                width: shader.bsdf_samples, height: 1, pixels: (Math.random()*256)|0 for [0...32*4]
+                # TODO: bsdf_samples
+                width: 32, height: 1, pixels: (Math.random()*256)|0 for [0...32*4]
             }
         lutsamples_texture.load()
     return lutsamples_texture
