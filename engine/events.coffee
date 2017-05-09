@@ -43,7 +43,14 @@ class Events
             first_touch_event: null
             last_touch_event: null
             #number of current touches
-            touches:0
+            count: 0
+
+        warned = false
+
+        Object.defineProperty @touch, 'touches', get: ->
+            warned || console.error 'touch.touches is DEPRECATED, use touch.count instead'
+            warned = true
+            return @count
 
         # The root_element is used on mousedown
         # and mousemove when no button is pressed
@@ -101,7 +108,7 @@ class Events
                 if not @touch.first_touch_event?
                     @touch.first_touch_event = touch
                 @touch.last_touch_event = touch
-            @touch.touches = event.targetTouches.length
+            @touch.count = event.targetTouches.length
 
         if enable_touch
             root_element.addEventListener 'touchstart', touch_start, false
@@ -119,7 +126,7 @@ class Events
                 @touch.first_touch_event = @touch.touch_events[event.targetTouches.identifier]
             if event.targetTouches.length == 0
                 @touch.first_touch_event = null
-            @touch.touches = event.targetTouches.length
+            @touch.count = event.targetTouches.length
 
         if enable_touch
             root_element.addEventListener 'touchend', touch_end, false
@@ -151,7 +158,7 @@ class Events
                 touch.rel_y = rel_y
                 touch.movement_since_touch += Math.abs(rel_x) + Math.abs(rel_y)
                 @touch.touch_events[touch.id] = touch
-            @touch.touches = event.targetTouches.length
+            @touch.count = event.targetTouches.length
 
         if enable_touch
             root_element.addEventListener 'touchmove', touch_move, false
