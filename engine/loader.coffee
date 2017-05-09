@@ -23,7 +23,7 @@ load_scene = (name, filter, options, context) ->
     if scene
         return Promise.resolve(scene)
     {
-        use_physics
+        load_physics
         data_dir=context.MYOU_PARAMS.data_dir
         original_scene_name=name
     } = options
@@ -39,16 +39,15 @@ load_scene = (name, filter, options, context) ->
         if filter
             data = filter(data)
 
-        use_physics = use_physics and context.use_physics
-        if use_physics
-            scene.use_physics = true
+        load_physics = load_physics and context.use_physics
+        scene.use_physics = load_physics
         # Parse all the actual scene data
         for d in data
             load_datablock scene, d, context
 
         context.loaded_scenes.push name
 
-        if use_physics
+        if load_physics
             load_physics_engine().then ->
                 scene.world = new PhysicsWorld
                 g = scene.gravity

@@ -299,8 +299,11 @@ class Scene
         return @
 
     enable_physics: ->
-        # TODO: Warn if physics are disabled
-        @physics_enabled = true
+        if not @context.use_physics
+            console.warn "enable_physics: Ineffective because options.disable_physics is set to true"
+        else if not @use_physics
+            console.warn "enable_physics: Ineffective because load_scene() was called with load_physics: false"
+        @use_physics = @physics_enabled = true
         return @
 
     disable_physics: ->
