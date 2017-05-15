@@ -101,7 +101,11 @@ class MeshData
                 gl.deleteBuffer buf
             delete @context.mesh_datas[@hash]
 
-
+# Mesh object class.
+#
+# For information on using a Blender mesh go [here](../extra/Tutorials/Using a Blender mesh.md)
+#
+# To learn how to create a mesh from code go [here](../extra/Advanced tutorials/Creating a mesh from code.md)
 class Mesh extends GameObject
 
     constructor: (@context)->
@@ -213,6 +217,7 @@ class Mesh extends GameObject
             gl.bufferData gl.ELEMENT_ARRAY_BUFFER, ia.subarray(offsets[i2+1], offsets[i2+3]), gl.STATIC_DRAW
         return
 
+    # @private
     # This method ensures that layout, vertex_modifiers and _signature exist.
     # This is used and only necessary in Material for assets in the old format.
     ensure_layout_and_modifiers: ->
@@ -293,8 +298,9 @@ class Mesh extends GameObject
         @vertex_modifiers = vertex_modifiers.concat @vertex_modifiers or []
         return
 
-
-    # min_length_px is the minimum length of the average polygon, in screen pixels
+    # Returns a LoD version of the mesh that has enough detail for its visual size.
+    # @param [Viewport] viewport
+    # @param [number] min_length_px: The minimum length of the average polygon, in screen pixels
     get_lod_mesh: (viewport, min_length_px) ->
         amesh = @
         if @altmeshes.length

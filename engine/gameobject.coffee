@@ -469,6 +469,9 @@ class GameObject
         @_update_matrices()
         return @world_matrix
 
+    # Returns a clone of the object
+    # @param [Scene] scene: Destination scene
+    # @param [bool] recursive: Whether to clone its children
     clone: (scene=this.scene, recursive=false) ->
         n = Object.create @
         if recursive
