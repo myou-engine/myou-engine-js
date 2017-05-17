@@ -7,7 +7,9 @@ timsort = require 'timsort'
 {Material} = require './material.coffee'
 VECTOR_MINUS_Z = vec3.fromValues 0,0,-1
 
-
+# Render manager singleton. Performs all operations related to rendering to screen or to a buffer.
+#
+# Access it as `render_manager` member of the {Myou} instance.
 class RenderManager
     constructor: (context, canvas, width, height, glflags)->
         try
@@ -108,6 +110,8 @@ class RenderManager
         canvas.addEventListener "webglcontextrestored", restored, false
         @initialize()
 
+    # @private
+    # (Re)initializes the GL context.
     initialize: ()->
         gl = @gl
         @extensions =
@@ -189,6 +193,8 @@ class RenderManager
 
         @resize @width, @height, @pixel_ratio_x, @pixel_ratio_y
 
+    # @private
+    # Handles the "lost context" event.
     clear_context: ->
         @context_lost_count += 1
         for scene in @context.scenes
@@ -196,6 +202,8 @@ class RenderManager
                 t.gl_tex = null
         return
 
+    # @private
+    # Restores GL context after a "lost context" event.
     restore_context: ->
         @initialize()
         for scene in @context.scenes
@@ -207,12 +215,17 @@ class RenderManager
             m.reupload()
         return
 
+    # @private
+    # Changes state of face culling depending on `material.double_sided`
     set_cull_face: (enable)->
         if enable
             @gl.enable 2884 # 2884 = gl.CULL_FACE
         else
             @gl.disable 2884
 
+    # Changes the resolution of the canvas and aspect ratio of viewports.
+    # It doesn't handle the final size (that's done through HTML styles).
+    # usually called when the window is resized.
     resize: (width, height, pixel_ratio_x=1, pixel_ratio_y=1)->
         @width = width
         @height = height
@@ -233,12 +246,17 @@ class RenderManager
         if filter_fb_needed and @viewports.length != 0
             @recalculate_fb_size()
 
+    # Change the aspect ratio of viewports. Useful for very quick changes
+    # of the size of the canvas, such as with a CSS animation.
+    # Much cheaper than a regular resize, because it doesn't change the resolution.
     resize_soft: (width, height)->
         for v in @viewports
             v.camera.aspect_ratio = width/height
             v.camera.recalculate_projection()
         return
 
+    # Requests full screen status of the canvas. Note that browsers require
+    # this function to be called from a user initiated event such as `click` or `keypress`.
     request_fullscreen: ->
         #https://dvcs.w3.org/hg/fullscreen/raw-file/tip/Overview.html#api
         c = @canvas
@@ -247,6 +265,8 @@ class RenderManager
          c.webkitRequestFullscreen)()
         # TODO: differences in style if the canvas is not 100%
 
+    # @private
+    # @deprecated
     recalculate_fb_size: ->
         next_POT = (x)->
             x = Math.max(0, x-1)
@@ -279,6 +299,7 @@ class RenderManager
                         @gl.uniform2f shader.u_fb_size, minx, miny
         return
 
+    # @private
     change_enabled_attributes: (bitmask)->
         gl = @gl
         previous = @attrib_bitmask
@@ -298,11 +319,11 @@ class RenderManager
             mask >>= 1
         @attrib_bitmask = bitmask
 
-    draw_all: ()->
-        # TODO: skip disabled scenes
-
+    # Draws all enabled scenes of all the viewports in `render_manager.viewports`.
+    # Usually called from {MainLoop}
+    draw_all: ->
         # TODO: calculate all matrices first
-        # TODO: have a list of objects instead?
+        # TODO: have a list of objects instead of probes?
         for probe in @probes
             probe.render()
 
@@ -350,7 +371,8 @@ class RenderManager
         @debug.vectors.clear() # TODO: have them per scene? preserve for a bunch of frames?
         @compiled_shaders_this_frame = 0
 
-    # Returns: whether the frame should countinue
+    # @private
+    # Draws a mesh.
     draw_mesh: (mesh, mesh2world, pass_=-1, material_override, world2cam_override, projection_override)->
         # TODO: check epsilon, probably better to check sum of absolutes instead of sqrLen
         if vec3.sqrLen mesh.scale < 0.000001
@@ -448,9 +470,9 @@ class RenderManager
                     tex = @blank_texture
                 {gl_tex, gl_target} = tex
                 if bound_textures[i] != gl_tex
-#                     if @active_texture != i
+                    # if @active_texture != i
                     gl.activeTexture gl.TEXTURE0 + i
-#                         @active_texture = i
+                    #     @active_texture = i
                     tex.bound_unit = i
                     gl.bindTexture gl_target, gl_tex
                     bound_textures[i] = gl_tex
@@ -507,6 +529,8 @@ class RenderManager
 
         return
 
+    # @private
+    # Draws a viewport. Usually called from `draw_all`.
     draw_viewport: (viewport, rect, dest_buffer, passes)->
         gl = @gl
         if gl.isContextLost()
@@ -754,6 +778,8 @@ class RenderManager
 
             gl.enable gl.DEPTH_TEST
 
+    # Draws a cubemap texture.
+    # Usually called from {Probe}
     draw_cubemap: (scene, cubemap, position, near, far) ->
         # TODO
         # * use frustum culling
@@ -807,6 +833,7 @@ class RenderManager
         @use_frustum_culling = use_frustum_culling
         return
 
+    # @nodoc
     debug_uniform_logging: ->
         # This function logs calls to uniform functions
         # and it's useful to find uniforms changing when they shouldn't
@@ -855,33 +882,39 @@ class RenderManager
                 return gl["_"+p](l,t,v)
         return
 
+    # @nodoc
     debug_uniform_logging_get_log: ->
         {u_log} = @
         @u_log = ''
         @u_log_number = 0
         u_log
 
+    # @nodoc
     debug_uniform_logging_break: (number) ->
         @u_log_break = number
 
+    # @nodoc
+    # This function makes sure that all vectors/matrices are typed arrays
     debug_uniform_type: ()->
-        # This function makes sure that all vectors/matrices are typed arrays
         gl = @gl
         for p in ['uniform1fv', 'uniform2fv', 'uniform3fv', 'uniform4fv']
             gl['_'+p] = gl[p]
-            gl[p] = (l,v)->
+            gl[p] = do (p) => (l,v)->
                 if not v.byteLength?
                     throw "wrong type"
                 return gl["_"+p](l,v)
 
         for p in ['uniformMatrix3fv', 'uniformMatrix4fv']
             gl['_'+p] = gl[p]
-            gl[p] = (l,t,v)->
+            gl[p] = do (p) => (l,t,v)->
                 if v.byteLength?
                     throw "wrong type"
                 return gl["_"+p](l,t,v)
         return
 
+    # @nodoc
+    # This method allows to compare performance between few objects
+    # and many object with similar total poly count.
     polycount_debug: (ratio=1)->
         total_polys = 0
         for ob in scene.children
@@ -903,6 +936,8 @@ class RenderManager
                 @removed_meshes.push ob
         return
 
+    # @nodoc
+    # Call after using previous function.
     restore_polycount_debug: ()->
         for ob in @removed_meshes
             added_passes = []
@@ -932,7 +967,7 @@ plain_vs = """
 plain_fs = "precision mediump float;uniform vec4 color;void main(){gl_FragColor = color;}"
 
 
-
+# Singleton instanced in {RenderManager} to draw the debug view of objects.
 class Debug
 
     constructor: (@context)->
@@ -1020,7 +1055,7 @@ class Debug
 
         @vectors = []
 
-
+    # @private
     debug_mesh_from_va_ia: (va, ia)->
         mesh = new Mesh @context
         mesh.stride = 3*4
@@ -1034,6 +1069,7 @@ class Debug
         mesh._update_matrices()
         return mesh
 
+# @nodoc
 sort_by_mat_id = (a,b) ->
     id_a = (a.materials[0]?.id) + a._flip<<30 # boolean coerced into 1 or 0
     id_b = (b.materials[0]?.id) + b._flip<<30

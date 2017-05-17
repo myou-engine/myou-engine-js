@@ -34,15 +34,26 @@ context_dependent_modules = {
 }
 
 # Using objects as dicts by disabling hidden object optimization
+# @nodoc
 dict = ->
     d = {}
     delete d.x
     d
 
+# This is the main engine class. You need to instance it to start using the engine.
+# The engine instance is frequently referred internally as `context`.
+#
+# It instances and contains several singletons like `render_manager`, `events` and `main_loop`.
+#
+# @ property foo [foo] tal
 class Myou
+    # Physics engine functions
     physics:physics
+    # @nodoc
     sensors:sensors
+    # @nodoc
     actuators:actuators
+    # @nodoc
     fetch_objects:fetch_objects
     Action:Action
     Animation:Animation
@@ -50,6 +61,16 @@ class Myou
     FiniteAnimation:FiniteAnimation
     Viewport:Viewport
     Texture:Texture
+    # @property [Object<GameObject>] Object with all game objects in memory. The key is the name.
+    objects: null
+    # @property [MainLoop] Main loop singleton.
+    main_loop: null
+    # @property [RenderManager] Render manager singleton.
+    render_manager: null
+    # @property [Events] Events singleton.
+    events: null
+    # @property [number] Minimum length of the average poligon for LoD calculation, in pixels.
+    mesh_lod_min_length_px: 13
 
     constructor: (root, options)->
         if not root?
@@ -57,6 +78,7 @@ class Myou
         if not options?
             throw "Missing options"
         @scenes = dict()
+        # @property bar [bar] asdf
         @loaded_scenes = []
         @active_sprites = []
         @objects = dict()
@@ -78,7 +100,6 @@ class Myou
         @use_physics = not options.disable_physics
         @hash = Math.random()
         @initial_scene_loaded = false
-        @mesh_lod_min_length_px = 13
 
         # VR
         @_HMD = @_vrscene = null
@@ -137,7 +158,12 @@ class Myou
     initVR: vr.init
     exitVR: vr.exit
 
-
+# Convenience function for creating an HTML canvas element and adding it to another element.
+#
+# @param root [HTMLElement] HTML element to insert the canvas into.
+# @param id [string] Element ID attribute to assign.
+# @param className [string] Element class attribute to assign.
+# @return [HTMLCanvasElement] Canvas element.
 create_canvas = (root, id, className='MyouEngineCanvas')->
     canvas = document.createElement 'canvas'
     if root?
@@ -149,6 +175,11 @@ create_canvas = (root, id, className='MyouEngineCanvas')->
         canvas.className = className
     return canvas
 
+# Convenience function for creating an HTML canvas element that fills the whole viewport.
+#
+# Ideal for a HTML file with no elements in the body.
+#
+# @return [HTMLCanvasElement] Canvas element.
 create_full_window_canvas = ->
     document.body.style.margin = '0 0 0 0'
     document.body.style.height = '100vh'

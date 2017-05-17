@@ -58,6 +58,8 @@ GL_UNSIGNED_INT = 0x1405
 GL_FLOAT = 0x1406
 ZERO_BBOX = [vec3.create(), vec3.create()]
 
+# MeshData contains all data of a mesh object that is loaded separately
+# from the object itself. Available as `mesh_object.data`.
 class MeshData
     constructor: (@context)->
         @type = 'MESH'
@@ -79,15 +81,18 @@ class MeshData
         @phy_convex_hull = null
         @phy_mesh = null
 
+    # @private
+    # Restores GPU data after context is lost.
     reupload: ->
         if @users[0]
             new_data = @users[0].load_from_va_ia @varray, @iarray
             for u in @users
                 u.data.remove u
                 u.data = new_data
-                u.configure_materials()
         return
 
+    # Removes the data from an object, and deletes itself
+    # if there are no other objects using it.
     remove: (ob)->
         idx = @users.indexOf ob
         while idx != -1
@@ -139,6 +144,8 @@ class Mesh extends GameObject
 
         @mesh_name = '' # only for debug purposes
 
+    # @private
+    # Loads data from a freshly loaded ArrayBuffer. Used in loader.
     load_from_arraybuffer: (data)->
         # ASSUMING LITTLE ENDIAN
         vlen = @offsets[@offsets.length-2] # 4 byte units
@@ -149,11 +156,16 @@ class Mesh extends GameObject
         @context.main_loop.add_frame_callback =>
             @load_from_va_ia va, ia
 
-
+    # Loads mesh data from arrays or arraybuffers containing
+    # vertices and indices. Automatically sets submesh offsets.
+    # @param vertices [Array<number>] Raw vertex buffer data.
+    # @param vertices [Array<number>] Raw indices.
     load_from_lists: (vertices, indices)->
         @offsets = [0, 0, vertices.length, indices.length]
         @load_from_va_ia new Float32Array(vertices), new Uint16Array(indices)
 
+    # @private
+    # Loads mesh from appropately typed arrays and already set offsets.
     load_from_va_ia: (va, ia)->
         if @data?
             @data.remove @
@@ -204,6 +216,7 @@ class Mesh extends GameObject
         # @context.render_manager.draw_mesh(@, ZERO_MATRIX, -1, false)
         return data
 
+    # Updates index arrays. Usually used after faces are sorted.
     update_iarray: ->
         if not @data
             return
@@ -350,6 +363,9 @@ class Mesh extends GameObject
 
         return amesh
 
+    # Returns a clone of the object
+    # @param [Scene] scene: Destination scene
+    # @param [bool] recursive: Whether to clone its children
     clone: (scene, recursive) ->
         clone = super scene, recursive
         clone.uv_rect = vec4.clone @uv_rect

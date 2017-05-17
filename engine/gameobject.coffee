@@ -27,8 +27,12 @@ MIRROR_XZ = 32
 MIRROR_YZ = 64
 MIRROR_XYZ = 128
 
+# Main 3D Object class (Called GameObject to distinguish from JS Object).
+#
+# It's the base for mesh objects, cameras, lamps, armatures, etc.
+# It can also be used by itself (a.k.a. Empty).
 class GameObject
-    constructor: (@context, use_physics)->
+    constructor: (@context)->
         @debug=false
         @position = vec3.create()
         @rotation = quat.create()
@@ -103,7 +107,11 @@ class GameObject
 
         # Remember to add any new mutable member to clone()
 
-    #Physics settings into object
+    # Creates or recreates the body in the physics world,
+    # or destroys it if physics have been disabled for this object.
+    #
+    # Usually called after both the object and the physics engine have loaded.
+    # But can also be called after changing physics settings.
     instance_physics: (use_visual_mesh=false) ->
         #This function only can be called if the object is in a scene.
         if @visible_mesh

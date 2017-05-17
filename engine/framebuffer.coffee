@@ -16,6 +16,10 @@ component_types =
 # TODO: Create specific classes like:
 # ByteFramebuffer, FloatFramebuffer, ByteFramebufferWithDepth
 # or something like that
+
+# Framebuffer class. Use it for off-screen rendering, by creating a {Viewport}
+# with a framebuffer as `dest_buffer`.
+# Also used internally for cubemaps, filters, post-processing effects, etc.
 class Framebuffer
     constructor: (@context, @options) ->
         {gl, extensions, has_float_fb_support, has_half_float_fb_support} \
@@ -54,15 +58,15 @@ class Framebuffer
         gl.texImage2D gl.TEXTURE_2D, 0, internal_format, @size_x, @size_y, 0, tex_format, @tex_type, null
 
         @depth_texture = null
-#         if depth_type? and extensions.depth_texture and has_float_fb_support
-#             depth_tex_type = component_types[depth_type]
-#             @depth_texture = gl.createTexture()
-#             gl.bindTexture gl.TEXTURE_2D, @depth_texture
-#             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST
-#             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST
-#             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE
-#             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE
-#             gl.texImage2D gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, @size_x, @size_y, 0, gl.DEPTH_COMPONENT, depth_tex_type, null
+        if depth_type? and extensions.depth_texture and has_float_fb_support
+            depth_tex_type = component_types[depth_type]
+            @depth_texture = gl.createTexture()
+            gl.bindTexture gl.TEXTURE_2D, @depth_texture
+            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST
+            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST
+            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE
+            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE
+            gl.texImage2D gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, @size_x, @size_y, 0, gl.DEPTH_COMPONENT, depth_tex_type, null
 
 
         @framebuffer = fb = gl.createFramebuffer()
@@ -72,7 +76,7 @@ class Framebuffer
             if @depth_texture
                 gl.framebufferTexture2D gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, @depth_texture, 0
             else
-                @render_buffer= rb = gl.createRenderbuffer()
+                @render_buffer = rb = gl.createRenderbuffer()
                 gl.bindRenderbuffer gl.RENDERBUFFER, rb
                 gl.renderbufferStorage gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, @size_x, @size_y
                 gl.framebufferRenderbuffer gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb
@@ -83,10 +87,14 @@ class Framebuffer
         gl.bindRenderbuffer gl.RENDERBUFFER, null
         gl.bindFramebuffer gl.FRAMEBUFFER, null
 
+    # @private
+    # Remakes the framebuffer after a lost context
     recreate: ->
         if @framebuffer
             @constructor @context, @options
 
+    # Sets the framebuffer as the active one for further rendering operations.
+    # @param rect [Array<number>] Viewport rect in pixels: X position, Y position, width, height.
     enable: (rect=null)->
         {gl} = @context.render_manager
         if not rect?
@@ -106,7 +114,8 @@ class Framebuffer
         ## unless we enable preserveDrawingBuffer but may be inefficient
         #render_manager.gl.scissor(left, top, size_x, size_y)
         vec4.set Framebuffer.active_rect, left, top, size_x, size_y
-        
+
+    # Disables the buffer by setting the main screen as output.
     disable: ->
         {gl} = @context.render_manager
         gl.bindFramebuffer gl.FRAMEBUFFER, null
@@ -151,11 +160,15 @@ class Framebuffer
             when gl.FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT
                 'INCOMPLETE_MISSING_ATTACHMENT'
 
+    # Deletes the buffer from GPU memory.
     destroy: ->
         {gl} = @context.render_manager
-        gl.deleteRenderbuffer @render_buffer
+        gl.deteleTexture @texture if @texture?
+        gl.deteleTexture @depth_texture if @depth_texture?
+        gl.deleteRenderbuffer @render_buffer if @render_buffer?
         gl.deleteFramebuffer @framebuffer
 
+# Screen framebuffer target. Usually instanced as `render_manager.main_fb`.
 class MainFramebuffer extends Framebuffer
 
     constructor: (@context)->
