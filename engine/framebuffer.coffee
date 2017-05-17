@@ -163,8 +163,8 @@ class Framebuffer
     # Deletes the buffer from GPU memory.
     destroy: ->
         {gl} = @context.render_manager
-        gl.deteleTexture @texture if @texture?
-        gl.deteleTexture @depth_texture if @depth_texture?
+        gl.deleteTexture @texture if @texture?
+        gl.deleteTexture @depth_texture if @depth_texture?
         gl.deleteRenderbuffer @render_buffer if @render_buffer?
         gl.deleteFramebuffer @framebuffer
 
