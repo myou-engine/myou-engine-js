@@ -45,6 +45,7 @@ class Material
         @inputs = {}
         @_input_list = []
         @animation_strips = @data?.animation_strips
+        @double_sided = Boolean @data?.double_sided
         if @data?
             generator_class = material_types[@data.material_type]
             if not generator_class?
@@ -95,7 +96,6 @@ class Shader
         @is_shadow_material = false  # actually not used
         @users = []
         @group_id = -1
-        @double_sided = Boolean @data.double_sided
         @scene = @material?.scene
         generator = @material?.generator or new PlainShaderMaterial({@data})
 
