@@ -1,14 +1,24 @@
- 
+
+{vec2} = require 'gl-matrix'
+
+_temp_framebuffers = {}
 
 # TODO: Inherit from abstract texture class?
 class Cubemap
+    type: 'TEXTURE'
+    texture_type: 'cubemap'
+    # Size of each face of the cubemap
+    size: 128
+    # GL texture type (default: gl.UNSIGNED_BYTE)
+    gl_type: 0
+
     constructor: (@context, options={}) ->
         {gl} = @context.render_manager
         {
             @size=128
-            @type=gl.UNSIGNED_BYTE
-            @internal_format=gl.RGBA
-            @format=gl.RGBA
+            @gl_type=gl.UNSIGNED_BYTE
+            @gl_internal_format=gl.RGBA
+            @gl_format=gl.RGBA
             @use_filter=true
             @use_mipmap=true
             @color
@@ -46,12 +56,12 @@ class Cubemap
     set_data: (data=[null,null,null,null,null,null]) ->
         {gl} = @context.render_manager
         i = gl.TEXTURE_CUBE_MAP_POSITIVE_X
-        gl.texImage2D(i++, 0, @internal_format, @size, @size, 0, @format, @type, data[0])
-        gl.texImage2D(i++, 0, @internal_format, @size, @size, 0, @format, @type, data[1])
-        gl.texImage2D(i++, 0, @internal_format, @size, @size, 0, @format, @type, data[2])
-        gl.texImage2D(i++, 0, @internal_format, @size, @size, 0, @format, @type, data[3])
-        gl.texImage2D(i++, 0, @internal_format, @size, @size, 0, @format, @type, data[4])
-        gl.texImage2D(i++, 0, @internal_format, @size, @size, 0, @format, @type, data[5])
+        gl.texImage2D(i++, 0, @gl_internal_format, @size, @size, 0, @gl_format, @gl_type, data[0])
+        gl.texImage2D(i++, 0, @gl_internal_format, @size, @size, 0, @gl_format, @gl_type, data[1])
+        gl.texImage2D(i++, 0, @gl_internal_format, @size, @size, 0, @gl_format, @gl_type, data[2])
+        gl.texImage2D(i++, 0, @gl_internal_format, @size, @size, 0, @gl_format, @gl_type, data[3])
+        gl.texImage2D(i++, 0, @gl_internal_format, @size, @size, 0, @gl_format, @gl_type, data[4])
+        gl.texImage2D(i++, 0, @gl_internal_format, @size, @size, 0, @gl_format, @gl_type, data[5])
         if @use_mipmap?
             gl.generateMipmap gl.TEXTURE_CUBE_MAP
         return @
@@ -85,10 +95,111 @@ class Cubemap
         @bound_unit = -1
         return @
 
+    # Render all cubemap faces to a framebuffer with a size of at least 3*size by 2*size.
+    # The format is six faces in a 3*2 mosaic like this:
+    #   | -X -Y -Z
+    #   | +X +Y +Z
+    # 0,0 --------
+    # You can see the OpenGL cube texture convention here:
+    # http://stackoverflow.com/questions/11685608/convention-of-faces-in-opengl-cubemapping
+    # @param fb [framebuffer] Destination framebuffer.
+    # @param size [number] Size of each face.
+    # @return [Cubemap] self
+    render_to_framebuffer: (fb, size=@size) ->
+        {gl, quad} = @context.render_manager
+        material = get_resize_material(@context, @)
+        shader = material.shaders.shader
+        fb.enable [0, 0, size*3, size*2]
+        material.inputs.cube.value = @
+        material.inputs.size.value = size
+        shader.use()
+        shader.uniform_assign_func(gl, shader, null, null, null)
+        gl.bindBuffer gl.ARRAY_BUFFER, quad
+        @context.render_manager.change_enabled_attributes shader.attrib_bitmask
+        gl.vertexAttribPointer shader.attrib_pointers[0][0], 3.0, gl.FLOAT, false, 0, 0
+        gl.drawArrays gl.TRIANGLE_STRIP, 0, 4
+        # Test this with:
+        # $myou.scenes.Scene.post_draw_callbacks.push(function({
+        #     $myou.objects.Cube.probe.cubemap.render_to_framebuffer($myou.render_manager.main_fb)
+        # })
+        return @
+
+    # Gets the pixels of the six cube faces.
+    # @param faces [Array<Uint8Array>] An array of six Uint8Array
+    #     (enough to hold amount of pixels*4) to write into
+    read_faces: (faces, size=@size) ->
+        fb = _temp_framebuffers[size]
+        if not fb?
+            fb = new @context.Framebuffer size: [size*4, size*2], color_type: 'UNSIGNED_BYTE'
+            _temp_framebuffers[size] = fb
+        @render_to_framebuffer fb, size
+        # TODO: read pixels into faces
+        return
+
+
     destroy: ->
         if @gl_tex
             @context.render_manager.gl.deleteTexture @gl_tex
         @gl_tex = null
         @loaded = false
+
+
+
+
+resize_material = null
+# @nodoc
+get_resize_material = (context, any_cubemap) ->
+    if resize_material?
+        return resize_material
+    resize_material = new context.Material '_cubemap_resize', {
+        material_type: 'PLAIN_SHADER',
+        vertex: 'attribute vec3 vertex;
+            void main(){ gl_Position = vec4(vertex.xy*2.0-1.0, -1.0, 1.0); }',
+        fragment: '''
+            precision highp float;
+            uniform samplerCube cube;
+            uniform float size;
+            void main() {
+                float hsize = size * 0.5;
+                float size2 = size * 2.0;
+                vec3 co = vec3(gl_FragCoord.xy-vec2(hsize), -hsize);
+                if(gl_FragCoord.y < size){
+                    if(gl_FragCoord.x < size){
+                        gl_FragColor = textureCube(cube, vec3(co.z, -co.y, -co.x));
+                    }else if(gl_FragCoord.x < size2){
+                        co.x -= size;
+                        gl_FragColor = textureCube(cube, vec3(co.x, co.z, co.y));
+                    }else{
+                        co.x -= size2;
+                        gl_FragColor = textureCube(cube, vec3(co.x, -co.y, co.z));
+                    }
+                }else{
+                    co.y -= size;
+                    if(gl_FragCoord.x < size){
+                        gl_FragColor = textureCube(cube, vec3(-co.z, -co.y, co.x));
+                    }else if(gl_FragCoord.x < size2){
+                        co.x -= size;
+                        gl_FragColor = textureCube(cube, vec3(co.x, -co.z, -co.y));
+                    }else{
+                        co.x -= size2;
+                        gl_FragColor = textureCube(cube, vec3(-co.x, -co.y, -co.z));
+                    }
+                }
+            }
+        ''',
+        uniforms: [
+            {varname: 'size', value: 128},
+            {varname: 'cube', value: any_cubemap},
+        ],
+        # double_sided: true,
+    }
+    fake_mesh = {
+        _signature:'shader'
+        layout: [{"name":"vertex","type":"f","count":3,"offset":0}]
+        vertex_modifiers: []
+    }
+    resize_material.get_shader fake_mesh
+    return resize_material
+
 
 module.exports = {Cubemap}
