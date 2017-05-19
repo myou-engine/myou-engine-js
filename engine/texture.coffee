@@ -42,7 +42,7 @@ class Texture
         @ob_user_names = [] # names of object users, TODO: temporary until #9 is fixed 
         # These hold the data for the current texture, and they
         # change after another texture is loaded
-        @type = '' # One of: image, video, buffers, compressed
+        @texture_type = '' # One of: image, video, buffers, compressed
         @width = @height = 0
         @image = null
         @video = null
@@ -80,7 +80,7 @@ class Texture
                 if @width==0 or @height==0
                     reject "Texture #{name} has no width or height."
                 buffer = pixels.buffer or (new Uint8Array(pixels)).buffer
-                @type = 'buffers'
+                @texture_type = 'buffers'
                 @gl_format = @gl_internal_format = gl.RGBA
                 @gl_type = gl.UNSIGNED_BYTE
                 @buffers = [buffer]
@@ -95,7 +95,7 @@ class Texture
                     console.log "Loading astc texture #{@name}"
                     @context.main_loop.add_frame_callback =>
                         {@width, @height} = astc[0]
-                        @type = 'compressed'
+                        @texture_type = 'compressed'
                         @offset = 16
                         @gl_internal_format = astc[0].format_enum
                         @buffers = [buffer]
@@ -126,7 +126,7 @@ class Texture
                             return reject "Image not found: " + (data.file_name or @name)
                         @buffers = [pixels.data.buffer]
                         [@width, @height] = pixels.shape
-                        @type = 'buffers'
+                        @texture_type = 'buffers'
                         @gl_format = @gl_internal_format = gl.RGBA
                         @gl_type = gl.UNSIGNED_BYTE
                         # flip vertically
@@ -148,7 +148,7 @@ class Texture
                             if nearest_POT(@width) != @width or nearest_POT(@height) != @height
                                 @loaded = false
                                 reject "Texture #{@name} has non-power-of-two size #{@width}x#{@height}"
-                            @type = 'image'
+                            @texture_type = 'image'
                             @restore() #TODO: use @upload and @configure instead when possible
                             resolve @
                     @image.onerror = =>
@@ -165,7 +165,7 @@ class Texture
                     @context.main_loop.add_frame_callback =>
                         # If there's no width or height, assume it's square
                         {@width, @height} = rgb565[0]
-                        @type = 'buffers'
+                        @texture_type = 'buffers'
                         @gl_format = @gl_internal_format = gl.RGB
                         @gl_type = gl.UNSIGNED_SHORT_5_6_5
                         if not @width or not @height
@@ -197,7 +197,7 @@ class Texture
                     # since it was not added to the document.
                     # So if you need that information, add it to the data
                     {@width, @height} = data
-                    @type = 'video'
+                    @texture_type = 'video'
                     if not @is_power_of_two() and (@use_mipmap or @wrap != 'C')
                         if @width and @height
                             @use_mipmap = false
@@ -238,7 +238,7 @@ class Texture
     upload: ->
         {gl} = @context.render_manager
         gl.bindTexture gl.TEXTURE_2D, @gl_tex
-        switch @type
+        switch @texture_type
             when 'buffers'
                 T = Uint16Array
                 if @gl_type == gl.UNSIGNED_BYTE
@@ -276,7 +276,7 @@ class Texture
         @image?.src = ''
         @gl_tex = null
         @loaded = false
-        @type = ''
+        @texture_type = ''
         @width = @height = 0
         @image = null
         @video = null
@@ -314,7 +314,7 @@ class Texture
         @loaded = false
         @promise = null
         @promised_data = null
-        @type = ''
+        @texture_type = ''
         @width = @height = 0
         @image = null
         @video = null
