@@ -209,8 +209,8 @@ class RenderManager
         for scene in @context.scenes
             for k, t of scene.textures
                 t.reupload()
-        for m in @context.all_materials
-            m.reupload()
+        for _,m of @context.all_materials
+            m.delete_all_shaders()
         for k, m in @context.mesh_datas
             m.reupload()
         return

@@ -30,6 +30,13 @@ class Material
         @render_scene = @scene # Materials can be used in other scenes when cloning
         @set_data @data
         @last_shader = null # TODO: workaround for short term compatibility problems
+        # Store it in context.all_materials with unique name
+        @_global_name = (@scene?.name or 'no_scene') + '.' + @name
+        dedup = 0
+        while @context.all_materials[@_global_name]
+            global_name = (@scene?.name or 'no_scene') + '.' + @name + ++dedup
+        @context.all_materials[@_global_name] = @
+
 
     get_shader: (mesh) ->
         if not mesh._signature
@@ -61,6 +68,18 @@ class Material
         # TODO: Handle lights of new scene
         return n
 
+    # Deletes all shaders so they're re-generated when used
+    delete_all_shaders: ->
+        for _,shader of @shaders
+            shader.destroy()
+        return
+
+    destroy: ->
+        for _,shader of @shaders
+            shader.destroy()
+        delete @context.all_materials[@_global_name]
+        return
+
 
 id = 0
 
@@ -84,8 +103,6 @@ class Shader
     # * varyings: list of varyings, TODO. See loader.coffee:93
     constructor: (@context, @data, @material, @layout, @vertex_modifiers) ->
         @id = id++
-        if @context.all_materials.indexOf(@) == -1
-            @context.all_materials.push @
         {@name, uniforms, varyings} = @data
         @shading_params_dict = {}
         gl = @context.render_manager.gl
@@ -96,6 +113,7 @@ class Shader
         @is_shadow_material = false  # actually not used
         @users = []
         @group_id = -1
+        {@name} = @material if @material?
         @scene = @material?.scene
         generator = @material?.generator or new PlainShaderMaterial({@data})
 

@@ -89,7 +89,7 @@ class Myou
         @debug_loader = null
         @canvas = null
         @root = null
-        @all_materials = []
+        @all_materials = dict()
         @mesh_datas = dict()
         @embed_meshes = dict()
         @SHADER_LIB = ''
