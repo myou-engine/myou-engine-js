@@ -1,5 +1,6 @@
 
-{vec2} = require 'gl-matrix'
+{vec2, vec3} = require 'gl-matrix'
+sh = require 'cubemap-sh'
 
 _temp_framebuffers = {}
 
@@ -25,6 +26,7 @@ class Cubemap
         } = options
         @gl_target = 34067 # gl.TEXTURE_CUBE_MAP
         @gl_tex = null
+        @coefficients = (vec3.create() for [0...9])
         @loaded = false
         @bound_unit = -1
         @instance()
@@ -128,14 +130,26 @@ class Cubemap
     # @param faces [Array<Uint8Array>] An array of six Uint8Array
     #     (enough to hold amount of pixels*4) to write into
     read_faces: (faces, size=@size) ->
+        {gl} = @context.render_manager
         fb = _temp_framebuffers[size]
         if not fb?
             fb = new @context.Framebuffer size: [size*4, size*2], color_type: 'UNSIGNED_BYTE'
             _temp_framebuffers[size] = fb
         @render_to_framebuffer fb, size
-        # TODO: read pixels into faces
+        for face_pixels,i in faces
+            x = size * (i%3)
+            y = size * ((i>=3)|0)
+            gl.readPixels(x, y, size, size, gl.RGBA, gl.UNSIGNED_BYTE, face_pixels)
         return
 
+    # Generate spherical harmonics for diffuse shading
+    # @todo TODO: order them to be in the same format as Blender PBR shaders expect
+    generate_spherical_harmonics: (size=@size)->
+        faces = (new Uint8Array(size*size*4) for [0...6])
+        @read_faces(faces, size)
+        [posx, posy, posz, negx, negy, negz] = faces
+        @coefficients = sh [posx, negx, posy, negy, posz, negz], size, 4
+        return @
 
     destroy: ->
         if @gl_tex

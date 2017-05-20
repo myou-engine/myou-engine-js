@@ -9,6 +9,7 @@
     "prepublish": "node ./node_modules/webpack/bin/webpack.js"
   },
   "dependencies": {
+    "cubemap-sh": "^0.2.1",
     "gl-matrix": "^2.3.1",
     "whatwg-fetch": "^1.0.0"
   },

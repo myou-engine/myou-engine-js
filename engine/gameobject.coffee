@@ -564,7 +564,7 @@ class Probe
         @size = nearest_POT @size
         @target_object = object
         @cubemap = new @context.Cubemap {@size}
-#         @cubemap.loaded = false
+        @cubemap.loaded = false
         @position = vec3.create()
         @set_lod_factor()
         if @auto_refresh
@@ -585,6 +585,8 @@ class Probe
         @object.get_world_position(@position)
         @context.render_manager.draw_cubemap(@object.scene, @cubemap,
             @position, @clip_start, @clip_end)
+        # TODO: Detect if any material uses this!
+        @cubemap.generate_spherical_harmonics(@sh_quality)
         @cubemap.loaded = true
 
     destroy: ->

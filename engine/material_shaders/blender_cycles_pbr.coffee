@@ -88,22 +88,26 @@ class BlenderCyclesPBRMaterial
         # PBR uniforms are not given as parameters,
         # so we have to figure out if they're present
         # by getting their locations
+        has_probe = has_coefs = 0
 
         for i in [0..8]
             unf = 'unfsh'+i
             loc = gl.getUniformLocation program, unf
             if loc?
-                if i == 0
-                    code.push "var bg = ob.scene.background_color;"
-                    code.push "gl.uniform3f(locations[#{locations.length}],
-                        bg[0]*0.72, bg[1]*0.72, bg[2]*0.72);"
-                else
-                    # All harmonics except the base are zero, because color is flat all around
-                    code.push "gl.uniform3f(locations[#{locations.length}], 0, 0, 0);"
+                if not has_probe++
+                    code.push 'var probe = ob.probe;'
+                if not has_coefs++
+                    code.push 'if(probe){'
+                    code.push 'var coefs = probe.cubemap.coefficients;'
+                code.push "gl.uniform3fv(locations[#{locations.length}], coefs[#{i}]);"
                 locations.push loc
+        if has_coefs
+            code.push '}' # if(probe)
+
 
         if (loc = gl.getUniformLocation program, 'unflodfactor')?
-            code.push "var probe = ob.probe;"
+            if not has_probe++
+                code.push 'var probe = ob.probe;'
             code.push "gl.uniform1f(locations[#{locations.length}], probe&&probe.lodfactor);"
             locations.push loc
 
