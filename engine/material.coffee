@@ -34,7 +34,7 @@ class Material
         @_global_name = (@scene?.name or 'no_scene') + '.' + @name
         dedup = 0
         while @context.all_materials[@_global_name]
-            global_name = (@scene?.name or 'no_scene') + '.' + @name + ++dedup
+            @_global_name = (@scene?.name or 'no_scene') + '.' + @name + ++dedup
         @context.all_materials[@_global_name] = @
 
 
