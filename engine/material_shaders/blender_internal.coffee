@@ -108,11 +108,14 @@ class BlenderInternalMaterial
                 when 6, 7, 9, 10, 11, 16
                     is_lamp = true
             if is_lamp
-                current_lamp = lamp_indices[u.lamp]
+                # In Blender 2.71, there's some lamp properties with missing lamp name.
+                # For that reason we use "u.lamp or curr_lamp_name".
+                # It assumes it's preceded by another attribute with lamp name.
                 curr_lamp_name = u.lamp or curr_lamp_name
+                current_lamp = lamp_indices[curr_lamp_name]
                 if not current_lamp?
-                    current_lamp = lamp_indices[u.lamp] = lamps.length
-                    lamp = objects[u.lamp]
+                    current_lamp = lamp_indices[curr_lamp_name] = lamps.length
+                    lamp = objects[curr_lamp_name]
                     lamps.push lamp
                     if not lamp?
                         console.error "Lamp '#{name}' not found, referenced in material '#{@material.name}"
