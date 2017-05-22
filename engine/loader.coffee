@@ -59,6 +59,7 @@ load_scene = (name, filter, options, context) ->
             return Promise.resolve(scene)
 
 blender_attr_types =
+    '-1': 'UNUSED'
     5: 'UV'
     6: 'VCOL'
     18: 'TANGENT'
@@ -97,6 +98,7 @@ load_datablock = (scene, data, context) ->
                     type: blender_attr_types[a.type] or "#{a.type}"
                     varname: 'var'+a.varname[3...]
                     attname: (a.name or '').replace(/[^_A-Za-z0-9]/g, '')
+                    gltype: a.gltype # Only for 'UNUSED' for now
                 }
             data.varyings.push type: 'VIEW_POSITION', varname: 'varposition'
             data.varyings.push type: 'VIEW_NORMAL', varname: 'varnormal'

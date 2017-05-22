@@ -154,6 +154,10 @@ class Shader
             for v in varyings or []
                 {varname} = v
                 switch v.type
+                    when 'UNUSED'
+                        varyings_decl.push "varying #{v.gltype} #{varname};"
+                        val = if v.gltype == 'float' then '0.0' else v.gltype+'(0.0)'
+                        varyings_assign.push "#{varname} = #{val};"
                     when 'VIEW_POSITION' # Position relative to the camera
                         varyings_decl.push "varying vec3 #{varname};"
                         varyings_assign.push "#{varname} = view_co.xyz;"
