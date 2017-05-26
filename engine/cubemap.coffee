@@ -143,12 +143,18 @@ class Cubemap
         return
 
     # Generate spherical harmonics for diffuse shading
-    # @todo TODO: order them to be in the same format as Blender PBR shaders expect
     generate_spherical_harmonics: (size=@size)->
         faces = (new Uint8Array(size*size*4) for [0...6])
         @read_faces(faces, size)
         [posx, posy, posz, negx, negy, negz] = faces
         @coefficients = sh [posx, negx, posy, negy, posz, negz], size, 4
+        # See spherical_harmonics_L2() in original shader and
+        # in shader_lib_extractor.py
+        # result is very similar to Blender but not quite the same
+        m=[0.282095,0.488603,0.488603,0.488603,
+           1.092548,1.092548,0.315392,1.092548,0.546274]
+        for c,i in @coefficients[1...]
+            vec3.scale c, c, 1/m[i]
         return @
 
     destroy: ->
