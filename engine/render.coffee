@@ -530,6 +530,31 @@ class RenderManager
         return
 
     # @private
+    # Draws the scene background in a quad,
+    # usually after opaque pass and before transparent pass
+    draw_background: (scene) ->
+        {gl, quad} = @
+        {world_material} = scene
+        shader = world_material.shaders.background
+        if not shader?
+            world_material.data.vertex = 'attribute vec3 vertex;
+            void main(){ gl_Position = vec4(vertex.xy*2.0-1.0, 1.0, 1.0); }'
+            fake_mesh = {
+                _signature:'background'
+                layout: [{"name":"vertex","type":"f","count":3,"offset":0}]
+                vertex_modifiers: []
+            }
+            shader = world_material.get_shader fake_mesh
+        shader.use()
+        shader.uniform_assign_func(gl, shader, scene, @, mat4)
+        gl.bindBuffer gl.ARRAY_BUFFER, quad
+        @change_enabled_attributes shader.attrib_bitmask
+        gl.vertexAttribPointer shader.attrib_pointers[0][0], 3.0, gl.FLOAT, false, 0, 0
+        gl.drawArrays gl.TRIANGLE_STRIP, 0, 4
+        return
+
+
+    # @private
     # Draws a viewport. Usually called from `draw_all`.
     draw_viewport: (viewport, rect, dest_buffer, passes)->
         gl = @gl
@@ -661,7 +686,11 @@ class RenderManager
         dest_buffer.enable rect
 
         clear_bits = viewport.clear_bits
-        if clear_bits & gl.COLOR_BUFFER_BIT
+        if scene.world_material? and @background_alpha >= 1
+            # Don't clear color since we'll be rendering over it
+            # TODO: Shouldn't @background_alpha be in the scene?
+            clear_bits &= ~gl.COLOR_BUFFER_BIT
+        else if clear_bits & gl.COLOR_BUFFER_BIT
             c = scene.background_color
             gl.clearColor c[0],c[1],c[2],@background_alpha
         clear_bits and gl.clear clear_bits
@@ -686,6 +715,9 @@ class RenderManager
                 if ob.visible == true and not ob.bg and not ob.fg and ob.render
                     @draw_mesh(ob, ob.world_matrix, 0)
 
+        # Scene background
+        if scene.world_material?
+            @draw_background scene
 
         # PASS 1  (alpha)
         if passes.indexOf(1)>=0 and scene.mesh_passes[1].length
@@ -823,6 +855,7 @@ class RenderManager
             for ob in scene.mesh_passes[0] when ob.probe?.cubemap != cubemap
                 if ob.visible and ob.data
                     @draw_mesh ob, ob.world_matrix, -1, null, world2cube, proj
+            scene.world_material? and @draw_background(scene)
             if @do_log
                 @do_log = false
                 console.log @debug_uniform_logging_get_log()

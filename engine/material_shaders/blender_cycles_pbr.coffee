@@ -89,13 +89,14 @@ class BlenderCyclesPBRMaterial
         # so we have to figure out if they're present
         # by getting their locations
         has_probe = has_coefs = 0
+        var_probe = 'var probe = ob.probe||ob.scene.background_probe;'
 
         for i in [0..8]
             unf = 'unfsh'+i
             loc = gl.getUniformLocation program, unf
             if loc?
                 if not has_probe++
-                    code.push 'var probe = ob.probe;'
+                    code.push var_probe
                 if not has_coefs++
                     code.push 'if(probe){'
                     code.push 'var coefs = probe.cubemap.coefficients;'
@@ -107,7 +108,7 @@ class BlenderCyclesPBRMaterial
 
         if (loc = gl.getUniformLocation program, 'unflodfactor')?
             if not has_probe++
-                code.push 'var probe = ob.probe;'
+                code.push var_probe
             code.push "gl.uniform1f(locations[#{locations.length}], probe&&probe.lodfactor);"
             locations.push loc
 

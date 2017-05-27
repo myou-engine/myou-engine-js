@@ -1,6 +1,7 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 {Animation} = require './animation'
 {Cubemap} = require './cubemap'
+{Probe} = require './probe'
 fetch_assets = require './fetch_assets'
 {
     update_ob_physics,
@@ -536,66 +537,5 @@ class GameObject
                 return @probe = ob.probe or ob.instance_probe()
             @probe = new Probe @, probe_options
         return @probe
-
-
-class Probe
-    constructor: (@object, options) ->
-        {@context} = @object
-        {
-            @type
-            object
-            @auto_refresh
-            @compute_sh
-            @double_refresh
-            @same_layers
-            @size
-            @sh_quality
-            @clip_start
-            @clip_end
-            @parallax_type
-            @parallax_volume
-            @reflection_plane
-            # TODO: export these two (they're scene-wide)
-            # TODO: bsdf_samples is hard-coded in the shader
-            # and in get_lutsamples_texture
-            @bsdf_samples = 32
-            @lodbias = -0.5
-        } = options
-        @size = nearest_POT @size
-        @target_object = object
-        @cubemap = new @context.Cubemap {@size}
-        @cubemap.loaded = false
-        @position = vec3.create()
-        @set_lod_factor()
-        if @auto_refresh
-            @context.render_manager.probes.push @
-        else
-            @render()
-
-    set_lod_factor: ->
-        @lodfactor = 0.5 * Math.log( ( @size*@size / @bsdf_samples ) ) / Math.log(2)
-        @lodfactor -= @lodbias
-
-    render: ->
-        if @size != @cubemap.size
-            @size = nearest_POT @size
-            @cubemap.size = @size
-            @cubemap.set_data()
-            @set_lod_factor()
-        @object.get_world_position(@position)
-        @context.render_manager.draw_cubemap(@object.scene, @cubemap,
-            @position, @clip_start, @clip_end)
-        # TODO: Detect if any material uses this!
-        @cubemap.generate_spherical_harmonics(@sh_quality)
-        @cubemap.loaded = true
-
-    destroy: ->
-        if @auto_refresh
-            @context.render_manager.probes.remove @
-        @cubemap.destroy()
-
-nearest_POT = (x) ->
-    x = Math.max(0, x)
-    return Math.pow(2, Math.round(Math.log(x)/Math.log(2)))
 
 module.exports = {GameObject}

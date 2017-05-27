@@ -2,10 +2,12 @@
 {PhysicsWorld, set_gravity, remove_body, destroy_world} = require './physics.coffee'
 {load_scene} = require './loader.coffee'
 {fetch_objects} = require './fetch_assets.coffee'
+{Probe} = require './probe'
 
 _collision_seq = 0
 
 class Scene
+    type: 'SCENE'
     constructor: (context, name)->
         existing = context.scenes[name]
         return existing if existing
@@ -31,18 +33,15 @@ class Scene
         @physics_enabled = false
         @world = null
         @gravity = vec3.create()
-        @background_color = vec4.create()
-        @background_color[3] = 1
-        @ambient_color = vec4.create()
-        @ambient_color[3] = 1
-        @tree_name = null
-        @tree = null
+        @background_color = vec4.fromValues 0,0,0,1
+        @ambient_color = vec4.fromValues 0,0,0,1
+        @world_material = null
+        @background_probe = null
+        @background_probe_data = null
         @_children_are_ordered = true
         @last_render_tick = 0
-        @load_callbacks = []
         @pre_draw_callbacks = []
         @post_draw_callbacks = []
-        @_pending_tasks = 0
         @active_particle_systems = []
         @use_physics = true
         @frame_start = 0
@@ -179,9 +178,6 @@ class Scene
             reorder ob
         @_children_are_ordered = true
 
-    load: ->
-        load_scene @name, null, @use_physics, @context
-
     unload: ->
         for ob in @children[...]
             @remove_object ob, false
@@ -191,7 +187,6 @@ class Scene
         # Reduce itself to a stub by deleting itself and copying callbacks
         stub = @context.scenes[@name] = new Scene @context
         stub.name = @name
-        stub.load_callbacks = @load_callbacks
         stub.pre_draw_callbacks = @pre_draw_callbacks
         stub.post_draw_callbacks = @post_draw_callbacks
         stub.logic_ticks = @logic_ticks
@@ -203,8 +198,6 @@ class Scene
         for v in @context.render_manager.viewports[...]
             if v.camera.scene == @
                 @context.render_manager.viewports.remove v
-        if @context.scene == @
-            @context.scene = null
 
     reload: ->
         @unload()
@@ -312,6 +305,13 @@ class Scene
     disable_physics: ->
         @physics_enabled = false
         return @
+
+    instance_probe: ->
+        if @background_probe
+            return @background_probe
+        if @background_probe_data?
+            @background_probe = new Probe @, @background_probe_data
+        return @background_probe
 
 
 module.exports = {Scene}

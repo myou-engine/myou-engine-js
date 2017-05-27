@@ -35,7 +35,7 @@ load_scene = (name, filter, options, context) ->
         if not response.ok
             return Promise.reject "Scene '#{name}' could not be loaded from URL '#{url}' with error '#{response.status} #{response.statusText}'"
         return response.json()
-    .then (data)=>
+    .then (data) ->
         if filter
             data = filter(data)
 
@@ -46,6 +46,7 @@ load_scene = (name, filter, options, context) ->
             load_datablock scene, d, context
 
         context.loaded_scenes.push name
+        scene.instance_probe()
 
         if load_physics
             load_physics_engine().then ->
@@ -75,7 +76,11 @@ load_datablock = (scene, data, context) ->
             vec3.copy(scene.ambient_color, data.ambient_color)
         scene.debug_physics = context.MYOU_PARAMS.debug_physics or data.debug_physics
         scene.active_camera_name = data.active_camera
-        scene.tree_name = data.tree_name
+        if data.world_material?
+            scene.world_material = new Material(context, \
+                data.world_material.name, data.world_material, scene)
+            data.background_probe.auto_refresh = false # TODO: Remove this when it makes sense
+            scene.background_probe_data = data.background_probe
         scene.frame_start = data.frame_start if data.frame_start?
         scene.frame_end = data.frame_end if data.frame_end?
         scene.anim_fps = data.fps if data.fps?
