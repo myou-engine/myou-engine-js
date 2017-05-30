@@ -120,17 +120,19 @@ class Shader
         if @data.vertex
             vs = @data.vertex
             var_model_view_matrix = 'model_view_matrix'
+            var_projection_matrix = 'projection_matrix'
         else
             {has_normal=true} = @data
             var_model_view_matrix = generator.get_model_view_matrix_name()
+            var_projection_matrix = generator.get_projection_matrix_name()
 
             vs_head = ["""
             #ifdef GL_ES
             precision highp float;
             precision highp int;
             #endif
-            uniform mat4 """+var_model_view_matrix+""";
-            uniform mat4 projection_matrix;
+            uniform mat4 #{var_model_view_matrix};
+            uniform mat4 #{var_projection_matrix};
             uniform mat3 normal_matrix;
             uniform vec4 uv_rect;"""]
 
@@ -141,6 +143,8 @@ class Shader
             attribute_lines = for {name, count} in @layout
                 attribute_names.push name
                 "attribute vec#{count} #{name};"
+            if 'vnormal' not in attribute_names
+                attribute_lines.push 'const vec3 vnormal = vec3(0.0);'
 
             modifiers_uniforms = []
             modifiers_bodies = []
@@ -162,8 +166,8 @@ class Shader
                         varyings_decl.push "varying vec3 #{varname};"
                         varyings_assign.push "#{varname} = view_co.xyz;"
                     when 'PROJ_POSITION' # Position relative to screen with 4th component
-                        varyings_decl.push "varying vec4 #{varname};"
-                        varyings_assign.push "#{varname} = proj_co;"
+                        varyings_decl.push "varying vec3 #{varname};"
+                        varyings_assign.push "#{varname} = proj_co.xyz;"
                     when 'VIEW_NORMAL' # Normal relative to the camera
                         varyings_decl.push "varying vec3 #{varname};"
                         varyings_assign.push "#{varname} = normalize(normal_matrix * normal);"
@@ -211,8 +215,20 @@ class Shader
                 "vec4 co = vec4(vertex, 1.0);"
                 "vec3 normal = vnormal;"
                 modifiers_bodies...
-                "vec4 view_co = #{var_model_view_matrix} * co;"
-                "vec4 proj_co = projection_matrix * view_co;"
+                (if @data.fixed_z?
+                    # TODO: This is a bit too hacky! Shared uniforms should be handled better.
+                    # This is used with the background mesh, it calculates the
+                    # final position in screen, then the view coordinate from that
+                    projection_matrix_inverse = generator.get_projection_matrix_inverse_name()
+                    modifiers_uniforms.push "uniform mat4 #{projection_matrix_inverse};"
+                    [
+                        "vec4 proj_co = vec4(co.xy, #{@data.fixed_z.toFixed(7)}, 1.0);"
+                        "vec4 view_co = #{projection_matrix_inverse} * proj_co;"
+                    ]
+                else [
+                    "vec4 view_co = #{var_model_view_matrix} * co;"
+                    "vec4 proj_co = #{var_projection_matrix} * view_co;"
+                ])...
                 varyings_assign...
                 "gl_Position = proj_co;\n}"
             ].join('\n  ')
@@ -285,7 +301,7 @@ class Shader
 
         gl.useProgram prog
         @u_model_view_matrix = gl.getUniformLocation prog, var_model_view_matrix
-        @u_projection_matrix = gl.getUniformLocation prog, "projection_matrix"
+        @u_projection_matrix = gl.getUniformLocation prog, var_projection_matrix
         @u_normal_matrix = gl.getUniformLocation prog, "normal_matrix"
         @u_uv_rect = gl.getUniformLocation prog, "uv_rect"
         @u_group_id = gl.getUniformLocation prog, "group_id"
@@ -366,7 +382,6 @@ class Shader
         else
             console.log "No such variable"
         return
-
 
 
 module.exports = {Material, Shader}

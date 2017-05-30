@@ -76,6 +76,9 @@ class BlenderInternalMaterial
                     return u.varname
         return "model_view_matrix"
 
+    get_projection_matrix_name: ->
+        return "projection_matrix"
+
     get_code: ->
         fragment = @material.data.fragment
         fragment = @material.context.SHADER_LIB + fragment

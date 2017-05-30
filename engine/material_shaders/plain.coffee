@@ -10,6 +10,8 @@ class PlainShaderMaterial
 
     get_model_view_matrix_name: -> 'model_view_matrix'
 
+    get_projection_matrix_name: -> 'projection_matrix'
+
     get_code: -> @material.data # for data.fragment
 
     get_uniform_assign: (gl, program) ->

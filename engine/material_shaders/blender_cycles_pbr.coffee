@@ -21,6 +21,24 @@ class BlenderCyclesPBRMaterial
                     return u.varname
         return "model_view_matrix"
 
+    get_projection_matrix_name: ->
+        for u in @material.data.uniforms or []
+            switch u.type
+                when 'PROJ_MAT' # model_view_matrix
+                    return u.varname
+        return "projection_matrix"
+
+    get_projection_matrix_inverse_name: ->
+        @material.data.uniforms = @material.data.uniforms or []
+        for u in @material.data.uniforms
+            switch u.type
+                when 'PROJ_IMAT' # model_view_matrix
+                    return u.varname
+        # Add it if it doesn't exist
+        varname = "projection_matrix_inverse"
+        @material.data.uniforms.push {type: 'PROJ_IMAT', datatype: 'mat4', varname}
+        return varname
+
     get_code: ->
         fragment = @material.data.fragment
 #         console.log fragment
@@ -57,10 +75,17 @@ class BlenderCyclesPBRMaterial
                         console.error "Lamp '#{name}' not found, referenced in material '#{@material.name}"
                         continue
             switch u.type
-                when 'VIEW_MAT' # inverse model_view_matrix
+                # TODO: A bunch of these should be passed in the same way, see TODO in draw_mesh
+                when 'PROJ_MAT' # projection_matrix
+                    null # Already being set by the renderer
+                when 'PROJ_IMAT' # inverse projection_matrix
+                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, render.projection_matrix_inverse);"
+                when 'OB_VIEW_MAT' # model_view_matrix
                     null # Already being set by the renderer
                 when 'VIEW_IMAT' # inverse model_view_matrix
                     code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, render._cam2world);"
+                when 'VIEW_IMAT3' # inverse view_matrix 3x3, a.k.a. camera rotation matrix
+                    code.push "gl.uniformMatrix3fv(locations[#{loc_idx}], false, render._cam2world3);"
                 when 'OB_MAT' # object_matrix
                     code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, ob.world_matrix);"
                 when 'BG_COLOR'

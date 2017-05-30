@@ -80,11 +80,13 @@ class RenderManager
 
         # Temporary variables
         @_cam2world = mat4.create()
+        @_cam2world3 = mat3.create()
         @_world2cam = mat4.create()
         @_world2cam3 = mat3.create()
         @_world2cam_mx = mat4.create()
         @_world2cam3_mx = mat3.create()
         @_world2light = mat4.create()
+        @projection_matrix_inverse = mat4.create()
         @_m4 = mat4.create()  # note: those are used
         @_m3 = mat3.create()  #       in several methods
         @_v = vec3.create()
@@ -190,6 +192,12 @@ class RenderManager
         gl.bindBuffer gl.ARRAY_BUFFER, @quad
         gl.bufferData gl.ARRAY_BUFFER, new(Float32Array)([0,1,0,0,0,0,1,1,0,1,0,0]), gl.STATIC_DRAW
         gl.bindBuffer gl.ARRAY_BUFFER, null
+
+        @bg_mesh = new @context.Mesh
+        @bg_mesh.load_from_lists([-1,-1,-1, 3,-1,-1, -1,3,-1],[0,1,2])
+        @bg_mesh.stride = 3*4
+        @bg_mesh.radius = 1e999
+        @bg_mesh.materials = [null]
 
         @resize @width, @height, @pixel_ratio_x, @pixel_ratio_y
 
@@ -374,6 +382,9 @@ class RenderManager
     # @private
     # Draws a mesh.
     draw_mesh: (mesh, mesh2world, pass_=-1, material_override, world2cam_override, projection_override)->
+        # TODO: Put all camera matrices into a single argument:
+        # world2cam, cam2world, world2cam3, cam2world3 (aka camera.rotation_matrix),
+        # projection, projection inverse
         # TODO: check epsilon, probably better to check sum of absolutes instead of sqrLen
         if vec3.sqrLen mesh.scale < 0.000001
             mesh.culled_in_last_frame = true
@@ -452,8 +463,8 @@ class RenderManager
             # model_view_matrix, normal_matrix and projection_matrix
             mat4.multiply m4, world2cam_override or @_world2cam, mesh2world
             gl.uniformMatrix4fv shader.u_model_view_matrix, false, m4
-            mat3.multiply m3, @_world2cam3, mesh.normal_matrix
             if shader.u_normal_matrix?
+                mat3.multiply m3, @_world2cam3, mesh.normal_matrix
                 gl.uniformMatrix3fv shader.u_normal_matrix, false, m3
             gl.uniformMatrix4fv shader.u_projection_matrix, false, projection_override or cam.projection_matrix
 
@@ -532,27 +543,8 @@ class RenderManager
     # @private
     # Draws the scene background in a quad,
     # usually after opaque pass and before transparent pass
-    draw_background: (scene) ->
-        {gl, quad} = @
-        {world_material} = scene
-        shader = world_material.shaders.background
-        if not shader?
-            world_material.data.vertex = 'attribute vec3 vertex;
-            void main(){ gl_Position = vec4(vertex.xy*2.0-1.0, 1.0, 1.0); }'
-            fake_mesh = {
-                _signature:'background'
-                layout: [{"name":"vertex","type":"f","count":3,"offset":0}]
-                vertex_modifiers: []
-            }
-            shader = world_material.get_shader fake_mesh
-        shader.use()
-        shader.uniform_assign_func(gl, shader, scene, @, mat4)
-        gl.bindBuffer gl.ARRAY_BUFFER, quad
-        @change_enabled_attributes shader.attrib_bitmask
-        gl.vertexAttribPointer shader.attrib_pointers[0][0], 3.0, gl.FLOAT, false, 0, 0
-        gl.drawArrays gl.TRIANGLE_STRIP, 0, 4
-        return
-
+    draw_background: (scene, world2cam, cam2world, projection_matrix) ->
+        @draw_mesh(@bg_mesh, cam2world, -1, scene.world_material, world2cam, projection_matrix)
 
     # @private
     # Draws a viewport. Usually called from `draw_all`.
@@ -597,7 +589,7 @@ class RenderManager
         filter_fb = @common_filter_fb
 
         # Create cam2world from camera world matrix but ignoring scale
-        cam_rm = cam.rotation_matrix
+        cam_rm = mat3.copy @_cam2world3, cam.rotation_matrix
         cam_wm = cam.world_matrix
         cam2world = @_cam2world
         cam2world[0] = cam_rm[0]
@@ -640,6 +632,8 @@ class RenderManager
         v = vec3.copy @_cull_top, cam.cull_bottom
         v[1] = -v[1]
         vec3.transformMat3 v, v, cam.rotation_matrix
+
+        mat4.invert @projection_matrix_inverse, cam.projection_matrix
 
         # For usage outside this render loop
         mat4.mul cam.world_to_screen_matrix, cam.projection_matrix, world2cam
@@ -717,7 +711,7 @@ class RenderManager
 
         # Scene background
         if scene.world_material?
-            @draw_background scene
+            @draw_background(scene, world2cam, cam2world, cam.projection_matrix)
 
         # PASS 1  (alpha)
         if passes.indexOf(1)>=0 and scene.mesh_passes[1].length
@@ -844,6 +838,7 @@ class RenderManager
             dir[2] += position[2]
             mat4.lookAt world2cube, position, dir, up
             mat4.invert @_cam2world, world2cube
+            mat3.fromMat4 @_cam2world3, @_cam2world
             mat3.fromMat4 @_world2cam3, world2cube
             [r,g,b] = scene.background_color
             gl.clearColor r,g,b,1
@@ -855,7 +850,7 @@ class RenderManager
             for ob in scene.mesh_passes[0] when ob.probe?.cubemap != cubemap
                 if ob.visible and ob.data
                     @draw_mesh ob, ob.world_matrix, -1, null, world2cube, proj
-            scene.world_material? and @draw_background(scene)
+            scene.world_material? and @draw_background(scene, world2cube, @_cam2world, proj)
             if @do_log
                 @do_log = false
                 console.log @debug_uniform_logging_get_log()
