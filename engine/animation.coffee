@@ -240,7 +240,10 @@ class Animation
                         type = orig_chan[0]
                         name = orig_chan[1]
                         prop = orig_chan[2]
-                        blend = v[...].fill(prop=='scale')
+                        blend = v[...]
+                        initial_value = +(prop=='scale') # 1 if scale, 0 otherwise
+                        for _,i in blend
+                            blend[i] = initial_value
                         blend_factor = 1
                     switch strip.blend_type
                         when 'REPLACE'
