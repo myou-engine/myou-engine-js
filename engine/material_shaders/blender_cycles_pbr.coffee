@@ -41,7 +41,6 @@ class BlenderCyclesPBRMaterial
 
     get_code: ->
         fragment = @material.data.fragment
-#         console.log fragment
         fragment = @material.context.SHADER_LIB + fragment
         return {fragment}
 
@@ -54,6 +53,7 @@ class BlenderCyclesPBRMaterial
         current_lamp = null
         current_input = -1
         locations = []
+        tex_locations = []
         textures = [] # temporary, see TODO in material
         for u in @material.data.uniforms or []
             if u.type == -1 # custom uniforms are material.inputs
@@ -104,7 +104,7 @@ class BlenderCyclesPBRMaterial
                         throw "Texture #{u.image} not found (in material #{@material.name})."
                     if not tex.loaded
                         tex.load()
-                    gl.uniform1i locations[loc_idx], textures.length
+                    tex_locations.push locations[loc_idx]
                     textures.push tex
                 else
                     console.log "Warning: unknown uniform", u.varname, \
@@ -138,15 +138,15 @@ class BlenderCyclesPBRMaterial
             locations.push loc
 
         if (loc = gl.getUniformLocation program, 'unfjitter')?
-            gl.uniform1i loc, textures.length
+            tex_locations.push loc
             textures.push get_jitter_texture @
 
         if (loc = gl.getUniformLocation program, 'unflutsamples')?
-            gl.uniform1i loc, textures.length
+            tex_locations.push loc
             textures.push get_lutsamples_texture @
 
         if (loc = gl.getUniformLocation program, 'unfprobe')?
-            gl.uniform1i loc, textures.length
+            tex_locations.push loc
             textures.push null
 
         # detect presence of any of all the uniforms in the shader
@@ -158,7 +158,7 @@ class BlenderCyclesPBRMaterial
         preamble = 'var locations=shader.uniform_locations,
             lamps=shader.lamps, inputs=shader.material._input_list;\n'
         func = new Function 'gl', 'shader', 'ob', 'render', 'mat4', preamble+code.join '\n'
-        {uniform_assign_func: func, uniform_locations: locations, lamps, textures}
+        {uniform_assign_func: func, uniform_locations: locations, lamps, textures, tex_locations}
 
 
 jitter_texture = lutsamples_texture = null

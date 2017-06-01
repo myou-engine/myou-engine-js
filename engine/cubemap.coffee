@@ -35,7 +35,7 @@ class Cubemap
     instance: (data=null) ->
         {gl} = @context.render_manager
         @gl_tex = gl.createTexture()
-        gl.bindTexture gl.TEXTURE_CUBE_MAP, @gl_tex
+        @context.render_manager.bind_texture @
         if @color?
             @fill_color(@color)
         else
@@ -85,16 +85,12 @@ class Cubemap
         @set_data [pixels, pixels, pixels, pixels, pixels, pixels]
 
     bind: ->
-        {gl} = @context.render_manager
-        gl.bindTexture(gl.TEXTURE_CUBE_MAP, @gl_tex)
+        @context.render_manager.bind_texture @
 
     generate_mipmap: ->
         {gl} = @context.render_manager
-        gl.activeTexture gl.TEXTURE16
-        gl.bindTexture gl.TEXTURE_CUBE_MAP, @gl_tex
+        @context.render_manager.bind_texture @
         gl.generateMipmap gl.TEXTURE_CUBE_MAP
-        gl.bindTexture gl.TEXTURE_CUBE_MAP, null
-        @bound_unit = -1
         return @
 
     # Render all cubemap faces to a framebuffer with a size of at least 3*size by 2*size.

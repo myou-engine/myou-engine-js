@@ -110,7 +110,4 @@ class Filter extends Shader
         super render_manager.context, {name, vertex: vs, fragment: fs}, null, \
             [{"name":"vertex","type":"f","count":3,"offset":0}], []
 
-        prog = @._program
-        gl.uniform1i gl.getUniformLocation(prog, 'source'), 0
-
 module.exports = {box_filter_code, barrel_filter_code, barrel_filter_chromeab_code, Filter}

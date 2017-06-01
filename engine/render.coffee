@@ -68,6 +68,9 @@ class RenderManager
         @render_tick = 0
         @context_lost_count = 0
         @bound_textures = []
+        @active_texture = -1
+        @next_texture = 0
+        @max_textures = gl.getParameter gl.MAX_TEXTURE_IMAGE_UNITS
         @frame_start = performance.now()
         @pixel_ratio_x = @pixel_ratio_y = 1
         @camera_z = vec3.create()
@@ -327,6 +330,45 @@ class RenderManager
             mask >>= 1
         @attrib_bitmask = bitmask
 
+    # Binds a texture or cubemap to an unused GL texture slot
+    # @param texture [Texture] Texture or [Cubemap]
+    # @return [number] Active texture unit number
+    # TODO: Check if a shader needs more textures than available
+    bind_texture: (texture) ->
+        {gl, bound_textures, active_texture, next_texture, max_textures} = @
+        old_tex = bound_textures[texture.bound_unit]
+        if texture.bound_unit != -1 or old_tex != texture
+            texture.bound_unit = bound_unit = next_texture
+            if active_texture != bound_unit
+                @active_texture = bound_unit
+                gl.activeTexture gl.TEXTURE0 + bound_unit
+            if old_tex?
+                old_tex.bound_unit = -1
+                if old_tex.gl_target != texture.gl_target
+                    # Not sure if this is needed
+                    gl.bindTexture old_tex.gl_target, null
+            gl.bindTexture texture.gl_target, texture.gl_tex
+            bound_textures[bound_unit] = texture
+            @next_texture = (next_texture+1) % max_textures
+        else
+            {bound_unit} = texture
+            if active_texture != bound_unit
+                @active_texture = bound_unit
+                gl.activeTexture gl.TEXTURE0 + bound_unit
+        # TODO: debug option to check if texture is actually bound
+        return bound_unit
+
+    # Unbinds a texture if it was bound
+    unbind_texture: (texture) ->
+        {gl, bound_textures} = @
+        old_tex = bound_textures[texture.bound_unit]
+        if old_tex == texture
+            bound_textures[texture.bound_unit] = null
+            gl.activeTexture gl.TEXTURE0 + texture.bound_unit
+            gl.bindTexture texture.gl_target, null
+            texture.bound_unit = -1
+        return
+
     # Draws all enabled scenes of all the viewports in `render_manager.viewports`.
     # Usually called from {MainLoop}
     draw_all: ->
@@ -479,14 +521,10 @@ class RenderManager
                     tex = mesh.probe?.cubemap or @blank_cube_texture
                 if not tex.loaded
                     tex = @blank_texture
-                {gl_tex, gl_target} = tex
-                if bound_textures[i] != gl_tex
-                    # if @active_texture != i
-                    gl.activeTexture gl.TEXTURE0 + i
-                    #     @active_texture = i
-                    tex.bound_unit = i
-                    gl.bindTexture gl_target, gl_tex
-                    bound_textures[i] = gl_tex
+                {bound_unit} = tex
+                if bound_unit == -1
+                    bound_unit = @bind_texture tex
+                gl.uniform1i shader.tex_locations[i], bound_unit
 
             # Assigning uniforms of vertex modifiers
             mds = shader.modifier_data_store
@@ -638,8 +676,15 @@ class RenderManager
         # For usage outside this render loop
         mat4.mul cam.world_to_screen_matrix, cam.projection_matrix, world2cam
 
+        # unbind all textures
+        # TODO: Is this necessary?
+        for tex, i in @bound_textures when tex?
+            tex.bound_unit = -1
+            gl.activeTexture gl.TEXTURE0 + i
+            gl.bindTexture tex.gl_target, null
+        gl.activeTexture gl.TEXTURE0
+        @active_texture = @next_texture = 0
         @bound_textures.clear()
-        @active_texture = -1
 
         {mesh_lod_min_length_px} = @context
 
@@ -816,10 +861,7 @@ class RenderManager
         world2cube = mat4.create()
         proj = mat4.frustum mat4.create(),-near,near,-near,near,near,far
 
-        if cubemap.bound_unit != -1
-            gl.activeTexture gl.TEXTURE0 + cubemap.bound_unit
-            gl.bindTexture gl.TEXTURE_CUBE_MAP, null
-            cubemap.bound_unit = -1
+        @unbind_texture cubemap
 
         fb = @temporary_framebuffers[cubemap.size]
         if not fb

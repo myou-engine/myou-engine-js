@@ -94,6 +94,7 @@ class BlenderInternalMaterial
         curr_lamp_name = ''
         current_input = -1
         locations = []
+        tex_locations = []
         textures = [] # temporary, see TODO in material
         for u in @material.data.uniforms or []
             if u.type == -1 # custom uniforms are material.inputs
@@ -156,7 +157,7 @@ class BlenderInternalMaterial
                 when 20, GPU_DYNAMIC_LAMP_SPOTBLEND
                     code#.push "gl.uniform1f(locations[#{loc_idx}], lamps[#{current_lamp}].spot_blend);"
                 when 14, GPU_DYNAMIC_SAMPLER_2DSHADOW
-                    gl.uniform1i locations[loc_idx], textures.length
+                    tex_locations.push locations[loc_idx]
                     textures.push render_scene.objects[u.lamp].shadow_texture
                 when 13, GPU_DYNAMIC_SAMPLER_2DIMAGE, GPU_DYNAMIC_SAMPLER_2DBUFFER # 2D image
                     tex = scene?.textures[u.image]
@@ -164,7 +165,7 @@ class BlenderInternalMaterial
                         throw "Texture #{u.image} not found (in material #{@material.name})."
                     if not tex.loaded
                         tex.load()
-                    gl.uniform1i locations[loc_idx], textures.length
+                    tex_locations.push locations[loc_idx]
                     textures.push tex
                 when GPU_DYNAMIC_AMBIENT_COLOR
                     code.push "gl.uniform4fv(locations[#{loc_idx}], ob.scene.ambient_color);"
@@ -205,7 +206,7 @@ class BlenderInternalMaterial
         preamble = 'var locations=shader.uniform_locations,
             lamps=shader.lamps, inputs=shader.material._input_list;\n'
         func = new Function 'gl', 'shader', 'ob', 'render', 'mat4', preamble+code.join '\n'
-        {uniform_assign_func: func, uniform_locations: locations, lamps, textures}
+        {uniform_assign_func: func, uniform_locations: locations, lamps, textures, tex_locations}
 
 
 module.exports = {BlenderInternalMaterial}

@@ -1,4 +1,4 @@
- 
+
 
 class PlainShaderMaterial
     constructor: (@material) ->
@@ -17,6 +17,7 @@ class PlainShaderMaterial
     get_uniform_assign: (gl, program) ->
         code = []
         locations = []
+        tex_locations = []
         textures = []
         for u,i in @material.data.uniforms or []
             {varname, value} = u
@@ -26,7 +27,7 @@ class PlainShaderMaterial
             loc_idx = locations.length
             value_code = "inputs[#{i}].value"
             code.push if value.type == 'TEXTURE'
-                gl.uniform1i uloc, textures.length
+                tex_locations.push uloc
                 textures.push value
             else if value.length?
                 "gl.uniform#{value.length}fv(locations[#{loc_idx}], #{value_code});"
@@ -43,6 +44,7 @@ class PlainShaderMaterial
             uniform_assign_func,
             uniform_locations: locations,
             textures,
+            tex_locations,
         }
 
 

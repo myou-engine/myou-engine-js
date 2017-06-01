@@ -39,7 +39,7 @@ class Texture
         @promise = null
         @promised_data = null
         @users = [] # materials
-        @ob_user_names = [] # names of object users, TODO: temporary until #9 is fixed 
+        @ob_user_names = [] # names of object users, TODO: temporary until #9 is fixed
         # These hold the data for the current texture, and they
         # change after another texture is loaded
         @texture_type = '' # One of: image, video, buffers, compressed
@@ -237,7 +237,7 @@ class Texture
 
     upload: ->
         {gl} = @context.render_manager
-        gl.bindTexture gl.TEXTURE_2D, @gl_tex
+        @context.render_manager.bind_texture @
         switch @texture_type
             when 'buffers'
                 T = Uint16Array
@@ -268,7 +268,7 @@ class Texture
                 gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, @video
                 if @use_mipmap
                     gl.generateMipmap gl.TEXTURE_2D
-        gl.bindTexture gl.TEXTURE_2D, null
+        return
 
     unload: ->
         if @gl_tex?
@@ -286,7 +286,7 @@ class Texture
 
     configure: ->
         {gl, extensions} = @context.render_manager
-        gl.bindTexture gl.TEXTURE_2D, @gl_tex
+        @context.render_manager.bind_texture @
         gl_linear_nearest = if @filter then gl.LINEAR else gl.NEAREST
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl_linear_nearest
         # TODO: add mipmap options to the GUI
@@ -304,7 +304,6 @@ class Texture
         wrap_const = {'C': gl.CLAMP_TO_EDGE, 'R': gl.REPEAT, 'M': gl.MIRRORED_REPEAT}[@wrap[0]]
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap_const
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap_const
-        gl.bindTexture gl.TEXTURE_2D, null
         @loaded = true
 
     destroy: ->
