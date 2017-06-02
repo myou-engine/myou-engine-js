@@ -35,6 +35,7 @@ class Cubemap
     instance: (data=null) ->
         {gl} = @context.render_manager
         @gl_tex = gl.createTexture()
+        @loaded = true # bind_texture requires this
         @context.render_manager.bind_texture @
         if @color?
             @fill_color(@color)
@@ -52,7 +53,6 @@ class Cubemap
         gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, mag_filter)
         gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
         gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-        @loaded = true
         return @
 
     set_data: (data=[null,null,null,null,null,null]) ->

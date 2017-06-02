@@ -229,6 +229,8 @@ class Texture
     # Use this after context is lost
     restore: ->
         {gl} = @context.render_manager
+        if @bound_unit != -1
+            @context.render_manager.unbind_texture @
         if @gl_tex?
             gl.deleteTexture @gl_tex
         @gl_tex = gl.createTexture()
@@ -237,6 +239,7 @@ class Texture
 
     upload: ->
         {gl} = @context.render_manager
+        @loaded = true # bind_texture requires this
         @context.render_manager.bind_texture @
         switch @texture_type
             when 'buffers'
@@ -286,6 +289,7 @@ class Texture
 
     configure: ->
         {gl, extensions} = @context.render_manager
+        @loaded = true # bind_texture requires this
         @context.render_manager.bind_texture @
         gl_linear_nearest = if @filter then gl.LINEAR else gl.NEAREST
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl_linear_nearest
@@ -304,7 +308,7 @@ class Texture
         wrap_const = {'C': gl.CLAMP_TO_EDGE, 'R': gl.REPEAT, 'M': gl.MIRRORED_REPEAT}[@wrap[0]]
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap_const
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap_const
-        @loaded = true
+        return @
 
     destroy: ->
         if @gl_tex

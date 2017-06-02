@@ -51,6 +51,7 @@ class Material
     set_data: (@data) ->
         @inputs = {}
         @_input_list = []
+        @_texture_list = []
         @animation_strips = @data?.animation_strips
         @double_sided = Boolean @data?.double_sided
         if @data?
@@ -106,8 +107,6 @@ class Shader
         {@name, uniforms, varyings} = @data
         @shading_params_dict = {}
         gl = @context.render_manager.gl
-        @tex_locations = []
-        @textures = []
         lamps = {} # lamp_name: {varpos, varcolor3, varcolor4, dist}
         @lamps = []  # [[lamp, varpos, varcolor3, varcolor4, dist], ...]
         @is_shadow_material = false  # actually not used
@@ -316,7 +315,7 @@ class Shader
 
         # TODO: move textures to @material,
         # create ramps in loader, assign them there as dict, make _texture_list or something
-        {@uniform_assign_func, @uniform_locations, @lamps, @textures, @tex_locations} = \
+        {@uniform_assign_func, @uniform_locations, @lamps} = \
             generator.get_uniform_assign(gl, prog)
 
         fb = @context.render_manager.common_filter_fb

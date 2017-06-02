@@ -2,11 +2,12 @@
 
 class PlainShaderMaterial
     constructor: (@material) ->
-        {data, _input_list, inputs} = @material
+        {data, _input_list, inputs, _texture_list} = @material
         for u in data.uniforms or []
             {varname, value} = u
             _input_list.push inputs[varname] = {value, type: value.length or 1}
-
+            if u.type == 'TEXTURE'
+                _texture_list.push inputs[varname]
 
     get_model_view_matrix_name: -> 'model_view_matrix'
 
@@ -17,8 +18,6 @@ class PlainShaderMaterial
     get_uniform_assign: (gl, program) ->
         code = []
         locations = []
-        tex_locations = []
-        textures = []
         for u,i in @material.data.uniforms or []
             {varname, value} = u
             uloc = gl.getUniformLocation(program, u.varname)
@@ -27,8 +26,7 @@ class PlainShaderMaterial
             loc_idx = locations.length
             value_code = "inputs[#{i}].value"
             code.push if value.type == 'TEXTURE'
-                tex_locations.push uloc
-                textures.push value
+                "gl.uniform1i(locations[#{loc_idx}], #{value_code}.bound_unit);"
             else if value.length?
                 "gl.uniform#{value.length}fv(locations[#{loc_idx}], #{value_code});"
             else
@@ -43,8 +41,6 @@ class PlainShaderMaterial
         {
             uniform_assign_func,
             uniform_locations: locations,
-            textures,
-            tex_locations,
         }
 
 

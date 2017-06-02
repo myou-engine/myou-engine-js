@@ -191,6 +191,10 @@ class RenderManager
 
         @blank_cube_texture = new @context.Cubemap size: 16, color: [0,0,0,0]
 
+        @blank_textures = []
+        @blank_textures[gl.TEXTURE_2D] = @blank_texture
+        @blank_textures[gl.TEXTURE_CUBE_MAP] = @blank_cube_texture
+
         @quad = gl.createBuffer()
         gl.bindBuffer gl.ARRAY_BUFFER, @quad
         gl.bufferData gl.ARRAY_BUFFER, new(Float32Array)([0,1,0,0,0,0,1,1,0,1,0,0]), gl.STATIC_DRAW
@@ -347,7 +351,10 @@ class RenderManager
                 if old_tex.gl_target != texture.gl_target
                     # Not sure if this is needed
                     gl.bindTexture old_tex.gl_target, null
-            gl.bindTexture texture.gl_target, texture.gl_tex
+            if texture.loaded
+                gl.bindTexture texture.gl_target, texture.gl_tex
+            else
+                gl.bindTexture texture.gl_target, @blank_textures[texture.gl_target].gl_tex
             bound_textures[bound_unit] = texture
             @next_texture = (next_texture+1) % max_textures
         else
@@ -511,20 +518,16 @@ class RenderManager
             gl.uniformMatrix4fv shader.u_projection_matrix, false, projection_override or cam.projection_matrix
 
             # Enabling textures and assigning their respective uniforms
-            # TODO: change the oldest texture and appropiate uniform
-            # instead of have them preassigned sequentially
             # TODO: figure out a way to do object-specific textures
-            for i in [0...shader.textures.length]
-                tex = shader.textures[i]
-                if not tex?
+            for tex_input in mat._texture_list
+                if tex_input.is_probe
                     # this means it's the probe cube texture
                     tex = mesh.probe?.cubemap or @blank_cube_texture
-                if not tex.loaded
-                    tex = @blank_texture
-                {bound_unit} = tex
-                if bound_unit == -1
-                    bound_unit = @bind_texture tex
-                gl.uniform1i shader.tex_locations[i], bound_unit
+                    tex_input.value = tex
+                else
+                    tex = tex_input.value
+                if tex.bound_unit == -1
+                    @bind_texture tex
 
             # Assigning uniforms of vertex modifiers
             mds = shader.modifier_data_store

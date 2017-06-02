@@ -7,11 +7,17 @@
 
 class BlenderCyclesPBRMaterial
     constructor: (@material) ->
-        {data, _input_list, inputs, @context} = @material
-        for u in data.uniforms when u.type == -1
-            path = u.path or u.index
-            value = if u.value.length? then new Float32Array(u.value) else u.value
-            _input_list.push inputs[path] = {value, type: u.count}
+        {data, _input_list, inputs, _texture_list, @context, scene} = @material
+        for u in data.uniforms
+            switch u.type
+                when 'IMAGE'
+                    _texture_list.push {value: null}
+        @unfjitter_index = _texture_list.length
+        _texture_list.push {value: get_jitter_texture(scene)}
+        @unflutsamples_index = _texture_list.length
+        _texture_list.push {value: get_lutsamples_texture(scene)}
+        @unfprobe_index = _texture_list.length
+        _texture_list.push {value: null, is_probe: true}
         return
 
     get_model_view_matrix_name: ->
@@ -53,13 +59,14 @@ class BlenderCyclesPBRMaterial
         current_lamp = null
         current_input = -1
         locations = []
-        tex_locations = []
-        textures = [] # temporary, see TODO in material
+        texture_count = 0
         for u in @material.data.uniforms or []
             if u.type == -1 # custom uniforms are material.inputs
                 current_input++
             uloc = gl.getUniformLocation(program, u.varname)
             if not uloc? or uloc == -1
+                if u.type == 'IMAGE'
+                    texture_count++
                 continue
             # We'll use this location in a JS function that we'll be generating below
             # The result is @uniform_assign_func
@@ -104,8 +111,8 @@ class BlenderCyclesPBRMaterial
                         throw "Texture #{u.image} not found (in material #{@material.name})."
                     if not tex.loaded
                         tex.load()
-                    tex_locations.push locations[loc_idx]
-                    textures.push tex
+                    @material._texture_list[texture_count].value = tex
+                    code.push "gl.uniform1i(locations[#{loc_idx}], tex_list[#{texture_count++}].value.bound_unit);"
                 else
                     console.log "Warning: unknown uniform", u.varname, \
                         u.type, "of data type", u.datatype
@@ -138,16 +145,16 @@ class BlenderCyclesPBRMaterial
             locations.push loc
 
         if (loc = gl.getUniformLocation program, 'unfjitter')?
-            tex_locations.push loc
-            textures.push get_jitter_texture @
+            code.push "gl.uniform1i(locations[#{locations.length}], tex_list[#{@unfjitter_index}].value.bound_unit);"
+            locations.push loc
 
         if (loc = gl.getUniformLocation program, 'unflutsamples')?
-            tex_locations.push loc
-            textures.push get_lutsamples_texture @
+            code.push "gl.uniform1i(locations[#{locations.length}], tex_list[#{@unflutsamples_index}].value.bound_unit);"
+            locations.push loc
 
         if (loc = gl.getUniformLocation program, 'unfprobe')?
-            tex_locations.push loc
-            textures.push null
+            code.push "gl.uniform1i(locations[#{locations.length}], tex_list[#{@unfprobe_index}].value.bound_unit);"
+            locations.push loc
 
         # detect presence of any of all the uniforms in the shader
         @unfs = {}
@@ -155,17 +162,17 @@ class BlenderCyclesPBRMaterial
             if gl.getUniformLocation(program, unf)?
                 console.log unf
 
-        preamble = 'var locations=shader.uniform_locations,
-            lamps=shader.lamps, inputs=shader.material._input_list;\n'
+        preamble = 'var locations=shader.uniform_locations, lamps=shader.lamps,
+            material=shader.material, inputs=material._input_list, tex_list=material._texture_list;\n'
         func = new Function 'gl', 'shader', 'ob', 'render', 'mat4', preamble+code.join '\n'
-        {uniform_assign_func: func, uniform_locations: locations, lamps, textures, tex_locations}
+        {uniform_assign_func: func, uniform_locations: locations, lamps}
 
 
 jitter_texture = lutsamples_texture = null
 
-get_jitter_texture = (shader) ->
+get_jitter_texture = (scene) ->
     if not jitter_texture?
-        jitter_texture = new shader.context.Texture shader.material.scene,
+        jitter_texture = new scene.context.Texture scene,
             formats: raw_pixels: {
                 # NOISE_SIZE
                 width: 64, height: 64, pixels: (Math.random()*256)|0 for [0...64*64*4]
@@ -173,9 +180,9 @@ get_jitter_texture = (shader) ->
         jitter_texture.load()
     return jitter_texture
 
-get_lutsamples_texture = (shader) ->
+get_lutsamples_texture = (scene) ->
     if not lutsamples_texture?
-        lutsamples_texture = new shader.context.Texture shader.material.scene,
+        lutsamples_texture = new scene.context.Texture scene,
             formats: raw_pixels: {
                 # TODO: bsdf_samples
                 width: 32, height: 1, pixels: (Math.random()*256)|0 for [0...32*4]
