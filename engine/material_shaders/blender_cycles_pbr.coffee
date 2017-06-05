@@ -95,6 +95,10 @@ class BlenderCyclesPBRMaterial
                     code.push "gl.uniformMatrix3fv(locations[#{loc_idx}], false, render._cam2world3);"
                 when 'OB_MAT' # object_matrix
                     code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, ob.world_matrix);"
+                when 'OB_IMAT' # object_matrix
+                    # NOTE: Objects with zero scale are not drawn, otherwise m4 could be null
+                    code.push "m4 = mat4.invert(render._m4, ob.world_matrix);"
+                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, m4);"
                 when 'BG_COLOR'
                     code.push "gl.uniform4fv(locations[#{loc_idx}], ob.scene.background_color);"
                 when 'LAMP_CO' # lamp position in camera space
