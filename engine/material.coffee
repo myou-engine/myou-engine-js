@@ -24,7 +24,7 @@ material_types =
 
 class Material
     constructor: (@context, @name, @data, @scene) ->
-        @shaders = []
+        @shaders = {}
         @users = []
         @scene?.materials[@name] = this
         @render_scene = @scene # Materials can be used in other scenes when cloning
@@ -73,6 +73,8 @@ class Material
     delete_all_shaders: ->
         for _,shader of @shaders
             shader.destroy()
+        @shaders = {}
+        @last_shader = null
         return
 
     destroy: ->
