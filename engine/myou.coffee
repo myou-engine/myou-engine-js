@@ -25,12 +25,11 @@ actuators = require './actuators'
 {Lamp} = require './lamp'
 {Material} = require './material'
 {Mesh} = require './mesh'
-{ParticleSystem} = require './particles'
 {Scene} = require './scene'
 
 context_dependent_modules = {
     Armature, Camera, Compositor, Curve, Framebuffer, Cubemap,
-    GameObject, GLRay, Lamp, Material, Mesh, ParticleSystem, Scene
+    GameObject, GLRay, Lamp, Material, Mesh, Scene
 }
 
 # Using objects as dicts by disabling hidden object optimization

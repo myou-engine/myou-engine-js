@@ -133,7 +133,7 @@ TriangleMeshShape = (vertices, indices, vstride, scale, margin, name)->
         mesh.things = [inds, verts] # avoid deleting those
         # crashes because wrapbtBvhTriangleMeshShape::calculateLocalInertia
         # is being called for some reason
-        
+
         ## another failed attempt below
         # mesh = new Ammo.btTriangleMesh(true, true)
         # for i in [0...indices.length] by 3
@@ -223,7 +223,7 @@ destroy_body = (body)->
     else
         delete _phy_obs_ptrs[body.ptr]
     if body.char
-        _character_controllers.remove body.char
+        _character_controllers.splice _,1 if (_ = _character_controllers.indexOf body.char)!=-1
     pointers = body.pointers
     destroy body
     for p in pointers

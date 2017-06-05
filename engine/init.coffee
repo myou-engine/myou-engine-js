@@ -4,7 +4,7 @@ if not window.fetch?
 
 require './node_fetch_file.coffee'
 
-require './stdlib.coffee'
+require './math_utils/math_extra.coffee'
 
 # Browser prefix management
 window.requestAnimationFrame =

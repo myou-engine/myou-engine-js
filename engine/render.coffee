@@ -425,7 +425,7 @@ class RenderManager
             _HMD.submitFrame pose
 
         #@gl.flush()
-        @debug.vectors.clear() # TODO: have them per scene? preserve for a bunch of frames?
+        @debug.vectors.splice 0 # TODO: have them per scene? preserve for a bunch of frames?
         @compiled_shaders_this_frame = 0
 
     # @private
@@ -687,7 +687,7 @@ class RenderManager
             gl.bindTexture tex.gl_target, null
         gl.activeTexture gl.TEXTURE0
         @active_texture = @next_texture = 0
-        @bound_textures.clear()
+        @bound_textures.splice 0
 
         {mesh_lod_min_length_px} = @context
 

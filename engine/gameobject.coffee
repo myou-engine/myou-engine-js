@@ -123,8 +123,8 @@ class GameObject
 
         if @body# and @body.world == @scene.world
             remove_body @scene.world, @body
-            @scene.rigid_bodies.remove @
-            @scene.static_ghosts.remove @
+            @scene.rigid_bodies.splice _,1 if (_ = @scene.rigid_bodies.indexOf @)!=-1
+            @scene.static_ghosts.splice _,1 if (_ = @scene.static_ghosts.indexOf @)!=-1
             @body = null
             @phy_debug_mesh = null  # but it preserves phy_debug_hull
 

@@ -205,7 +205,7 @@ class BoneConstraints
         tip = vec3.transformQuat vec3.create(), [0,tip_bone.blength,0], tip_bone.final_rotation
         vec3.add tip, tip, tip_bone.final_position
         vec3.sub tip, tip, first
-        points.insert 0, tip
+        points.unshift tip
         original_points = []
         for p in points
             original_points.push vec3.clone(p)

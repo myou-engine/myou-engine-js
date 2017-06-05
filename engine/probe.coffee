@@ -56,7 +56,7 @@ class Probe
 
     destroy: ->
         if @auto_refresh
-            @context.render_manager.probes.remove @
+            @context.render_manager.probes.splice _,1 if (_ = @context.render_manager.probes.indexOf @)!=-1
         @cubemap.destroy()
 
 nearest_POT = (x) ->

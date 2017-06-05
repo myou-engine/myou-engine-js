@@ -95,30 +95,30 @@ class Scene
             @armatures.push ob
 
     remove_object: (ob, recursive=true)->
-        @children.remove ob
+        @children.splice _,1 if (_ = @children.indexOf ob)!=-1
         if not ob.static
-            @auto_updated_children.remove ob
+            @auto_updated_children.splice _,1 if (_ = @auto_updated_children.indexOf ob)!=-1
         delete @objects[ob.name]
         delete @parents[ob.original_name]
         if ob.type=='MESH'
             # TODO: remake this when remaking the pass system
             # NOTE: not removing from translucent pass because we're not using it
-            @mesh_passes[0].remove ob
-            @mesh_passes[1].remove ob
-            @fg_pass and @fg_pass.remove ob
-            @bg_pass and @bg_pass.remove ob
+            @mesh_passes[0].splice _,1 if (_ = @mesh_passes[0].indexOf ob)!=-1
+            @mesh_passes[1].splice _,1 if (_ = @mesh_passes[1].indexOf ob)!=-1
+            @fg_pass and @fg_pass.splice _,1 if (_ = @fg_pass.indexOf ob)!=-1
+            @bg_pass and @bg_pass.splice _,1 if (_ = @bg_pass.indexOf ob)!=-1
             if ob.data
-                ob.data.remove ob
+                ob.data.splice _,1 if (_ = ob.data.indexOf ob)!=-1
         if ob.type=='LAMP'
             ob.destroy_shadow()
-            @lamps.remove ob
+            @lamps.splice _,1 if (_ = @lamps.indexOf ob)!=-1
         if ob.type=='ARMATURE'
-            @armatures.remove ob
+            @armatures.splice _,1 if (_ = @armatures.indexOf ob)!=-1
 
         if ob.body
             remove_body @world, ob.body
-            @rigid_bodies.remove ob
-            @static_ghosts.remove ob
+            @rigid_bodies.splice _,1 if (_ = @rigid_bodies.indexOf ob)!=-1
+            @static_ghosts.splice _,1 if (_ = @static_ghosts.indexOf ob)!=-1
             # TODO: activate any colliding object to activate the whole island
             # TODO: free phy_mesh btVector3
 
@@ -160,7 +160,8 @@ class Scene
                 quat.copy child.rotation, child.get_world_rotation()
                 child.rotation_order = 'Q'
                 child.set_rotation_order rotation_order
-            parent.children.remove child
+            parent.children.splice _,1 if (_ = parent.children.indexOf child)!=-1
+
         child.parent = null
 
     reorder_children: ->
@@ -197,7 +198,7 @@ class Scene
 
         for v in @context.render_manager.viewports[...]
             if v.camera.scene == @
-                @context.render_manager.viewports.remove v
+                @context.render_manager.viewports.splice _,1 if (_ = @context.render_manager.viewports.indexOf v)!=-1
 
     reload: ->
         @unload()
@@ -259,14 +260,18 @@ class Scene
                     for tex in mat.last_shader?.textures or []
                         used_textures.push tex
         for ob in list
-            ob.data?.remove ob
+            ob_data = ob.data
+            if ob_data?
+                ob_data.splice _,1 if (_ = ob_data.indexOf ob)!=-1
             if unload_textures
                 for mat in ob.materials
                     for tex in mat.last_shader?.textures or []
                         if tex not in used_textures
                             tex.unload()
             for lod_ob in ob.lod_objects or []
-                lod_ob.object.data?.remove ob
+                lod_ob_data = lod_ob.object.data
+                if lod_ob_data?
+                    lod_ob_data.splice _,1 if (_ = lod_ob_data.indexOf ob)!=-1
                 # We're assuming lod objects have same materials
                 # NOTE: should we?
         return

@@ -87,7 +87,7 @@ class MeshData
         if @users[0]
             new_data = @users[0].load_from_va_ia @varray, @iarray
             for u in @users
-                u.data.remove u
+                u.data.splice _,1 if (_ = u.data.indexOf u)!=-1
                 u.data = new_data
         return
 
@@ -168,7 +168,7 @@ class Mesh extends GameObject
     # Loads mesh from appropately typed arrays and already set offsets.
     load_from_va_ia: (va, ia)->
         if @data?
-            @data.remove @
+            @data.splice _,1 if (_ = @data.indexOf @)!=-1
         data = @data = @context.mesh_datas[@hash] = new MeshData @context
         data.hash = @hash
         data.users.push @

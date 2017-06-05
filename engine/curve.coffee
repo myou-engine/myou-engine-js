@@ -47,12 +47,12 @@ class Curve extends GameObject
                     y = interpolate j/resolution, p0y, p1y, p2y, p3y
                     z = interpolate j/resolution, p0z, p1z, p2z, p3z
 
-                    vertices.extend [x,y,z]
+                    vertices.push x, y, z
                     indices.append n
                     indices.append n+1
 
                     #sub_curve vertices and indices
-                    c_vertices.extend [x,y,z]
+                    c_vertices.push x, y, z
                     c_indices.append cn
                     c_indices.append cn+1
 
