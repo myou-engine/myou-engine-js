@@ -1,7 +1,7 @@
 {vec2, vec3, quat} = require 'gl-matrix'
 phy = require './physics.coffee'
 {LogicBlock} = require './logic_block.coffee'
-r3 = require './geometry_utils/r3.coffee'
+r3 = require './math_utils/r3.coffee'
 v3 = vec3.create()
 
 # Capture all the multitouch gestures over the objects in a collision mask
