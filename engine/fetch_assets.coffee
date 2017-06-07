@@ -94,7 +94,12 @@ fetch_mesh = (mesh_object, options={}) ->
                 # If there was no mesh_data, actually load it
                 # (load_from_arraybuffer will populate mesh_datas)
                 context.main_loop.add_frame_callback =>
-                    mesh_object.load_from_arraybuffer data
+                    offset = 0
+                    if data.buffer? and data.byteOffset?
+                        # this is a node Buffer or a Uint8Array, only in node or electron
+                        offset = data.byteOffset
+                        data = data.buffer
+                    mesh_object.load_from_arraybuffer data, offset
                     if mesh_object.physics_type != 'NO_COLLISION' and mesh_object.scene.world
                         #TODO: Remove without resolving the promise too early
                         context.main_loop.add_frame_callback =>

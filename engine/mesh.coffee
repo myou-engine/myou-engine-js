@@ -146,11 +146,11 @@ class Mesh extends GameObject
 
     # @private
     # Loads data from a freshly loaded ArrayBuffer. Used in loader.
-    load_from_arraybuffer: (data)->
+    load_from_arraybuffer: (data, buffer_offset=0)->
         # ASSUMING LITTLE ENDIAN
         vlen = @offsets[@offsets.length-2] # 4 byte units
         ilen = @offsets[@offsets.length-1] # 2 byte units
-        offset = @pack_offset or 0
+        offset = (@pack_offset or 0) + buffer_offset
         va = new Float32Array data, offset, vlen
         ia = new Uint16Array data, offset + vlen * 4, ilen
         @context.main_loop.add_frame_callback =>

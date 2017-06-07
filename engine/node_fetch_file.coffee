@@ -12,7 +12,9 @@ if window.process?.execPath
             @ok = not err
             @status = ''
             @statusText = err?.message
-        arrayBuffer: -> Promise.resolve @buffer.buffer
+        # NOTE: We're returning a _node_ buffer, not an arrayBuffer
+        # so we can handle byteOffsets in electron...
+        arrayBuffer: -> Promise.resolve @buffer
         text: -> Promise.resolve @buffer.toString()
         json: -> Promise.resolve JSON.parse @buffer.toString()
 
