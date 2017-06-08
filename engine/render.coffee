@@ -951,23 +951,24 @@ class RenderManager
             old_h = @height
             @width = size[0]
             @height = size[1]
-            vp_sizes = []
+            restore_vp = []
             for v in @viewports
+                {dest_buffer, rect} = v
                 if v.dest_buffer == @main_fb
+                    restore_vp.push {v, dest_buffer, rect}
                     v.dest_buffer = render_buffer
-                    vp_sizes.push v.rect
-                    v.rect = [v.rect[0]*x_ratio_render, v.rect[1]*y_ratio_render,
-                              v.rect[2]*x_ratio_render, v.rect[3]*y_ratio_render]
+                    v.rect = [rect[0]*x_ratio_render, rect[1]*y_ratio_render,
+                              rect[2]*x_ratio_render, rect[3]*y_ratio_render]
                     v.recalc_aspect()
             # render
             @draw_all()
             # restore viewports
             @width = old_w
             @height = old_h
-            for v in @viewports
-                if v.dest_buffer == render_buffer
-                    v.dest_buffer = @main_fb
-                    v.rect = vp_sizes.unshift()
+            for {v, dest_buffer, rect} in restore_vp
+                v.dest_buffer = dest_buffer
+                v.rect = rect
+                v.recalc_aspect()
             # resize/flip
             out_buffer.enable()
             filter = @filters.resize
@@ -980,7 +981,10 @@ class RenderManager
             {gl} = @
             gl.readPixels 0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(image_data.data.buffer)
             ctx.putImageData image_data, 0, 0
-            canvas.toBlob resolve, 'image/'+format, jpeg_quality
+            canvas.toBlob (blob) ->
+                document.body.removeChild canvas
+                resolve blob
+            , 'image/'+format, jpeg_quality
             return
 
     # @nodoc
@@ -1081,8 +1085,8 @@ class RenderManager
                 for n in ob.data.num_indices
                     removed_polys += n
                 ob.visible = false
-                scene.mesh_passes[0].remove ob
-                scene.mesh_passes[1].remove ob
+                scene.mesh_passes[0] _,1 if (_ = scene.mesh_passes[0] ob)!=-1
+                scene.mesh_passes[1] _,1 if (_ = scene.mesh_passes[1] ob)!=-1
                 @removed_meshes.push ob
         return
 
