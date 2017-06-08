@@ -311,7 +311,7 @@ load_object = (data, scene) ->
             ob.name = data.name
             ob.static = data.static or false
             if data.lamp_type!='POINT' and data.shadow
-                tex_size = closest_pow2(if data.tex_size? then data.tex_size else 256)
+                tex_size = nearest_POT(if data.tex_size? then data.tex_size else 256)
                 tex_size = Math.min(tex_size, context.MYOU_PARAMS.maximum_shadow_size or Infinity)
                 ob.shadow_options =
                     texture_size: tex_size

@@ -157,6 +157,16 @@ class Myou
     initVR: vr.init
     exitVR: vr.exit
 
+    # Makes a screenshot and returns a blob containing it
+    # @param width [number] Width of the desired screenshot in pixels
+    # @param height [number] Height of the desired screenshot in pixels
+    # @option supersampling [number] Amount of samples per pixel for antialiasing
+    # @option format [string] Image format such as "png" or "jpeg"
+    # @option jpeg_quality [number] Quality for compressed formats like jpeg and webp. Between 0 and 1.
+    # @return [Promise] Promise resolving a [Blob]
+    screenshot_as_blob: (width, height, options={}) ->
+        @render_manager.screenshot_as_blob width, height, options
+
 # Convenience function for creating an HTML canvas element and adding it to another element.
 #
 # @param root [HTMLElement] HTML element to insert the canvas into.

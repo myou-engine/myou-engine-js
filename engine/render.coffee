@@ -1,10 +1,11 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 timsort = require 'timsort'
-{Filter, box_filter_code} = require './filters.coffee'
+{Filter, box_filter_code, ResizeFilter} = require './filters.coffee'
 {Compositor, box_filter_code} = require './filters.coffee'
 {Framebuffer, MainFramebuffer} = require './framebuffer.coffee'
 {Mesh} = require './mesh.coffee'
 {Material} = require './material.coffee'
+{next_POT} = require './math_utils/math_extra'
 VECTOR_MINUS_Z = vec3.fromValues 0,0,-1
 
 # Render manager singleton. Performs all operations related to rendering to screen or to a buffer.
@@ -159,6 +160,8 @@ class RenderManager
         @_shadows_were_enabled = @enable_shadows
 
         @shadow_box_filter = new Filter @, box_filter_code, 'box_filter'
+        @filters =
+            resize: new ResizeFilter @context
 
         @common_shadow_fb = null
         @debug = new Debug @context
@@ -283,11 +286,6 @@ class RenderManager
     # @private
     # @deprecated
     recalculate_fb_size: ->
-        next_POT = (x)->
-            x = Math.max(0, x-1)
-            return Math.pow(2, Math.floor(Math.log(x)/Math.log(2))+1)
-        # For nearest POT: pow(2, round(log(x)/log(2)))
-
         # Framebuffer needs to be power of two (POT), so we'll find out the
         # smallest POT that can be used by all viewports
         minx = miny = 0
@@ -708,7 +706,7 @@ class RenderManager
                 mat4.invert world2light, lamp.world_matrix
 
                 for ob in scene.mesh_passes[0]
-                    data = ob.get_lod_mesh(@_vp, mesh_lod_min_length_px).data
+                    data = ob.get_lod_mesh(viewport, mesh_lod_min_length_px).data
                     if ob.visible and data and not ob.culled_in_last_frame
                         @draw_mesh ob, ob.world_matrix, -1, mat, world2light, lamp._projection_matrix
 
@@ -905,6 +903,85 @@ class RenderManager
         cubemap.generate_mipmap()
         @use_frustum_culling = use_frustum_culling
         return
+
+
+    # @nodoc
+    # See myou.screenshot_as_blob()
+    screenshot_as_blob: (width, height, options={}) ->
+        ## Use this to test:
+        # $myou.screenshot_as_blob(1024, 768).then((blob)=>{document.body.innerHTML=`<img src="${URL.createObjectURL(blob)}">`})
+        new Promise (resolve, reject) =>
+            {
+                supersampling=2
+                camera=@active_camera,
+                format='jpeg',
+                jpeg_quality=0.97,
+            } = options
+            # TODO: Tiled rendering, automatically split into tiles
+            #       to support very high supersampling
+            # create framebuffers
+            supersampling = Math.sqrt supersampling
+            console.log supersampling
+            size = [next_POT(width*supersampling), next_POT(height*supersampling)]
+            x_ratio_render = width*supersampling/size[0]
+            y_ratio_render = height*supersampling/size[1]
+            color_type = 'UNSIGNED_BYTE'
+            depth_type = 'UNSIGNED_SHORT'
+            render_buffer = new @context.Framebuffer {size, use_depth: true, color_type, depth_type}
+            size = [next_POT(width), next_POT(height)]
+            x_ratio_output = width/size[0]
+            y_ratio_output = height/size[1]
+            console.log(x_ratio_render,
+                y_ratio_render,
+                x_ratio_output,
+                y_ratio_output)
+            out_buffer = new @context.Framebuffer {size, use_depth: false, color_type, depth_type}
+            # create canvas
+            canvas = document.createElement 'canvas'
+            canvas.style.display = 'none'
+            canvas.width = width
+            canvas.height = height
+            document.body.appendChild canvas
+            ctx = canvas.getContext '2d'
+            image_data = ctx.createImageData width, height
+            # prepare viewports
+            # TODO: have option to use buffer aspect in viewport
+            #       instead of changing @width @height
+            old_w = @width
+            old_h = @height
+            @width = size[0]
+            @height = size[1]
+            vp_sizes = []
+            for v in @viewports
+                if v.dest_buffer == @main_fb
+                    v.dest_buffer = render_buffer
+                    vp_sizes.push v.rect
+                    v.rect = [v.rect[0]*x_ratio_render, v.rect[1]*y_ratio_render,
+                              v.rect[2]*x_ratio_render, v.rect[3]*y_ratio_render]
+                    v.recalc_aspect()
+            # render
+            @draw_all()
+            # restore viewports
+            @width = old_w
+            @height = old_h
+            for v in @viewports
+                if v.dest_buffer == render_buffer
+                    v.dest_buffer = @main_fb
+                    v.rect = vp_sizes.unshift()
+            # resize/flip
+            out_buffer.enable()
+            filter = @filters.resize
+            render_buffer.draw_with_filter_new filter, {
+                flip_y_ratio: y_ratio_render
+                scale_inverse: [x_ratio_render/x_ratio_output,
+                                y_ratio_render/y_ratio_output]
+            }
+            # get pixels, draw onto canvas, conver to blob
+            {gl} = @
+            gl.readPixels 0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(image_data.data.buffer)
+            ctx.putImageData image_data, 0, 0
+            canvas.toBlob resolve, 'image/'+format, jpeg_quality
+            return
 
     # @nodoc
     debug_uniform_logging: ->

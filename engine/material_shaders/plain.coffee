@@ -6,7 +6,7 @@ class PlainShaderMaterial
         for u in data.uniforms or []
             {varname, value} = u
             _input_list.push inputs[varname] = {value, type: value.length or 1}
-            if u.type == 'TEXTURE'
+            if value.type == 'TEXTURE'
                 _texture_list.push inputs[varname]
 
     get_model_view_matrix_name: -> 'model_view_matrix'

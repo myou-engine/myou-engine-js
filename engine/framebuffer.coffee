@@ -1,5 +1,4 @@
-{vec4} = require 'gl-matrix'
-{Filter} = require './filters.coffee'
+{vec2, vec4, mat4} = require 'gl-matrix'
 
 class FbTexture
     constructor: (@gl_tex, @gl_target) ->
@@ -15,6 +14,8 @@ component_types =
     UNSIGNED_INT: 0x1405
     FLOAT: 0x1406
     HALF_FLOAT: 0x8D61
+
+unused_mat4 = mat4.create()
 
 # Pass 'UNSIGNED_BYTE' to color_type for 8 bit per component (default is 'FLOAT')
 # Pass 'UNSIGNED_SHORT' to depth_type to enable depth texture (default is null)
@@ -145,6 +146,16 @@ class Framebuffer
         @context.render_manager.change_enabled_attributes filter.attrib_bitmask
         gl.vertexAttribPointer filter.attrib_pointers[0][0], 3.0, gl.FLOAT, false, 0, 0
         gl.drawArrays gl.TRIANGLE_STRIP, 0, 4
+
+    draw_with_filter_new: (filter, inputs={}) ->
+        material = filter.get_material()
+        console.log material.inputs.source, material.inputs.source.bound_unit
+        material.inputs.source.value = @texture
+        vec2.set material.inputs.source_size.value, @size_x, @size_y
+        for name, value of inputs
+            material.inputs[name].value = value
+        {render_manager} = @context
+        render_manager.draw_mesh(render_manager.bg_mesh, unused_mat4, -1, material)
 
     bind_to_cubemap_side: (cubemap, side) ->
         # NOTE: It has to be enabled

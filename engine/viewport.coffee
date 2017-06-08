@@ -52,16 +52,24 @@ class Viewport
         c = if color then 16384 else 0 # GL_COLOR_BUFFER_BIT
         c |= if depth then 256 else 0 # GL_DEPTH_BUFFER_BIT
         @clear_bits = c
-    
+
     # Clones the viewport. Note that it is added to the list of viewports,
     # and they will be rendering over the same area unless rect is changed.
     # @return {Viewport}
     clone: ->
         return new Viewport(@render_manager, @camera, @rect, @custom_size, @dest_buffer)
-    
+
     # Returns size of viewport in pixels.
     # @return [Array<number>]
     get_size_px: ->
         return [@dest_buffer.size_x, @dest_buffer.size_y]
+
+    destroy: ->
+        idx = @render_manager.viewports.indexOf @
+        if ~idx
+            @render_manager.viewports.splice idx, 1
+        # TODO: Destroy compositor if single user?
+        return
+
 
 module.exports = {Viewport}
