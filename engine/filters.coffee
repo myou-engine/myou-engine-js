@@ -152,7 +152,9 @@ class ResizeFilter extends FilterBase
             varying vec2 source_coord, source_size_inverse;
             void main() {
                 vec2 coord = source_coord * scale_inverse;
-                coord.y = source_size.y*flip_y_ratio-coord.y;
+                if(flip_y_ratio != 0.0){
+                    coord.y = source_size.y * flip_y_ratio - coord.y;
+                }
                 gl_FragColor = texture2D(source, coord*source_size_inverse);
             }
         '''

@@ -12,6 +12,7 @@
 {fetch_objects} = require './fetch_assets.coffee'
 {Texture, get_texture_from_path_legacy} = require './texture.coffee'
 {Material} = require './material.coffee'
+{nearest_POT} = require './math_utils/math_extra'
 
 if process.browser
     # for loading ammo.js relative to the output .js

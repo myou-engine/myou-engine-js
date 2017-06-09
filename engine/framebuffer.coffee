@@ -115,8 +115,8 @@ class Framebuffer
             size_y = rect[3]
         @current_size_x = size_x
         @current_size_y = size_y
-        @context.render_manager.unbind_texture @texture if @texture?
-        @context.render_manager.unbind_texture @depth_texture if @depth_texture?
+        @context.render_manager.unbind_texture @texture if @texture?.bound_unit >= 0
+        @context.render_manager.unbind_texture @depth_texture if @depth_texture?.bound_unit >= 0
         gl.bindFramebuffer gl.FRAMEBUFFER, @framebuffer
         gl.viewport left, top, size_x, size_y
         ## doesn't work for limiting color clearing

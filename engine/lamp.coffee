@@ -10,7 +10,7 @@ class Lamp extends GameObject
         super(@context)
         @lamp_type = 'POINT'
         @shadow_fb = null
-        @shadow_texture = {loaded: true, gl_tex: @context.render_manager.white_texture}
+        @shadow_texture = null
         # set in loader, its presence signals calling init_shadow()
         # when shadows are enabled
         @shadow_options = null
@@ -57,8 +57,8 @@ class Lamp extends GameObject
         # This one has no depth because we're using common_shadow_fb,
         # then applying box blur and storing here
         @shadow_fb = new Framebuffer @context, {size: [texture_size, texture_size], use_depth: false}
-        @shadow_texture.gl_tex = @shadow_fb.texture
-        
+        @shadow_texture = @shadow_fb.texture
+
         # If using half float buffers, add a little bit of extra bias
         {extensions} = @context.render_manager
         extra_bias = ''
@@ -100,7 +100,7 @@ class Lamp extends GameObject
             @_projection_matrix
             )
         return
-    
+
     destroy_shadow: ->
         @shadow_fb?.destroy()
         @shadow_fb = null

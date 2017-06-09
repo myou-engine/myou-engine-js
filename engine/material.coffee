@@ -167,8 +167,8 @@ class Shader
                         varyings_decl.push "varying vec3 #{varname};"
                         varyings_assign.push "#{varname} = view_co.xyz;"
                     when 'PROJ_POSITION' # Position relative to screen with 4th component
-                        varyings_decl.push "varying vec3 #{varname};"
-                        varyings_assign.push "#{varname} = proj_co.xyz;"
+                        varyings_decl.push "varying vec4 #{varname};"
+                        varyings_assign.push "#{varname} = proj_co;"
                     when 'VIEW_NORMAL' # Normal relative to the camera
                         varyings_decl.push "varying vec3 #{varname};"
                         varyings_assign.push "#{varname} = normalize(normal_matrix * normal);"
@@ -359,10 +359,6 @@ class Shader
         @context.render_manager.gl.useProgram @_program
         loc = @context.render_manager.gl.getUniformLocation @_program, uname
         @context.render_manager.gl['uniform'+utype](loc, value)
-
-    debug_set_custom_uniform: (utype, index, value)->
-        @context.render_manager.gl.useProgram @_program
-        @context.render_manager.gl['uniform'+utype](@u_custom[index], value)
 
     debug_blender_material: (varnum) ->
         if not @fs_code.splice
