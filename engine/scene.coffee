@@ -107,8 +107,7 @@ class Scene
             @mesh_passes[1].splice _,1 if (_ = @mesh_passes[1].indexOf ob)!=-1
             @fg_pass and @fg_pass.splice _,1 if (_ = @fg_pass.indexOf ob)!=-1
             @bg_pass and @bg_pass.splice _,1 if (_ = @bg_pass.indexOf ob)!=-1
-            if ob.data
-                ob.data.splice _,1 if (_ = ob.data.indexOf ob)!=-1
+            ob.data?.remove ob
         if ob.type=='LAMP'
             ob.destroy_shadow()
             @lamps.splice _,1 if (_ = @lamps.indexOf ob)!=-1
