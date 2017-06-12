@@ -62,7 +62,7 @@ GPU_DYNAMIC_MAT_MIR              = 9  | GPU_DYNAMIC_GROUP_MAT
 
 class BlenderInternalMaterial
     constructor: (@material) ->
-        {data, _input_list, inputs, _texture_list} = @material
+        {data, _input_list, inputs, _texture_list, context} = @material
         for u in data.uniforms
             switch u.type
                 when -1
@@ -71,7 +71,7 @@ class BlenderInternalMaterial
                     _input_list.push inputs[path] = {value, type: u.count}
                 when 13, GPU_DYNAMIC_SAMPLER_2DIMAGE, GPU_DYNAMIC_SAMPLER_2DBUFFER, \
                     14, GPU_DYNAMIC_SAMPLER_2DSHADOW
-                        _texture_list.push {value: null}
+                        _texture_list.push {value: context.render_manager.blank_texture}
         return
 
     get_model_view_matrix_name: ->
@@ -99,10 +99,15 @@ class BlenderInternalMaterial
         curr_lamp_name = ''
         current_input = -1
         locations = []
-        texture_count = 0
+        texture_count = -1
         for u in @material.data.uniforms or []
-            if u.type == -1 # custom uniforms are material.inputs
-                current_input++
+            # Advance counters independently of uniform presence
+            switch u.type
+                when -1 # custom uniforms are material.inputs
+                    current_input++
+                when 13, GPU_DYNAMIC_SAMPLER_2DIMAGE, GPU_DYNAMIC_SAMPLER_2DBUFFER, \
+                    14, GPU_DYNAMIC_SAMPLER_2DSHADOW
+                        texture_count++
             uloc = gl.getUniformLocation(program, u.varname)
             if not uloc? or uloc == -1
                 continue
@@ -164,7 +169,7 @@ class BlenderInternalMaterial
                 when 14, GPU_DYNAMIC_SAMPLER_2DSHADOW
                     tex = render_scene.objects[u.lamp].shadow_texture
                     @material._texture_list[texture_count].value = tex
-                    code.push "gl.uniform1i(locations[#{loc_idx}], tex_list[#{texture_count++}].value.bound_unit);"
+                    code.push "gl.uniform1i(locations[#{loc_idx}], tex_list[#{texture_count}].value.bound_unit);"
                 when 13, GPU_DYNAMIC_SAMPLER_2DIMAGE, GPU_DYNAMIC_SAMPLER_2DBUFFER # 2D image
                     tex = scene?.textures[u.image]
                     if not tex?
@@ -172,7 +177,7 @@ class BlenderInternalMaterial
                     if not tex.loaded
                         tex.load()
                     @material._texture_list[texture_count].value = tex
-                    code.push "gl.uniform1i(locations[#{loc_idx}], tex_list[#{texture_count++}].value.bound_unit);"
+                    code.push "gl.uniform1i(locations[#{loc_idx}], tex_list[#{texture_count}].value.bound_unit);"
                 when GPU_DYNAMIC_AMBIENT_COLOR
                     code.push "gl.uniform4fv(locations[#{loc_idx}], ob.scene.ambient_color);"
                 when GPU_DYNAMIC_LAMP_COEFFCONST

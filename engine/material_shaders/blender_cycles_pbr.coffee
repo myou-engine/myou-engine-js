@@ -11,7 +11,7 @@ class BlenderCyclesPBRMaterial
         for u in data.uniforms
             switch u.type
                 when 'IMAGE'
-                    _texture_list.push {value: null}
+                    _texture_list.push {value: @context.render_manager.blank_texture}
         @unfjitter_index = _texture_list.length
         _texture_list.push {value: get_jitter_texture(scene)}
         @unflutsamples_index = _texture_list.length
