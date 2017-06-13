@@ -330,7 +330,11 @@ class Mesh extends GameObject
             # TODO: Optimize
             inv = mat4.invert(mat4.create(), @world_matrix)
             if not inv? or not @bound_box
-                return @last_lod_object = @lod_objects[0]?.object or @
+                # Return highest loaded LoD
+                return @ if @data?
+                for {object} in @lod_objects when object.data?
+                    return object
+                return @
             p = vec3.transformMat4 vec3.create(), cam_pos, inv
             p = vec3.max p, p, @bound_box[0]
             p = vec3.min p, p, @bound_box[1]
