@@ -433,7 +433,7 @@ class RenderManager
         # world2cam, cam2world, world2cam3, cam2world3 (aka camera.rotation_matrix),
         # projection, projection inverse
         # TODO: check epsilon, probably better to check sum of absolutes instead of sqrLen
-        if vec3.sqrLen mesh.scale < 0.000001
+        if @_sqscale < 0.000001
             mesh.culled_in_last_frame = true
             return
 

@@ -53,6 +53,7 @@ class GameObject
         @_world_position = vec3.create()
         @_sqdist = 0  # Squared distance to camera
         @_flip = false
+        @_sqscale = 1 # Globally squared scale, to avoid rendering zero scale
         @parent = null
         @children = []
         @static = false
@@ -343,7 +344,11 @@ class GameObject
             [x, y, z, w] = q
 
         scl = @scale
-        @_flip = @parent?._flip or false
+        @_flip = false
+        @_sqscale = vec3.sqrLen scl
+        if @parent?
+            @_flip = @parent._flip
+            @_sqscale *= @parent._sqscale
         if scl[0]*scl[1]*scl[2] < 0
             x=-x
             w=-w
