@@ -117,7 +117,7 @@ load_datablock = (scene, data, context) ->
             for p in data.params or []
                 params[p.name] = p
             input_names = ['', 'diffuse_color', 'diffuse_intensity', 'specular_color', 'specular_intensity', 'specular_hardness', 'emit', 'ambient', 'alpha', 'mir']
-            input_types = [1, 3, 1, 3, 1, 1, 1, 1, 1, 1]
+            input_types = [1, 3, 1, 3, 1, 1, 1, 1, 1, 3]
             for u in data.uniforms
                 if u.material
                     prefix = ''
@@ -125,9 +125,13 @@ load_datablock = (scene, data, context) ->
                         prefix = u.material + '_'
                     iname = input_names[u.type&15]
                     u.path = prefix + iname
-                    u.value = params[u.material][iname] or 0
+                    u.value = params[u.material][iname]
                     u.count = input_types[u.type&15]
                     u.type = -1
+                    if u.count > 1
+                        u.value = u.value or new Float32Array(u.count)
+                    else
+                        u.value = u.value or 0
 
         mat = scene.materials[data.name]
         if mat
