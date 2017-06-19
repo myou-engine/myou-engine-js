@@ -10,7 +10,7 @@ class BlenderCyclesPBRMaterial
         {data, _input_list, inputs, _texture_list, @context, scene} = @material
         for u in data.uniforms
             switch u.type
-                when 'IMAGE'
+                when 'IMAGE', 'LAMP_SHADOW_MAP'
                     _texture_list.push {value: @context.render_manager.blank_texture}
         @unfjitter_index = _texture_list.length
         _texture_list.push {value: get_jitter_texture(scene)}
@@ -101,6 +101,8 @@ class BlenderCyclesPBRMaterial
                     code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, m4);"
                 when 'BG_COLOR'
                     code.push "gl.uniform4fv(locations[#{loc_idx}], ob.scene.background_color);"
+                when 'LAMP_DIR' # lamp direction in camera space
+                    code.push "gl.uniform3fv(locations[#{loc_idx}], lamps[#{current_lamp}]._dir);"
                 when 'LAMP_CO' # lamp position in camera space
                     code.push "gl.uniform3fv(locations[#{loc_idx}], lamps[#{current_lamp}]._view_pos);"
                 when 'LAMP_COL' # lamp color
@@ -117,6 +119,16 @@ class BlenderCyclesPBRMaterial
                         tex.load()
                     @material._texture_list[texture_count].value = tex
                     code.push "gl.uniform1i(locations[#{loc_idx}], tex_list[#{texture_count++}].value.bound_unit);"
+                when 'LAMP_SHADOW_MAP'
+                    tex = render_scene.objects[u.lamp].shadow_texture
+                    @material._texture_list[texture_count].value = tex
+                    code.push "gl.uniform1i(locations[#{loc_idx}], tex_list[#{texture_count++}].value.bound_unit);"
+                when 'LAMP_SHADOW_PROJ'
+                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, lamps[#{current_lamp}]._cam2depth);"
+                when 'LAMP_SHADOW_BIAS'
+                    code.push "gl.uniform1f(locations[#{loc_idx}], lamps[#{current_lamp}].shadow_options.bias);"
+                when 'LAMP_BLEED_BIAS'
+                    code.push "gl.uniform1f(locations[#{loc_idx}], lamps[#{current_lamp}].shadow_options.bleed_bias);"
                 else
                     console.log "Warning: unknown uniform", u.varname, \
                         u.type, "of data type", u.datatype
