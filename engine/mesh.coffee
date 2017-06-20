@@ -317,7 +317,7 @@ class Mesh extends GameObject
         amesh = @
         if @altmeshes.length
             amesh = @altmeshes[@active_mesh_index] or @
-        else if @lod_objects
+        else if @lod_objects.length != 0
             {camera} = viewport
             cam_pos = camera.world_matrix.subarray(12,15)
             # Approximation to nearest point to the surface:
