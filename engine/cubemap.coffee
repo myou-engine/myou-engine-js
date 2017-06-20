@@ -4,9 +4,14 @@ sh = require 'cubemap-sh'
 
 _temp_framebuffers = {}
 
-# TODO: Inherit from abstract texture class?
+# Cubemap texture, currently only for rendering environment maps and probes,
+# not loaded from a file yet.
+#
+# See {Texture} for more information.
 class Cubemap
+    # @nodoc
     type: 'TEXTURE'
+    # @nodoc
     texture_type: 'cubemap'
     # Size of each face of the cubemap
     size: 128
@@ -94,10 +99,13 @@ class Cubemap
         return @
 
     # Render all cubemap faces to a framebuffer with a size of at least 3*size by 2*size.
+    #
     # The format is six faces in a 3*2 mosaic like this:
-    #   | -X -Y -Z
-    #   | +X +Y +Z
-    # 0,0 --------
+    #
+    #       | -X -Y -Z
+    #       | +X +Y +Z
+    #     0,0 --------
+    #
     # You can see the OpenGL cube texture convention here:
     # http://stackoverflow.com/questions/11685608/convention-of-faces-in-opengl-cubemapping
     # @param fb [framebuffer] Destination framebuffer.
@@ -123,8 +131,7 @@ class Cubemap
         return @
 
     # Gets the pixels of the six cube faces.
-    # @param faces [Array<Uint8Array>] An array of six Uint8Array
-    #     (enough to hold amount of pixels*4) to write into
+    # @param faces [Array<Uint8Array>] An array of six Uint8Array (enough to hold amount of pixels*4) to write into
     read_faces: (faces, size=@size) ->
         {gl} = @context.render_manager
         fb = _temp_framebuffers[size]

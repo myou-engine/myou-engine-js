@@ -1,30 +1,39 @@
 
-# Texture.formats is an object with the following format:
-# * Each key is the format name in lower case:
-#   png, jpeg, rgb565, dxt1, dxt5, etc1, pvrtc, atc, crunch
-# * The value is a list of objects, ordered from low quality
+# Main texture class (see also {Cubemap}). It allows creating and managing
+# texture images and videos in many formats and multiple sizes.
+#
+# The `formats` option is an object with the following format:
+# - Each key is the format name in lower case:
+#   png, jpeg, rgb565, dxt1, dxt5, etc1, pvrtc, atc, crunch, etc
+# - The value is a list of objects, ordered from low quality
 #   to high quality, with these fields:
-#   {width, height, file_size, file_name, data_uri}
-#   file_name is the file name relative to data_dir/textures/
-#   data_uri is a "data:" URI containing the whole image
-#   file_name or data_uri must be present, but not both.
+#   {width, height, file_size, file_name, data_uri, pixels}
+# - `file_name` is the file name relative to data_dir/textures/
+# - `data_uri` is a "data:" URI containing the whole image
+# - `pixels` is an array or typed array with the pixels in unsigned byte RGBA format.
+# - `file_name`, `data_uri` or `pixels` must be present, but not more than one.
+#
 # Example:
-# {
-#     png: [
-#         {width: 16, height: 16, file_name: 'foo-16x16.png'},
-#         {width: 256, height: 256, file_name: 'foo.png'},
-#     ]
-#     raw_pixels: [
-#         # raw RGBA pixels
-#         {width: 256, height: 256, pixels: [0,0,0,0, ...]},
-#     ]
-# }
-# Look at image.py in the exporter for more info.
-
-{nearest_POT} = require './math_utils/math_extra'
-
+#
+#     {
+#         png: [
+#             {width: 16, height: 16, file_name: 'foo-16x16.png'},
+#             {width: 256, height: 256, file_name: 'foo.png'},
+#         ]
+#         raw_pixels: [
+#             # raw RGBA pixels
+#             {width: 256, height: 256, pixels: [0,0,0,0, ...]},
+#         ]
+#     }
+#
+# @param scene [Scene]
+# @option options [String] name
+# @option options [Object] formats See above.
+# @option options [String] wrap One of 'C', 'R' or 'M', for Clamp, Repeat or Mirrored, respectively.
+# @option options [Boolean] filter Whether to enable bilinear filtering
+# @option options [Boolean] use_mipmap Whether to enable mipmapping. If the loaded format doesn't have mipmaps, they will be generated.
 class Texture
-    constructor: (@scene, tex_data) ->
+    constructor: (@scene, options) ->
         @type = 'TEXTURE'
         {@context} = @scene
         {
@@ -33,7 +42,7 @@ class Texture
             @wrap='R' # Clamp, Repeat or Mirrored
             @filter=true # enable bilinear filtering
             @use_mipmap=true # TODO: currently not exported!
-        } = tex_data
+        } = options
         @gl_target = 3553 # gl.TEXTURE_2D
         @gl_tex = null
         @bound_unit = -1
@@ -52,14 +61,21 @@ class Texture
         @offset = 0
         @gl_format = @gl_internal_format = @gl_type = 0
 
-    load: ->
-        # TODO: better define how we do this
-        # For now we'll load the low res texture,
-        # and if it was already loaded, give the promise
-        # for the high res one.
-        # When loading a scene, this will be called only once,
-        # even when used many times.
+    # Loads a texture if it's not loaded already.
+    #
+    # `size_ratio` is a number between 0 and 1 to chooses which
+    # texture resolution will be loaded. For example an image of one
+    # megapixel, with a size_ratio of 0.1 will try to load the version
+    # closest to 100k pixels.
+    #
+    # @option options [number] size_ratio See above.
+    # @return [Promise]
+    load: (options) ->
         {gl, extensions} = @context.render_manager
+        {
+            size_ratio = 1 # TODO: use
+        } = options
+
         # # We're using @restore() for now, which does this for us
         # if not @gl_tex?
         #     @gl_tex = gl.createTexture()
@@ -86,7 +102,7 @@ class Texture
                 @gl_format = @gl_internal_format = gl.RGBA
                 @gl_type = gl.UNSIGNED_BYTE
                 @buffers = [buffer]
-                @restore() #TODO: use @upload and @configure instead when possible
+                @upload()
                 resolve @
         else if astc? and extensions.compressed_texture_astc
             # NOTE: Assuming a single element in the list
@@ -102,7 +118,7 @@ class Texture
                         @gl_internal_format = astc[0].format_enum
                         @buffers = [buffer]
                         @use_mipmap = false
-                        @restore() #TODO: use @upload and @configure instead when possible
+                        @upload()
                         resolve @
                 .catch reject
         else if image_list?[0] #if jpeg or png
@@ -140,18 +156,18 @@ class Texture
                             line.set line1
                             line1.set line2
                             line2.set line
-                        @restore() #TODO: use @upload and @configure instead when possible
+                        @upload()
                         resolve @
                 else
                     @image = new Image
                     @image.onload = =>
                         @context.main_loop.add_frame_callback =>
                             {@width, @height} = @image
-                            if nearest_POT(@width) != @width or nearest_POT(@height) != @height
+                            if not @is_power_of_two()
                                 @loaded = false
                                 reject "Texture #{@name} has non-power-of-two size #{@width}x#{@height}"
                             @texture_type = 'image'
-                            @restore() #TODO: use @upload and @configure instead when possible
+                            @upload()
                             resolve @
                     @image.onerror = =>
                         # TODO: Distinguish between not found, timeout and malformed?
@@ -173,7 +189,7 @@ class Texture
                         if not @width or not @height
                             @width = @height = Math.sqrt(buffer.byteLength>>1)
                         @buffers = [buffer]
-                        @restore() #TODO: use @upload and @configure instead when possible
+                        @upload()
                         resolve @
                 .catch reject
         else if video_list?[0]
@@ -211,14 +227,14 @@ class Texture
                             console.warn "Video texture '#{@name}' may not work
                                 correctly if the size is not power of two."
                             console.warn "Specify the size, or set to 'clamp' and disable mipmaps to silence this warning."
-                    @restore() #TODO: use @upload and @configure instead when possible
+                    @upload()
 
                     # update_texture will be called on each game engine frame (in main_loop)
                     # but it only will update the texture if video.currentTime has been changed.
                     update_texture = =>
                         if @video.currentTime != @video.lastTime
                             @video.lastTime = @video.currentTime
-                            @upload()
+                            @update()
                     @video.update_texture = update_texture
                     resolve @
                 @video.onerror = =>
@@ -228,18 +244,21 @@ class Texture
             @promise = Promise.reject("Texture #{@name} has no supported formats")
         return @promise
 
-    # Use this after context is lost
-    restore: ->
+    # @private
+    # Recreates, uploads and configures texture in GPU
+    upload: ->
         {gl} = @context.render_manager
         if @bound_unit != -1
             @context.render_manager.unbind_texture @
         if @gl_tex?
             gl.deleteTexture @gl_tex
         @gl_tex = gl.createTexture()
-        @upload()
+        @update()
         @configure()
 
-    upload: ->
+    # @private
+    # Updates texture data in GPU (uploads texture data)
+    update: ->
         {gl} = @context.render_manager
         @loaded = true # bind_texture requires this
         @context.render_manager.bind_texture @
@@ -275,20 +294,24 @@ class Texture
                     gl.generateMipmap gl.TEXTURE_2D
         return
 
+    # Unloads all texture data that has been generated with load()
     unload: ->
+        if @bound_unit != -1
+            @context.render_manager.unbind_texture @
         if @gl_tex?
             @context.render_manager.gl.deleteTexture @gl_tex
-        @image?.src = ''
+        @image?.src = @video?.src = ''
         @gl_tex = null
         @loaded = false
         @texture_type = ''
         @width = @height = 0
-        @image = null
-        @video = null
+        @image = @video = null
         @buffers = []
         @offset = 0
         @gl_format = @gl_internal_format = @gl_type = 0
 
+    # @private
+    # Sets the GL texture parameters
     configure: ->
         {gl, extensions} = @context.render_manager
         @loaded = true # bind_texture requires this
@@ -313,19 +336,10 @@ class Texture
         return @
 
     destroy: ->
-        if @gl_tex
-            @context.render_manager.gl.deleteTexture @gl_tex
-        @gl_tex = null
-        @loaded = false
-        @promise = null
-        @promised_data = null
-        @texture_type = ''
-        @width = @height = 0
-        @image = null
-        @video = null
-        @buffers = []
-        @gl_format = @gl_internal_format = @gl_type = 0
+        @unload()
 
+    # Tells if both dimensions of the image are power of two.
+    # @return [Boolean]
     is_power_of_two: ->
         {width, height} = @
         if not width or not height
@@ -334,6 +348,8 @@ class Texture
         log2h = Math.log(height)/Math.log(2)
         return (log2w|0) == log2w and (log2h|0) == log2h
 
+# TODO: Check if it's necessary and remove
+# @nodoc
 get_texture_from_path_legacy = (name, path, filter, wrap, file_size=0, scene) ->
     # This assumes we already checked scene.textures
     {context} = scene
