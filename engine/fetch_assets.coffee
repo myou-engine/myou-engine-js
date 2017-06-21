@@ -29,8 +29,8 @@ fetch_textures_of_material = (scene, mat, ob_name="") ->
                     if not u.filepath
                         throw "Texture #{u.image} not found (in material #{mat_name})."
                     tex = texture.get_texture_from_path_legacy u.image, u.filepath, u.filter, u.wrap, u.size, scene
-                tex.load()
                 tex.ob_user_names.push ob_name
+                tex.load()
         )
 
 # Load a mesh of a mesh type object, return a promise
