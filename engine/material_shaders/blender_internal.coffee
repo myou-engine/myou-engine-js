@@ -74,6 +74,21 @@ class BlenderInternalMaterial
                         _texture_list.push {value: context.render_manager.blank_texture}
         return
 
+    assign_textures: ->
+        {data, _input_list, _texture_list, scene, render_scene} = @material
+        texture_count = 0
+        for u in data.uniforms
+            switch u.type
+                when 14, GPU_DYNAMIC_SAMPLER_2DSHADOW
+                    tex = render_scene.objects[u.lamp].shadow_texture
+                    @material._texture_list[texture_count++].value = tex
+                when 13, GPU_DYNAMIC_SAMPLER_2DIMAGE, GPU_DYNAMIC_SAMPLER_2DBUFFER # 2D image
+                    tex = scene?.textures[u.image]
+                    if not tex?
+                        throw "Texture #{u.image} not found (in material #{@material.name})."
+                    @material._texture_list[texture_count++].value = tex
+        return
+
     get_model_view_matrix_name: ->
         for u in @material.data.uniforms or []
             switch u.type
@@ -167,16 +182,8 @@ class BlenderInternalMaterial
                 when 20, GPU_DYNAMIC_LAMP_SPOTBLEND
                     code#.push "gl.uniform1f(locations[#{loc_idx}], lamps[#{current_lamp}].spot_blend);"
                 when 14, GPU_DYNAMIC_SAMPLER_2DSHADOW
-                    tex = render_scene.objects[u.lamp].shadow_texture
-                    @material._texture_list[texture_count].value = tex
                     code.push "gl.uniform1i(locations[#{loc_idx}], tex_list[#{texture_count}].value.bound_unit);"
                 when 13, GPU_DYNAMIC_SAMPLER_2DIMAGE, GPU_DYNAMIC_SAMPLER_2DBUFFER # 2D image
-                    tex = scene?.textures[u.image]
-                    if not tex?
-                        throw "Texture #{u.image} not found (in material #{@material.name})."
-                    if not tex.loaded
-                        tex.load()
-                    @material._texture_list[texture_count].value = tex
                     code.push "gl.uniform1i(locations[#{loc_idx}], tex_list[#{texture_count}].value.bound_unit);"
                 when GPU_DYNAMIC_AMBIENT_COLOR
                     code.push "gl.uniform4fv(locations[#{loc_idx}], ob.scene.ambient_color);"

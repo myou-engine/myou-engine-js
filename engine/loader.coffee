@@ -10,7 +10,7 @@
 {Armature} = require './armature.coffee'
 {physics_engine_url, physics_engine_init, PhysicsWorld, set_gravity} = require './physics.coffee'
 {fetch_objects} = require './fetch_assets.coffee'
-{Texture, get_texture_from_path_legacy} = require './texture.coffee'
+{Texture} = require './texture.coffee'
 {Material} = require './material.coffee'
 {nearest_POT} = require './math_utils/math_extra'
 
@@ -149,11 +149,15 @@ load_datablock = (scene, data, context) ->
                 if type == 13 or type == 0x40001 or type == 0x40002
                     tex = scene.textures[u.image]
                     if not tex?
-                        if not u.filepath
+                        data_uri = u.filepath or ''
+                        if not /^data:/.test data_uri
                             throw "Texture #{u.image} not found (in material #{data.name})."
-                        # Currently, this is only used for ramps
-                        tex = get_texture_from_path_legacy u.image,
-                            u.filepath, u.filter, u.wrap, u.size, scene
+                        # Support for old ramps
+                        console.warn "Obsolete ramp format", u.image
+                        {filepath, filter, wrap, size} = u
+                        formats = {png: [{width: 0, height: 0, file_size: size, file_name: '', data_uri}]}
+                        tex = new Texture scene, {name: u.image, formats, wrap, filter}
+                        scene.textures[u.image] = tex
                     # Defaults to texture stored settings
                     {wrap=tex.wrap, filter=tex.filter, use_mipmap=tex.use_mipmap} = u
                     # Check for mismatch between material textures and warn about it
