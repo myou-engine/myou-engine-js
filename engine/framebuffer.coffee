@@ -4,6 +4,7 @@ class FbTexture
     constructor: (@gl_tex, @gl_target) ->
         @loaded = true
         @bound_unit = -1
+    load: ->
 
 component_types =
     BYTE: 0x1400

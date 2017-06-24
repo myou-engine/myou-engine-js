@@ -9,6 +9,8 @@ class PlainShaderMaterial
             if value.type == 'TEXTURE'
                 _texture_list.push inputs[varname]
 
+    assign_textures: ->
+
     get_model_view_matrix_name: -> 'model_view_matrix'
 
     get_projection_matrix_name: -> 'projection_matrix'

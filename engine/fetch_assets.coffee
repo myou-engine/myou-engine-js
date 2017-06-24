@@ -1,7 +1,6 @@
 texture = require './texture.coffee'
 
 fetch_promises = {}  # {file_name: promise}
-material_promises = {} # {mat_name: promise}
 
 ## Uncomment this to find out why a politician lies
 # Promise._all = Promise._all or Promise.all
@@ -12,26 +11,6 @@ material_promises = {} # {mat_name: promise}
 #     politician = Promise._all list
 #     politician.list = list
 #     politician
-
-# Loads textures of material (given a name), return a promise
-fetch_textures_of_material = (scene, mat, ob_name="") ->
-    if mat.last_shader
-        Promise.all [texture.promise for texture in mat.last_shader.textures]
-    else
-        # Useful when you only want to request textures to be loaded without compiling the shader
-        # TODO: Do we need to draw the texture with a dummy shader
-        # to force it to be actually loaded?
-        Promise.all(for u in mat.data.uniforms \
-            when (u.type == 13 or u.type == 262146 or u.type == 262145) and scene
-                # 2D image, see constants in material.py
-                tex = mat.scene.textures[u.image]
-                if not tex?
-                    if not u.filepath
-                        throw "Texture #{u.image} not found (in material #{mat_name})."
-                    tex = texture.get_texture_from_path_legacy u.image, u.filepath, u.filter, u.wrap, u.size, scene
-                tex.ob_user_names.push ob_name
-                tex.load()
-        )
 
 # Load a mesh of a mesh type object, return a promise
 fetch_mesh = (mesh_object, options={}) ->
@@ -118,7 +97,7 @@ fetch_mesh = (mesh_object, options={}) ->
 # This returns a promise of all things necessary to display the object
 # (meshes, textures, materials)
 fetch_objects = (object_list, options={}) ->
-    {render, fetch_textures=true} = options
+    {render, fetch_textures=true, texture_size_ratio=1} = options
     if not object_list.length
         return Promise.resolve()
 
@@ -128,38 +107,21 @@ fetch_objects = (object_list, options={}) ->
             ob.render = render
         if ob.type == 'MESH'
             {scene} = ob
-            promises.push fetch_mesh(ob, options)
+            if not ob.data
+                promises.push fetch_mesh(ob, options)
             for mat in ob.materials
-                # TODO: we'll assume here there's only one shader per material for now
-                shader = mat.last_shader
-                if not shader and mat.scene? and fetch_textures
-                    # TODO: add this back when we can ensure
-                    # it is drawn at least once, to force loading into the GPU
-                    ###
-                    if scene.enabled and scene.context.main_loop.enabled
-                        # TODO: compile material even though is not
-                        # going to be used
-                        promise = material_promises[mat_name]
-                        if not promise
-                            container = {}
-                            promise = material_promises[mat_name] = new Promise (resolve, reject) ->
-                                do (mat_name) -> container = {resolve, reject}
-                            promise.functions = container
-                        promises.push promise
-                    ###
-                    promises.push fetch_textures_of_material scene, mat, ob.name
+                # TODO: Have a material promise:
+                # * Implement Material::ensure_upload(mesh) which generates a
+                #   triangle with same layout if it doesn't exist already.
+                # * ensure_upload will return a promise (stored in the shader).
+                # * Draw it in a 2x2 px framebuffer for this purpose.
+                # * Fulfill promise after this.
+
+                for {value, is_probe} in mat.get_texture_list() when not is_probe
+                    promises.push value.load {size_ratio: texture_size_ratio}
 
     Promise.all promises
 
-
-
-
-set_altmesh = (ob,i) ->
-    ob.active_mesh_index = i
-
-
 module.exports = {
-    material_promises,
-    fetch_textures_of_material,
     fetch_mesh, fetch_objects
 }

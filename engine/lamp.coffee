@@ -4,16 +4,24 @@
 {Material} = require './material.coffee'
 
 class Lamp extends GameObject
-    type : 'LAMP'
+    # @nodoc
+    type: 'LAMP'
+    # shadow_options contains the configuration for buffer shadow rendering.
+    # If available in the scene data, overwrites the default options and
+    # triggers init_shadow()
+    shadow_options:
+        texture_size: 0 # pixels
+        frustum_size: 0.0 # world units
+        clip_start: 0.0
+        clip_end: 0.0
+        bias: 0.0
+        bleed_bias: 0.0
 
     constructor: (@context)->
         super(@context)
         @lamp_type = 'POINT'
         @shadow_fb = null
         @shadow_texture = null
-        # set in loader, its presence signals calling init_shadow()
-        # when shadows are enabled
-        @shadow_options = null
         # this option allows to stop rendering the shadow when stuff didn't change
         @render_shadow = true
         @_color4 = vec4.fromValues 1,1,1,1
@@ -90,7 +98,7 @@ class Lamp extends GameObject
             frustum_size,
             clip_start,
             clip_end
-            )
+        )
         mat4.multiply(
             @_depth_matrix,
             [0.5, 0.0, 0.0, 0.0,
@@ -98,7 +106,7 @@ class Lamp extends GameObject
             0.0, 0.0, 0.5, 0.0,
             0.5, 0.5, 0.5, 1.0],
             @_projection_matrix
-            )
+        )
         return
 
     destroy_shadow: ->

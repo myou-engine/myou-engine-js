@@ -48,9 +48,10 @@ class Texture
         @bound_unit = -1
         @loaded = false
         @promise = null
+        # If it tries to load the same data as @promised_data,
+        # it won't load it again but instead return the existing promise
         @promised_data = null
         @users = [] # materials
-        @ob_user_names = [] # names of object users, TODO: temporary until #9 is fixed
         # These hold the data for the current texture, and they
         # change after another texture is loaded
         @texture_type = '' # One of: image, video, buffers, compressed
@@ -70,15 +71,14 @@ class Texture
     #
     # @option options [number] size_ratio See above.
     # @return [Promise]
-    load: (options) ->
+    load: (options={}) ->
         {gl, extensions} = @context.render_manager
         {
-            size_ratio = 1 # TODO: use
+            size_ratio = 1
         } = options
+        # TODO: If there's a pending promise, it should be rejected or
+        # delegated if possible
 
-        # # We're using @restore() for now, which does this for us
-        # if not @gl_tex?
-        #     @gl_tex = gl.createTexture()
         base = @scene.data_dir + '/textures/'
         {raw_pixels, jpeg, png, rgb565, dxt1, dxt5, etc1, etc2,
          pvrtc, astc, mp4, ogv, ogg, webm, mov} = @formats
@@ -90,9 +90,13 @@ class Texture
         # should the image be shown until the video starts?)
 
         # Trying formats from best to worst download times
+        # TODO: Refactor process of selecting and promising data
         if raw_pixels?
             if not raw_pixels.width?
-                raw_pixels = raw_pixels[0]
+                raw_pixels = @select_closest_format raw_pixels, size_ratio
+            if @promised_data == raw_pixels
+                return @promise
+            @promised_data = raw_pixels
             @promise = new Promise (resolve, reject) =>
                 {@width=0, @height=0, pixels} = raw_pixels
                 if @width==0 or @height==0
@@ -122,10 +126,7 @@ class Texture
                         resolve @
                 .catch reject
         else if image_list?[0] #if jpeg or png
-            if not @loaded
-                data = image_list[0] # Lowest quality
-            else
-                data = image_list[image_list.length-1] # Highest quality
+            data = @select_closest_format image_list, size_ratio
             if @promised_data == data
                 return @promise
             @promised_data = data
@@ -174,15 +175,16 @@ class Texture
                         reject "Image not found: " + (data.file_name or @name)
                     @image.src = data.data_uri or (base + data.file_name)
         else if rgb565?
-            # TODO: Test this part
-            # NOTE: Assuming a single element in the list
-            if @promise?
+            # TODO: Test this part, or remove
+            data = @select_closest_format rgb565, size_ratio
+            if @promised_data == data
                 return @promise
+            @promised_data = data
             @promise = new Promise (resolve, reject) =>
-                fetch(base+rgb565[0].file_name).then((data)->data.arrayBuffer()).then (buffer) =>
+                fetch(base+data.file_name).then((data)->data.arrayBuffer()).then (buffer) =>
                     @context.main_loop.add_frame_callback =>
                         # If there's no width or height, assume it's square
-                        {@width, @height} = rgb565[0]
+                        {@width, @height} = data
                         @texture_type = 'buffers'
                         @gl_format = @gl_internal_format = gl.RGB
                         @gl_type = gl.UNSIGNED_SHORT_5_6_5
@@ -193,8 +195,7 @@ class Texture
                         resolve @
                 .catch reject
         else if video_list?[0]
-            # TODO: Will we need more than one video data?
-            data = video_list[0]
+            data = @select_closest_format video_list, size_ratio
             if @promised_data == data
                 return @promise
             @promised_data = data
@@ -348,35 +349,24 @@ class Texture
         log2h = Math.log(height)/Math.log(2)
         return (log2w|0) == log2w and (log2h|0) == log2h
 
-# TODO: Check if it's necessary and remove
-# @nodoc
-get_texture_from_path_legacy = (name, path, filter, wrap, file_size=0, scene) ->
-    # This assumes we already checked scene.textures
-    {context} = scene
-    formats = {}
-    is_data_uri = /^data:/.test path
-    if is_data_uri
-        # this is true for old exports
-        extension = 'png'
-    else
-        extension = path.split('.').pop()
-    if extension == 'crn'
-        # TODO: crunch support
-        path += (extension = '565')
-    if extension == '565'
-        formats.rgb565 = [{width: 0, height: 0, file_size, file_name: path}]
-    else
-        # Non crn, rgb565 or dds textures:
-        extension = extension.toLowerCase().replace(/^jpg$/, 'jpeg').replace(/^og(m|v)$/, 'ogg')
-        file_name = data_uri = ''
-        if is_data_uri
-            data_uri = path
-        else
-            file_name = path
-        formats[extension] = [{width: 0, height: 0, file_size, file_name, data_uri}]
-    tex = new Texture scene, {name, formats, wrap, filter}
-    scene.textures[name] = tex
-    return tex
+    # @private
+    # @nodoc
+    select_closest_format: (format_list, ratio) ->
+        highest = format_list[format_list.length-1]
+        {width, height} = highest
+        if ratio == 1 or not width or not height
+            return highest
+        target_pixels = width*height*ratio
+        winner_delta = width*height
+        winner = null
+        for f in format_list
+            delta = Math.abs(target_pixels - (f.width*f.height))
+            if winner_delta > delta
+                winner_delta = delta
+                winner = f
+        # TODO: With formats with intermediate resolutions (mipmaps),
+        # choose which one of them to load
+        return winner
 
 
-module.exports = {Texture, get_texture_from_path_legacy}
+module.exports = {Texture}

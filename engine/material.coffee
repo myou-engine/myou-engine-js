@@ -1,7 +1,5 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
 
-{fetch_texture_legacy, material_promises} = require './fetch_assets.coffee'
-
 _active_program = null
 
 GL_BYTE = 0x1400
@@ -28,6 +26,7 @@ class Material
         @users = []
         @scene?.materials[@name] = this
         @render_scene = @scene # Materials can be used in other scenes when cloning
+        @_has_texture_list_checked = false
         @set_data @data
         @last_shader = null # TODO: workaround for short term compatibility problems
         # Store it in context.all_materials with unique name
@@ -43,6 +42,7 @@ class Material
             mesh.ensure_layout_and_modifiers()
         shader = @shaders[mesh._signature]
         if not shader? and @generator?
+            @get_texture_list()
             shader = @shaders[mesh._signature] = new Shader(@context, @data, this, mesh.layout, mesh.vertex_modifiers)
             shader.material = this
             @last_shader = shader
@@ -61,6 +61,14 @@ class Material
             # The constructor of the generator populates inputs and _input_list
             @generator = new generator_class(this)
         return
+
+    # Ensures the texture list is correctly filled and returns it.
+    # Only valid after the scene has finished loading.
+    get_texture_list: ->
+        if not @_has_texture_list_checked
+            @generator.assign_textures()
+            @_has_texture_list_checked = true
+        return @_texture_list
 
     clone_to_scene: (scene) ->
         n = new Material(@context, @name, @data, null)
@@ -254,8 +262,7 @@ class Shader
             #     console.log  '\n' + ext.getTranslatedShaderSource(vertex_shader)).split('\n')
             gl.deleteShader vertex_shader
             @context.MYOU_PARAMS.on_shader_failed?()
-            (material_promises[@name]?.functions.reject or console.error.bind(console))(error_msg)
-            debugger
+            console.error error_msg
             return
 
         fragment_shader = gl.createShader gl.FRAGMENT_SHADER
@@ -272,7 +279,7 @@ class Shader
             #     console.log  '\n' + ext.getTranslatedShaderSource(fragment_shader)).split('\n')
             gl.deleteShader fragment_shader
             @context.MYOU_PARAMS.on_shader_failed?()
-            (material_promises[@name]?.functions.reject or console.error.bind(console))(error_msg)
+            console.error error_msg
             return
 
 
@@ -286,8 +293,8 @@ class Shader
             error_msg = """Error linking shader of material #{@name}
             #{JSON.stringify varyings}
             #{gl.getProgramInfoLog prog}"""
-            #ext = gl.getExtension "WEBGL_debug_shaders"
-            #if ext console.log ext.getTranslatedShaderSource vertex_shader
+            ext = gl.getExtension "WEBGL_debug_shaders"
+            if ext then console.log ext.getTranslatedShaderSource fragment_shader
             console.log 'VS ============='
             console.log vs
             # console.log 'FS ============='
@@ -297,7 +304,7 @@ class Shader
             gl.deleteShader vertex_shader
             gl.deleteShader fragment_shader
             @context.MYOU_PARAMS.on_shader_failed?()
-            (material_promises[@name]?.functions.reject or console.error.bind(console))(error_msg)
+            console.error error_msg
             return
 
         gl.useProgram prog
@@ -336,7 +343,6 @@ class Shader
         @attrib_bitmask = attrib_bitmask
 
         @_program = prog
-        material_promises[@name]?.functions.resolve(@)
         @context.render_manager.compiled_shaders_this_frame += 1
 
     use: ->

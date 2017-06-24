@@ -204,7 +204,7 @@ class Scene
         @load()
 
     load_visible_objects: (options) ->
-        visible_objects = for ob in @children when ob.visible and not ob.data then ob
+        visible_objects = for ob in @children when ob.visible then ob
         return fetch_objects(visible_objects, options).then(=>@)
 
     load_physics_objects: (options) ->
@@ -222,7 +222,7 @@ class Scene
     load_visible_and_physics_objects: (options) ->
         objects = []
         for ob in @children
-            if not ob.data and (ob.visible or (ob.physics_type!='NO_COLLISION'\
+            if (ob.visible or (ob.physics_type!='NO_COLLISION'\
             and /CONVEX_HULL|TRIANGLE_MESH/.test(ob.collision_shape)))
                 objects.push ob
                 phy = ob.physics_mesh

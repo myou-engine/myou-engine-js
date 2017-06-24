@@ -7,7 +7,7 @@
 
 class BlenderCyclesPBRMaterial
     constructor: (@material) ->
-        {data, _input_list, inputs, _texture_list, @context, scene} = @material
+        {data, _texture_list, @context, scene} = @material
         for u in data.uniforms
             switch u.type
                 when 'IMAGE', 'LAMP_SHADOW_MAP'
@@ -18,6 +18,24 @@ class BlenderCyclesPBRMaterial
         _texture_list.push {value: get_lutsamples_texture(scene)}
         @unfprobe_index = _texture_list.length
         _texture_list.push {value: null, is_probe: true}
+        return
+
+    assign_textures: ->
+        {data, _texture_list, scene, render_scene} = @material
+        texture_count = 0
+        for u in data.uniforms
+            switch u.type
+                when 'IMAGE'
+                    tex = scene?.textures[u.image]
+                    if not tex?
+                        throw "Texture #{u.image} not found (in material #{@material.name})."
+                    @material._texture_list[texture_count++].value = tex
+                when 'LAMP_SHADOW_MAP'
+                    tex = render_scene.objects[u.lamp].shadow_texture
+                    if tex?
+                        @material._texture_list[texture_count++].value = tex
+                    else
+                        throw "Material #{@material.name} tries to use unexisting shadow of lamp #{u.lamp}"
         return
 
     get_model_view_matrix_name: ->
@@ -112,16 +130,8 @@ class BlenderCyclesPBRMaterial
                 when 'LAMP_SIZE'
                     code.push "gl.uniform1f(locations[#{loc_idx}], lamps[#{current_lamp}].size_x);"
                 when 'IMAGE'
-                    tex = scene?.textures[u.image]
-                    if not tex?
-                        throw "Texture #{u.image} not found (in material #{@material.name})."
-                    if not tex.loaded
-                        tex.load()
-                    @material._texture_list[texture_count].value = tex
                     code.push "gl.uniform1i(locations[#{loc_idx}], tex_list[#{texture_count++}].value.bound_unit);"
                 when 'LAMP_SHADOW_MAP'
-                    tex = render_scene.objects[u.lamp].shadow_texture
-                    @material._texture_list[texture_count].value = tex
                     code.push "gl.uniform1i(locations[#{loc_idx}], tex_list[#{texture_count++}].value.bound_unit);"
                 when 'LAMP_SHADOW_PROJ'
                     code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, lamps[#{current_lamp}]._cam2depth);"

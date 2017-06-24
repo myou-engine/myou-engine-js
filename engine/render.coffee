@@ -691,7 +691,7 @@ class RenderManager
 
         # Render shadow buffers
         for lamp in scene.lamps
-            if shadows_pending and lamp.shadow_options? and lamp.render_shadow
+            if shadows_pending and lamp.shadow_fb? and lamp.render_shadow
                 if not lamp.shadow_fb?
                     # TODO: enable all at once to decide common fb size
                     lamp.init_shadow()
