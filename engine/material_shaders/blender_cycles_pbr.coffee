@@ -41,7 +41,7 @@ class BlenderCyclesPBRMaterial
     get_model_view_matrix_name: ->
         for u in @material.data.uniforms or []
             switch u.type
-                when 'VIEW_MAT' # model_view_matrix
+                when 'OB_VIEW_MAT' # model_view_matrix
                     return u.varname
         return "model_view_matrix"
 
@@ -107,7 +107,9 @@ class BlenderCyclesPBRMaterial
                     code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, render.projection_matrix_inverse);"
                 when 'OB_VIEW_MAT' # model_view_matrix
                     null # Already being set by the renderer
-                when 'VIEW_IMAT' # inverse model_view_matrix
+                when 'VIEW_MAT' # view_matrix
+                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, render._world2cam);"
+                when 'VIEW_IMAT' # inverse view_matrix
                     code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, render._cam2world);"
                 when 'VIEW_IMAT3' # inverse view_matrix 3x3, a.k.a. camera rotation matrix
                     code.push "gl.uniformMatrix3fv(locations[#{loc_idx}], false, render._cam2world3);"
