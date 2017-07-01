@@ -91,6 +91,7 @@ class RenderManager
         @_world2cam3_mx = mat3.create()
         @_world2light = mat4.create()
         @projection_matrix_inverse = mat4.create()
+        @_model_view_matrix = mat4.create()
         @_m4 = mat4.create()  # note: those are used
         @_m3 = mat3.create()  #       in several methods
         @_v = vec3.create()
@@ -439,7 +440,6 @@ class RenderManager
 
         gl = @gl
         bound_textures = @bound_textures
-        m4 = @_m4
         m3 = @_m3
         cam = @_cam
 
@@ -508,8 +508,9 @@ class RenderManager
 
             # Assigning uniforms of the 3 main matrices:
             # model_view_matrix, normal_matrix and projection_matrix
-            mat4.multiply m4, world2cam_override or @_world2cam, mesh2world
-            gl.uniformMatrix4fv shader.u_model_view_matrix, false, m4
+            model_view_matrix = @_model_view_matrix
+            mat4.multiply model_view_matrix, world2cam_override or @_world2cam, mesh2world
+            gl.uniformMatrix4fv shader.u_model_view_matrix, false, model_view_matrix
             if shader.u_normal_matrix?
                 mat3.multiply m3, @_world2cam3, mesh.normal_matrix
                 gl.uniformMatrix3fv shader.u_normal_matrix, false, m3

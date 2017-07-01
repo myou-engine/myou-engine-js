@@ -107,6 +107,10 @@ class BlenderCyclesPBRMaterial
                     code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, render.projection_matrix_inverse);"
                 when 'OB_VIEW_MAT' # model_view_matrix
                     null # Already being set by the renderer
+                when 'OB_VIEW_IMAT' # model_view_matrix_inverse
+                    # NOTE: Objects with zero scale are not drawn, otherwise m4 could be null
+                    code.push "m4 = mat4.invert(render._m4, render._model_view_matrix);"
+                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, m4);"
                 when 'VIEW_MAT' # view_matrix
                     code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, render._world2cam);"
                 when 'VIEW_IMAT' # inverse view_matrix
@@ -115,7 +119,7 @@ class BlenderCyclesPBRMaterial
                     code.push "gl.uniformMatrix3fv(locations[#{loc_idx}], false, render._cam2world3);"
                 when 'OB_MAT' # object_matrix
                     code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, ob.world_matrix);"
-                when 'OB_IMAT' # object_matrix
+                when 'OB_IMAT' # object_matrix_inverse
                     # NOTE: Objects with zero scale are not drawn, otherwise m4 could be null
                     code.push "m4 = mat4.invert(render._m4, ob.world_matrix);"
                     code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, m4);"
