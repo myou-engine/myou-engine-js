@@ -80,6 +80,8 @@ class RenderManager
         @background_alpha = if ba? then ba else 1
         @compiled_shaders_this_frame = 0
         @use_frustum_culling = true
+        @unbind_textures_on_draw_mesh = false
+        @unbind_textures_on_draw_wiewport = true
         @probes = []
 
         # Temporary variables
@@ -487,11 +489,20 @@ class RenderManager
         inv_radius_y = 2/inv_radius_y
         inv_radius_z = 2/inv_radius_z
 
-        # Main routine for each submesh
-        submesh_idx = -1
+        # TODO: This was added to workaround a problem with meshes
+        # cloned from another scene; it shouldn't be necessary
+        if @unbind_textures_on_draw_mesh
+            # unbind all textures
+            for tex, i in @bound_textures when tex?
+                tex.bound_unit = -1
+                gl.activeTexture gl.TEXTURE0 + i
+                gl.bindTexture tex.gl_target, null
+            gl.activeTexture gl.TEXTURE0
+            @active_texture = @next_texture = 0
+            @bound_textures.splice 0
 
-        for mat in amesh.materials
-            submesh_idx += 1
+        # Main routine for each submesh
+        for mat,submesh_idx in amesh.materials
             if not (pass_ == -1 or mesh.passes[submesh_idx] == pass_)
                 continue
 
@@ -678,15 +689,16 @@ class RenderManager
         # For usage outside this render loop
         mat4.mul cam.world_to_screen_matrix, cam.projection_matrix, world2cam
 
-        # unbind all textures
         # TODO: Is this necessary?
-        for tex, i in @bound_textures when tex?
-            tex.bound_unit = -1
-            gl.activeTexture gl.TEXTURE0 + i
-            gl.bindTexture tex.gl_target, null
-        gl.activeTexture gl.TEXTURE0
-        @active_texture = @next_texture = 0
-        @bound_textures.splice 0
+        if @unbind_textures_on_draw_wiewport
+            # unbind all textures
+            for tex, i in @bound_textures when tex?
+                tex.bound_unit = -1
+                gl.activeTexture gl.TEXTURE0 + i
+                gl.bindTexture tex.gl_target, null
+            gl.activeTexture gl.TEXTURE0
+            @active_texture = @next_texture = 0
+            @bound_textures.splice 0
 
         {mesh_lod_min_length_px} = @context
 
