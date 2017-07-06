@@ -111,6 +111,7 @@ load_datablock = (scene, data, context) ->
             data.attributes = null
             data.material_type = data.material_type or 'BLENDER_INTERNAL'
 
+        is_blender278 = false
         # Convert shader params into inputs
         if data.material_type == 'BLENDER_INTERNAL'
             params = {}
@@ -120,6 +121,7 @@ load_datablock = (scene, data, context) ->
             input_types = [1, 3, 1, 3, 1, 1, 1, 1, 1, 3]
             for u in data.uniforms
                 if u.material
+                    is_blender278 = true
                     prefix = ''
                     if u.material != data.name
                         prefix = u.material + '_'
@@ -132,6 +134,12 @@ load_datablock = (scene, data, context) ->
                         u.value = u.value or new Float32Array(u.count)
                     else
                         u.value = u.value or 0
+
+        # add multiplier to vertex colors
+        if is_blender278
+            for v in data.varyings
+                if v.type == 'VCOL'
+                    v.multiplier = 0.0039215686 # 1/255
 
         mat = scene.materials[data.name]
         if mat

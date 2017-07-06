@@ -198,8 +198,11 @@ class Shader
                             for aname in attribute_names when /^vc_/.test aname
                                 vc_name = aname
                                 break
+                        multiplier = ''
+                        if v.multiplier
+                            multiplier = "*#{v.multiplier.toFixed(8)}"
                         varyings_decl.push "varying vec4 #{varname};"
-                        varyings_assign.push "#{varname} = #{vc_name};"
+                        varyings_assign.push "#{varname} = #{vc_name}#{multiplier};"
                     when 'TANGENT' # tangent vectors
                         varyings_decl.push "varying vec4 #{varname};"
                         if 'tangent' in attribute_names
