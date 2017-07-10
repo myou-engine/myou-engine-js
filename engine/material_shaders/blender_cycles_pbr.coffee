@@ -188,11 +188,11 @@ class BlenderCyclesPBRMaterial
             code.push "gl.uniform1i(locations[#{locations.length}], tex_list[#{@unfprobe_index}].value.bound_unit);"
             locations.push loc
 
-        # detect presence of any of all the uniforms in the shader
+        # detect presence of any of all the unhandled uniforms in the shader
         @unfs = {}
-        for unf in 'unfprobe unfreflect unfrefract unfltcmat unfltcmag unfscenebuf unfdepthbuf unfbackfacebuf unfjitter unflutsamples unflodfactor unfsh0 unfsh1 unfsh2 unfsh3 unfsh4 unfsh5 unfsh6 unfsh7 unfsh8 unfprobepos unfplanarvec unfssrparam unfssaoparam unfclip unfprobecorrectionmat unfplanarreflectmat unfpixelprojmat'.split ' '
+        for unf in 'unfreflect unfrefract unfltcmat unfltcmag unfscenebuf unfdepthbuf unfbackfacebuf unfprobepos unfplanarvec unfssrparam unfssaoparam unfclip unfprobecorrectionmat unfplanarreflectmat unfpixelprojmat'.split ' '
             if gl.getUniformLocation(program, unf)?
-                console.log unf
+                console.warn "Unhandled uniform:", unf
 
         preamble = 'var locations=shader.uniform_locations, lamps=shader.lamps,
             material=shader.material, inputs=material._input_list, tex_list=material._texture_list;\n'
@@ -204,20 +204,44 @@ jitter_texture = lutsamples_texture = null
 
 get_jitter_texture = (scene) ->
     if not jitter_texture?
+        pixels = new Uint8Array 64*64*4
+        for i in [0...64*64*4] by 4
+            x = Math.random() * 2.0 - 1.0
+            y = Math.random() * 2.0 - 1.0
+            ilen = 1/Math.sqrt(x*x + y*y)
+            pixels[i] = ((x*ilen)+1.0)*0.5 * 255
+            pixels[i+1] = ((y*ilen)+1.0)*0.5 * 255
         jitter_texture = new scene.context.Texture scene,
             formats: raw_pixels: {
                 # NOISE_SIZE
-                width: 64, height: 64, pixels: (Math.random()*256)|0 for [0...64*64*4]
+                width: 64, height: 64, pixels: pixels
             }
         jitter_texture.load()
     return jitter_texture
 
+# From http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
+radical_inverse = (bits) ->
+    bits <<= 1 # multiplying by 2 to avoid signed bit
+    bits = (bits << 16) | (bits >> 16)
+    bits = ((bits & 0x55555555) << 1) | ((bits & 0xAAAAAAAA) >> 1)
+    bits = ((bits & 0x33333333) << 2) | ((bits & 0xCCCCCCCC) >> 2)
+    bits = ((bits & 0x0F0F0F0F) << 4) | ((bits & 0xF0F0F0F0) >> 4)
+    bits = ((bits & 0x00FF00FF) << 8) | ((bits & 0xFF00FF00) >> 8)
+    return bits * 2.3283064365386963e-10 * 2
+
 get_lutsamples_texture = (scene) ->
     if not lutsamples_texture?
+        # This is the _maximum BSDF samples
+        samples = 1024
+        pixels = new Uint8Array samples*4
+        for i in [0...samples]
+            phi = radical_inverse(i) * 2.0 * Math.PI
+            i2 = i<<1
+            pixels[i2] = (Math.cos(phi)+1.0)*0.5 * 255
+            pixels[i2+1] = (Math.sin(phi)+1.0)*0.5 * 255
         lutsamples_texture = new scene.context.Texture scene,
             formats: raw_pixels: {
-                # TODO: bsdf_samples
-                width: 32, height: 1, pixels: (Math.random()*256)|0 for [0...32*4]
+                width: samples, height: 1, pixels: pixels
             }
         lutsamples_texture.load()
     return lutsamples_texture
