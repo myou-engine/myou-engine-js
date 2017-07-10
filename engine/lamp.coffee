@@ -41,7 +41,7 @@ class Lamp extends GameObject
     #Avoid physical lamps and cameras
     instance_physics: ->
 
-    recalculate_render_data: (world2cam, neg) ->
+    recalculate_render_data: (world2cam, cam2world, world2light) ->
         vec3.transformMat4 @_view_pos, @world_matrix.subarray(12,15), world2cam
 
         # mat4.multiply m4, world2cam, @world_matrix
@@ -58,6 +58,10 @@ class Lamp extends GameObject
         @_dir[0] = -x
         @_dir[1] = -y
         @_dir[2] = -z
+
+        if @shadow_fb?
+            mat4.multiply @_cam2depth, world2light, cam2world
+            mat4.multiply @_cam2depth, @_depth_matrix, @_cam2depth
         return
 
     init_shadow: ->

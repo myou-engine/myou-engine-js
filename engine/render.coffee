@@ -704,6 +704,8 @@ class RenderManager
 
         # Render shadow buffers
         for lamp in scene.lamps
+            if lamp.shadow_fb?
+                mat4.invert world2light, lamp.world_matrix
             if shadows_pending and lamp.shadow_fb? and lamp.render_shadow
                 if not lamp.shadow_fb?
                     # TODO: enable all at once to decide common fb size
@@ -716,7 +718,6 @@ class RenderManager
                 gl.clearColor 1,1,1,1  # TODO: which color should we use?
                 gl.clear gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT
                 mat = lamp._shadow_material
-                mat4.invert world2light, lamp.world_matrix
 
                 for ob in scene.mesh_passes[0]
                     data = ob.get_lod_mesh(viewport, mesh_lod_min_length_px).data
@@ -726,13 +727,10 @@ class RenderManager
                 lamp.shadow_fb.enable()
                 @common_shadow_fb.draw_with_filter @shadow_box_filter, [0, 0, size, size]
 
-            if lamp.shadow_fb?
-                # Calculate and save cam2depth matrix for this lamp
-                mat4.multiply m4, world2light, cam2world
-                mat4.multiply lamp._cam2depth, lamp._depth_matrix, m4
+
 
             # Update lamp view pos and direction
-            lamp.recalculate_render_data(world2cam)
+            lamp.recalculate_render_data(world2cam, cam2world, world2light)
 
 
         # Main drawing code to destination buffer (usually the screen)
@@ -872,8 +870,9 @@ class RenderManager
         {gl, use_frustum_culling} = @
         @use_frustum_culling = false
 
-        world2cube = mat4.create()
+        world2cam = @_world2cam
         proj = mat4.frustum mat4.create(),-near,near,-near,near,near,far
+        mat4.invert @projection_matrix_inverse, proj
 
         @unbind_texture cubemap
 
@@ -892,21 +891,22 @@ class RenderManager
             dir[0] += position[0]
             dir[1] += position[1]
             dir[2] += position[2]
-            mat4.lookAt world2cube, position, dir, up
-            mat4.invert @_cam2world, world2cube
+            mat4.lookAt world2cam, position, dir, up
+            mat4.invert @_cam2world, world2cam
             mat3.fromMat4 @_cam2world3, @_cam2world
-            mat3.fromMat4 @_world2cam3, world2cube
+            mat3.fromMat4 @_world2cam3, world2cam
             [r,g,b] = scene.background_color
             gl.clearColor r,g,b,1
             gl.clear gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT
             if @do_log?
                 @do_log = side == 0
             for lamp in scene.lamps
-                lamp.recalculate_render_data world2cube
+                world2light = mat4.invert @_world2light, lamp.world_matrix
+                lamp.recalculate_render_data world2cam, @_cam2world, world2light
             for ob in scene.mesh_passes[0] when ob.probe?.cubemap != cubemap
                 if ob.visible and ob.data
-                    @draw_mesh ob, ob.world_matrix, -1, null, world2cube, proj
-            scene.world_material? and @draw_background(scene, world2cube, @_cam2world, proj)
+                    @draw_mesh ob, ob.world_matrix, -1, null, world2cam, proj
+            scene.world_material? and @draw_background(scene, world2cam, @_cam2world, proj)
             if @do_log
                 @do_log = false
                 console.log @debug_uniform_logging_get_log()
