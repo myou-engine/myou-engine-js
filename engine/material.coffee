@@ -36,7 +36,6 @@ class Material
             @_global_name = (@scene?.name or 'no_scene') + '.' + @name + ++dedup
         @context.all_materials[@_global_name] = @
 
-
     get_shader: (mesh) ->
         if not mesh._signature
             mesh.ensure_layout_and_modifiers()
@@ -123,7 +122,6 @@ class Shader
         @users = []
         @group_id = -1
         {@name} = @material if @material?
-        @scene = @material?.scene
         generator = @material?.generator or new PlainShaderMaterial({@data})
 
         if @data.vertex
@@ -270,19 +268,30 @@ class Shader
 
         fragment_shader = gl.createShader gl.FRAGMENT_SHADER
         {fragment} = generator?.get_code()
+        if @debugger?
+            fragment = @debugger.patch fragment
         gl.shaderSource fragment_shader, fragment
         gl.compileShader fragment_shader
 
         if not gl.getShaderParameter(fragment_shader, gl.COMPILE_STATUS) and not gl.isContextLost()
-            error_msg = """Error compiling fragment shader of material #{@name}
-            #{gl.getShaderInfoLog fragment_shader}"""
-            console.log fragment
+            gl_log = gl.getShaderInfoLog fragment_shader
+            error_msg = "Error compiling fragment shader of material #{@name}\n#{gl_log}"
+            # console.log fragment
+            lines = fragment.split('\n')
             # ext = gl.getExtension "WEBGL_debug_shaders"
             # if ext
             #     console.log  '\n' + ext.getTranslatedShaderSource(fragment_shader)).split('\n')
             gl.deleteShader fragment_shader
-            @context.MYOU_PARAMS.on_shader_failed?()
+
+            if /ERROR: 0:/.test error_msg
+                # Show context for first error
+                line = error_msg.split(':')[2]|0
+                for i in [Math.max(0,line-30)...Math.min(line+4, lines.length)]
+                    console.log "#{i} #{lines[i-1]}"
             console.error error_msg
+            @context.MYOU_PARAMS.on_shader_failed?()
+            # console.error error_msg
+            debugger
             return
 
 
@@ -347,6 +356,12 @@ class Shader
 
         @_program = prog
         @context.render_manager.compiled_shaders_this_frame += 1
+        if @debugger?
+            @debugger.initialize gl, prog, (pixel) =>
+                rm = @context.render_manager
+                # TODO: Let the user select the pixel,
+                # sample the pixel at the screen center for now
+                rm.render_and_read_screen_pixels rm.width>>1, rm.height>>1, 1, 1, pixel
 
     use: ->
         prog = @_program
@@ -369,25 +384,9 @@ class Shader
         loc = @context.render_manager.gl.getUniformLocation @_program, uname
         @context.render_manager.gl['uniform'+utype](loc, value)
 
-    debug_blender_material: (varnum) ->
-        if not @fs_code.splice
-            throw "Not a Blender material"
-        [lib, code] = @orig_fs_code = @orig_fs_code or @fs_code[...]
-        re = new RegExp("\\btmp#{varnum}\\b", "g")
-        value = "tmp#{varnum}.x"
-        if re.test code
-            for line in code.split('\n') when re.test line
-                if line.length < 15
-                    if /float/.test line
-                        value = "tmp#{varnum}"
-                else
-                    console.log line.replace(re, "TMP"+varnum)
-            @fs_code[1] = code.replace('gl_FragColor = ',
-                "gl_FragColor = vec4(-#{value}, #{value}, #{value}*10.0-5.0, 1.0);//")
-            @reupload()
-        else
-            console.log "No such variable"
-        return
+    set_debugger: (@debugger=null) ->
+        @reupload()
+        return @debugger
 
 
 module.exports = {Material, Shader}

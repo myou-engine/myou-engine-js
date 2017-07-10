@@ -996,9 +996,50 @@ class RenderManager
             ctx.putImageData image_data, 0, 0
             canvas.toBlob (blob) ->
                 document.body.removeChild canvas
+                out_buffer.destroy()
+                render_buffer.destroy()
                 resolve blob
             , 'image/'+format, jpeg_quality
             return
+
+    # @nodoc
+    # Make a screenshot using the current screen resolution,
+    # read raw pixels of specified rect into a typed array
+    render_and_read_screen_pixels: (x, y, width, height, pixels) ->
+        size = [next_POT(@width), next_POT(@width)]
+        x_ratio_render = @width/size[0]
+        y_ratio_render = @height/size[1]
+        color_type = 'UNSIGNED_BYTE'
+        depth_type = 'UNSIGNED_SHORT'
+        render_buffer = new @context.Framebuffer {size, use_depth: true, color_type, depth_type}
+        old_w = @width
+        old_h = @height
+        @width = size[0]
+        @height = size[1]
+        restore_vp = []
+        for v in @viewports
+            {dest_buffer, rect} = v
+            if v.dest_buffer == @main_fb
+                restore_vp.push {v, dest_buffer, rect}
+                v.dest_buffer = render_buffer
+                v.rect = [rect[0]*x_ratio_render, rect[1]*y_ratio_render,
+                          rect[2]*x_ratio_render, rect[3]*y_ratio_render]
+                v.recalc_aspect()
+        # render
+        # TODO: scissor to requested area
+        @draw_all()
+        # restore viewports
+        @width = old_w
+        @height = old_h
+        for {v, dest_buffer, rect} in restore_vp
+            v.dest_buffer = dest_buffer
+            v.rect = rect
+            v.recalc_aspect()
+        render_buffer.enable()
+        {gl} = @
+        gl.readPixels x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels
+        render_buffer.destroy()
+        return
 
     # @nodoc
     debug_uniform_logging: ->
