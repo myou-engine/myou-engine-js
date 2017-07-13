@@ -14,7 +14,8 @@
 {Material} = require './material.coffee'
 {nearest_POT} = require './math_utils/math_extra'
 
-if process.browser
+is_browser = not process? or process.browser
+if is_browser
     # for loading ammo.js relative to the output .js
     scripts = document.querySelectorAll 'script'
     current_script_path = scripts[scripts.length-1].src?.split('/')[...-1].join('/') or ''
@@ -447,7 +448,7 @@ load_physics_engine = ()->
             script.type = 'text/javascript'
             script.async = true
 
-            if process.browser
+            if is_browser
                 physics_engine_url = current_script_path + '/' + require("file-loader?name=/libs/ammo.asm.js!./libs/ammo.asm.js")
             else
                 dirname =  __dirname.replace(/\\/g, '/')
