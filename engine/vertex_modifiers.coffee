@@ -96,7 +96,7 @@ class ArmatureModifier
             'for(int i=0;i<4;i++){'
             '  m = bones[inds[i]];'
             '  blendco += m * co * weights[i];'
-            '  blendnor += mat3(m[0].xyz, m[1].xyz, m[2].xyz) * normal * weights[i];'
+            '  blendnor += mat3(m) * normal * weights[i];'
             '}'
             'co = blendco; normal = blendnor;'
         ]
@@ -115,5 +115,3 @@ class ArmatureModifier
 
 
 module.exports = {ShapeKeyModifier, ArmatureModifier}
-
-
