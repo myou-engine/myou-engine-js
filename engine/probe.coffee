@@ -20,6 +20,7 @@ class Probe
             @parallax_type
             @parallax_volume
             @reflection_plane
+            @background_only = false
             # TODO: export these two (they're scene-wide)
             # TODO: bsdf_samples is hard-coded in the shader
             # and in get_lutsamples_texture
@@ -49,7 +50,7 @@ class Probe
             @set_lod_factor()
         @object?.get_world_position?(@position)
         @context.render_manager.draw_cubemap(@scene, @cubemap,
-            @position, @clip_start, @clip_end)
+            @position, @clip_start, @clip_end, @background_only)
         # TODO: Detect if any material uses this!
         @cubemap.generate_spherical_harmonics(@sh_quality)
         @cubemap.loaded = true

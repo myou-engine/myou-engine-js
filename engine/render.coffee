@@ -473,7 +473,7 @@ class RenderManager
                     return
                 mesh.last_lod_tick = @render_tick
         else
-            amesh = mesh.data
+            amesh = mesh
             if not amesh.data
                 return
 
@@ -863,7 +863,7 @@ class RenderManager
 
     # Draws a cubemap texture.
     # Usually called from {Probe}
-    draw_cubemap: (scene, cubemap, position, near, far) ->
+    draw_cubemap: (scene, cubemap, position, near, far, background_only) ->
         # TODO
         # * use frustum culling
         # * override LoD detection or set a camera for this
@@ -903,9 +903,10 @@ class RenderManager
             for lamp in scene.lamps
                 world2light = mat4.invert @_world2light, lamp.world_matrix
                 lamp.recalculate_render_data world2cam, @_cam2world, world2light
-            for ob in scene.mesh_passes[0] when ob.probe?.cubemap != cubemap
-                if ob.visible and ob.data
-                    @draw_mesh ob, ob.world_matrix, -1, null, world2cam, proj
+            if not background_only
+                for ob in scene.mesh_passes[0] when ob.probe?.cubemap != cubemap
+                    if ob.visible and ob.data
+                        @draw_mesh ob, ob.world_matrix, -1, null, world2cam, proj
             scene.world_material? and @draw_background(scene, world2cam, @_cam2world, proj)
             if @do_log
                 @do_log = false

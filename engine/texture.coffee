@@ -124,7 +124,9 @@ class Texture
                         @use_mipmap = false
                         @upload()
                         resolve @
-                .catch reject
+                .catch =>
+                    @promised_data = null
+                    reject()
         else if image_list?[0] #if jpeg or png
             data = @select_closest_format image_list, size_ratio
             if @promised_data == data
@@ -172,6 +174,7 @@ class Texture
                             resolve @
                     @image.onerror = =>
                         # TODO: Distinguish between not found, timeout and malformed?
+                        @promised_data = null
                         reject "Image not found: " + (data.file_name or @name)
                     @image.src = data.data_uri or (base + data.file_name)
         else if rgb565?

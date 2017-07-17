@@ -82,6 +82,7 @@ load_datablock = (scene, data, context) ->
             scene.world_material = new Material(context, \
                 data.world_material.name, data.world_material, scene)
             data.background_probe.auto_refresh = false # TODO: Remove this when it makes sense
+            data.background_probe.background_only = true
             scene.background_probe_data = data.background_probe
         scene.frame_start = data.frame_start if data.frame_start?
         scene.frame_end = data.frame_end if data.frame_end?
