@@ -28,6 +28,12 @@ next_POT = (x)->
     x = Math.max(0, x-1)
     return Math.pow(2, Math.floor(Math.log(x)/Math.log(2))+1)
 
+# Gives the previous power of two after X if X is not power of two already
+# @param x [number] input number
+previous_POT = (x)->
+    x = Math.max(0, x)
+    return Math.pow(2, Math.floor(Math.log(x)/Math.log(2)))
+
 # Gives the nearest power of two of X
 # @param x [number] input number
 nearest_POT = (x) ->
