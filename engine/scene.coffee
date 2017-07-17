@@ -203,10 +203,20 @@ class Scene
         @unload()
         @load()
 
+    # Loads objects that are visible from any point of view, returns a promise
+    # @option options fetch_textures [boolean] Whether to fetch textures when they're not loaded already.
+    # @option options texture_size_ratio [number] Quality of textures specified in ratio of number of pixels.
+    # @option options max_mesh_lod [number] Quality of meshes specified in LoD polycount ratio.
+    # @return [Promise]
     load_visible_objects: (options) ->
         visible_objects = for ob in @children when ob.visible then ob
         return fetch_objects(visible_objects, options).then(=>@)
 
+    # Loads the mesh of objects with physic meshes, returns a promise
+    # @option options fetch_textures [boolean] Whether to fetch textures when they're not loaded already.
+    # @option options texture_size_ratio [number] Quality of textures specified in ratio of number of pixels.
+    # @option options max_mesh_lod [number] Quality of meshes specified in LoD polycount ratio.
+    # @return [Promise]
     load_physics_objects: (options) ->
         physics_objects = []
         for ob in @children
@@ -219,6 +229,11 @@ class Scene
 
         return fetch_objects(physics_objects, options).then(=>@)
 
+    # Loads objects that are visible from any point of view, and meshes with physics, returns a promise
+    # @option options fetch_textures [boolean] Whether to fetch textures when they're not loaded already.
+    # @option options texture_size_ratio [number] Quality of textures specified in ratio of number of pixels.
+    # @option options max_mesh_lod [number] Quality of meshes specified in LoD polycount ratio.
+    # @return [Promise]
     load_visible_and_physics_objects: (options) ->
         objects = []
         for ob in @children
@@ -230,11 +245,23 @@ class Scene
                     objects.push phy
         return fetch_objects(objects, options).then(=>@)
 
+    # Loads all objects of the scene, returns a promise
+    # @option options fetch_textures [boolean] Whether to fetch textures when they're not loaded already.
+    # @option options texture_size_ratio [number] Quality of textures specified in ratio of number of pixels.
+    # @option options max_mesh_lod [number] Quality of meshes specified in LoD polycount ratio.
+    # @return [Promise]
     load_all_objects: (options) ->
         # TODO: This may not work the second time is not called.
         # Meshes should always return data's promises
         return fetch_objects(@children, options).then(=>@)
 
+
+    # Loads a list of objects, returns a promise
+    # @param list [array] List of objects to load.
+    # @option options fetch_textures [boolean] Whether to fetch textures when they're not loaded already.
+    # @option options texture_size_ratio [number] Quality of textures specified in ratio of number of pixels.
+    # @option options max_mesh_lod [number] Quality of meshes specified in LoD polycount ratio.
+    # @return [Promise]
     load_objects: (list, options={})->
         if not list?.length?
             throw "Invalid arguments, expects (list, options). Did you mean 'load_all_objects()'?"

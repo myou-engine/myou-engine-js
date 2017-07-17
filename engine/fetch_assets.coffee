@@ -93,11 +93,12 @@ fetch_mesh = (mesh_object, options={}) ->
     promise.mesh_object = mesh_object
     return promise
 
-
+# @nodoc
 # This returns a promise of all things necessary to display the object
 # (meshes, textures, materials)
+# See scene.load_objects etc
 fetch_objects = (object_list, options={}) ->
-    {render, fetch_textures=true, texture_size_ratio=1} = options
+    {render} = options
     if not object_list.length
         return Promise.resolve()
 
@@ -110,16 +111,7 @@ fetch_objects = (object_list, options={}) ->
             if not ob.data
                 promises.push fetch_mesh(ob, options)
             for mat in ob.materials
-                # TODO: Have a material promise:
-                # * Implement Material::ensure_upload(mesh) which generates a
-                #   triangle with same layout if it doesn't exist already.
-                # * ensure_upload will return a promise (stored in the shader).
-                # * Draw it in a 2x2 px framebuffer for this purpose.
-                # * Fulfill promise after this.
-
-                for {value, is_probe} in mat.get_texture_list() when not is_probe
-                    promises.push value.load {size_ratio: texture_size_ratio}
-
+                promises.push mat.load(options)
     Promise.all promises
 
 module.exports = {

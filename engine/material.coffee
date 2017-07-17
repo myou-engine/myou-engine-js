@@ -69,6 +69,27 @@ class Material
             @_has_texture_list_checked = true
         return @_texture_list
 
+    # Initiates loading of the material and its textures,
+    # returning a promise for when all has loaded
+    # @option options fetch_textures [boolean] Whether to fetch textures when they're not loaded already.
+    # @option options texture_size_ratio [number] Quality of textures specified in ratio of number of pixels.
+    # @return [Promise]
+    load: (options={}) ->
+        {
+            fetch_textures=true
+            texture_size_ratio=1
+        } = options
+        # TODO: Have a material promise:
+        # * Implement Material::ensure_upload(mesh) which generates a
+        #   triangle with same layout if it doesn't exist already.
+        # * ensure_upload will return a promise (stored in the shader).
+        # * Draw it in a 2x2 px framebuffer for this purpose.
+        # * Fulfill promise after this.
+        promises = []
+        for {value, is_probe} in @get_texture_list() when not is_probe
+            promises.push value.load {size_ratio: texture_size_ratio}
+        return Promise.all(promises)
+
     clone_to_scene: (scene) ->
         n = new Material(@context, @name, @data, null)
         n.scene = @scene
