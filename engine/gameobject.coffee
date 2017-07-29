@@ -488,13 +488,7 @@ class GameObject
     # @param [bool] recursive: Whether to clone its children
     clone: (scene=this.scene, recursive=false) ->
         n = Object.create @
-        if recursive
-            n.children = for child in @children
-                child.clone(scene, true)
-                child.parent = n
-                child
-        else
-            n.children = []
+        n.children = children = []
         n.position = vec3.clone @position
         n.rotation = vec4.clone @rotation
         n.scale = vec3.clone @scale
@@ -524,6 +518,12 @@ class GameObject
                 mat = materials[i] = materials[i].clone_to_scene scene
 
         scene?.add_object n, @name
+        # Adding children after ensures objects don't need to be sorted
+        if recursive
+            for child in @children
+                child.clone(scene, true)
+                child.parent = n
+                children.push child
         if @body
             n.body = null
             n.instance_physics @_use_visual_mesh

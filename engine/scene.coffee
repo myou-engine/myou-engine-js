@@ -174,6 +174,7 @@ class Scene
                 children[index++] = ob
             for c in ob.children
                 reorder c
+        # this @children is not a typo
         for ob in @children when not ob.parent
             reorder ob
         @_children_are_ordered = true
