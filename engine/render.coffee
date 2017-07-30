@@ -81,7 +81,7 @@ class RenderManager
         @compiled_shaders_this_frame = 0
         @use_frustum_culling = true
         # TODO: workaround until we properly manage reused textures
-        @unbind_textures_on_draw_mesh = true
+        @unbind_textures_on_draw_mesh = false
         @unbind_textures_on_draw_viewport = true
         @probes = []
 
@@ -340,10 +340,13 @@ class RenderManager
     # @param texture [Texture] Texture or [Cubemap]
     # @return [number] Active texture unit number
     # TODO: Check if a shader needs more textures than available
-    bind_texture: (texture) ->
+    bind_texture: (texture, avoid_material) ->
         {gl, bound_textures, active_texture, next_texture, max_textures} = @
         old_tex = bound_textures[texture.bound_unit]
         if texture.bound_unit == -1 or old_tex != texture
+            while avoid_material? and (nt = bound_textures[next_texture])? and\
+                    nt.last_used_material == avoid_material
+                next_texture = (next_texture+1) % max_textures
             texture.bound_unit = bound_unit = next_texture
             if active_texture != bound_unit
                 @active_texture = bound_unit
@@ -364,6 +367,7 @@ class RenderManager
             if active_texture != bound_unit
                 @active_texture = bound_unit
                 gl.activeTexture gl.TEXTURE0 + bound_unit
+
         # TODO: debug option to check if texture is actually bound
         return bound_unit
 
@@ -376,6 +380,7 @@ class RenderManager
             gl.activeTexture gl.TEXTURE0 + texture.bound_unit
             gl.bindTexture texture.gl_target, null
             texture.bound_unit = -1
+            texture.last_used_material = null
         return
 
     # Draws all enabled scenes of all the viewports in `render_manager.viewports`.
@@ -496,6 +501,7 @@ class RenderManager
             # unbind all textures
             for tex, i in @bound_textures when tex?
                 tex.bound_unit = -1
+                tex.last_used_material = null
                 gl.activeTexture gl.TEXTURE0 + i
                 gl.bindTexture tex.gl_target, null
                 @bound_textures[i] = null
@@ -530,6 +536,8 @@ class RenderManager
 
             # Enabling textures and assigning their respective uniforms
             # TODO: figure out a way to do object-specific textures
+            for {value} in mat._texture_list
+                value.last_used_material = mat
             for tex_input in mat._texture_list
                 if tex_input.is_probe
                     # this means it's the probe cube texture
@@ -538,7 +546,7 @@ class RenderManager
                 else
                     tex = tex_input.value
                 if tex.bound_unit == -1
-                    @bind_texture tex
+                    @bind_texture tex, mat
 
             # Assigning uniforms of vertex modifiers
             mds = shader.modifier_data_store
@@ -695,6 +703,7 @@ class RenderManager
             # unbind all textures
             for tex, i in @bound_textures when tex?
                 tex.bound_unit = -1
+                tex.last_used_material = null
                 gl.activeTexture gl.TEXTURE0 + i
                 gl.bindTexture tex.gl_target, null
                 @bound_textures[i] = null

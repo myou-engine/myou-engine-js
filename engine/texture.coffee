@@ -46,6 +46,7 @@ class Texture
         @gl_target = 3553 # gl.TEXTURE_2D
         @gl_tex = null
         @bound_unit = -1
+        @last_used_material = null
         @loaded = false
         @promise = null
         # If it tries to load the same data as @promised_data,

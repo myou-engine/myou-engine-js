@@ -17,7 +17,7 @@ class BlenderCyclesPBRMaterial
         @unflutsamples_index = _texture_list.length
         _texture_list.push {value: get_lutsamples_texture(scene)}
         @unfprobe_index = _texture_list.length
-        _texture_list.push {value: null, is_probe: true}
+        _texture_list.push {value: {}, is_probe: true}
         return
 
     assign_textures: ->

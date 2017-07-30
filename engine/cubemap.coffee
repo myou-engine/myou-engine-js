@@ -34,6 +34,7 @@ class Cubemap
         @coefficients = (vec3.create() for [0...9])
         @loaded = false
         @bound_unit = -1
+        @last_used_material = null
         @instance()
 
 
