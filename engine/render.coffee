@@ -68,10 +68,10 @@ class RenderManager
         @viewports = []
         @render_tick = 0
         @context_lost_count = 0
-        @bound_textures = []
+        @max_textures = gl.getParameter gl.MAX_TEXTURE_IMAGE_UNITS
+        @bound_textures = new Array @max_textures
         @active_texture = -1
         @next_texture = 0
-        @max_textures = gl.getParameter gl.MAX_TEXTURE_IMAGE_UNITS
         @frame_start = performance.now()
         @pixel_ratio_x = @pixel_ratio_y = 1
         @camera_z = vec3.create()
@@ -80,8 +80,9 @@ class RenderManager
         @background_alpha = if ba? then ba else 1
         @compiled_shaders_this_frame = 0
         @use_frustum_culling = true
-        @unbind_textures_on_draw_mesh = false
-        @unbind_textures_on_draw_wiewport = true
+        # TODO: workaround until we properly manage reused textures
+        @unbind_textures_on_draw_mesh = true
+        @unbind_textures_on_draw_viewport = true
         @probes = []
 
         # Temporary variables
@@ -342,7 +343,7 @@ class RenderManager
     bind_texture: (texture) ->
         {gl, bound_textures, active_texture, next_texture, max_textures} = @
         old_tex = bound_textures[texture.bound_unit]
-        if texture.bound_unit != -1 or old_tex != texture
+        if texture.bound_unit == -1 or old_tex != texture
             texture.bound_unit = bound_unit = next_texture
             if active_texture != bound_unit
                 @active_texture = bound_unit
@@ -497,9 +498,9 @@ class RenderManager
                 tex.bound_unit = -1
                 gl.activeTexture gl.TEXTURE0 + i
                 gl.bindTexture tex.gl_target, null
+                @bound_textures[i] = null
             gl.activeTexture gl.TEXTURE0
             @active_texture = @next_texture = 0
-            @bound_textures.splice 0
 
         # Main routine for each submesh
         for mat,submesh_idx in amesh.materials
@@ -690,15 +691,15 @@ class RenderManager
         mat4.mul cam.world_to_screen_matrix, cam.projection_matrix, world2cam
 
         # TODO: Is this necessary?
-        if @unbind_textures_on_draw_wiewport
+        if @unbind_textures_on_draw_viewport
             # unbind all textures
             for tex, i in @bound_textures when tex?
                 tex.bound_unit = -1
                 gl.activeTexture gl.TEXTURE0 + i
                 gl.bindTexture tex.gl_target, null
+                @bound_textures[i] = null
             gl.activeTexture gl.TEXTURE0
             @active_texture = @next_texture = 0
-            @bound_textures.splice 0
 
         {mesh_lod_min_length_px} = @context
 

@@ -119,6 +119,7 @@ class Cubemap
         material.inputs.cube.value = @
         material.inputs.size.value = size
         shader.use()
+        @context.render_manager.bind_texture @
         shader.uniform_assign_func(gl, shader, null, null, null)
         gl.bindBuffer gl.ARRAY_BUFFER, quad
         @context.render_manager.change_enabled_attributes shader.attrib_bitmask
