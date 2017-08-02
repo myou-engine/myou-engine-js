@@ -80,8 +80,6 @@ class RenderManager
         @background_alpha = if ba? then ba else 1
         @compiled_shaders_this_frame = 0
         @use_frustum_culling = true
-        # TODO: workaround until we properly manage reused textures
-        @unbind_textures_on_draw_mesh = false
         @unbind_textures_on_draw_viewport = true
         @probes = []
 
@@ -342,8 +340,7 @@ class RenderManager
     # TODO: Check if a shader needs more textures than available
     bind_texture: (texture, avoid_material) ->
         {gl, bound_textures, active_texture, next_texture, max_textures} = @
-        old_tex = bound_textures[texture.bound_unit]
-        if texture.bound_unit == -1 or old_tex != texture
+        if texture.bound_unit == -1
             while avoid_material? and (nt = bound_textures[next_texture])? and\
                     nt.last_used_material == avoid_material
                 next_texture = (next_texture+1) % max_textures
@@ -351,6 +348,7 @@ class RenderManager
             if active_texture != bound_unit
                 @active_texture = bound_unit
                 gl.activeTexture gl.TEXTURE0 + bound_unit
+            old_tex = bound_textures[bound_unit]
             if old_tex?
                 old_tex.bound_unit = -1
                 if old_tex.gl_target != texture.gl_target
@@ -367,17 +365,17 @@ class RenderManager
             if active_texture != bound_unit
                 @active_texture = bound_unit
                 gl.activeTexture gl.TEXTURE0 + bound_unit
-
-        # TODO: debug option to check if texture is actually bound
         return bound_unit
 
     # Unbinds a texture if it was bound
     unbind_texture: (texture) ->
         {gl, bound_textures} = @
-        old_tex = bound_textures[texture.bound_unit]
+        {bound_unit} = texture
+        old_tex = bound_textures[bound_unit]
         if old_tex == texture
-            bound_textures[texture.bound_unit] = null
-            gl.activeTexture gl.TEXTURE0 + texture.bound_unit
+            bound_textures[bound_unit] = null
+            @active_texture = bound_unit
+            gl.activeTexture gl.TEXTURE0 + bound_unit
             gl.bindTexture texture.gl_target, null
             texture.bound_unit = -1
             texture.last_used_material = null
@@ -495,19 +493,6 @@ class RenderManager
         inv_radius_y = 2/inv_radius_y
         inv_radius_z = 2/inv_radius_z
 
-        # TODO: This was added to workaround a problem with meshes
-        # cloned from another scene; it shouldn't be necessary
-        if @unbind_textures_on_draw_mesh
-            # unbind all textures
-            for tex, i in @bound_textures when tex?
-                tex.bound_unit = -1
-                tex.last_used_material = null
-                gl.activeTexture gl.TEXTURE0 + i
-                gl.bindTexture tex.gl_target, null
-                @bound_textures[i] = null
-            gl.activeTexture gl.TEXTURE0
-            @active_texture = @next_texture = 0
-
         # Main routine for each submesh
         for mat,submesh_idx in amesh.materials
             if not (pass_ == -1 or mesh.passes[submesh_idx] == pass_)
@@ -543,6 +528,7 @@ class RenderManager
                     # this means it's the probe cube texture
                     tex = mesh.probe?.cubemap or @blank_cube_texture
                     tex_input.value = tex
+                    tex.last_used_material = mat
                 else
                     tex = tex_input.value
                 if tex.bound_unit == -1
@@ -708,7 +694,8 @@ class RenderManager
                 gl.bindTexture tex.gl_target, null
                 @bound_textures[i] = null
             gl.activeTexture gl.TEXTURE0
-            @active_texture = @next_texture = 0
+            @active_texture = -1
+            @next_texture = 0
 
         {mesh_lod_min_length_px} = @context
 
@@ -1130,6 +1117,19 @@ class RenderManager
                     throw "wrong type"
                 return gl["_"+p](l,t,v)
         return
+
+    # @nodoc
+    debug_break_on_any_gl_error: ->
+        gl = @gl
+        for k,v of gl when typeof v == 'function' and k != 'getError'
+            gl['_'+k] = gl[k]
+            gl[k] = do (k, gl) => (args...)->
+                r = gl["_"+k](args...)
+                if error = gl.getError()
+                    debugger
+                return r
+        return
+
 
     # @nodoc
     # This method allows to compare performance between few objects
