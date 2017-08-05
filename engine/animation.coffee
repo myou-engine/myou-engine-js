@@ -92,8 +92,10 @@ class Animation
         strips_end = -1e999
         @strips = []
         @objects = for ob in objects when ob not in exclude
+            object_is_used = false
             # DEPRECATED
             if ob.actions?.length
+                object_is_used = true
                 ob.animation_strips.push {
                     action: ob.actions[0]
                     frame_start: 0
@@ -111,11 +113,14 @@ class Animation
             for strip in ob.animation_strips
                 if (not strip_name? or strip_name==strip.name) and \
                         strip_name_filter.test (strip.name or '')
+                    object_is_used = true
                     @strips.push strip
                     strips_start = Math.min(strip.frame_start, strips_start)
                     strips_end = Math.max(strip.frame_end, strips_end)
+            if not object_is_used
+                continue
             ob
-        {@scene, scene: {@context}} = @objects[0]
+        {@scene, scene: {@context}} = objects[0]
         # Position in animation frames, usually assigned in step(),
         # used when evaluating the animation
         @pos = 0
