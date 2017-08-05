@@ -521,7 +521,7 @@ class GameObject
         # Adding children after ensures objects don't need to be sorted
         if recursive
             for child in @children
-                child.clone(scene, true)
+                child = child.clone(scene, true)
                 child.parent = n
                 children.push child
         if @body
