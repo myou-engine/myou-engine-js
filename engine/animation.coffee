@@ -330,9 +330,9 @@ class FiniteAnimation extends Animation
         @pos += frame_delta * @speed
         if @pos > @end_frame
             @pos = @end_frame
-            # even though we're calling stop,
+            # even though we're calling pause,
             # it's being evaluated on this frame
-            @stop()
+            @pause()
 
 
 evaluate_all_animations = (context, frame_duration_ms)->
