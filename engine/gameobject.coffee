@@ -483,6 +483,21 @@ class GameObject
         @_update_matrices()
         return @world_matrix
 
+    translate: (vector, relative_object) ->
+        if relative_object? or @parent?
+            vector = vec3.clone vector
+            q = quat.create()
+        if relative_object?
+            relative_object.get_world_rotation q
+            vec3.transformQuat vector, vector, q
+        if @parent?
+            @parent.get_world_rotation q
+            quat.invert q, q
+            vec3.transformQuat vector, vector, q
+        vec3.add @position, @position, vector
+
+
+
     # Returns a clone of the object
     # @param [Scene] scene: Destination scene
     # @param [bool] recursive: Whether to clone its children
