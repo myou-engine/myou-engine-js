@@ -153,10 +153,8 @@ class BlenderInternalMaterial
                     code # Ignored, used only for get_model_view_matrix_name()
                 when 2, GPU_DYNAMIC_OBJECT_MAT # object_matrix
                     code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, ob.world_matrix);"
-                when 3, GPU_DYNAMIC_OBJECT_VIEWIMAT # inverse model_view_matrix
-                    # NOTE: Objects with zero scale are not drawn, otherwise m4 could be null
-                    code.push "m4 = mat4.invert(render._m4, render._model_view_matrix);"
-                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, m4);"
+                when 3, GPU_DYNAMIC_OBJECT_VIEWIMAT # inverse view_matrix (not model_view_matrix!)
+                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, render._cam2world);"
                 when 4, GPU_DYNAMIC_OBJECT_IMAT # inverse object_matrix
                     # NOTE: Objects with zero scale are not drawn, otherwise m4 could be null
                     code.push "m4 = mat4.invert(render._m4, ob.world_matrix);"
