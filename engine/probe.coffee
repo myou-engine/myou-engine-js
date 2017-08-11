@@ -1,4 +1,4 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
 
 class Probe
     constructor: (@object, options) ->

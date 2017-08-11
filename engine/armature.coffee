@@ -1,5 +1,5 @@
 {GameObject} = require './gameobject.coffee'
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
 
 # FUTURE OPTIMIZATION STRATEGIES
 # Make a single flat array for positions and rotations,
@@ -11,7 +11,7 @@
 # Uniforms (in armature space) = parent uniform * base pose * local
 
 #UNIT_MAT4 = mat4.create()
-VECTOR_Y = [0, 1, 0]
+VECTOR_Y = vec3.new 0, 1, 0
 
 class Bone extends GameObject
 
@@ -20,14 +20,14 @@ class Bone extends GameObject
         @base_position = vec3.create()
         @base_rotation = quat.create()
         # Position and rotation in LOCAL (base) space
-        @position = [0, 0, 0]
-        @rotation = [0, 0, 0, 1]
+        @position = vec3.create()
+        @rotation = quat.create()
         #@rotation_order = 'Q'
-        @scale = [1, 1, 1]
+        @scale = vec3.new 1, 1, 1
         # parents and constraints will set those
-        @final_position = [0, 0, 0]
-        @final_rotation = [0, 0, 0, 1]
-        @final_scale = [1, 1, 1]
+        @final_position = vec3.create()
+        @final_rotation = quat.create()
+        @final_scale = vec3.new 1, 1, 1
         # which will be used to compute
         @matrix = mat4.create() # World matrix
         # Object local matrix (relative to rest pose)
@@ -58,8 +58,8 @@ class Armature extends GameObject
     add_bones: (bones)->
         for b in bones
             bone = new Bone @context
-            vec3.copy bone.base_position, b['position']
-            vec4.copy bone.base_rotation, b['rotation']
+            vec3.copyArray bone.base_position, b['position']
+            quat.copyArray bone.base_rotation, b['rotation']
             deform_id = b['deform_id']
             if deform_id != -1
                 bone.deform_id = deform_id
@@ -118,27 +118,18 @@ class Armature extends GameObject
             scl = bone.final_scale
             # TODO: scale is not calculated correctly
             #       when parent's scale X!=Y!=Z
-            mat4.fromRotationTranslation m, rot, pos
-            m[0] *= scl[0]
-            m[1] *= scl[0]
-            m[2] *= scl[0]
-            m[4] *= scl[1]
-            m[5] *= scl[1]
-            m[6] *= scl[1]
-            m[8] *= scl[2]
-            m[9] *= scl[2]
-            m[10] *= scl[2]
+            mat4.fromRTS m, rot, pos, scl
             mat4.mul bone.ol_matrix, m, bone.inv_rest_matrix, m
 
         return
 
-    apply_pose: (pose)->
+    apply_pose_arrays: (pose)->
         for bname of pose
             p = pose[bname]
             b = @bones[bname]
-            vec3.copy b.position, p.position
-            vec4.copy b.rotation, p.rotation
-            vec3.copy b.scale, p.scale
+            vec3.copyArray b.position, p.position
+            quat.copyArray b.rotation, p.rotation
+            vec3.copyArray b.scale, p.scale
         return
 
 rotation_to = (out, p1, p2, maxang)->
@@ -180,10 +171,10 @@ class BoneConstraints
         # Assuming scale of parents is 1 for now
         dist = vec3.dist owner.final_position, target.final_position
         scl = owner.final_scale
-        scl[1] *= dist / rest_length
+        scl.y *= dist / rest_length
         XZ = 1 - Math.sqrt(bulge) + Math.sqrt(bulge * (rest_length / dist))
-        scl[0] *= XZ
-        scl[2] *= XZ
+        scl.x *= XZ
+        scl.z *= XZ
         v = vec3.sub vec3.create(), target.final_position, owner.final_position
         v2 = vec3.transformQuat vec3.create(), VECTOR_Y, owner.final_rotation
         q = rotation_to quat.create(), v2, v, 9999
@@ -202,7 +193,8 @@ class BoneConstraints
         points = []
         for b in bones[...-1]
             points.push vec3.sub(vec3.create(), b.final_position, first)
-        tip = vec3.transformQuat vec3.create(), [0,tip_bone.blength,0], tip_bone.final_rotation
+        tip = vec3.new 0, tip_bone.blength, 0
+        vec3.transformQuat tip, tip, tip_bone.final_rotation
         vec3.add tip, tip, tip_bone.final_position
         vec3.sub tip, tip, first
         points.unshift tip
@@ -241,19 +233,19 @@ class BoneConstraints
             vec3.add points[i], points[i], first
             vec3.add original_points[i], original_points[i], first
         #for i in [0...point.length-1]
-            #render_manager.debug.vectors.push [vec3.sub(vec3.create(), points[i], points[i+1]), vec3.clone(points[i+1]), [1,1,0,1]]
-        #render_manager.debug.vectors.push [vec3.sub(vec3.create(), points[points.length-1], first), first, [1,1,0,1]]
+            #render_manager.debug.vectors.push [vec3.sub(vec3.create(), points[i], points[i+1]), vec3.clone(points[i+1]), {r: 1, g:1, b:0, a:1}]
+        #render_manager.debug.vectors.push [vec3.sub(vec3.create(), points[points.length-1], first), first, {r: 1, g:1, b:0, a:1}]
         #for i in [0...original_points.length-1]
-            #render_manager.debug.vectors.push [vec3.sub(vec3.create(), original_points[i], original_points[i+1]), vec3.clone(original_points[i+1]), [1,0,1,1]]
-        #render_manager.debug.vectors.push [vec3.sub(vec3.create(), original_points[original_points.length-1], first), first, [1,0,1,1]]
+            #render_manager.debug.vectors.push [vec3.sub(vec3.create(), original_points[i], original_points[i+1]), vec3.clone(original_points[i+1]), {r: 1, g:0, b:1, a:1}]
+        #render_manager.debug.vectors.push [vec3.sub(vec3.create(), original_points[original_points.length-1], first), first, {r: 1, g:0, b:1, a:1}]
         #for i in [0...points.length]
             #objects['Icosphere.00'+i].position = vec3.clone points[i]
 
         v = vec3.create()
         points.push first
         original_points.push first
-        points.push [0,0,0]
-        original_points.push [0,0,0]
+        points.push {x: 0, y:0, z:0}
+        original_points.push {x: 0, y:0, z:0}
         for i in [0...points.length-2]
             # Set bone to final position
             vec3.copy bones[i].final_position, points[i+1]

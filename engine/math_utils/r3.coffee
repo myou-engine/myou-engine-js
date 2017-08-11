@@ -1,31 +1,32 @@
 
-{mat3, vec3, vec4, quat} = require 'gl-matrix'
+{mat3, mat4, vec3, vec4, quat} = require 'vmath'
 
 #Constants
-Z_VECTOR = vec3.fromValues 0,0,1
+Z_VECTOR = vec3.new 0,0,1
 
 #Temporal
+m4 = mat4.create()
 m3 = mat3.create()
 v1 = vec3.create()
 v2 = vec3.create()
 q = quat.create()
 
-planes_intersection = (out, m)->
-    # m is the 4x3 row-major matrix defined by 3 plane equations.
-    mat3.fromMat4 m3, m
+planes_intersection = (out, a, b, c)->
+    # a, b, c are plane equations as vec4
+    mat3.fromColumns m3, a, b, c
     mat3.invert m3, m3
-    out[0] = (m3[0] * m[3]) + (m3[1] * m[7]) + (m3[2] * m[11])
-    out[1] = (m3[3] * m[3]) + (m3[4] * m[7]) + (m3[5] * m[11])
-    out[2] = (m3[6] * m[3]) + (m3[7] * m[7]) + (m3[8] * m[11])
+    out.x = (m3.m00 * a.w) + (m3.m01 * b.w) + (m3.m02 * c.w)
+    out.y = (m3.m03 * a.w) + (m3.m04 * b.w) + (m3.m05 * c.w)
+    out.z = (m3.m06 * a.w) + (m3.m07 * b.w) + (m3.m08 * c.w)
     return out
 
 plane_from_norm_point = (out, n, p)->
     # p is a point of the plane
     # n is the normal of the plane
     # returns a vec4
-    return vec4.set out, n[0], n[1], n[2], n[0]*p[0]+n[1]*p[1]+n[2]*p[2]
+    return vec4.set out, n.x, n.y, n.z, n.x*p.x+n.y*p.y+n.z*p.z
 
-rect_from_dir_point = (out, d, p)-> # UNTESTED
+rect_from_dir_point = (out1, out2, d, p)-> # UNTESTED
     # p is a point of the rect
     # d is the director vector of the rect
     # the result will be 2 planes which define the rect, in a
@@ -35,13 +36,9 @@ rect_from_dir_point = (out, d, p)-> # UNTESTED
     quat.rotationTo q, Z_VECTOR, d
     vec3.transformQuat v1, v1, q
     vec3.transformQuat v2, v2, q
-    plane_from_norm_point out, v2, p
-    out[4] = out[0]
-    out[5] = out[1]
-    out[6] = out[2]
-    out[7] = out[3]
-    plane_from_norm_point out, v1, p
-    return out
+    plane_from_norm_point out1, v2, p
+    plane_from_norm_point out2, v1, p
+    return
 
 v_dist_point_to_rect = (out, p, rp, dir)->
     # p is a point
@@ -49,6 +46,5 @@ v_dist_point_to_rect = (out, p, rp, dir)->
     # dir is the director vector of the rect
     vec3.cross out, vec3.sub(v2,p,rp), vec3.normalize v1, dir
     return out
-
 
 module.exports = {planes_intersection, plane_from_norm_point, rect_from_dir_point, v_dist_point_to_rect}

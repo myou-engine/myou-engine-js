@@ -1,4 +1,4 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
 {GameObject} = require './gameobject.coffee'
 {Material} = require './material.coffee'
 {ShapeKeyModifier, ArmatureModifier} = require './vertex_modifiers.coffee'
@@ -120,7 +120,7 @@ class Mesh extends GameObject
         @materials = []
         @passes = [0]
         @armature = null
-        @uv_rect = vec4.fromValues 0, 0, 1, 1 # x, y, w, h
+        @uv_rect = [0, 0, 1, 1] # x, y, w, h
         @uv_right_eye_offset = [0, 0]
         @active_mesh_index = 0
         @altmeshes = []
@@ -211,7 +211,7 @@ class Mesh extends GameObject
             @instance_physics()
         @context.main_loop?.reset_timeout()
         # This forces the mesh to be uploaded
-        # ZERO_MATRIX = mat4.fromValues 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,1
+        # ZERO_MATRIX = mat4.new 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,1
         # @context.render_manager.draw_mesh(@, ZERO_MATRIX, -1, false)
         return data
 
@@ -319,7 +319,8 @@ class Mesh extends GameObject
             amesh = @altmeshes[@active_mesh_index] or @
         else if @lod_objects.length != 0
             {camera} = viewport
-            cam_pos = camera.world_matrix.subarray(12,15)
+            cwm = camera.world_matrix
+            cam_pos = vec3.new(cwm.m12,cwm.m13,cwm.m14)
             # Approximation to nearest point to the surface:
             # We clamp the camera position to the object's bounding box
             #    we transform the point with the inverse matrix
@@ -371,7 +372,7 @@ class Mesh extends GameObject
     # @param [bool] recursive: Whether to clone its children
     clone: (scene, recursive) ->
         clone = super scene, recursive
-        clone.uv_rect = vec4.clone @uv_rect
+        clone.uv_rect = @uv_rect[...]
         clone.uv_right_eye_offset = @uv_right_eye_offset[...]
         return clone
 

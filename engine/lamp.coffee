@@ -1,7 +1,12 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{mat2, mat3, mat4, vec2, vec3, vec4, quat, color4} = require 'vmath'
 {GameObject} = require './gameobject.coffee'
 {Framebuffer} = require './framebuffer.coffee'
 {Material} = require './material.coffee'
+LIGHT_PROJ_TO_DEPTH = mat4.new(
+    0.5, 0.0, 0.0, 0.0,
+    0.0, 0.5, 0.0, 0.0,
+    0.0, 0.0, 0.5, 0.0,
+    0.5, 0.5, 0.5, 1.0)
 
 class Lamp extends GameObject
     # @nodoc
@@ -24,8 +29,7 @@ class Lamp extends GameObject
         @shadow_texture = null
         # this option allows to stop rendering the shadow when stuff didn't change
         @render_shadow = true
-        @_color4 = vec4.fromValues 1,1,1,1
-        @color = @_color4.subarray 0,3
+        @color = color4.new 1,1,1,1
         @energy = 1
         @spot_size = 1.3
         @spot_blend = 0.15
@@ -42,22 +46,23 @@ class Lamp extends GameObject
     instance_physics: ->
 
     recalculate_render_data: (world2cam, cam2world, world2light) ->
-        vec3.transformMat4 @_view_pos, @world_matrix.subarray(12,15), world2cam
+        wm = @world_matrix
+        vec3.transformMat4 @_view_pos, vec3.new(wm.m12,wm.m13,wm.m14), world2cam
 
         # mat4.multiply m4, world2cam, @world_matrix
-        # @_dir[0] = -m4[8]
-        # @_dir[1] = -m4[9]
-        # @_dir[2] = -m4[10]
+        # @_dir.x = -m4.m08
+        # @_dir.y = -m4-m09
+        # @_dir.z = -m4.m10
         ##We're doing the previous lines, but just for the terms we need
         a = world2cam
         b = @world_matrix
-        b0 = b[8]; b1 = b[9]; b2 = b[10]; b3 = b[11]
-        x = b0*a[0] + b1*a[4] + b2*a[8] + b3*a[12]
-        y = b0*a[1] + b1*a[5] + b2*a[9] + b3*a[13]
-        z = b0*a[2] + b1*a[6] + b2*a[10] + b3*a[14]
-        @_dir[0] = -x
-        @_dir[1] = -y
-        @_dir[2] = -z
+        b0 = b.m08; b1 = b.m09; b2 = b.m10; b3 = b.m11
+        x = b0*a.m00 + b1*a.m04 + b2*a.m08 + b3*a.m12
+        y = b0*a.m01 + b1*a.m05 + b2*a.m09 + b3*a.m13
+        z = b0*a.m02 + b1*a.m06 + b2*a.m10 + b3*a.m14
+        @_dir.x = -x
+        @_dir.y = -y
+        @_dir.z = -z
 
         if @shadow_fb?
             mat4.multiply @_cam2depth, world2light, cam2world
@@ -105,10 +110,7 @@ class Lamp extends GameObject
         )
         mat4.multiply(
             @_depth_matrix,
-            [0.5, 0.0, 0.0, 0.0,
-            0.0, 0.5, 0.0, 0.0,
-            0.0, 0.0, 0.5, 0.0,
-            0.5, 0.5, 0.5, 1.0],
+            LIGHT_PROJ_TO_DEPTH,
             @_projection_matrix
         )
         return

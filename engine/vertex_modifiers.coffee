@@ -109,7 +109,7 @@ class ArmatureModifier
     update_uniforms: (gl, store) ->
         {deform_bones} = @armature
         for i in [0...deform_bones.length]
-            gl.uniformMatrix4fv store[i], false, deform_bones[i].ol_matrix
+            gl.uniformMatrix4fv store[i], false, deform_bones[i].ol_matrix.toJSON()
         return
 
 

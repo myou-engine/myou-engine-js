@@ -1,4 +1,4 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{mat2, mat3, mat4, vec2, vec3, vec4, quat, color3, color4} = require 'vmath'
 {Action} = require './animation.coffee'
 {Viewport} = require './viewport.coffee'
 {Camera} = require './camera.coffee'
@@ -13,6 +13,30 @@
 {Texture} = require './texture.coffee'
 {Material} = require './material.coffee'
 {nearest_POT} = require './math_utils/math_extra'
+
+# patch_vec = (vec) ->
+#     if not vec._?
+#         vec._ = {}
+#         # console.log '---'
+#         other = {x:'r',r:'x',y:'g',g:'y',b:'z',z:'b',w:'a',a:'w'}
+#         for k in Object.keys(vec) when k!='_'
+#             # console.log k, other[k]
+#             vec._[k] = vec[k]
+#             do (k) -> Object.defineProperty vec, k,
+#                 get: -> @_[k]
+#                 set: (v) ->
+#                     debugger if not v? or v!=v
+#                     @_[k] = v
+#             Object.defineProperty vec, other[k],
+#                 get: -> debugger
+#                 set: (v) -> debugger
+#     vec
+#
+# for m in [vec2,vec3,vec4,quat,color3,color4]
+#     for k,f of vec3 when typeof f == "function"
+#         if k in ['create', 'new', 'clone']
+#             vec3[k] = do(f) -> (args...) ->
+#                 patch_vec f(args...)
 
 is_browser = not process? or process.browser
 if is_browser
@@ -54,7 +78,7 @@ load_scene = (name, filter, options, context) ->
             load_physics_engine().then ->
                 scene.world = new PhysicsWorld
                 g = scene.gravity
-                set_gravity scene.world, g[0],g[1],g[2]
+                set_gravity scene.world, g.x, g.y, g.z
                 for ob in scene.children
                     ob.instance_physics()
                 return Promise.resolve(scene)
@@ -72,10 +96,11 @@ load_datablock = (scene, data, context) ->
     # TODO: This has grown a little too much
     # We should use switch
     if data.type=='SCENE'
-        scene.set_gravity data.gravity
-        vec3.copy(scene.background_color, data.background_color)
+        [gx,gy,gz] = data.gravity
+        scene.set_gravity vec3.new gx,gy,gz
+        vec3.copyArray(scene.background_color, data.background_color)
         if data.ambient_color
-            vec3.copy(scene.ambient_color, data.ambient_color)
+            vec3.copyArray(scene.ambient_color, data.ambient_color)
         scene.debug_physics = context.MYOU_PARAMS.debug_physics or data.debug_physics
         scene.active_camera_name = data.active_camera
         if data.world_material?
@@ -134,10 +159,13 @@ load_datablock = (scene, data, context) ->
                     u.value = params[u.material][iname]
                     u.count = input_types[u.type&15]
                     u.type = -1
-                    if u.count > 1
-                        u.value = u.value or new Float32Array(u.count)
-                    else
-                        u.value = u.value or 0
+                    switch u.count
+                        when 1
+                            u.value = u.value or 0
+                        when 3
+                            u.value = color3.new((u.value or [0,0,0])...)
+                        when 4
+                            u.value = color4.new((u.value or [0,0,0,0])...)
 
         # add multiplier to vertex colors
         if is_blender278
@@ -218,7 +246,7 @@ load_object = (data, scene) ->
             ob.passes = data.passes # TODO: allow pass changes
             scene.add_object ob, data.name, data.parent, data.parent_bone
 
-        vec4.copy ob.color, data.color
+        color4.copyArray ob.color, data.color
         load_mesh_properties = (ob, data)=>
             if ob.hash != data.hash
                 # This data should not used on render
@@ -234,16 +262,18 @@ load_object = (data, scene) ->
                 ob.all_f = data.all_f
                 ob.shape_multiplier = data.shape_multiplier or 1
                 if data.uv_rect?
-                    vec3.copy ob.uv_rect, data.uv_rect
+                    ob.uv_rect = data.uv_rect
                 else
                     ob.uv_rect[2] = ob.uv_rect[3] = data.uv_multiplier or 1
                 ob.pack_offset = data.pack_offset
                 ob.packed_file = data.packed_file
                 if data.bbox?
-                    ob.bound_box = [vec3.clone(data.bbox),vec3.clone(data.bbox[3...])]
+                    [x,y,z,x2,y2,z2] = data.bbox
+                    ob.bound_box = [vec3.new(x,y,z), vec3.new(x2,y2,z2)]
                 ob.avg_poly_area = data.avg_poly_area or 10
                 ob.avg_poly_length = Math.pow(ob.avg_poly_area,0.5)
-                vec3.copy ob.center, data.center or [0,0,0]
+                if data.center?
+                    vec3.copyArray ob.center, data.center
 
         load_mesh_properties ob, data
 
@@ -346,7 +376,7 @@ load_object = (data, scene) ->
 
             scene.add_object ob, data.name, data.parent, data.parent_bone
         ob.lamp_type = data.lamp_type
-        ob.color.set data.color
+        color3.copyArray ob.color, data.color
         if data.energy?
             ob.energy = data.energy
         ob.falloff_distance = data.falloff_distance
@@ -364,13 +394,13 @@ load_object = (data, scene) ->
             ob.children = []
             ob.unfc = data.unfc
             ob.add_bones data.bones
-        ob.apply_pose data.pose
+        ob.apply_pose_arrays data.pose
     else if data.type=='EMPTY'
         if not ob
             ob = new GameObject context
             ob.name = data.name
             ob.static = data.static or false
-            vec4.copy ob.color, data.color
+            color4.copyArray ob.color, data.color
             scene.add_object ob, data.name, data.parent, data.parent_bone
     else
         console.log "Warning: unsupported type",data.type
@@ -386,19 +416,19 @@ load_object = (data, scene) ->
 
     if data.position?
         # current format
-        vec3.copy ob.position, data.position
-        mat4.copy ob.matrix_parent_inverse, data.matrix_parent_inverse
+        vec3.copyArray ob.position, data.position
+        mat4.set ob.matrix_parent_inverse, data.matrix_parent_inverse...
     else
         # old format, that may have matrix_parent_inverse but incorrect
-        vec3.copy ob.position, data.pos
+        vec3.copyArray ob.position, data.pos
     r = data.rot
     quat.set ob.rotation, r[1], r[2], r[3], r[0]
     ob.rotation_order = data.rot_mode
-    vec3.copy ob.scale, data.scale
-    vec3.copy ob.offset_scale, data.offset_scale
+    vec3.copyArray ob.scale, data.scale
+    vec3.copyArray ob.offset_scale, data.offset_scale
     ob.visible = data.visible
     ob.mirrors = data.mirrors or 1
-    vec3.copy ob.dimensions, data.dimensions # is this used outside physics?
+    vec3.copyArray ob.dimensions, data.dimensions # is this used outside physics?
     ob.radius = data.mesh_radius or vec3.len(ob.dimensions) * 0.5
     ob.properties = data.properties or {}
     ob.actions = data.actions or []
@@ -416,8 +446,8 @@ load_object = (data, scene) ->
         ob.mass = data.mass
         ob.no_sleeping = data.no_sleeping
         ob.is_ghost = data.is_ghost
-        vec3.copy ob.linear_factor, data.linear_factor
-        vec3.copy ob.angular_factor, data.angular_factor
+        vec3.copyArray ob.linear_factor, data.linear_factor
+        vec3.copyArray ob.angular_factor, data.angular_factor
         ob.form_factor = data.form_factor
         ob.friction = data.friction
         ob.elasticity = data.elasticity

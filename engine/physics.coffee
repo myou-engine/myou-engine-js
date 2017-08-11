@@ -1,4 +1,4 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
 
 _phy_obs_ptrs = {} # used in body creation/destruction, colliding_bodies and ray_intersect_bodies
 _tmp_Vector3 = _tmp_Vector3b = _tmp_Vector3c = _tmp_Quaternion = _tmp_Transform = \

@@ -1,4 +1,4 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{mat2, mat3, mat4, vec2, vec3, vec4, quat, color4} = require 'vmath'
 {Animation} = require './animation'
 {Cubemap} = require './cubemap'
 {Probe} = require './probe'
@@ -39,11 +39,11 @@ class GameObject
         @rotation = quat.create()
         @radius = 0
         @rotation_order = 'XYZ'
-        @scale = vec3.fromValues 1, 1, 1
+        @scale = vec3.new 1, 1, 1
         @dimensions = vec3.create()
-        @color = vec4.fromValues 1, 1, 1, 1
+        @color = color4.new 1, 1, 1, 1
         @alpha = 1
-        @offset_scale = vec3.fromValues 1, 1, 1
+        @offset_scale = vec3.new 1, 1, 1
         @matrix_parent_inverse = mat4.create()
         @scene = null
         @original_scene = null
@@ -77,7 +77,7 @@ class GameObject
         if @context.use_physics
             @physical_radius = 1
             @anisotropic_friction = false
-            @friction_coefficients = vec3.fromValues 1, 1, 1
+            @friction_coefficients = vec3.new 1, 1, 1
             @collision_group = 1   # [1, 0, 0, 0, 0, 0, 0, 0]
             @collision_mask = 255  # [1, 1, 1, 1, 1, 1, 1, 1]
             @collision_shape = null
@@ -86,8 +86,8 @@ class GameObject
             @mass = 0
             @no_sleeping = false
             @is_ghost = false
-            @linear_factor = vec3.fromValues 1, 1, 1
-            @angular_factor = vec3.fromValues 1, 1, 1
+            @linear_factor = vec3.new 1, 1, 1
+            @angular_factor = vec3.new 1, 1, 1
             @form_factor = 0.4
             @friction = 0.5
             @elasticity = 0
@@ -145,28 +145,25 @@ class GameObject
             # half extents
             he = @phy_he
             dim = @dimensions
-            if dim[0] == 0 and dim[1] == 0 and dim[2] == 0
+            if dim.x == 0 and dim.y == 0 and dim.z == 0
                 he = vec3.scale he, @scale, @physical_radius
             else
                 vec3.scale he, dim, 0.5
 
             if @collision_shape=='BOX'
-                shape = new BoxShape he[0], he[1], he[2], @collision_margin
+                shape = new BoxShape he.x, he.y, he.z, @collision_margin
                 @phy_debug_mesh = @context.render_manager.debug.box
             else if @collision_shape=='SPHERE'
-                radius = Math.max he[0], he[1], he[2]
-                he = [radius, radius, radius]
+                radius = Math.max he.x, he.y, he.z
                 shape = new SphereShape radius, @collision_margin
                 @phy_debug_mesh = @context.render_manager.debug.sphere
             else if @collision_shape=='CYLINDER'
-                radius = Math.max he[0], he[1]
-                he = [radius, radius, he[2]]
-                shape = new CylinderShape radius, he[2], @collision_margin
+                radius = Math.max he.x, he.y
+                shape = new CylinderShape radius, he.z, @collision_margin
                 @phy_debug_mesh = @context.render_manager.debug.cylinder
             else if @collision_shape=='CAPSULE'
-                radius = Math.max he[0], he[1]
-                he = [radius, radius, he[2]]
-                shape = new CapsuleShape radius, he[2], @collision_margin
+                radius = Math.max he.x, he.y
+                shape = new CapsuleShape radius, he.z, @collision_margin
                 @phy_debug_mesh = @context.render_manager.debug.cylinder
             else if is_hull or is_tmesh
                 # Choose which mesh to use as physics
@@ -203,10 +200,10 @@ class GameObject
                     # TODO: Get average scale and add an option for recomputing real scale
                     scale = vec3.clone @scale
                     while p
-                        vec3.scale scale, scale, p.scale[2]
+                        vec3.scale scale, scale, p.scale.z
                         p = p.parent
                     if @mirrors & 2
-                        scale[0] = -scale[0]
+                        scale.x = -scale.x
                     if is_hull
                         shape = new ConvexShape data.varray, ob.stride/4, @scale, @collision_margin
                         data.phy_convex_hull = shape
@@ -228,7 +225,6 @@ class GameObject
                             data.phy_mesh_mx = shape
                         else
                             data.phy_mesh = shape
-                vec3.copy he, @scale
             else
                 console.log "Warning: Unknown shape", @collision_shape
 
@@ -253,7 +249,7 @@ class GameObject
                     shape = null
                 else
                     comp = new CompoundShape
-                    add_child_shape comp, shape, [0, 0, 0], [0, 0, 0, 1]
+                    add_child_shape comp, shape, {x: 0, y:0, z:0}, {x: 0, y:0, z:0, w:1}
                     shape = comp
             else
                 @collision_compound = false
@@ -262,7 +258,7 @@ class GameObject
                 posrot = @get_world_pos_rot()
                 pos = posrot[0]
                 if @mirrors & 2
-                    pos[0] = -pos[0]
+                    pos.x = -pos.x
                 rot = posrot[1]
                 # TODO: SOFT_BODY, OCCLUDE, NAVMESH
                 if @physics_type == 'RIGID_BODY'
@@ -275,7 +271,7 @@ class GameObject
                 else if @physics_type == 'DYNAMIC'
                     body = new RigidBody mass, shape, pos, rot, @friction, @elasticity, @form_factor
                     set_linear_factor body, @linear_factor
-                    set_angular_factor body, [0, 0, 0]
+                    set_angular_factor body, {x: 0, y:0, z:0}
                     @scene.rigid_bodies.push @
                 else if @physics_type == 'STATIC' or @physics_type == 'SENSOR'
                     body = new StaticBody shape, pos, rot, @friction, @elasticity
@@ -330,7 +326,7 @@ class GameObject
 
     _update_matrices:  ->
         rm = @rotation_matrix
-        [x, y, z, w] = @rotation
+        {x, y, z, w} = @rotation
         if @rotation_order != 'Q'
             q = quat.create()
             for i in [2..0] by -1
@@ -341,7 +337,7 @@ class GameObject
                         quat.rotateY q, q, y
                     when 'Z'
                         quat.rotateZ q, q, z
-            [x, y, z, w] = q
+            {x, y, z, w} = q
 
         scl = @scale
         @_flip = false
@@ -349,58 +345,58 @@ class GameObject
         if @parent?
             @_flip = @parent._flip
             @_sqscale *= @parent._sqscale
-        if scl[0]*scl[1]*scl[2] < 0
+        if scl.x*scl.y*scl.z < 0
             x=-x
             w=-w
             @_flip = not @_flip
-        rm[0] = w*w + x*x - y*y - z*z
-        rm[1] = 2 * (x * y + z * w)
-        rm[2] = 2 * (x * z - y * w)
-        rm[3] = 2 * (x * y - z * w)
-        rm[4] = w*w - x*x + y*y - z*z
-        rm[5] = 2 * (z * y + x * w)
-        rm[6] = 2 * (x * z + y * w)
-        rm[7] = 2 * (y * z - x * w)
-        rm[8] = w*w - x*x - y*y + z*z
+        rm.m00 = w*w + x*x - y*y - z*z
+        rm.m01 = 2 * (x * y + z * w)
+        rm.m02 = 2 * (x * z - y * w)
+        rm.m03 = 2 * (x * y - z * w)
+        rm.m04 = w*w - x*x + y*y - z*z
+        rm.m05 = 2 * (z * y + x * w)
+        rm.m06 = 2 * (x * z + y * w)
+        rm.m07 = 2 * (y * z - x * w)
+        rm.m08 = w*w - x*x - y*y + z*z
 
         pos = @position
-        ox = @offset_scale[0]
-        oy = @offset_scale[1]
-        oz = @offset_scale[2]
+        ox = @offset_scale.x
+        oy = @offset_scale.y
+        oz = @offset_scale.z
 
         # Assumes objects are evaluated in order,
         # Parents before children
 
         # TODO: manage negative scales (use abs() here, flip polygons and rotation)
-        isx = 1/scl[0]
-        isy = 1/scl[1]
-        isz = 1/scl[2]
+        isx = 1/scl.x
+        isy = 1/scl.y
+        isz = 1/scl.z
 
         nm = @normal_matrix
-        nm[0] = rm[0]*isx
-        nm[1] = rm[1]*isx
-        nm[2] = rm[2]*isx
-        nm[3] = rm[3]*isy
-        nm[4] = rm[4]*isy
-        nm[5] = rm[5]*isy
-        nm[6] = rm[6]*isz
-        nm[7] = rm[7]*isz
-        nm[8] = rm[8]*isz
+        nm.m00 = rm.m00*isx
+        nm.m01 = rm.m01*isx
+        nm.m02 = rm.m02*isx
+        nm.m03 = rm.m03*isy
+        nm.m04 = rm.m04*isy
+        nm.m05 = rm.m05*isy
+        nm.m06 = rm.m06*isz
+        nm.m07 = rm.m07*isz
+        nm.m08 = rm.m08*isz
 
 
         wm = @world_matrix
-        wm[0] = rm[0]*ox*scl[0]
-        wm[1] = rm[1]*oy*scl[0]
-        wm[2] = rm[2]*oz*scl[0]
-        wm[4] = rm[3]*ox*scl[1]
-        wm[5] = rm[4]*oy*scl[1]
-        wm[6] = rm[5]*oz*scl[1]
-        wm[8] = rm[6]*ox*scl[2]
-        wm[9] = rm[7]*oy*scl[2]
-        wm[10] = rm[8]*oz*scl[2]
-        wm[12] = pos[0]
-        wm[13] = pos[1]
-        wm[14] = pos[2]
+        wm.m00 = rm.m00*ox*scl.x
+        wm.m01 = rm.m01*oy*scl.x
+        wm.m02 = rm.m02*oz*scl.x
+        wm.m04 = rm.m03*ox*scl.y
+        wm.m05 = rm.m04*oy*scl.y
+        wm.m06 = rm.m05*oz*scl.y
+        wm.m08 = rm.m06*ox*scl.z
+        wm.m09 = rm.m07*oy*scl.z
+        wm.m10 = rm.m08*oz*scl.z
+        wm.m12 = pos.x
+        wm.m13 = pos.y
+        wm.m14 = pos.z
 
         if @parent
             bi = @parent_bone_index
@@ -419,8 +415,9 @@ class GameObject
             mat3.mul nm, @parent.normal_matrix, nm
             mat4.mul wm, @matrix_parent_inverse, wm
             mat4.mul @world_matrix, @parent.world_matrix, @world_matrix
-            #ppos = @parent.world_matrix.subarray 12,15
-            #pos = [pos[0] + ppos[0], pos[1] + ppos[1], pos[2] + ppos[2]]
+            #pwm = @parent.world_matrix
+            #ppos  =vec3.new(pwm.m12,pwm.m13,pwm.m14)
+            #pos = [pos.x + ppos.x, pos.y + ppos.y, pos.z + ppos.z]
 
     set_rotation_order: (order) ->
         if order == @rotation_order
@@ -432,9 +429,9 @@ class GameObject
                     Should be one of: Q XYZ XZY YXZ YZX ZXY ZYX."
         q = @rotation
         if @rotation_order != 'Q'
-            [x,y,z] = q
-            q[0] = q[1] = q[2] = 0
-            q[3] = 1
+            {x,y,z} = q
+            q.x = q.y = q.z = 0
+            q.w = 1
             for i in [2..0] by -1
                 switch @rotation_order[i]
                     when 'X'
@@ -445,7 +442,7 @@ class GameObject
                         quat.rotateZ q, q, z
         if f?
             f(q,q)
-            q[3] = 0
+            q.w = 0
         @rotation_order = order
 
 
@@ -456,7 +453,7 @@ class GameObject
     calc_bounding_box: ->
         @bounding_box_low = vec4.create()
         @bounding_box_high = vec4.create()
-        @bounding_box_low[3] = @bounding_box_high[3] = 1
+        @bounding_box_low.w = @bounding_box_high.w = 1
         dim_half = vec3.create()
         vec3.scale(dim_half, @dimensions, 0.5)
         vec3.sub(@bounding_box_low, @position, dim_half)
@@ -464,7 +461,8 @@ class GameObject
 
 
     get_world_position: (out=vec3.create()) ->
-        return vec3.copy out, @get_world_matrix().subarray(12,15)
+        wm = @get_world_matrix()
+        return vec3.set out, wm.m12, wm.m13, wm.m14
 
     get_world_rotation: (out=quat.create())  ->
         # TODO: would it be more efficient to convert
@@ -474,7 +472,7 @@ class GameObject
 
     get_world_pos_rot: ->
         wm = @get_world_matrix()
-        pos = vec3.clone(wm.subarray(12,15))
+        pos = vec3.new(wm.m12,wm.m13,wm.m14)
         rot = quat.fromMat3 quat.create(), mat3.fromMat4(mat3.create(), wm)
         return [pos, rot]
 
@@ -512,7 +510,7 @@ class GameObject
         n.world_matrix = mat4.clone @world_matrix
         n.rotation_matrix = mat3.clone @rotation_matrix
         n.normal_matrix = mat3.clone @normal_matrix
-        n.color = vec4.clone @color
+        n.color = color4.clone @color
         n.properties = Object.create @properties
         n.actions = @actions[...]
         n.passes = @passes and @passes[...]

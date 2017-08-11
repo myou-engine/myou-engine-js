@@ -1,4 +1,4 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{mat2, mat3, mat4, vec2, vec3, vec4, quat, color4} = require 'vmath'
 {PhysicsWorld, set_gravity, remove_body, destroy_world} = require './physics.coffee'
 {load_scene} = require './loader.coffee'
 {fetch_objects} = require './fetch_assets.coffee'
@@ -33,8 +33,8 @@ class Scene
         @physics_enabled = false
         @world = null
         @gravity = vec3.create()
-        @background_color = vec4.fromValues 0,0,0,1
-        @ambient_color = vec4.fromValues 0,0,0,1
+        @background_color = color4.new 0,0,0,1
+        @ambient_color = color4.new 0,0,0,1
         @world_material = null
         @background_probe = null
         @background_probe_data = null
@@ -54,10 +54,9 @@ class Scene
         @original_scene_name = ''
 
     set_gravity: (gravity)->
-        g = @gravity
-        vec3.copy g, gravity
+        g = vec3.copy @gravity, gravity
         if @world
-            set_gravity @world, g[0],g[1],g[2]
+            set_gravity @world, g.x, g.y, g.z
 
     add_object: (ob, name='no_name', parent_name='', parent_bone)->
         ob.original_scene = ob.original_scene or ob.scene or @

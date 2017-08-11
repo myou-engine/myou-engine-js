@@ -1,4 +1,4 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{mat2, mat3, mat4, vec2, vec3, vec4, quat, color4} = require 'vmath'
 timsort = require 'timsort'
 {Filter, box_filter_code, ResizeFilter} = require './filters.coffee'
 {Compositor, box_filter_code} = require './filters.coffee'
@@ -6,7 +6,7 @@ timsort = require 'timsort'
 {Mesh} = require './mesh.coffee'
 {Material} = require './material.coffee'
 {next_POT} = require './math_utils/math_extra'
-VECTOR_MINUS_Z = vec3.fromValues 0,0,-1
+VECTOR_MINUS_Z = vec3.new 0,0,-1
 
 # Render manager singleton. Performs all operations related to rendering to screen or to a buffer.
 #
@@ -194,7 +194,7 @@ class RenderManager
             }
         @white_texture.load()
 
-        @blank_cube_texture = new @context.Cubemap size: 16, color: [0,0,0,0]
+        @blank_cube_texture = new @context.Cubemap size: 16, color: {r: 0, g:0, b:0, a:0}
 
         @blank_textures = []
         @blank_textures[gl.TEXTURE_2D] = @blank_texture
@@ -403,7 +403,7 @@ class RenderManager
                 vec3.copy @viewports[1].camera.position, pose.position
             else if pose.orientation and nm
                 vec3.transformQuat nm.neck, nm.orig_neck, pose.orientation
-                nm.neck[2] -= nm.orig_neck[2]
+                nm.neck.z -= nm.orig_neck.z
                 vec3.copy @viewports[0].camera.position, nm.neck
                 vec3.copy @viewports[1].camera.position, nm.neck
             if pose.orientation
@@ -454,7 +454,7 @@ class RenderManager
             parented_pos = if mesh.parent then  mesh.get_world_position() else mesh.position
             pos = vec3.copy @_v, parented_pos
             if mesh.mirrors == 2
-                pos[0] = -pos[0]
+                pos.x = -pos.x
             vec3.sub pos, pos, cam.position
             r = mesh.radius
             distance_to_camera = vec3.dot pos, @camera_z
@@ -488,10 +488,10 @@ class RenderManager
             else
                 gl.frontFace 2305 # gl.CCW
 
-        [inv_radius_x, inv_radius_y, inv_radius_z] = mesh.dimensions
-        inv_radius_x = 2/inv_radius_x
-        inv_radius_y = 2/inv_radius_y
-        inv_radius_z = 2/inv_radius_z
+        {x,y,z} = mesh.dimensions
+        inv_radius_x = 2/x
+        inv_radius_y = 2/y
+        inv_radius_z = 2/z
 
         # Main routine for each submesh
         for mat,submesh_idx in amesh.materials
@@ -513,11 +513,12 @@ class RenderManager
             # model_view_matrix, normal_matrix and projection_matrix
             model_view_matrix = @_model_view_matrix
             mat4.multiply model_view_matrix, world2cam_override or @_world2cam, mesh2world
-            gl.uniformMatrix4fv shader.u_model_view_matrix, false, model_view_matrix
+            gl.uniformMatrix4fv shader.u_model_view_matrix, false, model_view_matrix.toJSON()
             if shader.u_normal_matrix?
                 mat3.multiply m3, @_world2cam3, mesh.normal_matrix
-                gl.uniformMatrix3fv shader.u_normal_matrix, false, m3
-            gl.uniformMatrix4fv shader.u_projection_matrix, false, projection_override or cam.projection_matrix
+                gl.uniformMatrix3fv shader.u_normal_matrix, false, m3.toJSON()
+            proj = projection_override or cam.projection_matrix
+            gl.uniformMatrix4fv shader.u_projection_matrix, false, proj.toJSON()
 
             # Enabling textures and assigning their respective uniforms
             # TODO: figure out a way to do object-specific textures
@@ -549,7 +550,8 @@ class RenderManager
                 y += mesh.uv_right_eye_offset[1] * @_right_eye_factor
                 gl.uniform4f shader.u_uv_rect, x, y, w, h
             if shader.u_mesh_center?
-                gl.uniform3fv shader.u_mesh_center, mesh.center
+                {x,y,z} = mesh.center
+                gl.uniform3f shader.u_mesh_center, x, y, z
                 gl.uniform3f shader.u_mesh_inv_dimensions, inv_radius_x, inv_radius_y, inv_radius_z
 
             # Bind vertex buffer, assign attribute pointers
@@ -633,50 +635,43 @@ class RenderManager
 
         debug = @debug
         filter_fb = @common_filter_fb
-
-        # Create cam2world from camera world matrix but ignoring scale
-        cam_rm = mat3.copy @_cam2world3, cam.rotation_matrix
-        cam_wm = cam.world_matrix
         cam2world = @_cam2world
-        cam2world[0] = cam_rm[0]
-        cam2world[1] = cam_rm[1]
-        cam2world[2] = cam_rm[2]
-        cam2world[4] = cam_rm[3]
-        cam2world[5] = cam_rm[4]
-        cam2world[6] = cam_rm[5]
-        cam2world[8] = cam_rm[6]
-        cam2world[9] = cam_rm[7]
-        cam2world[10] = cam_rm[8]
-        cam2world[12] = cam_wm[12]
-        cam2world[13] = cam_wm[13]
-        cam2world[14] = cam_wm[14]
         world2cam = @_world2cam
         world2cam3 = @_world2cam3
         world2cam_mx = @_world2cam_mx
         world2cam3_mx = @_world2cam3_mx
         world2light = @_world2light
+        # Create cam2world from camera world matrix but ignoring scale
+        cam_rm = mat3.copy @_cam2world3, cam.rotation_matrix
+        cam_wm = cam.world_matrix
+        cam_zvec = vec3.new cam_wm.m08, cam_wm.m09, cam_wm.m10
+        cam_pos = vec3.new cam_wm.m12, cam_wm.m13, cam_wm.m14
+        mat4.fromMat3 cam2world, cam_rm
+        mat4.setTranslation cam2world, cam_pos
         # Shift position for stereo VR rendering
-        eye_shift = vec3.scale @_v, viewport.eye_shift, vec3.len(cam.world_matrix.subarray(8,11))
-        vec3.transformMat4 cam2world.subarray(12,15), eye_shift, cam2world
+        eye_shift = vec3.scale @_v, viewport.eye_shift, vec3.len(cam_zvec)
+        vec3.transformMat4 cam_pos, eye_shift, cam2world
         @_right_eye_factor = viewport.right_eye_factor
+        # Write position again
+        mat4.setTranslation cam2world, cam_pos
 
         mat4.invert world2cam, cam2world
         mat3.fromMat4 world2cam3, world2cam
 
         mat4.copy world2cam_mx, world2cam
-        world2cam_mx[0] = -world2cam_mx[0]
-        world2cam_mx[1] = -world2cam_mx[1]
-        world2cam_mx[2] = -world2cam_mx[2]
+        world2cam_mx.x = -world2cam_mx.x
+        world2cam_mx.y = -world2cam_mx.y
+        world2cam_mx.z = -world2cam_mx.z
         mat3.fromMat4 world2cam3_mx, world2cam_mx
         vec3.transformMat3 @camera_z, VECTOR_MINUS_Z, cam.rotation_matrix
         # Set plane vectors that will be used for culling objects in perspective
         vec3.transformMat3 @_cull_left, cam.cull_left, cam.rotation_matrix
         v = vec3.copy @_cull_right, cam.cull_left
-        v[0] = -v[0]
+        v.x = -v.x
         vec3.transformMat3 v, v, cam.rotation_matrix
         vec3.transformMat3 @_cull_bottom, cam.cull_bottom, cam.rotation_matrix
         v = vec3.copy @_cull_top, cam.cull_bottom
-        v[1] = -v[1]
+        v.y = -v.y
         vec3.transformMat3 v, v, cam.rotation_matrix
 
         mat4.invert @projection_matrix_inverse, cam.projection_matrix
@@ -740,7 +735,7 @@ class RenderManager
             clear_bits &= ~gl.COLOR_BUFFER_BIT
         else if clear_bits & gl.COLOR_BUFFER_BIT
             c = scene.background_color
-            gl.clearColor c[0],c[1],c[2],@background_alpha
+            gl.clearColor c.x,c.y,c.z,@background_alpha
         clear_bits and gl.clear clear_bits
 
         # TODO: Think better about how to manage passes
@@ -775,11 +770,11 @@ class RenderManager
             z = @camera_z
             for ob in scene.mesh_passes[1]
                 v = if ob.parent then ob.get_world_position() else ob.position
-                x = v[0]
+                x = v.x
                 if ob.mirrors == 2
                     x = -x
-                ob._sqdist = - (x*z[0] + v[1]*z[1] + v[2]*z[2]) - (ob.zindex * (ob.dimensions[0]+ob.dimensions[1]+ob.dimensions[2])*0.166666)
-                # ob._sqdist = -vec3.dot(s,z) - (ob.zindex * (ob.dimensions[0]+ob.dimensions[1]+ob.dimensions[2])*0.166666)
+                ob._sqdist = - (x*z.x + v.y*z.y + v.z*z.z) - (ob.zindex * (ob.dimensions.x+ob.dimensions.y+ob.dimensions.z)*0.166666)
+                # ob._sqdist = -vec3.dot(s,z) - (ob.zindex * (ob.dimensions.x+ob.dimensions.y+ob.dimensions.z)*0.166666)
             timsort.sort scene.mesh_passes[1], (a,b)-> a._sqdist - b._sqdist
 
             for ob in scene.mesh_passes[1]
@@ -819,7 +814,7 @@ class RenderManager
                         # than recalculating the matrices of the same mesh
 
                     # occluded pass
-                    dob.color=vec4.clone [1,1,1,0.2]
+                    dob.color = {r: 1, g:1, b:1, a:0.2}
                     gl.enable gl.BLEND
                     gl.disable gl.DEPTH_TEST
                     @draw_mesh dob, dob.world_matrix
@@ -827,7 +822,7 @@ class RenderManager
                     # visible pass
                     gl.disable gl.BLEND
                     gl.enable gl.DEPTH_TEST
-                    dob.color=vec4.clone [1,1,1,1]
+                    dob.color = {r: 1, g:1, b:1, a:1}
                     @draw_mesh dob, dob.world_matrix
 
             gl.disable gl.DEPTH_TEST
@@ -835,19 +830,19 @@ class RenderManager
                 # TODO: draw something else when it's too small (a different arrow?)
                 #       and a circle when it's 0
                 dob = @debug.arrow
-                dob.color = vec4.clone dvec[2]
+                dob.color = color4.clone dvec[2]
                 dob.position = dvec[1]
                 v3 = dvec[0]
-                v2 = vec3.cross [0,0,0], cam.position, v3
-                v1 = vec3.normalize [0,0,0], vec3.cross([0,0,0],v2,v3)
-                v2 = vec3.normalize [0,0,0], vec3.cross(v2,v3,v1)
+                v2 = vec3.cross {x: 0, y:0, z:0}, cam.position, v3
+                v1 = vec3.normalize {x: 0, y:0, z:0}, vec3.cross({x: 0, y:0, z:0},v2,v3)
+                v2 = vec3.normalize {x: 0, y:0, z:0}, vec3.cross(v2,v3,v1)
                 s = vec3.len v3
                 vec3.scale v2,v2,s
                 vec3.scale v1,v1,s
-                ma = mat4.fromValues v1[0], v1[1], v1[2], 0,
-                    v2[0], v2[1], v2[2], 0,
-                    v3[0], v3[1], v3[2], 0,
-                    dob.position[0], dob.position[1], dob.position[2], 1
+                ma = mat4.new v1.x, v1.y, v1.z, 0,
+                    v2.x, v2.y, v2.z, 0,
+                    v3.x, v3.y, v3.z, 0,
+                    dob.position.x, dob.position.y, dob.position.z, 1
                 @draw_mesh dob, ma
 
             dob = @debug.bone
@@ -881,18 +876,18 @@ class RenderManager
         fb.enable()
         for side in [0...6]
             fb.bind_to_cubemap_side cubemap, side
-            dir = [[1.0, 0.0, 0.0],[-1.0, 0.0, 0.0],[0.0, 1.0, 0.0],
-                [0.0, -1.0, 0.0],[0.0, 0.0, 1.0],[0.0, 0.0, -1.0]][side]
-            up = [[0.0, -1.0, 0.0],[0.0, -1.0, 0.0],[0.0, 0.0, 1.0],
-                [0.0, 0.0, -1.0],[0.0, -1.0, 0.0],[0.0, -1.0, 0.0]][side]
-            dir[0] += position[0]
-            dir[1] += position[1]
-            dir[2] += position[2]
+            dir = [{x:1.0, y:0.0, z:0.0},{x:-1.0, y:0.0, z:0.0},{x:0.0, y:1.0, z:0.0},
+                {x:0.0, y:-1.0, z:0.0},{x:0.0, y:0.0, z:1.0},{x:0.0, y:0.0, z:-1.0}][side]
+            up = [{x:0.0, y:-1.0, z:0.0},{x:0.0, y:-1.0, z:0.0},{x:0.0, y:0.0, z:1.0},
+                {x:0.0, y:0.0, z:-1.0},{x:0.0, y:-1.0, z:0.0},{x:0.0, y:-1.0, z:0.0}][side]
+            dir.x += position.x
+            dir.y += position.y
+            dir.z += position.z
             mat4.lookAt world2cam, position, dir, up
             mat4.invert @_cam2world, world2cam
             mat3.fromMat4 @_cam2world3, @_cam2world
             mat3.fromMat4 @_world2cam3, world2cam
-            [r,g,b] = scene.background_color
+            {r,g,b} = scene.background_color
             gl.clearColor r,g,b,1
             gl.clear gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT
             if @do_log?
@@ -1119,6 +1114,27 @@ class RenderManager
         return
 
     # @nodoc
+    # This function makes sure that all vectors/matrices are typed arrays
+    debug_uniform_nan: ()->
+        gl = @gl
+        for p in ['uniform1f', 'uniform2f', 'uniform3f', 'uniform4f']
+            gl['_'+p] = gl[p]
+            gl[p] = do (p) => (l,v...)->
+                for i in v
+                    if not i? or i!=i
+                        debugger
+                return gl["_"+p](l,v...)
+
+        for p in ['uniformMatrix3fv', 'uniformMatrix4fv']
+            gl['_'+p] = gl[p]
+            gl[p] = do (p) => (l,t,v...)->
+                for i in v
+                    if not i? or i!=i
+                        debugger
+                return gl["_"+p](l,t,v...)
+        return
+
+    # @nodoc
     debug_break_on_any_gl_error: ->
         gl = @gl
         for k,v of gl when typeof v == 'function' and k != 'getError'
@@ -1261,9 +1277,9 @@ class Debug
             ob.elements = []
             ob.stride = 4
             ob.materials = [mat]
-            ob.color = vec4.create 1,1,1,1
+            ob.color = color4.new 1,1,1,1
             ob.data.draw_method = @context.render_manager.gl.LINES
-            ob.scale = [1,1,1]
+            ob.scale = {x: 1, y:1, z:1}
             ob._update_matrices()
 
         @box = box
@@ -1282,9 +1298,9 @@ class Debug
         mesh.load_from_va_ia va, ia
         mesh.elements = []
         mesh.materials = [@material]
-        mesh.color = vec4.create 1,1,1,1
+        mesh.color = color4.new 1,1,1,1
         mesh.data.draw_method = render_manager.gl.LINES
-        mesh.scale = vec3.create 1,1,1
+        mesh.scale = vec3.new 1,1,1
         mesh._update_matrices()
         return mesh
 

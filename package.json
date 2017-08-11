@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "cubemap-sh": "^0.2.1",
-    "gl-matrix": "^2.3.1",
+    "vmath": "^1.4.5",
     "whatwg-fetch": "^1.0.0"
   },
   "optionalDependencies": {

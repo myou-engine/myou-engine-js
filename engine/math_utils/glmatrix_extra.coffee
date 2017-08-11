@@ -1,14 +1,14 @@
-glm = require 'gl-matrix'
+glm = require 'vmath'
 
 # http://stackoverflow.com/questions/1031005/is-there-an-algorithm-for-converting-quaternion-rotations-to-euler-angle-rotatio
 
 threeaxisrot = (out, r11, r12, r21, r31, r32) ->
-    out[0] = Math.atan2( r31, r32 )
-    out[1] = Math.asin ( r21 )
-    out[2] = Math.atan2( r11, r12 )
+    out.x = Math.atan2( r31, r32 )
+    out.y = Math.asin ( r21 )
+    out.z = Math.atan2( r11, r12 )
 
-glm.quat.to_euler = (out=[0,0,0], q, order='XYZ') ->
-    [x, y, z, w] = q
+glm.quat.to_euler = (out={x: 0, y:0, z:0}, q, order='XYZ') ->
+    {x, y, z, w} = q
     switch order
         when 'XYZ'
             threeaxisrot(out, 2*(x*y + w*z),
@@ -24,7 +24,7 @@ glm.quat.to_euler = (out=[0,0,0], q, order='XYZ') ->
 # XYZ means that to convert back to quat you must rotate Z, then Y, then X
 
 glm.quat.to_euler_XYZ = (out, q) ->
-    [x, y, z, w] = q
+    {x, y, z, w} = q
     threeaxisrot(out, 2*(x*y + w*z),
                     w*w + x*x - y*y - z*z,
                     -2*(x*z - w*y),
@@ -33,7 +33,7 @@ glm.quat.to_euler_XYZ = (out, q) ->
     return out
 
 glm.quat.to_euler_XZY = (out, q) ->
-    [x, y, z, w] = q
+    {x, y, z, w} = q
     threeaxisrot(out, -2*(x*z - w*y),
                     w*w + x*x - y*y - z*z,
                     2*(x*y + w*z),
@@ -42,7 +42,7 @@ glm.quat.to_euler_XZY = (out, q) ->
     return out
 
 glm.quat.to_euler_YXZ = (out, q) ->
-    [x, y, z, w] = q
+    {x, y, z, w} = q
     threeaxisrot(out, -2*(x*y - w*z),
                     w*w - x*x + y*y - z*z,
                     2*(y*z + w*x),
@@ -51,7 +51,7 @@ glm.quat.to_euler_YXZ = (out, q) ->
     return out
 
 glm.quat.to_euler_YZX = (out, q) ->
-    [x, y, z, w] = q
+    {x, y, z, w} = q
     threeaxisrot(out, 2*(y*z + w*x),
                     w*w - x*x + y*y - z*z,
                     -2*(x*y - w*z),
@@ -60,7 +60,7 @@ glm.quat.to_euler_YZX = (out, q) ->
     return out
 
 glm.quat.to_euler_ZXY = (out, q) ->
-    [x, y, z, w] = q
+    {x, y, z, w} = q
     threeaxisrot(out, 2*(x*z + w*y),
                     w*w - x*x - y*y + z*z,
                     -2*(y*z - w*x),
@@ -69,7 +69,7 @@ glm.quat.to_euler_ZXY = (out, q) ->
     return out
 
 glm.quat.to_euler_ZYX = (out, q) ->
-    [x, y, z, w] = q
+    {x, y, z, w} = q
     threeaxisrot(out, -2*(y*z - w*x),
                     w*w - x*x - y*y + z*z,
                     2*(x*z + w*y),
@@ -85,5 +85,99 @@ glm.vec3.signedAngle = (a, b, n) ->
         result *= -1
 
     return result
+
+glm.vec3.copyArray = (out, arr) ->
+    out.x = arr[0]
+    out.y = arr[1]
+    out.z = arr[2]
+    return out
+
+glm.quat.copyArray = (out, arr) ->
+    out.x = arr[0]
+    out.y = arr[1]
+    out.z = arr[2]
+    out.w = arr[3]
+    return out
+
+glm.color3.copyArray = (out, arr) ->
+    out.r = arr[0]
+    out.g = arr[1]
+    out.b = arr[2]
+    return out
+
+glm.color4.copyArray = (out, arr) ->
+    out.r = arr[0]
+    out.g = arr[1]
+    out.b = arr[2]
+    out.a = arr[3]
+    return out
+
+glm.mat4.fromMat3 = (out, m) ->
+    out.m00 = m.m00
+    out.m01 = m.m01
+    out.m02 = m.m02
+    out.m03 = 0
+    out.m04 = m.m03
+    out.m05 = m.m04
+    out.m06 = m.m05
+    out.m07 = 0
+    out.m08 = m.m06
+    out.m09 = m.m07
+    out.m10 = m.m08
+    out.m11 = 0
+    out.m12 = 0
+    out.m13 = 0
+    out.m14 = 0
+    out.m15 = 1
+    return out
+
+glm.mat4.setTranslation = (out, v) ->
+    out.m12 = v.x
+    out.m13 = v.y
+    out.m14 = v.z
+    return out
+
+glm.mat4.fromVec4Columns = (out, a, b, c, d) ->
+    out.m00 = a.x
+    out.m01 = a.y
+    out.m02 = a.z
+    out.m03 = a.w
+    out.m04 = b.x
+    out.m05 = b.y
+    out.m06 = b.z
+    out.m07 = b.w
+    out.m08 = c.x
+    out.m09 = c.y
+    out.m10 = c.z
+    out.m11 = c.w
+    out.m12 = d.x
+    out.m13 = d.y
+    out.m14 = d.z
+    out.m15 = d.w
+    return out
+
+glm.mat3.fromColumns = (out, a, b, c) ->
+    out.m00 = a.x
+    out.m01 = a.y
+    out.m02 = a.z
+    out.m03 = b.x
+    out.m04 = b.y
+    out.m05 = b.z
+    out.m06 = c.x
+    out.m07 = c.y
+    out.m08 = c.z
+    return out
+
+glm.quat.setAxisAngle = (out, axis, rad) ->
+  rad = rad * 0.5
+  s = Math.sin(rad)
+  out.x = s * axis.x
+  out.y = s * axis.y
+  out.z = s * axis.z
+  out.w = Math.cos(rad)
+  return out
+
+# export function getAxisAngle(out_axis, q) {
+
 
 module.exports = glm

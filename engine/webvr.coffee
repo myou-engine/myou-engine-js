@@ -1,5 +1,5 @@
 
-{vec3, vec4, quat} = require 'gl-matrix'
+{vec3, vec4, quat} = require 'vmath'
 
 displays = []
 navigator.getVRDisplays?().then (_displays) ->
@@ -27,9 +27,9 @@ exports.has_HMD = ->
 
 set_neck_model = exports.set_neck_model = (ctx, nm) ->
     ctx.neck_model = nm
-    nq = quat.fromValues 0,0,0,1
+    nq = quat.new 0,0,0,1
     quat.rotateX nq, nq, -nm.angle*Math.PI/180 # deg to rad
-    nm.orig_neck = vec3.fromValues 0,nm.length, 0
+    nm.orig_neck = vec3.new 0,nm.length, 0
     vec3.transformQuat nm.orig_neck, nm.orig_neck, nq
     nm.neck = vec3.copy vec3.create(), nm.orig_neck
 
@@ -111,8 +111,8 @@ exports.init = (scene, options={}) ->
                     vec3.copy viewport2.eye_shift, rightEye.offset
                     viewport2.rect = [0.5, 0, 0.5, 1]
                     if options.ipd_mm
-                        viewport1.eye_shift[0] = -options.ipd_mm * 0.001 * 0.5
-                        viewport2.eye_shift[0] = options.ipd_mm * 0.001 * 0.5
+                        viewport1.eye_shift.x = -options.ipd_mm * 0.001 * 0.5
+                        viewport2.eye_shift.x = options.ipd_mm * 0.001 * 0.5
                     ctx.render_manager.resize(
                         Math.max(leftEye.renderWidth, rightEye.renderWidth) * 2
                         Math.max(leftEye.renderHeight, rightEye.renderHeight))

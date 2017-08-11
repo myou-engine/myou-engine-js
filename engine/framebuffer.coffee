@@ -1,4 +1,4 @@
-{vec2, vec4, mat4} = require 'gl-matrix'
+{vec2, vec4, mat4} = require 'vmath'
 
 class FbTexture
     constructor: (@gl_tex, @gl_target) ->

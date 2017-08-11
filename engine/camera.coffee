@@ -1,10 +1,9 @@
 {GameObject} = require './gameobject.coffee'
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
 
-ZERO_MAT4 = new(Float32Array)(16)
-VECTOR_X = vec3.fromValues 1,0,0
-VECTOR_Y = vec3.fromValues 0,1,0
-VECTOR_MINUS_Z = vec3.fromValues 0,0,-1
+VECTOR_X = vec3.new 1,0,0
+VECTOR_Y = vec3.new 0,1,0
+VECTOR_MINUS_Z = vec3.new 0,0,-1
 
 class Camera extends GameObject
 
@@ -22,7 +21,7 @@ class Camera extends GameObject
             @sensor_fit = 'AUTO',
         } = options
         # if non-zero, will use as up, right, down and left FoV
-        @fov_4 = vec4.create()
+        @fov_4 = [0,0,0,0]
         @target_aspect_ratio = @aspect_ratio
         @projection_matrix = mat4.create()
         @projection_matrix_inv = mat4.create()
@@ -36,7 +35,7 @@ class Camera extends GameObject
         clone.near_plane = @near_plane
         clone.far_plane = @far_plane
         clone.field_of_view = @field_of_view
-        clone.fov_4 = vec4.clone @fov_4
+        clone.fov_4 = @fov_4[...]
         clone.projection_matrix = mat4.clone @projection_matrix
         clone.projection_matrix_inv = mat4.clone @projection_matrix_inv
         clone.world_to_screen_matrix = mat4.clone @world_to_screen_matrix
@@ -52,9 +51,9 @@ class Camera extends GameObject
     get_ray_direction: (x, y)->
         # Assumes screen coordinates (0 to 1)
         v = vec3.create()
-        v[0] = x*2-1
-        v[1] = 1-y*2
-        v[2] = 1
+        v.x = x*2-1
+        v.y = 1-y*2
+        v.z = 1
         pos_rot = @get_world_pos_rot()
         vec3.transformMat4 v, v, @projection_matrix_inv
         vec3.transformQuat v, v, pos_rot[1]
@@ -64,9 +63,9 @@ class Camera extends GameObject
     get_ray_direction_local: (x, y)->
         # Assumes screen coordinates (0 to 1)
         v = vec3.create()
-        v[0] = x*2-1
-        v[1] = 1-y*2
-        v[2] = 1
+        v.x = x*2-1
+        v.y = 1-y*2
+        v.z = 1
         vec3.transformMat4 v, v, @projection_matrix_inv
         vec3.transformQuat v, v, @rotation
         return v
@@ -131,26 +130,34 @@ class Camera extends GameObject
             # 0, y, 0, 0,
             # a, b, c, -1,
             # 0, 0, d, 0
-            pm.set ZERO_MAT4
-            pm[0] = x
-            pm[5] = y
-            pm[8] = a
-            pm[9] = b
-            pm[10] = c
-            pm[11] = -1
-            pm[14] = d
+            pm.m00 = x
+            pm.m01 = 0
+            pm.m02 = 0
+            pm.m03 = 0
+            pm.m04 = 0
+            pm.m05 = y
+            pm.m06 = 0
+            pm.m07 = 0
+            pm.m08 = a
+            pm.m09 = b
+            pm.m10 = c
+            pm.m11 = -1
+            pm.m12 = 0
+            pm.m13 = 0
+            pm.m14 = d
+            pm.m15 = 0
             mat4.invert @projection_matrix_inv, @projection_matrix
             v = @cull_left
-            v[0] = -1
-            v[1] = 0
-            v[2] = 1
+            v.x = -1
+            v.y = 0
+            v.z = 1
             vec3.transformMat4 v, v, @projection_matrix_inv
             vec3.cross v, v, VECTOR_Y
             vec3.normalize v, v
             v = @cull_bottom
-            v[0] = 0
-            v[1] = -1
-            v[2] = 1
+            v.x = 0
+            v.y = -1
+            v.z = 1
             vec3.transformMat4 v, v, @projection_matrix_inv
             vec3.cross v, VECTOR_X, v
             vec3.normalize v, v
@@ -162,14 +169,22 @@ class Camera extends GameObject
             #  0, y, 0, 0,
             #  0, 0, d, 0,
             # -a,-b, c, 1
-            pm.set ZERO_MAT4
-            pm[0] = x
-            pm[5] = y
-            pm[10] = d
-            pm[12] = -a
-            pm[13] = -b
-            pm[14] = c
-            pm[15] = 1
+            pm.m00 = x
+            pm.m01 = 0
+            pm.m02 = 0
+            pm.m03 = 0
+            pm.m04 = 0
+            pm.m05 = y
+            pm.m06 = 0
+            pm.m07 = 0
+            pm.m08 = 0
+            pm.m09 = 0
+            pm.m10 = d
+            pm.m11 = 0
+            pm.m12 = -a
+            pm.m13 = -b
+            pm.m14 = c
+            pm.m15 = 1
             mat4.invert @projection_matrix_inv, @projection_matrix
             console.error "TODO: frustum culling for ortho!"
 
@@ -197,26 +212,34 @@ class Camera extends GameObject
             # 0, y, 0, 0,
             # a, b, c, -1,
             # 0, 0, d, 0
-            pm.set ZERO_MAT4
-            pm[0] = x
-            pm[5] = y
-            pm[8] = a
-            pm[9] = b
-            pm[10] = c
-            pm[11] = -1
-            pm[14] = d
+            pm.m00 = x
+            pm.m01 = 0
+            pm.m02 = 0
+            pm.m03 = 0
+            pm.m04 = 0
+            pm.m05 = y
+            pm.m06 = 0
+            pm.m07 = 0
+            pm.m08 = a
+            pm.m09 = b
+            pm.m10 = c
+            pm.m11 = -1
+            pm.m12 = 0
+            pm.m13 = 0
+            pm.m14 = d
+            pm.m15 = 0
             projection_matrix_inv = mat4.invert mat4.create(), pm
             v = cull_left_local = vec3.create()
-            v[0] = -1
-            v[1] = 0
-            v[2] = 1
+            v.x = -1
+            v.y = 0
+            v.z = 1
             vec3.transformMat4 v, v, projection_matrix_inv
             vec3.cross v, v, VECTOR_Y
             vec3.normalize v, v
             v = cull_bottom_local = vec3.create()
-            v[0] = 0
-            v[1] = -1
-            v[2] = 1
+            v.x = 0
+            v.y = -1
+            v.z = 1
             vec3.transformMat4 v, v, projection_matrix_inv
             vec3.cross v, VECTOR_X, v
             vec3.normalize v, v
@@ -228,14 +251,23 @@ class Camera extends GameObject
             #  0, y, 0, 0,
             #  0, 0, d, 0,
             # -a,-b, c, 1
-            pm.set ZERO_MAT4
-            pm[0] = x
-            pm[5] = y
-            pm[10] = d
-            pm[12] = -a
-            pm[13] = -b
-            pm[14] = c
-            pm[15] = 1
+            mat4.identity pm
+            pm.m00 = x
+            pm.m01 = 0
+            pm.m02 = 0
+            pm.m03 = 0
+            pm.m04 = 0
+            pm.m05 = y
+            pm.m06 = 0
+            pm.m07 = 0
+            pm.m08 = 0
+            pm.m09 = 0
+            pm.m10 = d
+            pm.m11 = 0
+            pm.m12 = -a
+            pm.m13 = -b
+            pm.m14 = c
+            pm.m15 = 1
             mat4.invert @projection_matrix_inv, @projection_matrix
             throw "TODO: frustum culling for ortho!"
 
@@ -243,11 +275,11 @@ class Camera extends GameObject
         camera_z = vec3.transformMat3 vec3.create(), VECTOR_MINUS_Z, @rotation_matrix
         normal_left = vec3.transformMat3 vec3.create(), cull_left_local, @rotation_matrix
         normal_right = v = vec3.copy vec3.create(), cull_left_local
-        v[0] = -v[0]
+        v.x = -v.x
         vec3.transformMat3 v, v, @rotation_matrix
         normal_bottom = vec3.transformMat3 vec3.create(), cull_bottom_local, @rotation_matrix
         normal_top = v = vec3.copy vec3.create(), cull_bottom_local
-        v[1] = -v[1]
+        v.y = -v.y
         vec3.transformMat3 v, v, @rotation_matrix
         return {normal_top, normal_bottom, normal_right, normal_left}
 

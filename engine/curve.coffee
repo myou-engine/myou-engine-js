@@ -1,4 +1,4 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
 {GameObject} = require './gameobject.coffee'
 
 class Curve extends GameObject
@@ -69,7 +69,7 @@ class Curve extends GameObject
         va = @va = new Float32Array vertices
         ia = @ia = new Uint16Array indices
         # @phy_debug_mesh = render_manager.debug.debug_mesh_from_va_ia va, ia
-        @phy_he = [1, 1, 1]
+        @phy_he = {x: 1, y:1, z:1}
 
         curve_index = 0
         for c in @calculated_curves
@@ -85,7 +85,7 @@ class Curve extends GameObject
                 c.length+=e
             curve_index += 1
 
-    closest_point: (q, scale=[1,1,1]) ->
+    closest_point: (q, scale={x: 1, y:1, z:1}) ->
         # winning point
         wp = vec3.create()
         wn = vec3.create()  # normal

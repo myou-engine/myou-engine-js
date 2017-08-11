@@ -1,6 +1,6 @@
 
 
-{vec3} = require 'gl-matrix'
+{vec3} = require 'vmath'
 
 # TODO: Should jitter be generated with a different random distrubition?
 
@@ -104,33 +104,33 @@ class BlenderCyclesPBRMaterial
                 when 'PROJ_MAT' # projection_matrix
                     null # Already being set by the renderer
                 when 'PROJ_IMAT' # inverse projection_matrix
-                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, render.projection_matrix_inverse);"
+                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, render.projection_matrix_inverse.toJSON());"
                 when 'OB_VIEW_MAT' # model_view_matrix
                     null # Already being set by the renderer
                 when 'OB_VIEW_IMAT' # model_view_matrix_inverse
                     # NOTE: Objects with zero scale are not drawn, otherwise m4 could be null
-                    code.push "m4 = mat4.invert(render._m4, render._model_view_matrix);"
+                    code.push "m4 = mat4.invert(render._m4, render._model_view_matrix.toJSON());"
                     code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, m4);"
                 when 'VIEW_MAT' # view_matrix
-                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, render._world2cam);"
+                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, render._world2cam.toJSON());"
                 when 'VIEW_IMAT' # inverse view_matrix
-                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, render._cam2world);"
+                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, render._cam2world.toJSON());"
                 when 'VIEW_IMAT3' # inverse view_matrix 3x3, a.k.a. camera rotation matrix
-                    code.push "gl.uniformMatrix3fv(locations[#{loc_idx}], false, render._cam2world3);"
+                    code.push "gl.uniformMatrix3fv(locations[#{loc_idx}], false, render._cam2world3.toJSON());"
                 when 'OB_MAT' # object_matrix
-                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, ob.world_matrix);"
+                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, ob.world_matrix.toJSON());"
                 when 'OB_IMAT' # object_matrix_inverse
                     # NOTE: Objects with zero scale are not drawn, otherwise m4 could be null
                     code.push "m4 = mat4.invert(render._m4, ob.world_matrix);"
-                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, m4);"
+                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, m4.toJSON());"
                 when 'BG_COLOR'
-                    code.push "gl.uniform4fv(locations[#{loc_idx}], ob.scene.background_color);"
+                    code.push "v=ob.scene.background_color;gl.uniform4f(locations[#{loc_idx}], v.r, v.g, v.b, v.a);"
                 when 'LAMP_DIR' # lamp direction in camera space
-                    code.push "gl.uniform3fv(locations[#{loc_idx}], lamps[#{current_lamp}]._dir);"
+                    code.push "v=lamps[#{current_lamp}]._dir;gl.uniform3f(locations[#{loc_idx}], v.x, v.y, v.z);"
                 when 'LAMP_CO' # lamp position in camera space
-                    code.push "gl.uniform3fv(locations[#{loc_idx}], lamps[#{current_lamp}]._view_pos);"
+                    code.push "v=lamps[#{current_lamp}]._view_pos;gl.uniform3f(locations[#{loc_idx}], v.x, v.y, v.z);"
                 when 'LAMP_COL' # lamp color
-                    code.push "gl.uniform4fv(locations[#{loc_idx}], lamps[#{current_lamp}]._color4);"
+                    code.push "v=lamps[#{current_lamp}].color;gl.uniform4f(locations[#{loc_idx}], v.r, v.g, v.b, v.a);"
                 when 'LAMP_STRENGTH'
                     code.push "gl.uniform1f(locations[#{loc_idx}], lamps[#{current_lamp}].energy);"
                 when 'LAMP_SIZE'
@@ -140,7 +140,7 @@ class BlenderCyclesPBRMaterial
                 when 'LAMP_SHADOW_MAP'
                     code.push "gl.uniform1i(locations[#{loc_idx}], tex_list[#{texture_count++}].value.bound_unit);"
                 when 'LAMP_SHADOW_PROJ'
-                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, lamps[#{current_lamp}]._cam2depth);"
+                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, lamps[#{current_lamp}]._cam2depth.toJSON());"
                 when 'LAMP_SHADOW_BIAS'
                     code.push "gl.uniform1f(locations[#{loc_idx}], lamps[#{current_lamp}].shadow_options.bias);"
                 when 'LAMP_BLEED_BIAS'
@@ -194,7 +194,7 @@ class BlenderCyclesPBRMaterial
             if gl.getUniformLocation(program, unf)?
                 console.warn "Unhandled uniform:", unf
 
-        preamble = 'var locations=shader.uniform_locations, lamps=shader.lamps,
+        preamble = 'var v, locations=shader.uniform_locations, lamps=shader.lamps,
             material=shader.material, inputs=material._input_list, tex_list=material._texture_list;\n'
         func = new Function 'gl', 'shader', 'ob', 'render', 'mat4', preamble+code.join '\n'
         {uniform_assign_func: func, uniform_locations: locations, lamps}

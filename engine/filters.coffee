@@ -1,5 +1,5 @@
 {Shader} = require './material.coffee'
-{vec2} = require 'gl-matrix'
+{vec2} = require 'vmath'
 
 box_filter_code = """
     return (get(-1,-1)+get(0,-1)+get(1,-1)+
@@ -136,7 +136,7 @@ class FilterBase
             fragment: @fragment
             uniforms: [
                 {varname: 'source', value: @context.render_manager.blank_texture},
-                {varname: 'source_size', value: vec2.fromValues(128, 128)},
+                {varname: 'source_size', value: vec2.new(128, 128)},
             ].concat @uniforms,
         }
 

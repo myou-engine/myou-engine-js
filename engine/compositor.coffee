@@ -57,7 +57,7 @@ Example:
     }
     uniforms = {
         "test_float": 3,
-        "test_vec3": [1,2,3],
+        "test_vec3": {x: 1, y:2, z:3},
     }
     filters = {
         "invert"

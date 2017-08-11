@@ -1,4 +1,4 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
 {Framebuffer} = require './framebuffer.coffee'
 {Shader} = require './material.coffee'
 
@@ -165,13 +165,14 @@ class GLRay
         cam = object.scene.active_camera
         point = vec3.create()
         # Assuming perspective projection without shifting
-        point[0] = xf*depth
-        point[1] = yf*depth
-        point[2] = -depth
+        point.x = xf*depth
+        point.y = yf*depth
+        point.z = -depth
         vec3.transformMat4(point, point, @last_cam2world)
         # we do this instead of just passing depth to use the current camera position
         # TODO: move this out of this function to perform it only when it's used?
-        distance = vec3.distance(point, cam.world_matrix.subarray(12,15))
+        wm = cam.world_matrix
+        distance = vec3.distance(point, vec3.new(wm.m12,wm.m13,wm.m14))
         # I don't know why does this happen
         if isNaN distance
             return null
@@ -203,14 +204,14 @@ class GLRay
             mat4.copy(world2cam_mx, @context.render_manager._world2cam_mx)
             mat4.copy(@cam2world, camera.world_matrix)
             # Assuming perspective projection and no shifting
-            @inv_proj_x = camera.projection_matrix_inv[0]
-            @inv_proj_y = camera.projection_matrix_inv[5]
+            @inv_proj_x = camera.projection_matrix_inv.m00
+            @inv_proj_y = camera.projection_matrix_inv.m05
             @meshes = for m in scene.mesh_passes[0] when m.physics_type != 'NO_COLLISION'
                 m
             for m in scene.mesh_passes[1] when m.alpha >= @alpha_treshold and m.physics_type != 'NO_COLLISION'
                 @meshes.push (m)
 
-        gl.uniformMatrix4fv(mat.u_projection_matrix, false, camera.projection_matrix)
+        gl.uniformMatrix4fv(mat.u_projection_matrix, false, camera.projection_matrix.toJSON())
         if restore_near
             camera.recalculate_projection()
 
@@ -246,13 +247,13 @@ class GLRay
                         mirrors = mesh.mirrors
                         if mirrors & 1
                             mat4.multiply(m4, world2cam, mesh2world)
-                            gl.uniformMatrix4fv(mat.u_model_view_matrix, false, m4)
+                            gl.uniformMatrix4fv(mat.u_model_view_matrix, false, m4.toJSON())
                             # mat3.multiply(m3, world2cam3, mesh.normal_matrix)
                             # gl.uniformMatrix3fv(mat.u_normal_matrix, false, m3)
                             gl.drawElements(data.draw_method, data.num_indices[submesh_idx], 5123, 0) # gl.UNSIGNED_SHORT
                         if mirrors & 178
                             mat4.multiply(m4, world2cam_mx, mesh2world)
-                            gl.uniformMatrix4fv(mat.u_model_view_matrix, false, m4)
+                            gl.uniformMatrix4fv(mat.u_model_view_matrix, false, m4.toJSON())
                             # mat3.multiply(m3, world2cam3_mx, mesh.normal_matrix)
                             # gl.uniformMatrix3fv(mat.u_normal_matrix, false, m3)
                             gl.frontFace(2304) # gl.CW

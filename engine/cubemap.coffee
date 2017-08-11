@@ -1,5 +1,5 @@
 
-{vec2, vec3} = require 'gl-matrix'
+{vec2, vec3} = require 'vmath'
 sh = require 'cubemap-sh'
 
 _temp_framebuffers = {}
@@ -31,7 +31,7 @@ class Cubemap
         } = options
         @gl_target = 34067 # gl.TEXTURE_CUBE_MAP
         @gl_tex = null
-        @coefficients = (vec3.create() for [0...9])
+        @coefficients = (new Float32Array(3) for [0...9])
         @loaded = false
         @bound_unit = -1
         @last_used_material = null
@@ -77,7 +77,7 @@ class Cubemap
     fill_color: (color) ->
         # NOTE: This was made for test purposes.
         # It's much better to use render_to_cubemap and clear color
-        [r, g, b, a=1] = color
+        {r, g, b, a=1} = color
         r = Math.min(Math.max(0,r*255),255)|0
         g = Math.min(Math.max(0,g*255),255)|0
         b = Math.min(Math.max(0,b*255),255)|0
@@ -159,7 +159,10 @@ class Cubemap
         m=[0.282095,0.488603,0.488603,0.488603,
            1.092548,1.092548,0.315392,1.092548,0.546274]
         for c,i in @coefficients[1...]
-            vec3.scale c, c, 1/m[i]
+            inv = 1/m[i]
+            c[0] *= inv
+            c[1] *= inv
+            c[2] *= inv
         return @
 
     destroy: ->

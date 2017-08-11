@@ -1,4 +1,4 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
 {LogicBlock} = require './logic_block.coffee'
 SIGNED_AXES = {'X': 1, 'Y': 2, 'Z': 3, '-X': -1, '-Y': -2, '-Z': -3}
 
@@ -8,18 +8,18 @@ class RotateAround extends LogicBlock
         @invrot = quat.create()
         @obrot = quat.create()
 
-    eval: (ob, target=[0,0,0], rotation=[0,0,0])->
+    eval: (ob, target={x: 0, y:0, z:0}, rotation={x: 0, y:0, z:0})->
         {invrot, obrot} = @
 
-        obrot[0] = 0
-        obrot[1] = 0
-        obrot[2] = 0
-        obrot[3] = 1
+        obrot.x = 0
+        obrot.y = 0
+        obrot.z = 0
+        obrot.q = 1
 
 
-        quat.rotateX(obrot, obrot, rotation[0])
-        quat.rotateY(obrot, obrot, rotation[1])
-        quat.rotateZ(obrot, obrot, rotation[2])
+        quat.rotateX(obrot, obrot, rotation.x)
+        quat.rotateY(obrot, obrot, rotation.y)
+        quat.rotateZ(obrot, obrot, rotation.z)
 
         rot = ob.rotation
         pos = ob.position
@@ -37,25 +37,26 @@ class RotateAround extends LogicBlock
 #rotate object to look at target.
 class LookAt extends LogicBlock
     init: ->
-        #TODO: Optimization: tup, side and front as mat3 subarrays
-        @tup = [0,0,1]
+        #TODO: Optimization: mat3.fromRows
+        @tup = {x: 0, y:0, z:1}
         @side = vec3.create()
         @front = vec3.create()
-        @m = mat3.create()
+        @m = new Float32Array()
+        @m2 = mat3.create()
         @q = quat.create()
 
-    eval: (viewer, target=[0,0,0], viewer_up='Z', viewer_front='-Y', smooth=0, frame_duration)->
+    eval: (viewer, target=mat3.create(), viewer_up='Z', viewer_front='-Y', smooth=0, frame_duration)->
         if not frame_duration?
             frame_duration = @context.main_loop.frame_duration
 
-        {q, m, tup, front, side} = @
+        {q, m, m2, tup, front, side} = @
         u_idx = SIGNED_AXES[viewer_up]
         f_idx = SIGNED_AXES[viewer_front]
 
         #reseting tup instead create another array
-        tup[0] = 0
-        tup[1] = 0
-        tup[2] = 1
+        tup.x = 0
+        tup.y = 0
+        tup.z = 1
 
         #vec3.transformQuat(tup, tup, viewer.rotation)
 
@@ -88,23 +89,32 @@ class LookAt extends LogicBlock
         vec3.normalize(tup, tup)
         vec3.normalize(front, front)
 
-        m[u] = tup[0]
-        m[u+3] = tup[1]
-        m[u+6] = tup[2]
-        m[f] = front[0]
-        m[f+3] = front[1]
-        m[f+6] = front[2]
-        m[s] = side[0]
-        m[s+3] = side[1]
-        m[s+6] = side[2]
+        m[u] = tup.x
+        m[u+3] = tup.y
+        m[u+6] = tup.z
+        m[f] = front.x
+        m[f+3] = front.y
+        m[f+6] = front.z
+        m[s] = side.x
+        m[s+3] = side.y
+        m[s+6] = side.z
+        m2.m00 = m[0]
+        m2.m01 = m[1]
+        m2.m02 = m[2]
+        m2.m03 = m[3]
+        m2.m04 = m[4]
+        m2.m05 = m[5]
+        m2.m06 = m[6]
+        m2.m07 = m[7]
+        m2.m08 = m[8]
 
-        mat3.transpose(m, m)
-        quat.fromMat3(q, m)
+        mat3.transpose(m2, m2)
+        quat.fromMat3(q, m2)
 
-        q[0] = -q[0]
-        q[1] = -q[1]
-        q[2] = -q[2]
-        q[3] = -q[3]
+        q.x = -q.x
+        q.y = -q.y
+        q.z = -q.z
+        q.q = -q.q
 
         n = frame_duration * 0.06 #frame duration in seconds * 60
         smooth = Math.max(0,1 - smooth)
@@ -120,10 +130,10 @@ class SnapToCurve extends LogicBlock
     init:->
         @antifilter = vec3.create()
         @pre_filtered = vec3.create()
-        @v_one = [1,1,1]
+        @v_one = {x: 1, y:1, z:1}
         @look_at = new LookAt @scene
 
-    eval: (ob, curve, pos_axes=[1,1,1], front='-Y', up='Z', position_factor=1, rotation_factor=1, frame_duration)->
+    eval: (ob, curve, pos_axes={x: 1, y:1, z:1}, front='-Y', up='Z', position_factor=1, rotation_factor=1, frame_duration)->
         {antifilter, pre_filtered} = @
 
         if not frame_duration?
@@ -131,20 +141,20 @@ class SnapToCurve extends LogicBlock
 
         filter = pos_axes
 
-        # antifilter = filter - [1,1,1]
+        # antifilter = filter - {x: 1, y:1, z:1}
         vec3.sub(antifilter, @v_one, filter)
 
         # "Parented" position
         vec3.sub(ob.position, ob.position, curve.position)
 
         # flipping curve rotation to do corretly the transformQuat to avoid cloning the quat
-        curve.rotation[3] *= -1
+        curve.rotation.q *= -1
         vec3.transformQuat(ob.position, ob.position, curve.rotation)
-        curve.rotation[3] *= -1
+        curve.rotation.q *= -1
 
         # It returns [point, normal]
         p_n = curve.closest_point(ob.position, filter)
-        point = p_n[0]
+        point = p_n.x
         vec3.mul(point, point, filter)
         vec3.mul(pre_filtered, ob.position, antifilter)
         vec3.add(point, point, pre_filtered)
@@ -160,7 +170,7 @@ class SnapToCurve extends LogicBlock
 
         if rotation_factor
             # Align to normal curve
-            normal = p_n[1]
+            normal = p_n.y
 
             # Transform normal to match curve rotation
             vec3.transformQuat(normal, normal, curve.rotation)
@@ -168,6 +178,6 @@ class SnapToCurve extends LogicBlock
             # Look at objet position + normal vector
             smooth =  1 - Math.abs(rotation_factor)
             target = vec3.add(normal, normal, ob.position)
-            @look_at(ob, target, [1,1,1], front, up, smooth, frame_duration)
+            @look_at(ob, target, {x: 1, y:1, z:1}, front, up, smooth, frame_duration)
 
 module.exports = {RotateAround, LookAt, SnapToCurve}

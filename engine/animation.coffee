@@ -1,4 +1,4 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'gl-matrix'
+{mat2, mat3, mat4, vec2, vec3, vec4, color3, color4, quat} = require 'vmath'
 {update_ob_physics} = require './physics.coffee'
 {clamp} = window
 
@@ -21,16 +21,26 @@ class Action
             @markers_by_name[m.name] = m
 
         for ch in channels
-            path = ch[0]+'.'+ch[1]+'.'+ch[2]
-            @channels[path] = ch
-            for i in ch[3]
+            [type, name, prop, keys] = ch
+            path = "#{type}.#{name}.#{prop}"
+            data_type = keys.length
+            # data_type for internal use, from 1 to 7:
+            # float, vec2, vec3, vec4, color3, color4, quat
+            if 3 <= keys.length <= 4 and /color/.test prop
+                data_type += 2
+            if prop == 'rotation'
+                data_type = 7
+            if prop == 'rotation_euler'
+                prop = 'rotation'
+            @channels[path] = {type, name, prop, keys, data_type}
+            for i in keys
                 if i.length == 0
                     console.error 'Empty channel on ' + name + ' -> '+path
         return
 
     get: (channel_path, time)->
         ret_vec = []
-        for ch in @channels[channel_path][3]
+        for ch in @channels[channel_path].keys
             # Format:
             # Every keyframe has a left handle, a point and a right handle
             #  0    1    2    3    4    5  ;  6    7    8    9
@@ -222,7 +232,7 @@ class Animation
                     # TODO: check we're not off by one when repeating
                     scaled_pos %= action_frame_end - action_frame_start
                 pos = clamp(scaled_pos + action_frame_start, action_frame_start, action_frame_end)
-                for path, chan of action.channels
+                for path of action.channels
                     ac = affected_channels[path] = affected_channels[path] or []
                     ac.push {strip, action, pos, blend_factor}
 
@@ -236,15 +246,14 @@ class Animation
                 # but we want it to work across different animations
                 # (including copies of the same animation)
                 type = name = prop = ''
+                data_type = 0
                 for {strip, action, pos, blend_factor} in strip_actions
                     orig_chan = action.channels[path]
                     if not orig_chan
                         continue
                     v = action.get path, pos
                     if not blend?
-                        type = orig_chan[0]
-                        name = orig_chan[1]
-                        prop = orig_chan[2]
+                        {type, name, prop, data_type} = orig_chan
                         blend = v[...]
                         initial_value = +(prop=='scale') # 1 if scale, 0 otherwise
                         for _,i in blend
@@ -265,9 +274,6 @@ class Animation
                                 blend[i] -= v[i] * blend_factor
 
                 # Then, apply the result to the object
-                is_quat = prop == 'rotation'
-                if prop == 'rotation_euler'
-                    prop = 'rotation'
                 switch type
                     when 'object'
                         target = ob
@@ -285,14 +291,23 @@ class Animation
                 if not target
                     continue
                 v = blend
-                if v.length == 1
-                    target[prop] = v[0]
-                else
-                    p = target[prop]
-                    for j in [0...v.length]
-                        p[j] = v[j]
-                    if is_quat
+                switch v.length
+                    when 1
+                        target[prop] = v[0]
+                    when 2
+                        vec2.set target[prop], v[0], v[1]
+                    when 3
+                        vec3.set target[prop], v[0], v[1], v[2]
+                    when 4
+                        vec4.set target[prop], v[0], v[1], v[2], v[3]
+                    when 5
+                        color3.set target[prop], v[0], v[1], v[2]
+                    when 6
+                        color4.set target[prop], v[0], v[1], v[2], v[3]
+                    when 7
+                        quat.set target[prop], v[0], v[1], v[2], v[3]
                         quat.normalize p, p
+
 
             update_ob_physics ob
         return @

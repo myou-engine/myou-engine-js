@@ -68,7 +68,7 @@ class BlenderInternalMaterial
                 when -1
                     path = u.path or u.index
                     value = if u.value.length? then new Float32Array(u.value) else u.value
-                    _input_list.push inputs[path] = {value, type: u.count}
+                    _input_list.push inputs[path] = {value, type: u.count, path}
                 when 13, GPU_DYNAMIC_SAMPLER_2DIMAGE, GPU_DYNAMIC_SAMPLER_2DBUFFER, \
                     14, GPU_DYNAMIC_SAMPLER_2DSHADOW
                         _texture_list.push {value: context.render_manager.blank_texture}
@@ -152,28 +152,28 @@ class BlenderInternalMaterial
                 when 1, GPU_DYNAMIC_OBJECT_VIEWMAT # model_view_matrix
                     code # Ignored, used only for get_model_view_matrix_name()
                 when 2, GPU_DYNAMIC_OBJECT_MAT # object_matrix
-                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, ob.world_matrix);"
+                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, ob.world_matrix.toJSON());"
                 when 3, GPU_DYNAMIC_OBJECT_VIEWIMAT # inverse view_matrix (not model_view_matrix!)
-                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, render._cam2world);"
+                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, render._cam2world.toJSON());"
                 when 4, GPU_DYNAMIC_OBJECT_IMAT # inverse object_matrix
                     # NOTE: Objects with zero scale are not drawn, otherwise m4 could be null
-                    code.push "m4 = mat4.invert(render._m4, ob.world_matrix);"
-                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, m4);"
+                    code.push "m4 = mat4.invert(render._m4, ob.world_matrix.toJSON());"
+                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, m4.toJSON());"
                 when 5, GPU_DYNAMIC_OBJECT_COLOR # object color
-                    code.push "gl.uniform4fv(locations[#{loc_idx}], ob.color);"
+                    code.push "v=ob.color;gl.uniform4f(locations[#{loc_idx}], v.r, v.g, v.b, v.a);"
                 when 6, GPU_DYNAMIC_LAMP_DYNVEC # lamp direction in camera space
-                    code.push "gl.uniform3fv(locations[#{loc_idx}], lamps[#{current_lamp}]._dir);"
+                    code.push "v=lamps[#{current_lamp}]._dir;gl.uniform3f(locations[#{loc_idx}], v.x, v.y, v.z);"
                 when 7, GPU_DYNAMIC_LAMP_DYNCO # lamp position in camera space
-                    code.push "gl.uniform3fv(locations[#{loc_idx}], lamps[#{current_lamp}]._view_pos);"
+                    code.push "v=lamps[#{current_lamp}]._view_pos;gl.uniform3f(locations[#{loc_idx}], v.x, v.y, v.z);"
                 when 9, GPU_DYNAMIC_LAMP_DYNPERSMAT # camera to lamp shadow matrix
-                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, lamps[#{current_lamp}]._cam2depth);"
+                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, lamps[#{current_lamp}]._cam2depth.toJSON());"
                 when 10, GPU_DYNAMIC_LAMP_DYNENERGY # lamp energy
                     code.push "gl.uniform1f(locations[#{loc_idx}], lamps[#{current_lamp}].energy);"
                 when 11, GPU_DYNAMIC_LAMP_DYNCOL # lamp color
                     if u.datatype == 4 # vec3
-                        code.push "gl.uniform3fv(locations[#{loc_idx}], lamps[#{current_lamp}].color);"
+                        code.push "v=lamps[#{current_lamp}].color;gl.uniform3f(locations[#{loc_idx}], v.r, v.g, v.b);"
                     else # vec4
-                        code.push "gl.uniform4fv(locations[#{loc_idx}], lamps[#{current_lamp}]._color4);"
+                        code.push "v=lamps[#{current_lamp}].color;gl.uniform4f(locations[#{loc_idx}], v.r, v.g, v.b, v.a);"
                 when 16, GPU_DYNAMIC_LAMP_DISTANCE # lamp falloff distance
                     code.push "gl.uniform1f(locations[#{loc_idx}], lamps[#{current_lamp}].falloff_distance);"
                 when 19, GPU_DYNAMIC_LAMP_SPOTSIZE
@@ -186,7 +186,7 @@ class BlenderInternalMaterial
                 when 13, GPU_DYNAMIC_SAMPLER_2DIMAGE, GPU_DYNAMIC_SAMPLER_2DBUFFER # 2D image
                     code.push "gl.uniform1i(locations[#{loc_idx}], tex_list[#{texture_count}].value.bound_unit);"
                 when GPU_DYNAMIC_AMBIENT_COLOR
-                    code.push "gl.uniform4fv(locations[#{loc_idx}], ob.scene.ambient_color);"
+                    code.push "v=ob.scene.ambient_color;gl.uniform4f(locations[#{loc_idx}], v.r, v.g, v.b, v.a);"
                 when GPU_DYNAMIC_LAMP_COEFFCONST
                     console.warn u.lamp, 'TODO: lamp coefficient const'
                 when GPU_DYNAMIC_LAMP_COEFFLIN
@@ -206,12 +206,14 @@ class BlenderInternalMaterial
                 when GPU_DYNAMIC_MIST_TYPE
                     var_misttype = u.varname
                 when GPU_DYNAMIC_HORIZON_COLOR
-                    code.push "gl.uniform3fv(locations[#{loc_idx}], ob.scene.background_color.subarray(0,3));"
+                    code.push "v=ob.scene.background_color;gl.uniform3f(locations[#{loc_idx}], v.r, v.g, v.b);"
                 when -1 # custom
                     {value, type} = @material._input_list[current_input]
                     value_code = "inputs[#{current_input}].value"
-                    code.push if value.length?
-                        "gl.uniform#{value.length}fv(locations[#{loc_idx}], #{value_code});"
+                    vlen = Object.keys(value).length
+                    # TODO: Optimize by having four value_codes and putting them depending on type
+                    code.push if vlen
+                        "gl.uniform#{vlen}fv(locations[#{loc_idx}], #{value_code}.toJSON());"
                     else if type == 1
                         "gl.uniform1f(locations[#{loc_idx}], #{value_code});"
                     else

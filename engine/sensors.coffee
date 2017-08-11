@@ -1,4 +1,4 @@
-{vec2, vec3, quat} = require 'gl-matrix'
+{vec2, vec3, quat} = require 'vmath'
 phy = require './physics.coffee'
 {LogicBlock} = require './logic_block.coffee'
 r3 = require './math_utils/r3.coffee'
@@ -24,7 +24,7 @@ class TouchGesturesOver extends LogicBlock
         {width, height} = @context.canvas_rect
 
         cam_pos = cam.get_world_position()
-        cam_view = [0,0,-1]
+        cam_view = {x:0,y:0,z:-1}
         vec3.transformQuat(cam_view,cam_view,cam.rotation)
 
         for touch in new_touches
@@ -98,9 +98,9 @@ class TouchGesturesOver extends LogicBlock
                 for id, touch of hit.touch_events
                     touch_events_3D.push
                         id:touch.id,
-                        x:touch.world_position[0]
-                        y:touch.world_position[1]
-                        z:touch.world_position[2]
+                        x:touch.world_position.x
+                        y:touch.world_position.y
+                        z:touch.world_position.z
                     touch_events.push touch
 
                 {pos, rel_pos, linear_velocity} = hit.drag_gesture.eval(touch_events_3D)
@@ -134,9 +134,9 @@ class DragGesture extends LogicBlock
     init: ->
         @pos = []
         @last_pos = null
-        @rel_pos = [0,0,0]
+        @rel_pos = {x: 0, y:0, z:0}
         @id = null
-        @linear_velocity = [0,0,0]
+        @linear_velocity = {x: 0, y:0, z:0}
 
     eval: (pointer_events)->
         frame_duration = @context.main_loop.frame_duration
@@ -161,9 +161,9 @@ class DragGesture extends LogicBlock
         @id = new_id
 
         pos = @pos
-        pos[0] = ix
-        pos[1] = iy
-        pos[2] = iz or 0
+        pos.x = ix
+        pos.y = iy
+        pos.z = iz or 0
 
         #Locking relative pos if pointer_event.id changes
         linear_velocity = vec3.scale(@linear_velocity,@rel_pos,1/frame_duration)
@@ -192,8 +192,9 @@ class PinchGesture extends LogicBlock
                 rel_pinch:0
             }
 
-        id1 = pointer_events[0].id
-        id2 = pointer_events[1].id
+        [pe1, pe2] = pointer_events
+        id1 = pe1.id
+        id2 = pe2.id
 
         if @id1 != id1 or @id2 != id2
             @init()
@@ -204,12 +205,13 @@ class PinchGesture extends LogicBlock
         pos1 = @pos1
         pos2 = @pos2
 
-        pos1[0] = pointer_events[0].x
-        pos1[1] = pointer_events[0].y
-        pos1[2] = pointer_events[0].z or 0
-        pos2[0] = pointer_events[1].x
-        pos2[1] = pointer_events[1].y
-        pos2[2] = pointer_events[1].z or 0
+
+        pos1.x = pe1.x
+        pos1.y = pe1.y
+        pos1.z = pe1.z or 0
+        pos2.x = pe2.x
+        pos2.y = pe2.y
+        pos2.z = pe2.z or 0
 
         pinch = vec3.dist(pos1,pos2)
 
@@ -240,8 +242,9 @@ class RotationGesture extends LogicBlock
                 rel_rot:0
             }
 
-        id1 = pointer_events[0].id
-        id2 = pointer_events[1].id
+        [pe1, pe2] = pointer_events
+        id1 = pe1.id
+        id2 = pe2.id
 
         if @id1 != id1 or @id2 != id2
             @init()
@@ -251,16 +254,16 @@ class RotationGesture extends LogicBlock
 
         pos1 = @pos1
         pos2 = @pos2
-        pos1[0] = pointer_events[0].x
-        pos1[1] = pointer_events[0].y
-        pos2[0] = pointer_events[1].x
-        pos2[1] = pointer_events[1].y
+        pos1.x = pe1.x
+        pos1.y = pe1.y
+        pos2.x = pe2.x
+        pos2.y = pe2.y
 
         #rot
         r = @tmpv
         vec2.sub(r, pos2, pos1)
-        x = r[0]
-        y = r[1]
+        x = r.x
+        y = r.y
 
         if x > 0 # +X
             rot = Math.atan(y/x)
@@ -339,35 +342,35 @@ pointer_over = (pointer_event, cam, int_mask)->
 # Convert pointer event coords to an euler rotation (just like blender trackball rotation)
 trackball_rotation = (pointer_event, scale_x=1, scale_y=1, z_influence=0.2)->
     {x, y, rel_x, rel_y} = pointer_event
-    pos = [x,y]
+    pos = vec2.new x,y
     rel = [scale*rel_x, scale*rel_y]
     fdist = vec2.len(pos)
     fdist2 = Math.pow(fdist,2)
-    lastpos = vec2.sub([],pos,rel)
-    if pos[1] < 0 and lastpos[1]<0
+    lastpos = vec2.sub({},pos,rel)
+    if pos.y < 0 and lastpos.y<0
         vec2.negate(pos, pos)
         vec2.negate(lastpos, lastpos)
 
-    rot1 = Math.atan2(pos[0], pos[1])
-    rot2 = Math.atan2(lastpos[0], lastpos[1])
+    rot1 = Math.atan2(pos.x, pos.y)
+    rot2 = Math.atan2(lastpos.x, lastpos.y)
     rot = rot2-rot1
 
-    return [
-        rel[1]*PI*(1-pos[1]*z_influence),
-        fdist2*rot*4*z_influence,
-        rel[0]*PI*(1-pos[0]*z_influence),
-    ]
+    return {
+        x: rel.y*PI*(1-pos.y*z_influence),
+        y: fdist2*rot*4*z_influence,
+        z: rel.x*PI*(1-pos.x*z_influence),
+    }
 
 #Returns the closest point in a curve
-curve_closest_point = (point=[0,0,0], curve)->
+curve_closest_point = (point=vec3.create(), curve)->
     p = vec3.clone(point)
     vec3.sub(p, p, curve.position)
-    curve.rotation[3] *= -1
+    curve.rotation.w *= -1
     vec3.transformQuat(p, p, curve.rotation)
-    curve.rotation[3] *= -1
+    curve.rotation.w *= -1
     p_n = curve.closest_point(p)
-    point_in_curve = p_n[0]
-    tangent = p_n[1]
+    point_in_curve = p_n.x
+    tangent = p_n.y
     vec3.transformQuat(point_in_curve, point_in_curve, curve.rotation)
     vec3.transformQuat(tangent, tangent, curve.rotation)
     vec3.add(point_in_curve, point_in_curve, curve.position)
@@ -379,22 +382,22 @@ digital_to_axes = (digital=[0,0,0,0,0,0], normalize=false)->
     x = digital[0] - digital[1]
     y = digital[2] - digital[3]
     z = digital[4] - digital[5]
-    axis =  [x,y,z]
+    axis = {x,y,z}
     if normalize
         vec3.normalize(axis, axis)
     return axis
 
-axis_objet_mapper = (pos, cam, axis=[0,0,0])->
+axis_object_mapper = (pos, cam, axis)->
     # camera Z
     m = cam.world_matrix
-    cpos = [m[8],m[9],m[10]]
+    cpos = {x:m.m08,y:m.m09,z:m.m10}
     vec3.transformQuat(cpos, cpos, quat.invert(quat.create(), ob.rotation))
-    a = atan2(cpos[0],cpos[1])
+    a = atan2(cpos.x,cpos.y)
 
-    return [
-        - axis[0]*cos(-a) + axis[1]*sin(-a),
-        - axis[1]*cos( a) + axis[0]*sin( a),
-        0
-    ]
+    return {
+        x: - axis.x*cos(-a) + axis.y*sin(-a),
+        y: - axis.y*cos( a) + axis.x*sin( a),
+        z: 0
+    }
 
-module.exports = {TouchGesturesOver, RotationGesture, PinchGesture, pointer_over_no_phy, pointer_over, trackball_rotation, curve_closest_point, digital_to_axes, axis_objet_mapper}
+module.exports = {TouchGesturesOver, RotationGesture, PinchGesture, pointer_over_no_phy, pointer_over, trackball_rotation, curve_closest_point, digital_to_axes, axis_object_mapper}

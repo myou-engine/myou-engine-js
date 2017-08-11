@@ -1,4 +1,4 @@
-{vec2} = require 'gl-matrix'
+{vec2} = require 'vmath'
 
 # TODO: make it not global
 window.KEYS = {
