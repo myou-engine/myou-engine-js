@@ -122,7 +122,9 @@ load_datablock = (scene, data, context) ->
             input_names = ['', 'diffuse_color', 'diffuse_intensity', 'specular_color', 'specular_intensity', 'specular_hardness', 'emit', 'ambient', 'alpha', 'mir']
             input_types = [1, 3, 1, 3, 1, 1, 1, 1, 1, 3]
             for u in data.uniforms
-                if u.material
+                # We don't check "u.material" so buggy versions of blender with
+                # undefined material are interpreted as having the material named "undefined"
+                if (u.type>>16) == 7 # GPU_DYNAMIC_GROUP_MAT
                     is_blender278 = true
                     prefix = ''
                     if u.material != data.name
