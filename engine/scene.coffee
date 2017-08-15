@@ -42,7 +42,6 @@ class Scene
         @last_render_tick = 0
         @pre_draw_callbacks = []
         @post_draw_callbacks = []
-        @active_particle_systems = []
         @use_physics = true
         @frame_start = 0
         @frame_end = 0

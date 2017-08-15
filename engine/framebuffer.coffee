@@ -141,7 +141,8 @@ class Framebuffer
             gl.uniform4f l, src_rect[0], src_rect[1], src_rect[2], src_rect[3]
         l = gl.getUniformLocation prog, 'dst_rect'
         if l and l._!=-1
-            gl.uniform4fv l, Framebuffer.active_rect
+            {x,y,z,w} = Framebuffer.active_rect
+            gl.uniform4f l, x, y, z, w
         #gl.uniform2fv gl.getUniformLocation(prog, 'pixel_ratio'), @pixel_ratio
         gl.bindBuffer gl.ARRAY_BUFFER, quad
         @context.render_manager.change_enabled_attributes filter.attrib_bitmask

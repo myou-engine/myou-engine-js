@@ -113,9 +113,6 @@ class MainLoop
             while --i != 0
                 scene.pre_draw_callbacks[scene.pre_draw_callbacks.length-i] scene, frame_duration
 
-            for p in scene.active_particle_systems
-                p._eval()
-
         time2 = performance.now()
 
         for scene_name in @context.loaded_scenes

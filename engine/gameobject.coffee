@@ -18,16 +18,6 @@ fetch_assets = require './fetch_assets'
 
 } = require './physics'
 
-
-NO_MIRROR = 1
-MIRROR_X = 2
-MIRROR_Y = 4
-MIRROR_Z = 8
-MIRROR_XY = 16
-MIRROR_XZ = 32
-MIRROR_YZ = 64
-MIRROR_XYZ = 128
-
 # Main 3D Object class (Called GameObject to distinguish from JS Object).
 #
 # It's the base for mesh objects, cameras, lamps, armatures, etc.
@@ -67,7 +57,6 @@ class GameObject
         @animations = {}
         @name = null
         @original_name = null
-        @mirrors = 1
         @lod_objects = []
         @parent_bone_index = -1
         # Physics
@@ -185,8 +174,6 @@ class GameObject
                     shape = data.phy_convex_hull
                 else
                     shape = data.phy_mesh
-                    if @mirrors & 2
-                        shape = data.phy_mesh_mx
 
                 if shape and (not use_visual_mesh) != (not @_use_visual_mesh)
                     shape.mesh and destroy shape.mesh
@@ -202,8 +189,6 @@ class GameObject
                     while p
                         vec3.scale scale, scale, p.scale.z
                         p = p.parent
-                    if @mirrors & 2
-                        scale.x = -scale.x
                     if is_hull
                         shape = new ConvexShape data.varray, ob.stride/4, @scale, @collision_margin
                         data.phy_convex_hull = shape
@@ -221,10 +206,7 @@ class GameObject
                             @collision_margin,
                             ob.hash
                         )
-                        if @mirrors & 2
-                            data.phy_mesh_mx = shape
-                        else
-                            data.phy_mesh = shape
+                        data.phy_mesh = shape
             else
                 console.log "Warning: Unknown shape", @collision_shape
 
@@ -257,8 +239,6 @@ class GameObject
             if shape
                 posrot = @get_world_pos_rot()
                 pos = posrot[0]
-                if @mirrors & 2
-                    pos.x = -pos.x
                 rot = posrot[1]
                 # TODO: SOFT_BODY, OCCLUDE, NAVMESH
                 if @physics_type == 'RIGID_BODY'

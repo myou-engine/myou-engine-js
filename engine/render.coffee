@@ -44,23 +44,6 @@ class RenderManager
         @context.render_manager = @
         @canvas = canvas
         @gl = gl
-        if vec3.create().byteLength == 24
-            # TODO: convert only when necessary?
-            gl.tmp2 = new Float32Array 2
-            gl.tmp3 = new Float32Array 3
-            gl.tmp4 = new Float32Array 4
-            gl.tmp9 = new Float32Array 9
-            gl.tmp16 = new Float32Array 16
-            gl._uniform2fv = gl.uniform2fv
-            gl.uniform2fv = (l, v) -> @tmp2.set(v);@_uniform2fv l, @tmp2
-            gl._uniform3fv = gl.uniform3fv
-            gl.uniform3fv = (l, v) -> @tmp3.set(v);@_uniform3fv l, @tmp3
-            gl._uniform4fv = gl.uniform4fv
-            gl.uniform4fv = (l, v) -> @tmp4.set(v);@_uniform4fv l, @tmp4
-            gl._uniformMatrix3fv = gl.uniformMatrix3fv
-            gl.uniformMatrix3fv = (l, t, v) -> @tmp9.set(v);@_uniformMatrix3fv l, t, @tmp9
-            gl._uniformMatrix4fv = gl.uniformMatrix4fv
-            gl.uniformMatrix4fv = (l, t, v) -> @tmp16.set(v);@_uniformMatrix4fv l, t, @tmp16
         @width = width
         @height = height
         @main_fb = new MainFramebuffer @context
@@ -453,8 +436,6 @@ class RenderManager
             # Cull object if it's outside camera frustum
             parented_pos = if mesh.parent then  mesh.get_world_position() else mesh.position
             pos = vec3.copy @_v, parented_pos
-            if mesh.mirrors == 2
-                pos.x = -pos.x
             vec3.sub pos, pos, cam.position
             r = mesh.radius
             distance_to_camera = vec3.dot pos, @camera_z
@@ -771,8 +752,6 @@ class RenderManager
             for ob in scene.mesh_passes[1]
                 v = if ob.parent then ob.get_world_position() else ob.position
                 x = v.x
-                if ob.mirrors == 2
-                    x = -x
                 ob._sqdist = - (x*z.x + v.y*z.y + v.z*z.z) - (ob.zindex * (ob.dimensions.x+ob.dimensions.y+ob.dimensions.z)*0.166666)
                 # ob._sqdist = -vec3.dot(s,z) - (ob.zindex * (ob.dimensions.x+ob.dimensions.y+ob.dimensions.z)*0.166666)
             timsort.sort scene.mesh_passes[1], (a,b)-> a._sqdist - b._sqdist

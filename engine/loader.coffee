@@ -14,30 +14,6 @@
 {Material} = require './material.coffee'
 {nearest_POT} = require './math_utils/math_extra'
 
-# patch_vec = (vec) ->
-#     if not vec._?
-#         vec._ = {}
-#         # console.log '---'
-#         other = {x:'r',r:'x',y:'g',g:'y',b:'z',z:'b',w:'a',a:'w'}
-#         for k in Object.keys(vec) when k!='_'
-#             # console.log k, other[k]
-#             vec._[k] = vec[k]
-#             do (k) -> Object.defineProperty vec, k,
-#                 get: -> @_[k]
-#                 set: (v) ->
-#                     debugger if not v? or v!=v
-#                     @_[k] = v
-#             Object.defineProperty vec, other[k],
-#                 get: -> debugger
-#                 set: (v) -> debugger
-#     vec
-#
-# for m in [vec2,vec3,vec4,quat,color3,color4]
-#     for k,f of vec3 when typeof f == "function"
-#         if k in ['create', 'new', 'clone']
-#             vec3[k] = do(f) -> (args...) ->
-#                 patch_vec f(args...)
-
 is_browser = not process? or process.browser
 if is_browser
     # for loading ammo.js relative to the output .js
@@ -427,7 +403,6 @@ load_object = (data, scene) ->
     vec3.copyArray ob.scale, data.scale
     vec3.copyArray ob.offset_scale, data.offset_scale
     ob.visible = data.visible
-    ob.mirrors = data.mirrors or 1
     vec3.copyArray ob.dimensions, data.dimensions # is this used outside physics?
     ob.radius = data.mesh_radius or vec3.len(ob.dimensions) * 0.5
     ob.properties = data.properties or {}

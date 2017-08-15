@@ -244,21 +244,9 @@ class GLRay
                         gl.vertexAttribPointer(attr_loc_normal, 4, 5121, false, data.stride, 12)
                         # draw mesh
                         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, data.index_buffers[submesh_idx])
-                        mirrors = mesh.mirrors
-                        if mirrors & 1
-                            mat4.multiply(m4, world2cam, mesh2world)
-                            gl.uniformMatrix4fv(mat.u_model_view_matrix, false, m4.toJSON())
-                            # mat3.multiply(m3, world2cam3, mesh.normal_matrix)
-                            # gl.uniformMatrix3fv(mat.u_normal_matrix, false, m3)
-                            gl.drawElements(data.draw_method, data.num_indices[submesh_idx], 5123, 0) # gl.UNSIGNED_SHORT
-                        if mirrors & 178
-                            mat4.multiply(m4, world2cam_mx, mesh2world)
-                            gl.uniformMatrix4fv(mat.u_model_view_matrix, false, m4.toJSON())
-                            # mat3.multiply(m3, world2cam3_mx, mesh.normal_matrix)
-                            # gl.uniformMatrix3fv(mat.u_normal_matrix, false, m3)
-                            gl.frontFace(2304) # gl.CW
-                            gl.drawElements(data.draw_method, data.num_indices[submesh_idx], 5123, 0) # gl.UNSIGNED_SHORT
-                            gl.frontFace(2305) # gl.CCW
+                        mat4.multiply(m4, world2cam, mesh2world)
+                        gl.uniformMatrix4fv(mat.u_model_view_matrix, false, m4.toJSON())
+                        gl.drawElements(data.draw_method, data.num_indices[submesh_idx], 5123, 0) # gl.UNSIGNED_SHORT
         @step += 1
 
         # Extract pixels (some time after render is queued, to avoid stalls)
