@@ -52,7 +52,8 @@ class Probe
         @context.render_manager.draw_cubemap(@scene, @cubemap,
             @position, @clip_start, @clip_end, @background_only)
         # TODO: Detect if any material uses this!
-        @cubemap.generate_spherical_harmonics(@sh_quality)
+        if @compute_sh
+            @cubemap.generate_spherical_harmonics(@sh_quality)
         @cubemap.loaded = true
 
     destroy: ->
