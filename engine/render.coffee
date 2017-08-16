@@ -793,7 +793,7 @@ class RenderManager
                         # than recalculating the matrices of the same mesh
 
                     # occluded pass
-                    dob.color = {r: 1, g:1, b:1, a:0.2}
+                    color4.set dob.color, 1, 1, 1, .2
                     gl.enable gl.BLEND
                     gl.disable gl.DEPTH_TEST
                     @draw_mesh dob, dob.world_matrix
@@ -801,7 +801,7 @@ class RenderManager
                     # visible pass
                     gl.disable gl.BLEND
                     gl.enable gl.DEPTH_TEST
-                    dob.color = {r: 1, g:1, b:1, a:1}
+                    color4.set dob.color, 1, 1, 1, 1
                     @draw_mesh dob, dob.world_matrix
 
             gl.disable gl.DEPTH_TEST
@@ -809,12 +809,15 @@ class RenderManager
                 # TODO: draw something else when it's too small (a different arrow?)
                 #       and a circle when it's 0
                 dob = @debug.arrow
-                dob.color = color4.clone dvec[2]
-                dob.position = dvec[1]
-                v3 = dvec[0]
-                v2 = vec3.cross {x: 0, y:0, z:0}, cam.position, v3
-                v1 = vec3.normalize {x: 0, y:0, z:0}, vec3.cross({x: 0, y:0, z:0},v2,v3)
-                v2 = vec3.normalize {x: 0, y:0, z:0}, vec3.cross(v2,v3,v1)
+                if dvec.color?
+                    color4.copy dob.materials[0].inputs.color.value, dvec.color
+                else
+                    color4.set dob.materials[0].inputs.color.value, 1,1,1,1
+                dob.position = dvec.position
+                v3 = dvec.vector
+                v2 = vec3.cross vec3.create(), cam.position, v3
+                v1 = vec3.normalize vec3.create(), vec3.cross(vec3.create(),v2,v3)
+                v2 = vec3.normalize vec3.create(), vec3.cross(v2,v3,v1)
                 s = vec3.len v3
                 vec3.scale v2,v2,s
                 vec3.scale v1,v1,s
@@ -1245,11 +1248,11 @@ class Debug
         bone.load_from_lists(d, [0,1,0,2,0,3,0,4,1,2,2,3,3,4,4,1,
                            5,1,5,2,5,3,5,4])
 
-        @material = mat = new Material @context, {
-            name: '_debug',
+        @material = mat = new Material @context, '_debug', {
+            material_type: 'PLAIN_SHADER'
             vertex: plain_vs,
             fragment: plain_fs,
-            uniforms: [{'type':5,'varname':'color'}],
+            uniforms: [{varname:'color', value: color4.create()}],
         }
 
         for ob in [box, cylinder, sphere, arrow, bone]
@@ -1277,7 +1280,7 @@ class Debug
         mesh.load_from_va_ia va, ia
         mesh.elements = []
         mesh.materials = [@material]
-        mesh.color = color4.new 1,1,1,1
+        mesh.color = color4.new 1,1,1,1 # TODO FIXME plain shader
         mesh.data.draw_method = render_manager.gl.LINES
         mesh.scale = vec3.new 1,1,1
         mesh._update_matrices()
