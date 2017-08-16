@@ -298,16 +298,15 @@ class Mesh extends GameObject
                 data_type: shape_type
                 keys: keys
             }
-            @_signature += m.signature
         if @armature and @parent_bone_index == -1
             vertex_modifiers.push m = new ArmatureModifier {
                 armature: @armature
                 data_type: 'f'
             }
-            @_signature += m.signature
-
         @layout = layout
-        @vertex_modifiers = vertex_modifiers.concat @vertex_modifiers or []
+        @vertex_modifiers = vertex_modifiers.concat @vertex_modifiers
+        for vm,i in @vertex_modifiers
+            @_signature += "#{i}:#{vm.signature},"
         return
 
     # Returns a LoD version of the mesh that has enough detail for its visual size.
