@@ -1,6 +1,6 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat, color3, color4} = require 'vmath'
 {Action} = require './animation.coffee'
-{Viewport} = require './viewport.coffee'
+{CanvasScreen} = require './screen'
 {Camera} = require './camera.coffee'
 {Lamp} = require './lamp.coffee'
 {Mesh} = require './mesh.coffee'
@@ -327,8 +327,9 @@ load_object = (data, scene) ->
             scene.add_object ob, data.name, data.parent, data.parent_bone
             if data.name == scene.active_camera_name
                 scene.active_camera = ob
-                if context.render_manager.viewports.length == 0
-                    v = new Viewport context.render_manager, ob
+                if not context.canvas_screen?
+                    screen = new CanvasScreen(context, context.render_manager.canvas)
+                    screen.add_viewport ob
         else
             throw "Live server no longer in use"
 

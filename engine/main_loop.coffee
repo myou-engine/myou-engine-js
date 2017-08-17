@@ -85,9 +85,9 @@ class MainLoop
             @req_tick = null
 
     tick: ->
-        {_HMD} = @context
-        if _HMD?
-            @req_tick = _HMD.requestAnimationFrame @_bound_tick
+        HMD = @context.vr_screen?.HMD
+        if HMD?
+            @req_tick = HMD.requestAnimationFrame @_bound_tick
         else
             @req_tick = requestAnimationFrame @_bound_tick
         time = performance.now()

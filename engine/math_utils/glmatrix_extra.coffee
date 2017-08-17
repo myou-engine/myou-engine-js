@@ -131,6 +131,25 @@ glm.mat4.fromMat3 = (out, m) ->
     out.m15 = 1
     return out
 
+glm.mat4.copyArray = (out, arr) ->
+    out.m00 = arr[0]
+    out.m01 = arr[1]
+    out.m02 = arr[2]
+    out.m03 = arr[3]
+    out.m04 = arr[4]
+    out.m05 = arr[5]
+    out.m06 = arr[6]
+    out.m07 = arr[7]
+    out.m08 = arr[8]
+    out.m09 = arr[9]
+    out.m10 = arr[10]
+    out.m11 = arr[11]
+    out.m12 = arr[12]
+    out.m13 = arr[13]
+    out.m14 = arr[14]
+    out.m15 = arr[15]
+    return out
+
 glm.mat4.setTranslation = (out, v) ->
     out.m12 = v.x
     out.m13 = v.y

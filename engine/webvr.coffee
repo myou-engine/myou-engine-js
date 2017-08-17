@@ -1,5 +1,75 @@
 
-{vec3, vec4, quat} = require 'vmath'
+{vec3, vec4, quat, mat4} = require 'vmath'
+{CanvasScreen} = require './screen'
+
+class VRScreen extends CanvasScreen
+    constructor: (@context, @HMD, @scene) ->
+        if @context.vr_screen?
+            throw "There's a VR screen already"
+        @context.vr_screen = this
+        @context.screens.push this
+        @viewports = []
+        @canvas = @context.canvas
+        {@framebuffer} = @context.canvas_screen
+        @frame_data = new VRFrameData
+        # left eye viewport
+        camera = @scene.active_camera.clone()
+        camera.rotation_order = 'Q'
+        quat.identity camera.rotation
+        @scene.make_parent @scene.active_camera, camera
+        v = @add_viewport camera
+        # v.set_clear false, false
+        v.rect = [0, 0, 0.5, 1]
+        # right eye viewport
+        camera = @scene.active_camera.clone()
+        camera.rotation_order = 'Q'
+        quat.identity camera.rotation
+        @scene.make_parent @scene.active_camera, camera
+        v = @add_viewport camera
+        v.set_clear false, false
+        v.rect = [0.5, 0, 0.5, 1]
+        v.right_eye_factor = 1
+        # resize canvas and viewports
+        leftEye = @HMD.getEyeParameters("left")
+        rightEye = @HMD.getEyeParameters("right")
+        @resize(Math.max(leftEye.renderWidth, rightEye.renderWidth) * 2,
+                Math.max(leftEye.renderHeight, rightEye.renderHeight))
+        # TODO: fix frustum culling in VR
+        @was_using_frustrum_culling = @context.render_manager.use_frustum_culling
+        @context.render_manager.use_frustum_culling = false
+        @context.canvas_screen.enabled = false
+        @enabled = true
+
+    destroy: ->
+        @context.vr_screen = null
+        @context.screens.splice @context.screens.indexOf(this), 1
+        @context.canvas_screen.resize_to_canvas()
+        @context.render_manager.use_frustum_culling = @was_using_frustrum_culling
+        @context.canvas_screen.enabled = true
+        return
+
+    exit: -> @destroy()
+
+    pre_draw: ->
+        {HMD} = this
+        # Read pose
+        HMD.getFrameData @frame_data
+        # Set position of VR cameras, etc
+        {pose: {position, orientation}, leftProjectionMatrix, rightProjectionMatrix} = @frame_data
+        {position: p0, rotation: r0, projection_matrix: pm0} = @viewports[0].camera
+        {position: p1, rotation: r1, projection_matrix: pm1} = @viewports[1].camera
+        if position?
+            vec3.copyArray p0, position
+            vec3.copyArray p1, position
+        if orientation?
+            vec3.copyArray r0, orientation
+            vec3.copyArray r1, orientation
+        mat4.copyArray pm0, leftProjectionMatrix
+        mat4.copyArray pm1, rightProjectionMatrix
+
+    post_draw: ->
+        @HMD.submitFrame()
+
 
 displays = []
 navigator.getVRDisplays?().then (_displays) ->
@@ -43,7 +113,7 @@ exports.init = (scene, options={}) ->
         return Promise.reject "This browser doesn't support WebVR or is not enabled."
     # Find HMD
     ctx = scene.context
-    if ctx._HMD?.isPresenting
+    if ctx.vr_screen?.HMD.isPresenting
         return Promise.resolve()
     HMD = null
     for display in displays
@@ -54,11 +124,14 @@ exports.init = (scene, options={}) ->
         return Promise.reject "No HMDs detected. Conect an HMD, turn it on and try again."
 
     ctx._vrscene = scene
-    ctx._HMD = HMD
     # Request present
     if HMD.capabilities.canPresent
         if not HMD.isPresenting
-            HMD.requestPresent [{source: ctx.canvas}]
+            try
+                HMD.requestPresent [{source: ctx.canvas}]
+            catch e
+                debugger
+                throw e
     else
         # TODO: support non-presenting VR displays?
         return Promise.reject "Non-presenting VR displays are not supported"
@@ -73,66 +146,12 @@ exports.init = (scene, options={}) ->
                         ctx.use_VR_position = options.use_VR_position
                     if options.neck_model?
                         set_neck_model ctx, options.neck_model
-                    viewport1 = null
-                    for v,i in ctx.render_manager.viewports
-                        if v.camera == scene.active_camera
-                            viewport1 = v
-                            viewport2 = v.clone()
-                            viewport2.set_clear false, false
-                            viewport2.right_eye_factor = 1
-                            # ctx.render_manager.viewports.splice(i+1, 0, viewport2)
-                            break
-                    if not viewport1?
-                        throw "Couldn't find viewport"
-                    leftEye = HMD.getEyeParameters("left")
-                    rightEye = HMD.getEyeParameters("right")
-                    viewport1.camera = viewport1.camera.clone()
-                    viewport2.camera = viewport2.camera.clone()
-                    viewport1.camera.rotation_order = 'Q'
-                    viewport2.camera.rotation_order = 'Q'
-                    quat.identity viewport1.camera.rotation
-                    quat.identity viewport2.camera.rotation
-                    scene.make_parent scene.active_camera, viewport1.camera
-                    scene.make_parent scene.active_camera, viewport2.camera
-                    {fieldOfView} = leftEye
-                    vec4.set viewport1.camera.fov_4,
-                        fieldOfView.upDegrees
-                        fieldOfView.rightDegrees
-                        fieldOfView.downDegrees
-                        fieldOfView.leftDegrees
-                    vec3.copy viewport1.eye_shift, leftEye.offset
-                    viewport1.rect = [0, 0, 0.5, 1]
-                    {fieldOfView} = rightEye
-                    vec4.set viewport2.camera.fov_4,
-                        fieldOfView.upDegrees
-                        fieldOfView.rightDegrees
-                        fieldOfView.downDegrees
-                        fieldOfView.leftDegrees
-                    vec3.copy viewport2.eye_shift, rightEye.offset
-                    viewport2.rect = [0.5, 0, 0.5, 1]
-                    if options.ipd_mm
-                        viewport1.eye_shift.x = -options.ipd_mm * 0.001 * 0.5
-                        viewport2.eye_shift.x = options.ipd_mm * 0.001 * 0.5
-                    ctx.render_manager.resize(
-                        Math.max(leftEye.renderWidth, rightEye.renderWidth) * 2
-                        Math.max(leftEye.renderHeight, rightEye.renderHeight))
-                    # TODO: fix frustum culling in VR
-                    ctx.render_manager.use_frustum_culling = false
+                    if not ctx.vr_screen?
+                        new VRScreen ctx, HMD, scene
                     resolve()
                 catch e
                     reject(e)
             else
                 window.removeEventListener 'vrdisplaypresentchange', vrdisplaypresentchange
-                exit(ctx)
+                ctx.vr_screen?.destroy()
         return
-
-exports.exit = exit = (ctx=this) ->
-    if ctx._HMD
-        # TODO: detect the proper viewport, undo changes
-        ctx.render_manager.viewports.pop()
-        v = ctx.render_manager.viewports[0]
-        v.rect = [0, 0, 1, 1]
-        vec3.set v.eye_shift, 0,0,0
-        v.camera = v.camera.scene.active_camera
-        ctx.render_manager.resize(window.innerWidth, window.innerHeight)
-        ctx._HMD = null

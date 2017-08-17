@@ -149,8 +149,8 @@ class Events
                 touch.radius_x = t.radiusX
                 touch.radius_y = t.radiusY
                 touch.rotation_angle = t.rotationAngle
-                touch.x = t.clientX - root_element.rect.left
-                touch.y = t.clientY - root_element.rect.top
+                touch.x = t.clientX - @root_rect.left
+                touch.y = t.clientY - @root_rect.top
                 touch.rel_x = 0
                 touch.rel_y = 0
                 touch.movement_since_touch = 0
@@ -203,8 +203,8 @@ class Events
                 touch.radius_x = t.radiusX
                 touch.radius_y = t.radiusY
                 touch.rotation_angle = t.rotationAngle
-                touch.x = t.clientX - root_element.rect.left
-                touch.y = t.clientY - root_element.rect.top
+                touch.x = t.clientX - @root_rect.left
+                touch.y = t.clientY - @root_rect.top
                 touch.rel_x = rel_x
                 touch.rel_y = rel_y
                 touch.movement_since_touch += Math.abs(rel_x) + Math.abs(rel_y)
@@ -333,6 +333,11 @@ class Events
         document.addEventListener 'pointerlockchange', pointerlockchange
         document.addEventListener 'mozpointerlockchange', pointerlockchange
         document.addEventListener 'webkitpointerlockchange', pointerlockchange
+
+        update_root_rect = =>
+            @root_rect = root_element.getClientRects()[0]
+        window.addEventListener 'resize', update_root_rect
+        update_root_rect()
 
 
     #This function returns only the non undefined touch events

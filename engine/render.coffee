@@ -2,7 +2,7 @@
 timsort = require 'timsort'
 {Filter, box_filter_code, ResizeFilter} = require './filters.coffee'
 {Compositor, box_filter_code} = require './filters.coffee'
-{Framebuffer, MainFramebuffer} = require './framebuffer.coffee'
+{Framebuffer} = require './framebuffer.coffee'
 {Mesh} = require './mesh.coffee'
 {Material} = require './material.coffee'
 {next_POT} = require './math_utils/math_extra'
@@ -12,7 +12,7 @@ VECTOR_MINUS_Z = vec3.new 0,0,-1
 #
 # Access it as `render_manager` member of the {Myou} instance.
 class RenderManager
-    constructor: (context, canvas, width, height, glflags)->
+    constructor: (context, canvas, glflags)->
         try
             gl = canvas.getContext("webgl", glflags) or canvas.getContext("experimental-webgl", glflags)
         catch e
@@ -44,11 +44,8 @@ class RenderManager
         @context.render_manager = @
         @canvas = canvas
         @gl = gl
-        @width = width
-        @height = height
-        @main_fb = new MainFramebuffer @context
+
         @temporary_framebuffers = {}
-        @viewports = []
         @render_tick = 0
         @context_lost_count = 0
         @max_textures = gl.getParameter gl.MAX_TEXTURE_IMAGE_UNITS
@@ -56,7 +53,6 @@ class RenderManager
         @active_texture = -1
         @next_texture = 0
         @frame_start = performance.now()
-        @pixel_ratio_x = @pixel_ratio_y = 1
         @camera_z = vec3.create()
         @no_s3tc = @context.MYOU_PARAMS.no_s3tc
         ba = @context.MYOU_PARAMS.background_alpha
@@ -193,8 +189,7 @@ class RenderManager
         @bg_mesh.stride = 3*4
         @bg_mesh.radius = 1e999
         @bg_mesh.materials = [null]
-
-        @resize @width, @height, @pixel_ratio_x, @pixel_ratio_y
+        return
 
     # @private
     # Handles the "lost context" event.
@@ -226,37 +221,6 @@ class RenderManager
         else
             @gl.disable 2884
 
-    # Changes the resolution of the canvas and aspect ratio of viewports.
-    # It doesn't handle the final size (that's done through HTML styles).
-    # usually called when the window is resized.
-    resize: (width, height, pixel_ratio_x=1, pixel_ratio_y=1)->
-        @width = width
-        @height = height
-        @canvas.width = @main_fb.size_x = width * pixel_ratio_x
-        @canvas.height = @main_fb.size_y = height * pixel_ratio_y
-        @pixel_ratio_x = pixel_ratio_x
-        @pixel_ratio_y = pixel_ratio_y
-        @screen_size = [width, height]
-        @largest_side = Math.max(width, height)
-        @smallest_side = Math.min(width, height)
-        @diagonal = Math.sqrt(width*width + height*height)
-        filter_fb_needed = false
-        for v in @viewports
-            v.recalc_aspect()
-            if v.post_processing_enabled
-                filter_fb_needed = true
-
-        if filter_fb_needed and @viewports.length != 0
-            @recalculate_fb_size()
-
-    # Change the aspect ratio of viewports. Useful for very quick changes
-    # of the size of the canvas, such as with a CSS animation.
-    # Much cheaper than a regular resize, because it doesn't change the resolution.
-    resize_soft: (width, height)->
-        for v in @viewports
-            v.camera.aspect_ratio = width/height
-            v.camera.recalculate_projection()
-        return
 
     # Requests full screen status of the canvas. Note that browsers require
     # this function to be called from a user initiated event such as `click` or `keypress`.
@@ -376,41 +340,12 @@ class RenderManager
         @render_tick += 1
         @triangles_drawn = 0
         @meshes_drawn = 0
-        {_HMD} = @context
-        if _HMD?.isPresenting
-            pose = _HMD.getPose()
-            nm = @context.neck_model
 
-            if pose.position and @context.use_VR_position
-                vec3.copy @viewports[0].camera.position, pose.position
-                vec3.copy @viewports[1].camera.position, pose.position
-            else if pose.orientation and nm
-                vec3.transformQuat nm.neck, nm.orig_neck, pose.orientation
-                nm.neck.z -= nm.orig_neck.z
-                vec3.copy @viewports[0].camera.position, nm.neck
-                vec3.copy @viewports[1].camera.position, nm.neck
-            if pose.orientation
-                quat.copy @viewports[0].camera.rotation, pose.orientation
-                quat.copy @viewports[1].camera.rotation, pose.orientation
-
-        for viewport in @viewports when viewport.camera.scene.enabled
-            if viewport.compositor_enabled
-                rect = viewport.rect_pix
-                src_rect = [0, 0, rect[2], rect[3]]
-                @draw_viewport(viewport, src_rect, @common_filter_fb, [0, 1])
-                viewport.compositor.compose()
-                # Draw translucid pass (post processing is required because it uses the filter fb)
-                if viewport.camera.scene.mesh_passes[2].length
-                    # TODO: how to properly do this?
-                    old_clear_bits = viewport.clear_bits
-                    viewport.clear_bits = 256
-                    @draw_viewport(viewport, src_rect, viewport.dest_buffer, [2])
-                    viewport.clear_bits = old_clear_bits
-            else
-                @draw_viewport viewport, viewport.rect_pix, viewport.dest_buffer, [0, 1]
-
-        if pose?
-            _HMD.submitFrame pose
+        for screen in @context.screens when screen.enabled
+            screen.pre_draw()
+            for viewport in screen.viewports when viewport.camera.scene.enabled
+                @draw_viewport viewport, viewport.rect_pix, screen.framebuffer, [0, 1]
+            screen.post_draw()
 
         #@gl.flush()
         @debug.vectors.splice 0 # TODO: have them per scene? preserve for a bunch of frames?

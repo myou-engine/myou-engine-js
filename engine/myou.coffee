@@ -76,6 +76,9 @@ class Myou
             throw "Missing root DOM element, got null or undefined"
         if not options?
             throw "Missing options"
+        @screens = []
+        @canvas_screen = null
+        @vr_screen = null
         @scenes = dict()
         # @property bar [bar] asdf
         @loaded_scenes = []
@@ -123,19 +126,8 @@ class Myou
         render_manager = new RenderManager(
             @,
             canvas,
-            canvas.clientWidth,
-            canvas.clientHeight,
             options.gl_options or {antialias: true, alpha: false}
         )
-
-        @update_canvas_rect()
-
-        resize_canvas = =>
-            if not @_HMD?
-                render_manager.resize canvas.clientWidth, canvas.clientHeight
-            @update_canvas_rect()
-
-        window.addEventListener 'resize', resize_canvas
 
         data_dir = options.data_dir or './data'
         data_dir = options.data_dir = data_dir.replace(/\/$/g, '')
@@ -148,10 +140,6 @@ class Myou
         if typeof options != 'object'
             options = {load_physics: options}
         return loader.load_scene(name, null, options, @)
-
-    update_canvas_rect:  =>
-        @canvas_rect = @canvas.getClientRects()[0]
-        @canvas.rect = @canvas_rect
 
     hasVR: vr.has_HMD
     initVR: vr.init
