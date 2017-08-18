@@ -130,28 +130,8 @@ class Framebuffer
         {gl} = @context.render_manager
         gl.bindFramebuffer gl.FRAMEBUFFER, null
 
-    draw_with_filter: (filter, src_rect)->
-        prog = filter.use()
-        {gl, quad} = @context.render_manager
-        unit = @context.render_manager.bind_texture @texture
-        gl.uniform1i gl.getUniformLocation(prog, 'source'), unit
-        gl.uniform2f gl.getUniformLocation(prog, 'src_size'), @size_x, @size_y
-        l = gl.getUniformLocation prog, 'src_rect'
-        if l and l._!=-1
-            gl.uniform4f l, src_rect[0], src_rect[1], src_rect[2], src_rect[3]
-        l = gl.getUniformLocation prog, 'dst_rect'
-        if l and l._!=-1
-            {x,y,z,w} = Framebuffer.active_rect
-            gl.uniform4f l, x, y, z, w
-        #gl.uniform2fv gl.getUniformLocation(prog, 'pixel_ratio'), @pixel_ratio
-        gl.bindBuffer gl.ARRAY_BUFFER, quad
-        @context.render_manager.change_enabled_attributes filter.attrib_bitmask
-        gl.vertexAttribPointer filter.attrib_pointers[0][0], 3.0, gl.FLOAT, false, 0, 0
-        gl.drawArrays gl.TRIANGLE_STRIP, 0, 4
-
-    draw_with_filter_new: (filter, inputs={}) ->
+    draw_with_filter: (filter, inputs={}) ->
         material = filter.get_material()
-        console.log material.inputs.source, material.inputs.source.bound_unit
         material.inputs.source.value = @texture
         vec2.set material.inputs.source_size.value, @size_x, @size_y
         for name, value of inputs

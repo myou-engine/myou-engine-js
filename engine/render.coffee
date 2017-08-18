@@ -1,7 +1,6 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat, color4} = require 'vmath'
 timsort = require 'timsort'
-{Filter, box_filter_code, ResizeFilter} = require './filters.coffee'
-{Compositor, box_filter_code} = require './filters.coffee'
+{Filter, BoxBlurFilter, ResizeFilter} = require './filters.coffee'
 {Framebuffer} = require './framebuffer.coffee'
 {Mesh} = require './mesh.coffee'
 {Material} = require './material.coffee'
@@ -140,9 +139,9 @@ class RenderManager
             (@extensions.texture_half_float_linear? and @has_half_float_fb_support)
         @_shadows_were_enabled = @enable_shadows
 
-        @shadow_box_filter = new Filter @, box_filter_code, 'box_filter'
         @filters =
             resize: new ResizeFilter @context
+            shadow_box_blur: new BoxBlurFilter @context
 
         @common_shadow_fb = null
         @debug = new Debug @context
@@ -633,7 +632,7 @@ class RenderManager
                         @draw_mesh ob, ob.world_matrix, -1, mat, world2light, lamp._projection_matrix
 
                 lamp.shadow_fb.enable()
-                @common_shadow_fb.draw_with_filter @shadow_box_filter, [0, 0, size, size]
+                @common_shadow_fb.draw_with_filter @filters.shadow_box_blur
 
 
 
@@ -895,7 +894,7 @@ class RenderManager
             # resize/flip
             out_buffer.enable()
             filter = @filters.resize
-            render_buffer.draw_with_filter_new filter, {
+            render_buffer.draw_with_filter filter, {
                 flip_y_ratio: y_ratio_render
                 scale_inverse: [x_ratio_render/x_ratio_output,
                                 y_ratio_render/y_ratio_output]
