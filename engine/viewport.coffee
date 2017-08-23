@@ -13,7 +13,7 @@ class Viewport
     constructor: (@screen, @camera)->
         @rect = [0,0,1,1]
         @rect_pix = [0,0,0,0]
-        @width = @height = 0
+        @left = @bottom = @width = @height = 0
         @compositor_enabled = false
         @compositor = null
         @eye_shift = vec3.create()
@@ -28,16 +28,19 @@ class Viewport
     # Recalculates viewport rects and camera aspect ratio.
     # Used in `screen.resize` and `screen.resize_soft`.
     recalc_aspect: ->
-        r = @rect
-        w = @width = @screen.framebuffer.size_x
-        h = @height = @screen.framebuffer.size_y
-        @camera.aspect_ratio = (r[2]*@screen.width)/(r[3]*@screen.height)
+        [x,y,w,h] = @rect
+        {size_x, size_y} = @screen.framebuffer
+        @left = size_x * x
+        @bottom = size_x * y
+        @width = size_x * w
+        @height = size_y * h
+        @camera.aspect_ratio = @width/@height
         @camera.recalculate_projection()
-        @rect_pix = [r[0]*w, r[1]*h, r[2]*w, r[3]*h]
-        @dest_rect_pix = [r[0]*w, r[1]*h, r[2]*w, r[3]*h]
+        @rect_pix = [@left, @bottom, @width, @height]
         vec3.set v, 1,0,-1
         vec3.transformMat4(v, v, @camera.projection_matrix)
-        @units_to_pixels = v[0] * w
+        @units_to_pixels = v.x * @width
+        @pixels_to_units = 1/@units_to_pixels
 
     # Sets whether color and depth buffers will be cleared
     # before rendering.
