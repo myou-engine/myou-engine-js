@@ -1,56 +1,25 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat, color4} = require 'vmath'
 timsort = require 'timsort'
-{Filter, BoxBlurFilter, ResizeFilter} = require './filters.coffee'
-{Framebuffer} = require './framebuffer.coffee'
-{Mesh} = require './mesh.coffee'
-{Material} = require './material.coffee'
+{Filter, BoxBlurFilter, ResizeFilter} = require './filters'
+{Framebuffer} = require './framebuffer'
+{Mesh} = require './mesh'
+{Material} = require './material'
 {next_POT} = require './math_utils/math_extra'
+{Events} = require './events'
+
 VECTOR_MINUS_Z = vec3.new 0,0,-1
 
 # Render manager singleton. Performs all operations related to rendering to screen or to a buffer.
 #
 # Access it as `render_manager` member of the {Myou} instance.
 class RenderManager
-    constructor: (context, canvas, glflags)->
-        try
-            gl = canvas.getContext("webgl", glflags) or canvas.getContext("experimental-webgl", glflags)
-        catch e
-            null
-
-        if not gl
-            # MSIE <= 10 with the ActiveX WebGL plugin
-            if navigator.appName == "Microsoft Internet Explorer"
-                iecanvas = document.createElement 'object'
-                iecanvas.type = "application/x-webgl"
-                canvas.parentNode.replaceChild iecanvas, canvas
-                canvas = iecanvas
-                gl = canvas.getContext("webgl", glflags) or canvas.getContext("experimental-webgl", glflags)
-
-        if not gl
-            gl = window.WebGL
-
-        if not gl
-            # Try disabling multisampling
-            # (Chrome is not following the specification by rejecting to create the context)
-            glflags.antialias = false
-            gl = canvas.getContext("webgl", glflags)
-
-        if not gl
-            context.MYOU_PARAMS.on_webgl_failed?()
-            throw "Error: Can't start WebGL"
-
-        @context = context
+    constructor: (@context, @canvas, glflags)->
         @context.render_manager = @
-        @canvas = canvas
-        @gl = gl
+        @gl = null
 
         @temporary_framebuffers = {}
         @render_tick = 0
         @context_lost_count = 0
-        @max_textures = gl.getParameter gl.MAX_TEXTURE_IMAGE_UNITS
-        @bound_textures = new Array @max_textures
-        @active_texture = -1
-        @next_texture = 0
         @frame_start = performance.now()
         @camera_z = vec3.create()
         @no_s3tc = @context.MYOU_PARAMS.no_s3tc
@@ -84,22 +53,71 @@ class RenderManager
         @_right_eye_factor = 0
         @triangles_drawn = 0
         @meshes_drawn = 0
+        @breaking_on_any_gl_error = false
 
-        lost = (event)->
+        @instance_gl_context glflags, false
+        @initialize()
+
+    recreate_gl_canvas: ->
+        new_canvas = @canvas.cloneNode()
+        @canvas.parentNode.replaceChild new_canvas, @canvas
+        if @context.events.root_element == @canvas
+            @context.events = new Events new_canvas, @context.events.options
+        @canvas = @context.canvas_screen.canvas = new_canvas
+        @context.vr_screen?.canvas = new_canvas
+        return
+
+    instance_gl_context: (glflags, reinstance=false) ->
+        if reinstance
+            @clear_context()
+            @recreate_gl_canvas()
+        else if @gl?
+            console.warn "There's already a GL context. Set reinstance to true to change GL flags."
+        try
+            gl = canvas.getContext("webgl", glflags) or canvas.getContext("experimental-webgl", glflags)
+        catch e
+            null
+
+        if not gl
+            gl = window.WebGL
+
+        if not gl
+            # Try disabling multisampling
+            # (Chrome is not following the specification by rejecting to create the context)
+            glflags.antialias = false
+            gl = canvas.getContext("webgl", glflags)
+
+        if not gl
+            @context.MYOU_PARAMS.on_webgl_failed?()
+            throw "Error: Can't start WebGL"
+        @gl = gl
+        if @breaking_on_any_gl_error
+            @breaking_on_any_gl_error = false
+            @debug_break_on_any_gl_error()
+        if reinstance
+            @restore_context()
+        lost = (event) =>
+            @context_lost_count += 1
             event.preventDefault()
             @context.MYOU_PARAMS.on_context_lost?()
-            render_manager.clear_context()
-        restored = (event)->
-            render_manager.restore_context()
+            @clear_context()
+        restored = (event) =>
+            @restore_context()
             @context.MYOU_PARAMS.on_context_restored? and requestAnimationFrame(@context.MYOU_PARAMS.on_context_restored)
-        canvas.addEventListener "webglcontextlost", lost, false
-        canvas.addEventListener "webglcontextrestored", restored, false
-        @initialize()
+        @canvas.addEventListener "webglcontextlost", lost, false
+        @canvas.addEventListener "webglcontextrestored", restored, false
+        return
+
 
     # @private
     # (Re)initializes the GL context.
     initialize: ()->
         gl = @gl
+        @max_textures = gl.getParameter gl.MAX_TEXTURE_IMAGE_UNITS
+        @bound_textures = new Array @max_textures
+        @active_texture = -1
+        @next_texture = 0
+
         @extensions =
             standard_derivatives: gl.getExtension 'OES_standard_derivatives'
             texture_float: gl.getExtension 'OES_texture_float'
@@ -191,25 +209,58 @@ class RenderManager
         return
 
     # @private
-    # Handles the "lost context" event.
+    # Unloads all GPU stored objects
     clear_context: ->
-        @context_lost_count += 1
-        for scene in @context.scenes
-            for k, t of scene.textures
-                t.gl_tex = null
+        {gl} = @
+        # materials, 2D textures
+        for _,m of @context.all_materials
+            m.delete_all_shaders(true)
+            for {value: tex} in m._texture_list when tex?
+                gl.deleteTexture tex.gl_tex
+                tex.bound_unit = -1
+                tex.gl_tex = null
+        # cubemaps
+        for cubemap in @context.all_cubemaps
+            gl.deleteTexture cubemap.gl_tex
+            cubemap.bound_unit = -1
+            cubemap.gl_tex = null
+        # framebuffers
+        for framebuffer in @context.all_framebuffers
+            framebuffer.destroy(false)
+        # meshes
+        for _,m of @context.mesh_datas
+            m.reupload(false)
+        @gl = null
         return
 
     # @private
-    # Restores GL context after a "lost context" event.
+    # Restores GL context after a re-created context or a "lost context" event.
     restore_context: ->
         @initialize()
-        for scene in @context.scenes
-            for k, t of scene.textures
-                t.reupload()
+        # materials, 2D textures
         for _,m of @context.all_materials
-            m.delete_all_shaders()
-        for k, m in @context.mesh_datas
-            m.reupload()
+            m.delete_all_shaders(false)
+            for {value: tex} in m._texture_list when tex?
+                tex.bound_unit = -1
+                tex.gl_tex = null
+                tex.upload?()
+        # cubemaps
+        for cubemap in @context.all_cubemaps
+            cubemap.bound_unit = -1
+            cubemap.instance()
+        # framebuffers
+        for framebuffer in @context.all_framebuffers
+            framebuffer.recreate()
+        # meshes
+        for _,m of @context.mesh_datas
+            m.reupload(false)
+        # render probes
+        for _,scene of @context.scenes
+            # for lamp in scene.lamps when lamp.shadow_fb?
+            #     lamp.init_shadow()
+            for ob in scene.children when ob.probe?
+                if ob.probe_options?.type != 'OBJECT' and not ob.probe.auto_refresh
+                    ob.probe.render()
         return
 
     # @private
@@ -1053,6 +1104,9 @@ class RenderManager
     # @nodoc
     debug_break_on_any_gl_error: ->
         gl = @gl
+        if @breaking_on_any_gl_error
+            return
+        @breaking_on_any_gl_error = true
         for k,v of gl when typeof v == 'function' and k != 'getError'
             gl['_'+k] = gl[k]
             gl[k] = do (k, gl) => (args...)->

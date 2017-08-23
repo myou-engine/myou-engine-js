@@ -98,9 +98,10 @@ class Material
         return n
 
     # Deletes all shaders so they're re-generated when used
-    delete_all_shaders: ->
-        for _,shader of @shaders
-            shader.destroy()
+    delete_all_shaders: (destroy=true) ->
+        if destroy
+            for _,shader of @shaders
+                shader.destroy()
         @shaders = {}
         @last_shader = null
         return

@@ -83,28 +83,31 @@ class MeshData
 
     # @private
     # Restores GPU data after context is lost.
-    reupload: ->
-        if @users[0]
-            new_data = @users[0].load_from_va_ia @varray, @iarray
+    reupload: (delete_buffers) ->
+        if (user0 = @users[0])?
+            @remove user0, delete_buffers
+            new_data = user0.load_from_va_ia @varray, @iarray
             for u in @users
-                u.data.remove u
+                u.data.remove u, delete_buffers
                 u.data = new_data
         return
 
     # Removes the data from an object, and deletes itself
     # if there are no other objects using it.
-    remove: (ob)->
+    remove: (ob, delete_buffers=true)->
         idx = @users.indexOf ob
         while idx != -1
             @users.splice idx,1
             idx = @users.indexOf ob
         if @users.length == 0
-            gl = @context.render_manager.gl
-            for buf in @vertex_buffers
-                gl.deleteBuffer buf
-            for buf in @index_buffers
-                gl.deleteBuffer buf
+            if delete_buffers
+                gl = @context.render_manager.gl
+                for buf in @vertex_buffers
+                    gl.deleteBuffer buf
+                for buf in @index_buffers
+                    gl.deleteBuffer buf
             delete @context.mesh_datas[@hash]
+        ob.data = null
 
 # Mesh object class.
 #

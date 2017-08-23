@@ -35,6 +35,7 @@ class Cubemap
         @loaded = false
         @bound_unit = -1
         @last_used_material = null
+        @context.all_cubemaps.push this
         @instance()
 
 
@@ -170,6 +171,7 @@ class Cubemap
             @context.render_manager.gl.deleteTexture @gl_tex
         @gl_tex = null
         @loaded = false
+        @context.all_cubemaps.splice @context.all_cubemaps.indexOf(this), 1
 
 
 

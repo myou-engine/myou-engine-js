@@ -1,7 +1,7 @@
 {vec2, vec4, mat4} = require 'vmath'
 
 class FbTexture
-    constructor: (@gl_tex, @gl_target) ->
+    set: (@gl_tex, @gl_target) ->
         @loaded = true
         @bound_unit = -1
     load: ->
@@ -40,7 +40,11 @@ class Framebuffer
         [@size_x, @size_y] = size
         if not @size_x or not @size_y
             throw "Invalid framebuffer size"
-        @texture = new FbTexture gl.createTexture(), gl.TEXTURE_2D
+        # We're using the existing texture if available so when we're restoring
+        # the GL context, references to the texture that already exist in
+        # material inputs are still valid
+        @texture = @texture or new FbTexture
+        @texture.set gl.createTexture(), gl.TEXTURE_2D
         @context.render_manager.bind_texture @texture
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR
@@ -67,7 +71,8 @@ class Framebuffer
         @depth_texture = null
         if depth_type? and extensions.depth_texture and has_float_fb_support
             depth_tex_type = component_types[depth_type]
-            @depth_texture = new FbTexture gl.createTexture(), gl.TEXTURE_2D
+            @depth_texture = @depth_texture or new FbTexture
+            @depth_texture.set gl.createTexture(), gl.TEXTURE_2D
             @context.render_manager.bind_texture @depth_texture
             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST
             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST
@@ -94,11 +99,12 @@ class Framebuffer
         @context.render_manager.unbind_texture @depth_texture if @depth_texture?
         gl.bindRenderbuffer gl.RENDERBUFFER, null
         gl.bindFramebuffer gl.FRAMEBUFFER, null
+        @context.all_framebuffers.push this
 
     # @private
     # Remakes the framebuffer after a lost context
     recreate: ->
-        if @framebuffer
+        if @options
             @constructor @context, @options
 
     # Sets the framebuffer as the active one for further rendering operations.
@@ -162,12 +168,14 @@ class Framebuffer
                 'INCOMPLETE_MISSING_ATTACHMENT'
 
     # Deletes the buffer from GPU memory.
-    destroy: ->
+    destroy: (remove_from_context=true) ->
         {gl} = @context.render_manager
         gl.deleteTexture @texture.gl_tex if @texture?
         gl.deleteTexture @depth_texture.gl_tex if @depth_texture?
         gl.deleteRenderbuffer @render_buffer if @render_buffer?
         gl.deleteFramebuffer @framebuffer
+        if remove_from_context
+            @context.all_framebuffers.splice @context.all_framebuffers.indexOf(this), 1
 
 # Screen framebuffer target. Usually instanced as `render_manager.main_fb`.
 class MainFramebuffer extends Framebuffer

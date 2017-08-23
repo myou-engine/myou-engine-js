@@ -96,6 +96,8 @@ class Myou
         @embed_meshes = dict()
         @SHADER_LIB = ''
         @active_animations = dict()
+        @all_cubemaps = []
+        @all_framebuffers = []
 
         @root = root
         @options = @MYOU_PARAMS = options
@@ -154,6 +156,12 @@ class Myou
     # @return [Promise] Promise resolving a [Blob]
     screenshot_as_blob: (width, height, options={}) ->
         @render_manager.screenshot_as_blob width, height, options
+
+    # Change WebGL context flags, by replacing the canvas by a new one.
+    # Note that it will remove DOM events (except events.coffee) and may take
+    # a while to re-upload all GPU data.
+    change_gl_flags: (gl_flags) ->
+        @render_manager.instance_gl_context gl_flags, true
 
 # Convenience function for creating an HTML canvas element and adding it to another element.
 #

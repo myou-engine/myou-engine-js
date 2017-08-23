@@ -51,9 +51,9 @@ window.KEYS = {
     WIN_OEM_CLEAR: 254,}
 
 class Events
-    # All are just 1 or 0
-    constructor: (root_element, options={})->
-        {enable_touch=true} = options
+    constructor: (root_element, @options={})->
+        {enable_touch=true} = @options
+        # All key array elements are just 1 or 0
         @keys_pressed = new Uint8Array 256
         @keys_just_pressed = new Uint8Array 256
         @keys_just_released = new Uint8Array 256
@@ -102,6 +102,8 @@ class Events
             warned || console.error 'touch.touches is DEPRECATED, use touch.count instead'
             warned = true
             return @count
+
+        @root_element = root_element
 
         # The root_element is used on mousedown
         # and mousemove when no button is pressed
