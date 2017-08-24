@@ -8,6 +8,7 @@ timsort = require 'timsort'
 {Events} = require './events'
 
 VECTOR_MINUS_Z = vec3.new 0,0,-1
+canvas = undefined # avoid bugs where the global id "canvas" is read
 
 # Render manager singleton. Performs all operations related to rendering to screen or to a buffer.
 #
@@ -74,7 +75,7 @@ class RenderManager
         else if @gl?
             console.warn "There's already a GL context. Set reinstance to true to change GL flags."
         try
-            gl = canvas.getContext("webgl", glflags) or canvas.getContext("experimental-webgl", glflags)
+            gl = @canvas.getContext("webgl", glflags) or @canvas.getContext("experimental-webgl", glflags)
         catch e
             null
 
@@ -85,7 +86,7 @@ class RenderManager
             # Try disabling multisampling
             # (Chrome is not following the specification by rejecting to create the context)
             glflags.antialias = false
-            gl = canvas.getContext("webgl", glflags)
+            gl = @canvas.getContext("webgl", glflags)
 
         if not gl
             @context.MYOU_PARAMS.on_webgl_failed?()
