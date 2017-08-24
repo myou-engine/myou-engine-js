@@ -44,8 +44,9 @@ class CanvasScreen extends Screen
         @canvas = @context.canvas
         @framebuffer = new MainFramebuffer @context
         @resize(@canvas.clientWidth, @canvas.clientHeight)
+        @auto_resize = true
         window.addEventListener 'resize', =>
-            if not @context.vr_screen?
+            if not @context.vr_screen? and @auto_resize
                 @resize_to_canvas()
         @enabled = true
 
