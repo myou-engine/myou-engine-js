@@ -5,28 +5,7 @@
 # - WebGL port by @supereggbert
 # http://www.glge.org/demos/fxaa/
 
-# # Example of use:
-# # *_sampler and *_orig_px_size are uniforms created automatically
-# # (see compositor.coffee for more info)
-
-# viewport = myou.render_manager.viewports[0]
-# myou.render_manager.recalculate_fb_size()
-# {common_filter_fb} = myou.render_manager
-# buffers = {
-#     "scene": {buffer: common_filter_fb, size: viewport.get_size_px()}
-#     "screen": {buffer: viewport.dest_buffer}
-# }
-# filters = {
-#     "FXAA":
-#         library: MyouEngine.compositor_shaders.FXAA.library
-#         code: "return FXAA(sampler, scene_orig_px_size);"
-#         inputs: ["scene"]
-#         output: "screen"
-# }
-# viewport.compositor = new Compositor(myou, {buffers, filters})
-# viewport.compositor_enabled = true
-
-exports.library = ''' #line 29 /**/
+library = ''' #line 8 /**/
     #define FXAA_REDUCE_MIN   (1.0/128.0)
     #define FXAA_REDUCE_MUL   (1.0/8.0)
     #define FXAA_SPAN_MAX     8.0
@@ -67,3 +46,27 @@ exports.library = ''' #line 29 /**/
         }
     }
 '''
+
+{BaseFilter} = require '../filters'
+{FilterEffect} = require './base'
+
+class FXAAFilter extends BaseFilter
+    constructor: (@context) ->
+        @fragment = """
+            precision highp float;
+            #{library}
+            uniform sampler2D source;
+            varying vec2 source_coord, source_size_inverse;
+            void main() {
+                gl_FragColor = FXAA(source, source_size_inverse);
+            }
+        """
+        @uniforms = [
+        ]
+        @material = null
+
+class FXAAEffect extends FilterEffect
+    constructor: (@context) ->
+        @filter = new FXAAFilter @context
+
+module.exports = {FXAAEffect}

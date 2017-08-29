@@ -1,6 +1,5 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat, color4} = require 'vmath'
 timsort = require 'timsort'
-{Filter, BoxBlurFilter, ResizeFilter} = require './filters'
 {Framebuffer} = require './framebuffer'
 {Mesh} = require './mesh'
 {Material} = require './material'
@@ -159,10 +158,12 @@ class RenderManager
         @_shadows_were_enabled = @enable_shadows
 
         @filters =
-            resize: new ResizeFilter @context
-            shadow_box_blur: new BoxBlurFilter @context
+            resize_flip: new @context.ResizeFlipFilter
+            shadow_box_blur: new @context.BoxBlurFilter
 
         @common_shadow_fb = null
+        @tmp_fb0 = null
+        @tmp_fb1 = null
         @debug = new Debug @context
 
         # Initial GL state
@@ -284,35 +285,6 @@ class RenderManager
         # TODO: differences in style if the canvas is not 100%
 
     # @private
-    # @deprecated
-    recalculate_fb_size: ->
-        # Framebuffer needs to be power of two (POT), so we'll find out the
-        # smallest POT that can be used by all viewports
-        minx = miny = 0
-        for v in @viewports
-            minx = Math.max(minx, v.rect_pix[2])
-            miny = Math.max(miny, v.rect_pix[3])
-        minx = next_POT(minx)
-        miny = next_POT(miny)
-        if @common_filter_fb and (@common_filter_fb.width!=minx or @common_filter_fb.height!=miny)
-            @common_filter_fb.destroy()
-            @common_filter_fb = null
-        if not @common_filter_fb
-            @common_filter_fb = new Framebuffer @context,
-                {size: [minx, miny], color_type: 'UNSIGNED_BYTE', depth_type: 'UNSIGNED_SHORT', use_depth: true}
-        if not @common_filter_fb.is_complete
-            throw "Common filter framebuffer is not complete"
-
-        # Write fb_size to all materials that require it
-        for k, scene of @context.scenes
-            for kk, mat of scene.materials
-                for sig,shader of mat.shaders
-                    if shader.u_fb_size?
-                        shader.use()
-                        @gl.uniform2f shader.u_fb_size, minx, miny
-        return
-
-    # @private
     change_enabled_attributes: (bitmask)->
         gl = @gl
         previous = @attrib_bitmask
@@ -395,12 +367,42 @@ class RenderManager
         for screen in @context.screens when screen.enabled
             screen.pre_draw()
             for viewport in screen.viewports when viewport.camera.scene.enabled
-                @draw_viewport viewport, viewport.rect_pix, screen.framebuffer, [0, 1]
+                {effects} = viewport
+                if effects.length != 0
+                    {width, height} = viewport
+                    @ensure_post_processing_framebuffers(width, height)
+                    @draw_viewport viewport, [0, 0, width, height], @tmp_fb0, [0, 1]
+                    source = @tmp_fb0
+                    dest = @tmp_fb1
+                    rect = [0, 0, width, height]
+                    for i in [0...effects.length-1] by 1
+                        result = effects[i].apply source, dest, rect
+                        source = result.destination
+                        dest = result.temporary
+                    last = effects[effects.length-1]
+                    result = last.apply source, screen.framebuffer
+                    if result.destination != screen.framebuffer
+                        throw "The last effect is not allowed to be pass-through
+                            (second argument of effect.apply must be destination)."
+                else
+                    @draw_viewport viewport, viewport.rect_pix, screen.framebuffer, [0, 1]
             screen.post_draw()
 
         #@gl.flush()
         @debug.vectors.splice 0 # TODO: have them per scene? preserve for a bunch of frames?
         @compiled_shaders_this_frame = 0
+
+    ensure_post_processing_framebuffers: (width, height) ->
+        # TODO: Check all viewports to avoid several resizes
+        if not @tmp_fb0? or @tmp_fb0.size_x < width or @tmp_fb0.size_y < height
+            size = [next_POT(width), next_POT(height)]
+            @tmp_fb0?.destroy()
+            @tmp_fb1?.destroy()
+            @tmp_fb0 = new @context.Framebuffer {
+                size, use_depth: true, color_type: 'UNSIGNED_BYTE'}
+            @tmp_fb1 = new @context.Framebuffer {
+                size, use_depth: true, color_type: 'UNSIGNED_BYTE'}
+        return
 
     # @private
     # Draws a mesh.
@@ -565,7 +567,7 @@ class RenderManager
     # Draws a viewport. Usually called from `draw_all`.
     draw_viewport: (viewport, rect, dest_buffer, passes)->
         gl = @gl
-        if gl.isContextLost()
+        if not gl or gl.isContextLost()
             return
         @_cam = cam = viewport.debug_camera or viewport.camera
         @_vp = viewport
@@ -840,7 +842,7 @@ class RenderManager
         if not fb
             fb = @temporary_framebuffers[cubemap.size] = new Framebuffer @context,
                 {size: [cubemap.size,cubemap.size], use_depth: true, \
-                 color_type: 'UNSIGNED_BYTE', depth_type: 'UNSIGNED_SHORT'}
+                 color_type: 'UNSIGNED_BYTE'}
         fb.enable()
         for side in [0...6]
             fb.bind_to_cubemap_side cubemap, side
@@ -900,8 +902,7 @@ class RenderManager
             x_ratio_render = width*supersampling/size[0]
             y_ratio_render = height*supersampling/size[1]
             color_type = 'UNSIGNED_BYTE'
-            depth_type = 'UNSIGNED_SHORT'
-            render_buffer = new @context.Framebuffer {size, use_depth: true, color_type, depth_type}
+            render_buffer = new @context.Framebuffer {size, use_depth: true, color_type}
             size = [next_POT(width), next_POT(height)]
             x_ratio_output = width/size[0]
             y_ratio_output = height/size[1]
@@ -909,7 +910,7 @@ class RenderManager
                 y_ratio_render,
                 x_ratio_output,
                 y_ratio_output)
-            out_buffer = new @context.Framebuffer {size, use_depth: false, color_type, depth_type}
+            out_buffer = new @context.Framebuffer {size, use_depth: false, color_type}
             # create canvas
             canvas = document.createElement 'canvas'
             canvas.style.display = 'none'
@@ -945,7 +946,7 @@ class RenderManager
                 v.recalc_aspect()
             # resize/flip
             out_buffer.enable()
-            filter = @filters.resize
+            filter = @filters.resize_flip
             render_buffer.draw_with_filter filter, {
                 flip_y_ratio: y_ratio_render
                 scale_inverse: [x_ratio_render/x_ratio_output,
@@ -971,8 +972,7 @@ class RenderManager
         x_ratio_render = @width/size[0]
         y_ratio_render = @height/size[1]
         color_type = 'UNSIGNED_BYTE'
-        depth_type = 'UNSIGNED_SHORT'
-        render_buffer = new @context.Framebuffer {size, use_depth: true, color_type, depth_type}
+        render_buffer = new @context.Framebuffer {size, use_depth: true, color_type}
         old_w = @width
         old_h = @height
         @width = size[0]

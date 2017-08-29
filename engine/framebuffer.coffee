@@ -18,12 +18,6 @@ component_types =
 
 unused_mat4 = mat4.create()
 
-# Pass 'UNSIGNED_BYTE' to color_type for 8 bit per component (default is 'FLOAT')
-# Pass 'UNSIGNED_SHORT' to depth_type to enable depth texture (default is null)
-# TODO: Create specific classes like:
-# ByteFramebuffer, FloatFramebuffer, ByteFramebufferWithDepth
-# or something like that
-
 # Framebuffer class. Use it for off-screen rendering, by creating a {Viewport}
 # with a framebuffer as `dest_buffer`.
 # Also used internally for cubemaps, filters, post-processing effects, etc.
@@ -35,7 +29,7 @@ class Framebuffer
             size
             use_depth=false
             color_type='FLOAT'
-            depth_type=null
+            use_mipmap=false
         } = @options
         [@size_x, @size_y] = size
         if not @size_x or not @size_y
@@ -46,8 +40,12 @@ class Framebuffer
         @texture = @texture or new FbTexture
         @texture.set gl.createTexture(), gl.TEXTURE_2D
         @context.render_manager.bind_texture @texture
-        gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR
-        gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR
+        min_filter = mag_filter = gl.LINEAR
+        if @use_mipmap
+            min_filter = gl.LINEAR_MIPMAP_NEAREST
+            gl.generateMipmap gl.TEXTURE_2D
+        gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, mag_filter
+        gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, min_filter
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE
         @tex_type = component_types[color_type]
@@ -67,19 +65,25 @@ class Framebuffer
 
         internal_format = tex_format = gl.RGBA
         gl.texImage2D gl.TEXTURE_2D, 0, internal_format, @size_x, @size_y, 0, tex_format, @tex_type, null
+        if @use_mipmap
+            gl.generateMipmap gl.TEXTURE_2D
 
         @depth_texture = null
-        if depth_type? and extensions.depth_texture and has_float_fb_support
-            depth_tex_type = component_types[depth_type]
+        # TODO: Toggle for using depth texture? Have cubemap depth?
+        if use_depth and extensions.depth_texture
             @depth_texture = @depth_texture or new FbTexture
             @depth_texture.set gl.createTexture(), gl.TEXTURE_2D
             @context.render_manager.bind_texture @depth_texture
             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST
             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST
-            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE
-            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE
-            gl.texImage2D gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, @size_x, @size_y, 0, gl.DEPTH_COMPONENT, depth_tex_type, null
-
+            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT
+            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT
+            # Always asking for UNSIGNED_INT even though the implementation may
+            # choose to use 16 or 24 bits instead, otherwise the depth may be too
+            # limited in some cases
+            # TODO: Test performance compared to UNSIGNED_SHORT textures
+            gl.texImage2D gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, @size_x, @size_y, \
+                0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null
 
         @framebuffer = fb = gl.createFramebuffer()
         gl.bindFramebuffer gl.FRAMEBUFFER, fb
@@ -94,11 +98,13 @@ class Framebuffer
                 gl.framebufferRenderbuffer gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb
 
         @is_complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER) == gl.FRAMEBUFFER_COMPLETE
+        @has_mipmap = false
 
         @context.render_manager.unbind_texture @texture
         @context.render_manager.unbind_texture @depth_texture if @depth_texture?
         gl.bindRenderbuffer gl.RENDERBUFFER, null
         gl.bindFramebuffer gl.FRAMEBUFFER, null
+        Framebuffer.active_buffer = null
         @context.all_framebuffers.push this
 
     # @private
@@ -111,6 +117,7 @@ class Framebuffer
     # @param rect [Array<number>] Viewport rect in pixels: X position, Y position, width, height.
     enable: (rect=null)->
         {gl} = @context.render_manager
+        @has_mipmap = false
         if not rect?
             left = top = 0
             size_x = @size_x
@@ -120,26 +127,41 @@ class Framebuffer
             top = rect[1]
             size_x = rect[2]
             size_y = rect[3]
+        if Framebuffer.active_buffer == this
+            {x,y,z,w} = Framebuffer.active_rect
+            if left == x and top == y and size_x == z and size_y == w
+                return
         @current_size_x = size_x
         @current_size_y = size_y
         @context.render_manager.unbind_texture @texture if @texture?.bound_unit >= 0
         @context.render_manager.unbind_texture @depth_texture if @depth_texture?.bound_unit >= 0
         gl.bindFramebuffer gl.FRAMEBUFFER, @framebuffer
         gl.viewport left, top, size_x, size_y
-        ## doesn't work for limiting color clearing
-        ## unless we enable preserveDrawingBuffer but may be inefficient
-        #render_manager.gl.scissor(left, top, size_x, size_y)
         vec4.set Framebuffer.active_rect, left, top, size_x, size_y
+        Framebuffer.active_buffer = this
+
+    clear: ->
+        @enable()
+        {gl} = @context.render_manager
+        gl.clearColor 0,0,0,0
+        gl.clear 16384 # gl.COLOR_BUFFER_BIT
 
     # Disables the buffer by setting the main screen as output.
     disable: ->
         {gl} = @context.render_manager
         gl.bindFramebuffer gl.FRAMEBUFFER, null
+        Framebuffer.active_buffer = null
 
     draw_with_filter: (filter, inputs={}) ->
         material = filter.get_material()
         material.inputs.source.value = @texture
+        # TODO: Allow null textures?
+        material.inputs.source_depth?.value = @depth_texture
+        # We're assuming offsets are always 0,0, since the final position of the
+        # viewport is only drawn elsewhere in a buffer or screen that is not read back.
+        # Also we're assuming it's only one viewport what we've drawn.
         vec2.set material.inputs.source_size.value, @size_x, @size_y
+        vec2.set material.inputs.source_scale.value, @current_size_x/@size_x, @current_size_y/@size_y
         for name, value of inputs
             material.inputs[name].value = value
         {render_manager} = @context
@@ -167,6 +189,16 @@ class Framebuffer
             when gl.FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT
                 'INCOMPLETE_MISSING_ATTACHMENT'
 
+    generate_mipmap: ->
+        {gl} = @context.render_manager
+        if not @has_mipmap
+            if Framebuffer.active_buffer == this
+                gl.bindFramebuffer gl.FRAMEBUFFER, null
+                Framebuffer.active_buffer = null
+            @context.render_manager.bind_texture @texture
+            gl.generateMipmap gl.TEXTURE_2D
+            @has_mipmap = true
+
     # Deletes the buffer from GPU memory.
     destroy: (remove_from_context=true) ->
         {gl} = @context.render_manager
@@ -176,6 +208,11 @@ class Framebuffer
         gl.deleteFramebuffer @framebuffer
         if remove_from_context
             @context.all_framebuffers.splice @context.all_framebuffers.indexOf(this), 1
+
+class ByteFramebuffer extends Framebuffer
+    constructor: (context, options) ->
+        {size, use_depth} = options
+        super context, {size, use_depth, color_type: 'UNSIGNED_BYTE'}
 
 # Screen framebuffer target. Usually instanced as `render_manager.main_fb`.
 class MainFramebuffer extends Framebuffer
@@ -187,5 +224,6 @@ class MainFramebuffer extends Framebuffer
         @is_complete = true
 
 Framebuffer.active_rect = new vec4.create()
+Framebuffer.active_buffer = null
 
-module.exports = {Framebuffer, MainFramebuffer}
+module.exports = {Framebuffer, ByteFramebuffer, MainFramebuffer}

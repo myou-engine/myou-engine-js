@@ -16,9 +16,10 @@ actuators = require './actuators'
 
 {Armature} = require './armature'
 {Camera} = require './camera'
-{Compositor} = require './compositor'
 {Curve} = require './curve'
-{Framebuffer} = require './framebuffer'
+effects = require './effects/index'
+filters = require './filters'
+{Framebuffer, ByteFramebuffer} = require './framebuffer'
 {Cubemap} = require './cubemap'
 {GameObject} = require './gameobject'
 {GLRay} = require './glray'
@@ -28,8 +29,8 @@ actuators = require './actuators'
 {Scene} = require './scene'
 
 context_dependent_modules = {
-    Armature, Camera, Compositor, Curve, Framebuffer, Cubemap,
-    GameObject, GLRay, Lamp, Material, Mesh, Scene
+    Armature, Camera, Curve, Framebuffer, ByteFramebuffer,
+    Cubemap, GameObject, GLRay, Lamp, Material, Mesh, Scene,
 }
 
 # Using objects as dicts by disabling hidden object optimization
@@ -112,6 +113,10 @@ class Myou
 
         # Adding context to context_dependent_modules
         for name,cls of context_dependent_modules
+            @[name] = cls.bind cls, @
+        for name,cls of filters
+            @[name] = cls.bind cls, @
+        for name,cls of effects
             @[name] = cls.bind cls, @
 
         # The root element needs to be positioned, so the mouse events (layerX/Y) are

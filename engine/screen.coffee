@@ -12,7 +12,7 @@ class Screen
         @enabled = true
 
     add_viewport: (camera) ->
-        v = new Viewport this, camera
+        v = new Viewport @context, this, camera
         @viewports.push v
         return v
 
@@ -24,8 +24,7 @@ class Screen
     # Much cheaper than a regular resize, because it doesn't change the resolution.
     resize_soft: (width, height)->
         for v in @viewports
-            v.camera.aspect_ratio = width/height
-            v.camera.recalculate_projection()
+            v.recalc_aspect(true)
         return
 
     pre_draw: ->
@@ -44,7 +43,7 @@ class CanvasScreen extends Screen
         @canvas = @context.canvas
         @framebuffer = new MainFramebuffer @context
         @resize(@canvas.clientWidth, @canvas.clientHeight)
-        {@auto_resize_to_canvas} = @context.options
+        {@auto_resize_to_canvas=true} = @context.options
         window.addEventListener 'resize', =>
             if not @context.vr_screen? and @auto_resize_to_canvas
                 @resize_to_canvas()
@@ -63,7 +62,7 @@ class CanvasScreen extends Screen
         @canvas.height = @framebuffer.size_y = height * @pixel_ratio_y
         @diagonal = Math.sqrt(width*width + height*height)
         for v in @viewports
-            v.recalc_aspect()
+            v.recalc_aspect(false)
         return
 
 
