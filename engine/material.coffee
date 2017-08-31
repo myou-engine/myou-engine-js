@@ -146,6 +146,8 @@ class Shader
         {@name} = @material if @material?
         generator = @material?.generator or new PlainShaderMaterial({@data})
 
+        {fragment, glsl_version} = generator?.get_code()
+
         if @data.vertex
             vs = @data.vertex
             var_model_view_matrix = 'model_view_matrix'
@@ -269,7 +271,7 @@ class Shader
                 attribute_lines, modifiers_uniforms, varyings_decl, vs_body
             ).join '\n'
 
-        if is_webgl2
+        if is_webgl2 and glsl_version == 300
             vs = '#version 300 es\n'+vs\
                 .replace(/\battribute\b/g, 'in')\
                 .replace(/\bvarying\b/g, 'out')
@@ -294,22 +296,8 @@ class Shader
 
 
         fragment_shader = gl.createShader gl.FRAGMENT_SHADER
-        {fragment} = generator?.get_code()
         if @debugger?
             fragment = @debugger.patch fragment
-        if is_webgl2
-            # TODO: Use defines instead of replacements
-            fragment = '#version 300 es\n#define VARYING in\n'+fragment\
-                .replace(/#extension\s+GL_(EXT|OES)_(standard_derivatives|frag_depth|draw_buffers|shader_texture_lod)\b/g, '//')\
-                .replace(/\bvarying\b/g, 'in')\
-                .replace(/\bsample\b/g, 'sample_')\
-                .replace(/\b(texture2D|textureCube)(Proj|Lod)?\b/g, 'texture$2')\
-                .replace(/\bvoid\s+main\b/g, '''
-                    out vec4 glOutColor;
-                    #define gl_FragColor glOutColor
-                    void main''')
-        else
-            fragment = '#define VARYING varying\n'+fragment
         gl.shaderSource fragment_shader, fragment
         gl.compileShader fragment_shader
 
@@ -428,5 +416,17 @@ class Shader
         @reupload()
         return @debugger
 
+glsl100to300 = (fragment) ->
+    '#version 300 es\n'+fragment\
+        .replace(/#extension\s+GL_(EXT|OES)_(standard_derivatives|frag_depth|draw_buffers|shader_texture_lod)\b/g, \
+            '//')\
+        .replace(/\bvarying\b/g, 'in')\
+        .replace(/\bsample\b/g, 'sample_')\
+        .replace(/\b(texture2D|textureCube)(Proj|Lod)?\b/g, 'texture$2')\
+        .replace(/\bvoid\s+main\b/g, '''
+            out vec4 glOutColor;
+            #define gl_FragColor glOutColor
+            void main''')
 
-module.exports = {Material, Shader}
+
+module.exports = {Material, Shader, glsl100to300}

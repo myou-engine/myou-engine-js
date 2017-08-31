@@ -1,7 +1,7 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat, color4} = require 'vmath'
 {GameObject} = require './gameobject.coffee'
 {Framebuffer} = require './framebuffer.coffee'
-{Material} = require './material.coffee'
+{Material, glsl100to300} = require './material.coffee'
 LIGHT_PROJ_TO_DEPTH = mat4.new(
     0.5, 0.0, 0.0, 0.0,
     0.0, 0.5, 0.0, 0.0,
@@ -94,6 +94,8 @@ class Lamp extends GameObject
             float dy = dFdy(depth);
             gl_FragColor = vec4(depth #{extra_bias}, pow(depth, 2.0) + 0.25*(dx*dx + dy*dy), 0.0, 1.0);
         }"""
+        if @context.is_webgl2
+            fs = glsl100to300 fs
 
         mat = new Material @context, @name+'_shadow', {fragment: fs, varyings, material_type: 'PLAIN_SHADER'}
         mat.is_shadow_material = true

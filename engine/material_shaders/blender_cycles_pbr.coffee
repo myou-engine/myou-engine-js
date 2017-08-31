@@ -64,9 +64,14 @@ class BlenderCyclesPBRMaterial
         return varname
 
     get_code: ->
+        head = ''
+        glsl_version = 100
+        if @context.is_webgl2
+            head = '#version 300 es\n'
+            glsl_version = 300
         fragment = @material.data.fragment
-        fragment = @material.context.SHADER_LIB + fragment
-        return {fragment}
+        fragment = head + @material.context.SHADER_LIB + fragment
+        return {fragment, glsl_version}
 
     get_uniform_assign: (gl, program) ->
         # TODO: reassign lamps when cloning etc

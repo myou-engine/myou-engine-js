@@ -15,7 +15,10 @@ class PlainShaderMaterial
 
     get_projection_matrix_name: -> 'projection_matrix'
 
-    get_code: -> @material.data # for data.fragment
+    get_code: ->
+        {fragment} = @material.data
+        glsl_version = if fragment[...15] == '#version 300 es' then 300 else 100
+        {fragment, glsl_version}
 
     get_uniform_assign: (gl, program) ->
         code = []
