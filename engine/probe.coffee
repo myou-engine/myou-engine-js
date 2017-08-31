@@ -34,7 +34,10 @@ class Probe
             @render()
 
     set_lod_factor: ->
-        @lodfactor = 0.5 * Math.log( ( @size*@size / @scene.bsdf_samples ) ) / Math.log(2)
+        {bsdf_samples} = @scene
+        if not @context.is_webgl2
+            bsdf_samples = 1
+        @lodfactor = 0.5 * Math.log( ( @size*@size / bsdf_samples ) ) / Math.log(2)
         @lodfactor -= @scene.lod_bias
 
     render: ->
