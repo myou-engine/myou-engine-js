@@ -105,6 +105,7 @@ class Myou
         @use_physics = not options.disable_physics
         @hash = Math.random()
         @initial_scene_loaded = false
+        @is_webgl2 = false
 
         # VR
         @_HMD = @_vrscene = null

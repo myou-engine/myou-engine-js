@@ -137,7 +137,7 @@ class Shader
         @id = id++
         {@name, uniforms, varyings} = @data
         @shading_params_dict = {}
-        gl = @context.render_manager.gl
+        {gl, is_webgl2} = @context.render_manager
         lamps = {} # lamp_name: {varpos, varcolor3, varcolor4, dist}
         @lamps = []  # [[lamp, varpos, varcolor3, varcolor4, dist], ...]
         @is_shadow_material = false  # actually not used
@@ -269,6 +269,10 @@ class Shader
                 attribute_lines, modifiers_uniforms, varyings_decl, vs_body
             ).join '\n'
 
+        if is_webgl2
+            vs = '#version 300 es\n'+vs\
+                .replace(/\battribute\b/g, 'in')\
+                .replace(/\bvarying\b/g, 'out')
         @vs_code = vs
 
         vertex_shader = gl.createShader gl.VERTEX_SHADER
@@ -288,10 +292,22 @@ class Shader
             console.error error_msg
             return
 
+
         fragment_shader = gl.createShader gl.FRAGMENT_SHADER
         {fragment} = generator?.get_code()
         if @debugger?
             fragment = @debugger.patch fragment
+        if is_webgl2
+            # TODO: Use defines instead of replacements
+            fragment = '#version 300 es\n#define VARYING in\n'+fragment\
+                .replace(/#extension\s+GL_(EXT|OES)_(standard_derivatives|frag_depth|draw_buffers|shader_texture_lod)\b/g, '//')\
+                .replace(/\bvarying\b/g, 'in')\
+                .replace(/\bsample\b/g, 'sample_')\
+                .replace(/\b(texture2D|textureCube)(Proj|Lod)?\b/g, 'texture$2')\
+                .replace(/\bvoid\s+main\b/g, '''
+                    out vec4 glOutColor;
+                    #define gl_FragColor glOutColor
+                    void main''')
         gl.shaderSource fragment_shader, fragment
         gl.compileShader fragment_shader
 

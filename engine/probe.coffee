@@ -21,11 +21,6 @@ class Probe
             @parallax_volume
             @reflection_plane
             @background_only = false
-            # TODO: export these two (they're scene-wide)
-            # TODO: bsdf_samples is hard-coded in the shader
-            # and in get_lutsamples_texture
-            @bsdf_samples = 32
-            @lodbias = -0.5
         } = options
         @size = nearest_POT @size
         @target_object = object
@@ -39,8 +34,8 @@ class Probe
             @render()
 
     set_lod_factor: ->
-        @lodfactor = 0.5 * Math.log( ( @size*@size / @bsdf_samples ) ) / Math.log(2)
-        @lodfactor -= @lodbias
+        @lodfactor = 0.5 * Math.log( ( @size*@size / @scene.bsdf_samples ) ) / Math.log(2)
+        @lodfactor -= @scene.lod_bias
 
     render: ->
         if @size != @cubemap.size

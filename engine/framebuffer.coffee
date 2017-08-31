@@ -23,8 +23,8 @@ unused_mat4 = mat4.create()
 # Also used internally for cubemaps, filters, post-processing effects, etc.
 class Framebuffer
     constructor: (@context, @options) ->
-        {gl, extensions, has_float_fb_support, has_half_float_fb_support} \
-            = @context.render_manager
+        {gl, is_webgl2, extensions, has_float_texture_support,
+            has_float_fb_support, has_half_float_fb_support} = @context.render_manager
         {
             size
             use_depth=false
@@ -49,21 +49,21 @@ class Framebuffer
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE
         @tex_type = component_types[color_type]
+        internal_format = tex_format = gl.RGBA
 
         if @tex_type == component_types.FLOAT
-            if not (extensions['texture_float_linear'] and
-                    has_float_fb_support)
+            if is_webgl2
+                internal_format = gl.RGBA32F
+            if not (has_float_texture_support and has_float_fb_support)
                 # Fall back to half_float_linear, then to byte
-                # Note: we're assuming we need linear interpolation
+                # NOTE: we're assuming we need linear interpolation
                 # (because we're using them for variance shadow maps)
                 # but that may not be the case at some point
-                if extensions['texture_half_float_linear'] and
-                        has_half_float_fb_support
+                if extensions.texture_half_float_linear and has_half_float_fb_support
                     @tex_type = component_types.HALF_FLOAT
                 else
                     @tex_type == component_types.UNSIGNED_BYTE
 
-        internal_format = tex_format = gl.RGBA
         gl.texImage2D gl.TEXTURE_2D, 0, internal_format, @size_x, @size_y, 0, tex_format, @tex_type, null
         if @use_mipmap
             gl.generateMipmap gl.TEXTURE_2D
@@ -78,12 +78,20 @@ class Framebuffer
             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST
             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT
             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT
-            # Always asking for UNSIGNED_INT even though the implementation may
-            # choose to use 16 or 24 bits instead, otherwise the depth may be too
-            # limited in some cases
-            # TODO: Test performance compared to UNSIGNED_SHORT textures
-            gl.texImage2D gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, @size_x, @size_y, \
-                0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null
+            if is_webgl2
+                if extensions.texture_float_linear
+                    gl.texImage2D gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT32F, @size_x, @size_y, \
+                        0, gl.DEPTH_COMPONENT, gl.FLOAT, null
+                else
+                    gl.texImage2D gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, @size_x, @size_y, \
+                        0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null
+            else
+                # Always asking for UNSIGNED_INT even though the implementation may
+                # choose to use 16 or 24 bits instead, otherwise the depth may be too
+                # limited in some cases
+                # TODO: Test performance compared to UNSIGNED_SHORT textures
+                gl.texImage2D gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, @size_x, @size_y, \
+                    0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null
 
         @framebuffer = fb = gl.createFramebuffer()
         gl.bindFramebuffer gl.FRAMEBUFFER, fb

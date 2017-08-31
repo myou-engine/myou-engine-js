@@ -35,6 +35,8 @@ class Scene
         @gravity = vec3.create()
         @background_color = color4.new 0,0,0,1
         @ambient_color = color4.new 0,0,0,1
+        @bsdf_samples = 16
+        @lod_bias = -0.5
         @world_material = null
         @background_probe = null
         @background_probe_data = null

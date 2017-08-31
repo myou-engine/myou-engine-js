@@ -73,10 +73,15 @@ class RenderManager
             @recreate_gl_canvas()
         else if @gl?
             console.warn "There's already a GL context. Set reinstance to true to change GL flags."
-        try
-            gl = @canvas.getContext("webgl", glflags) or @canvas.getContext("experimental-webgl", glflags)
-        catch e
-            null
+
+        if location?.hash != '#webgl1'
+            gl = @canvas.getContext("webgl2", glflags)
+        @context.is_webgl2 = @is_webgl2 = gl?
+        if not gl
+            try
+                gl = @canvas.getContext("webgl", glflags) or @canvas.getContext("experimental-webgl", glflags)
+            catch e
+                console.error e
 
         if not gl
             gl = window.WebGL
@@ -84,12 +89,14 @@ class RenderManager
         if not gl
             # Try disabling multisampling
             # (Chrome is not following the specification by rejecting to create the context)
+            @recreate_gl_canvas()
             glflags.antialias = false
             gl = @canvas.getContext("webgl", glflags)
 
         if not gl
             @context.MYOU_PARAMS.on_webgl_failed?()
             throw "Error: Can't start WebGL"
+
         @gl = gl
         if @breaking_on_any_gl_error
             @breaking_on_any_gl_error = false
@@ -118,8 +125,10 @@ class RenderManager
         @active_texture = -1
         @next_texture = 0
 
+        webgl2_ext = if @is_webgl2 then true else null
         @extensions =
-            standard_derivatives: gl.getExtension 'OES_standard_derivatives'
+            standard_derivatives: webgl2_ext or gl.getExtension 'OES_standard_derivatives'
+            color_buffer_float: gl.getExtension 'EXT_color_buffer_float'
             texture_float: gl.getExtension 'OES_texture_float'
             texture_float_linear: gl.getExtension 'OES_texture_float_linear'
             texture_half_float: gl.getExtension 'OES_texture_half_float'
@@ -130,13 +139,14 @@ class RenderManager
                                     gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic") or
                                     gl.getExtension("MOZ_EXT_texture_filter_anisotropic")
             lose_context: gl.getExtension "WEBGL_lose_context"
-            depth_texture: gl.getExtension "WEBGL_depth_texture"
-            shader_texture_lod: gl.getExtension "EXT_shader_texture_lod"
+            depth_texture: webgl2_ext or gl.getExtension "WEBGL_depth_texture"
+            shader_texture_lod: webgl2_ext or gl.getExtension "EXT_shader_texture_lod"
         if @no_s3tc
             @extensions['compressed_texture_s3tc'] = null
 
+        @has_float_texture_support = @extensions.texture_float? or @extensions.color_buffer_float?
         @has_float_fb_support = false
-        if @extensions.texture_float?
+        if @has_float_texture_support
             @has_float_fb_support = true
             # TODO: use_depth is probably unnecessary
             # TODO: should we test available depth types?

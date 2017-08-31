@@ -166,7 +166,7 @@ class ExprFilter extends BaseFilter
         code.push """
             varying vec2 source_coord;
             varying vec2 coord;
-            vec3 pow(vec3 v, float p){
+            vec3 vpow(vec3 v, float p){
                 return vec3(pow(v.r, p), pow(v.g, p), pow(v.b, p));
             }
             void main() {

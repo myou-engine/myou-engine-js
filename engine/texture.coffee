@@ -106,6 +106,9 @@ class Texture
                 @texture_type = 'buffers'
                 @gl_format = @gl_internal_format = gl.RGBA
                 @gl_type = gl.UNSIGNED_BYTE
+                if pixels.constructor == Float32Array
+                    @gl_type = gl.FLOAT
+                    @gl_internal_format = gl.RGBA32F
                 @buffers = [buffer]
                 @upload()
                 resolve @
@@ -269,9 +272,13 @@ class Texture
         @context.render_manager.bind_texture @
         switch @texture_type
             when 'buffers'
-                T = Uint16Array
-                if @gl_type == gl.UNSIGNED_BYTE
-                    T = Uint8Array
+                switch @gl_type
+                    when gl.UNSIGNED_BYTE
+                        T = Uint8Array
+                    when gl.UNSIGNED_SHORT_5_6_5
+                        T = Uint16Array
+                    when gl.FLOAT
+                        T = Float32Array
                 for buffer, i in @buffers
                     gl.texImage2D(gl.TEXTURE_2D, i, @gl_internal_format, @width>>i, @height>>i, 0,
                         @gl_format, @gl_type, new T(@buffers[0]))

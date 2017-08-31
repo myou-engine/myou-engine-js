@@ -32,10 +32,10 @@ class BlenderCyclesPBRMaterial
                     @material._texture_list[texture_count++].value = tex
                 when 'LAMP_SHADOW_MAP'
                     tex = render_scene.objects[u.lamp].shadow_texture
-                    if tex?
-                        @material._texture_list[texture_count++].value = tex
-                    else
-                        throw "Material #{@material.name} tries to use unexisting shadow of lamp #{u.lamp}"
+                    if not tex?
+                        console.warn "Material #{@material.name} tries to use unexisting shadow of lamp #{u.lamp}"
+                        tex = @context.render_manager.white_texture
+                    @material._texture_list[texture_count++].value = tex
         return
 
     get_model_view_matrix_name: ->
@@ -124,7 +124,7 @@ class BlenderCyclesPBRMaterial
                     code.push "m4 = mat4.invert(render._m4, ob.world_matrix);"
                     code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, m4.toJSON());"
                 when 'BG_COLOR'
-                    code.push "v=ob.scene.background_color;gl.uniform4f(locations[#{loc_idx}], v.r, v.g, v.b, v.a);"
+                    code.push "v=scene.background_color;gl.uniform4f(locations[#{loc_idx}], v.r, v.g, v.b, v.a);"
                 when 'LAMP_DIR' # lamp direction in camera space
                     code.push "v=lamps[#{current_lamp}]._dir;gl.uniform3f(locations[#{loc_idx}], v.x, v.y, v.z);"
                 when 'LAMP_CO' # lamp position in camera space
@@ -153,7 +153,7 @@ class BlenderCyclesPBRMaterial
         # so we have to figure out if they're present
         # by getting their locations
         has_probe = has_coefs = 0
-        var_probe = 'var probe = ob.probe||ob.scene.background_probe;'
+        var_probe = 'var probe = ob.probe||scene.background_probe;'
 
         for i in [0..8]
             unf = 'unfsh'+i
@@ -169,6 +169,10 @@ class BlenderCyclesPBRMaterial
         if has_coefs
             code.push '}' # if(probe)
 
+        if (loc = gl.getUniformLocation program, 'unfbsdfsamples')?
+            code.push "var samples = scene.bsdf_samples;"
+            code.push "gl.uniform2f(locations[#{locations.length}], samples, 1/samples);"
+            locations.push loc
 
         if (loc = gl.getUniformLocation program, 'unflodfactor')?
             if not has_probe++
@@ -194,7 +198,7 @@ class BlenderCyclesPBRMaterial
             if gl.getUniformLocation(program, unf)?
                 console.warn "Unhandled uniform:", unf
 
-        preamble = 'var v, locations=shader.uniform_locations, lamps=shader.lamps,
+        preamble = 'var v, locations=shader.uniform_locations, lamps=shader.lamps, scene=ob.scene,
             material=shader.material, inputs=material._input_list, tex_list=material._texture_list;\n'
         func = new Function 'gl', 'shader', 'ob', 'render', 'mat4', preamble+code.join '\n'
         {uniform_assign_func: func, uniform_locations: locations, lamps}
@@ -202,21 +206,27 @@ class BlenderCyclesPBRMaterial
 
 jitter_texture = lutsamples_texture = null
 
+# TODO: Use always the same seed,
+# and find one that doesn't have obvious repeating pattern
 get_jitter_texture = (scene) ->
     if not jitter_texture?
-        pixels = new Uint8Array 64*64*4
-        for i in [0...64*64*4] by 4
-            x = Math.random() * 2.0 - 1.0
-            y = Math.random() * 2.0 - 1.0
-            ilen = 1/Math.sqrt(x*x + y*y)
-            pixels[i] = ((x*ilen)+1.0)*0.5 * 255
-            pixels[i+1] = ((y*ilen)+1.0)*0.5 * 255
-        jitter_texture = new scene.context.Texture scene,
-            formats: raw_pixels: {
-                # NOISE_SIZE
-                width: 64, height: 64, pixels: pixels
-            }
-        jitter_texture.load()
+        # if it doesn't support webgl2, it's not worth to gather more than 1 sample
+        if scene.context.is_webgl2
+            pixels = new Float32Array 64*64*4
+            for i in [0...64*64*4] by 4
+                x = Math.random() * 2.0 - 1.0
+                y = Math.random() * 2.0 - 1.0
+                ilen = 1/Math.sqrt(x*x + y*y)
+                pixels[i] = x*ilen
+                pixels[i+1] = y*ilen
+            jitter_texture = new scene.context.Texture scene,
+                formats: raw_pixels: {
+                    # NOISE_SIZE
+                    width: 64, height: 64, pixels: pixels
+                }
+            jitter_texture.load()
+        else
+            jitter_texture = scene.context.render_manager.blank_texture
     return jitter_texture
 
 # From http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
@@ -231,19 +241,23 @@ radical_inverse = (bits) ->
 
 get_lutsamples_texture = (scene) ->
     if not lutsamples_texture?
-        # This is the _maximum BSDF samples
-        samples = 1024
-        pixels = new Uint8Array samples*4
-        for i in [0...samples]
-            phi = radical_inverse(i) * 2.0 * Math.PI
-            i2 = i<<1
-            pixels[i2] = (Math.cos(phi)+1.0)*0.5 * 255
-            pixels[i2+1] = (Math.sin(phi)+1.0)*0.5 * 255
-        lutsamples_texture = new scene.context.Texture scene,
-            formats: raw_pixels: {
-                width: samples, height: 1, pixels: pixels
-            }
-        lutsamples_texture.load()
+        # if it doesn't support webgl2, it's not worth to gather more than 1 sample
+        if scene.context.is_webgl2
+            # This is the maximum BSDF samples
+            samples = 1024
+            pixels = new Float32Array samples*4
+            for i in [0...samples]
+                phi = radical_inverse(i) * 2.0 * Math.PI
+                i2 = i<<1
+                pixels[i2] = Math.cos(phi)
+                pixels[i2+1] = Math.sin(phi)
+            lutsamples_texture = new scene.context.Texture scene,
+                formats: raw_pixels: {
+                    width: samples, height: 1, pixels: pixels
+                }
+            lutsamples_texture.load()
+        else
+            lutsamples_texture = scene.context.render_manager.blank_texture
     return lutsamples_texture
 
 
