@@ -308,6 +308,8 @@ class Shader
                     out vec4 glOutColor;
                     #define gl_FragColor glOutColor
                     void main''')
+        else
+            fragment = '#define VARYING varying\n'+fragment
         gl.shaderSource fragment_shader, fragment
         gl.compileShader fragment_shader
 
