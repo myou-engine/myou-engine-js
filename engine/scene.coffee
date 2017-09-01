@@ -40,6 +40,7 @@ class Scene
         @world_material = null
         @background_probe = null
         @background_probe_data = null
+        @probes = []
         @_children_are_ordered = true
         @last_render_tick = 0
         @pre_draw_callbacks = []
@@ -344,6 +345,11 @@ class Scene
         if @background_probe_data?
             @background_probe = new Probe @, @background_probe_data
         return @background_probe
+
+    set_samples: (@bsdf_samples) ->
+        for probe in @probes
+            probe.set_lod_factor()
+        return
 
 
 module.exports = {Scene}

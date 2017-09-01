@@ -523,6 +523,8 @@ class GameObject
         return n
 
     remove: (recursive) ->
+        if @properties.probe_options?
+            @probe?.destroy()
         @scene.remove_object @, recursive
 
     instance_probe: ->

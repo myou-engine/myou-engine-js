@@ -22,12 +22,14 @@ class Probe
             @reflection_plane
             @background_only = false
         } = options
+        @valid = true
         @size = nearest_POT @size
         @target_object = object
         @cubemap = new @context.Cubemap {@size}
         @cubemap.loaded = false
         @position = vec3.create()
         @set_lod_factor()
+        @scene.probes.push @
         if @auto_refresh
             @context.render_manager.probes.push @
         else
@@ -41,6 +43,8 @@ class Probe
         @lodfactor -= @scene.lod_bias
 
     render: ->
+        if not @valid
+            return
         if @size != @cubemap.size
             @size = nearest_POT @size
             @cubemap.size = @size
@@ -55,9 +59,11 @@ class Probe
         @cubemap.loaded = true
 
     destroy: ->
+        @scene.probes.splice _,1 if (_ = @scene.probes.indexOf @)!=-1
         if @auto_refresh
             @context.render_manager.probes.splice _,1 if (_ = @context.render_manager.probes.indexOf @)!=-1
         @cubemap.destroy()
+        @valid = false
 
 nearest_POT = (x) ->
     x = Math.max(0, x)
