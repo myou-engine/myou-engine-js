@@ -168,7 +168,7 @@ class RenderManager
         @_shadows_were_enabled = @enable_shadows
 
         @filters =
-            resize_flip: new @context.ResizeFlipFilter
+            flip: new @context.FlipFilter
             shadow_box_blur: new @context.BoxBlurFilter
 
         @common_shadow_fb = null
@@ -932,36 +932,33 @@ class RenderManager
             # prepare viewports
             # TODO: have option to use buffer aspect in viewport
             #       instead of changing @width @height
-            old_w = @width
-            old_h = @height
-            @width = size[0]
-            @height = size[1]
+            scr = @context.canvas_screen
+            old_w = scr.width
+            old_h = scr.height
+            old_fb = scr.framebuffer
+            scr.width = size[0]
+            scr.height = size[1]
+            scr.framebuffer = render_buffer
             restore_vp = []
-            for v in @viewports
-                {dest_buffer, rect} = v
-                if v.dest_buffer == @main_fb
-                    restore_vp.push {v, dest_buffer, rect}
-                    v.dest_buffer = render_buffer
-                    v.rect = [rect[0]*x_ratio_render, rect[1]*y_ratio_render,
-                              rect[2]*x_ratio_render, rect[3]*y_ratio_render]
-                    v.recalc_aspect()
+            for v in scr.viewports
+                {rect} = v
+                restore_vp.push {v, rect}
+                v.rect = [rect[0]*x_ratio_render, rect[1]*y_ratio_render,
+                          rect[2]*x_ratio_render, rect[3]*y_ratio_render]
+                v.recalc_aspect()
             # render
             @draw_all()
             # restore viewports
-            @width = old_w
-            @height = old_h
-            for {v, dest_buffer, rect} in restore_vp
-                v.dest_buffer = dest_buffer
+            scr.width = old_w
+            scr.height = old_h
+            scr.framebuffer = old_fb
+            for {v, rect} in restore_vp
                 v.rect = rect
                 v.recalc_aspect()
             # resize/flip
-            out_buffer.enable()
-            filter = @filters.resize_flip
-            render_buffer.draw_with_filter filter, {
-                flip_y_ratio: y_ratio_render
-                scale_inverse: [x_ratio_render/x_ratio_output,
-                                y_ratio_render/y_ratio_output]
-            }
+            render_buffer.enable [0,0,width*supersampling,height*supersampling] # sets the current_size_x/y
+            out_buffer.enable [0,0,width,height]
+            render_buffer.draw_with_filter @filters.flip
             # get pixels, draw onto canvas, conver to blob
             {gl} = @
             gl.readPixels 0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(image_data.data.buffer)
@@ -978,32 +975,33 @@ class RenderManager
     # Make a screenshot using the current screen resolution,
     # read raw pixels of specified rect into a typed array
     render_and_read_screen_pixels: (x, y, width, height, pixels) ->
-        size = [next_POT(@width), next_POT(@width)]
-        x_ratio_render = @width/size[0]
-        y_ratio_render = @height/size[1]
+        scr = @context.canvas_screen
+        size = [next_POT(scr.width), next_POT(scr.height)]
+        x_ratio_render = scr.width/size[0]
+        y_ratio_render = scr.height/size[1]
         color_type = 'UNSIGNED_BYTE'
         render_buffer = new @context.Framebuffer {size, use_depth: true, color_type}
-        old_w = @width
-        old_h = @height
-        @width = size[0]
-        @height = size[1]
+        old_w = scr.width
+        old_h = scr.height
+        old_fb = scr.framebuffer
+        scr.width = size[0]
+        scr.height = size[1]
+        scr.framebuffer = render_buffer
         restore_vp = []
-        for v in @viewports
-            {dest_buffer, rect} = v
-            if v.dest_buffer == @main_fb
-                restore_vp.push {v, dest_buffer, rect}
-                v.dest_buffer = render_buffer
-                v.rect = [rect[0]*x_ratio_render, rect[1]*y_ratio_render,
-                          rect[2]*x_ratio_render, rect[3]*y_ratio_render]
-                v.recalc_aspect()
+        for v in scr.viewports
+            {rect} = v
+            restore_vp.push {v, rect}
+            v.rect = [rect[0]*x_ratio_render, rect[1]*y_ratio_render,
+                      rect[2]*x_ratio_render, rect[3]*y_ratio_render]
+            v.recalc_aspect()
         # render
         # TODO: scissor to requested area
         @draw_all()
         # restore viewports
-        @width = old_w
-        @height = old_h
-        for {v, dest_buffer, rect} in restore_vp
-            v.dest_buffer = dest_buffer
+        scr.width = old_w
+        scr.height = old_h
+        scr.framebuffer = old_fb
+        for {v, rect} in restore_vp
             v.rect = rect
             v.recalc_aspect()
         render_buffer.enable()

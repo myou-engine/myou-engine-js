@@ -63,24 +63,21 @@ class CopyFilter extends BaseFilter
         ]
         @material = null
 
-class ResizeFlipFilter extends BaseFilter
+class FlipFilter extends BaseFilter
     constructor: (@context) ->
-        @name = 'resizeflip'
+        @name = 'flip'
         @fragment = '''
             precision highp float;
             uniform sampler2D source;
-            uniform vec2 scale_inverse, source_size;
-            uniform float flip_y_ratio;
-            varying vec2 source_coord, source_size_inverse;
+            uniform vec2 source_scale;
+            varying vec2 source_coord;
             void main() {
-                vec2 coord = source_coord * source_size * scale_inverse;
-                coord.y = source_size.y * flip_y_ratio - coord.y;
-                gl_FragColor = texture2D(source, coord*source_size_inverse);
+                vec2 co = source_coord;
+                co.y = source_scale.y - co.y;
+                gl_FragColor = texture2D(source, co);
             }
         '''
         @uniforms = [
-            {varname: 'scale_inverse', value: [1,1]},
-            {varname: 'flip_y_ratio', value: 0},
         ]
         @material = null
 
@@ -135,7 +132,7 @@ class RadialBlurFilter extends BaseFilter
         @fragment = """
             precision highp float;
             uniform sampler2D source;
-            varying vec2 source_coord, source_size_inverse;
+            varying vec2 source_coord;
             uniform vec2 vector;
             void main() {
                 gl_FragColor = vec4(((
@@ -190,6 +187,6 @@ class ExprFilter extends BaseFilter
 
 
 module.exports = {
-    BaseFilter, CopyFilter, ResizeFlipFilter, BoxBlurFilter,
+    BaseFilter, CopyFilter, FlipFilter, BoxBlurFilter,
     MipmapBiasFilter, RadialBlurFilter, ExprFilter
 }

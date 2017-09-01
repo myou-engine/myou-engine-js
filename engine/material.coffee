@@ -389,7 +389,8 @@ class Shader
                 rm = @context.render_manager
                 # TODO: Let the user select the pixel,
                 # sample the pixel at the screen center for now
-                rm.render_and_read_screen_pixels rm.width>>1, rm.height>>1, 1, 1, pixel
+                {width, height} = @context.canvas_screen
+                rm.render_and_read_screen_pixels width>>1, height>>1, 1, 1, pixel
 
     use: ->
         prog = @_program
