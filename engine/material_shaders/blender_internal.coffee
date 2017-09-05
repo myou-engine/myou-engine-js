@@ -62,7 +62,7 @@ GPU_DYNAMIC_MAT_MIR              = 9  | GPU_DYNAMIC_GROUP_MAT
 
 class BlenderInternalMaterial
     constructor: (@material) ->
-        {data, _input_list, inputs, _texture_list, context} = @material
+        {data, _input_list, inputs, _texture_list, @context} = @material
         for u in data.uniforms
             switch u.type
                 when -1
@@ -71,7 +71,7 @@ class BlenderInternalMaterial
                     _input_list.push inputs[path] = {value, type: u.count, path}
                 when 13, GPU_DYNAMIC_SAMPLER_2DIMAGE, GPU_DYNAMIC_SAMPLER_2DBUFFER, \
                     14, GPU_DYNAMIC_SAMPLER_2DSHADOW
-                        _texture_list.push {value: context.render_manager.blank_texture}
+                        _texture_list.push {value: @context.render_manager.blank_texture}
         return
 
     assign_textures: ->
@@ -100,9 +100,13 @@ class BlenderInternalMaterial
         return "projection_matrix"
 
     get_code: ->
-        fragment = @material.data.fragment
-        fragment = @material.context.SHADER_LIB + fragment
-        return {fragment}
+        glsl_version = 100
+        fragment = @material.context.SHADER_LIB + @material.data.fragment
+        if @context.is_webgl2
+            {glsl100to300} = require '../material'
+            fragment = glsl100to300 fragment
+            glsl_version = 300
+        return {fragment, glsl_version}
 
     get_uniform_assign: (gl, program) ->
         # TODO: reassign lamps when cloning etc
