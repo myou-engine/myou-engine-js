@@ -534,6 +534,10 @@ class GameObject
         if probe_options?
             if probe_options.type == 'OBJECT'
                 ob = @scene.objects[probe_options.object]
+                if not ob?
+                    if probe_options.object != ''
+                        console.error "Object '#{@name}' tries to use probe object '#{probe_options.object}' which doesn't exist."
+                    return @probe = @scene.background_probe
                 return @probe = ob.probe or ob.instance_probe()
             @probe = new Probe @, probe_options
         else
