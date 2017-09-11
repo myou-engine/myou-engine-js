@@ -253,9 +253,9 @@ get_lutsamples_texture = (scene) ->
             pixels = new Float32Array samples*4
             for i in [0...samples]
                 phi = radical_inverse(i) * 2.0 * Math.PI
-                i2 = i<<1
-                pixels[i2] = Math.cos(phi)
-                pixels[i2+1] = Math.sin(phi)
+                i4 = i<<2
+                pixels[i4] = Math.cos(phi)
+                pixels[i4+1] = Math.sin(phi)
             lutsamples_texture = new scene.context.Texture scene,
                 formats: raw_pixels: {
                     width: samples, height: 1, pixels: pixels
