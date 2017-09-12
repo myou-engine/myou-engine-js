@@ -34,6 +34,8 @@ class Probe
             @context.render_manager.probes.push @
         else
             @render()
+        @clip_start = Math.max @clip_start, 0.0001
+
 
     set_lod_factor: ->
         {bsdf_samples} = @scene
