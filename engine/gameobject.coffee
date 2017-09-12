@@ -49,7 +49,6 @@ class GameObject
         @static = false
         @world_matrix = mat4.create()
         @rotation_matrix = mat3.create()
-        @normal_matrix = mat3.create()
         @_m3 = mat3.create()
         @probe = null
         @properties = {}
@@ -347,23 +346,6 @@ class GameObject
         # Assumes objects are evaluated in order,
         # Parents before children
 
-        # TODO: manage negative scales (use abs() here, flip polygons and rotation)
-        isx = 1/scl.x
-        isy = 1/scl.y
-        isz = 1/scl.z
-
-        nm = @normal_matrix
-        nm.m00 = rm.m00*isx
-        nm.m01 = rm.m01*isx
-        nm.m02 = rm.m02*isx
-        nm.m03 = rm.m03*isy
-        nm.m04 = rm.m04*isy
-        nm.m05 = rm.m05*isy
-        nm.m06 = rm.m06*isz
-        nm.m07 = rm.m07*isz
-        nm.m08 = rm.m08*isz
-
-
         wm = @world_matrix
         wm.m00 = rm.m00*ox*scl.x
         wm.m01 = rm.m01*oy*scl.x
@@ -387,14 +369,11 @@ class GameObject
                 mat3.mul(nm, m3, nm)
                 mat4.mul(@world_matrix, bone.ol_matrix, @world_matrix)
 
-            ## TODO: make this more efficient, etc
-            ## TODO TODO: Rotation and normal matrices are incorrect, esp after scaling parents and having matrix_parent_inverse
+            ## TODO: Rotation matrix is incorrect, esp after scaling parents and having matrix_parent_inverse
+            ## Should only be used for the camera, calculated after the wm
             mat3.mul rm, @parent.rotation_matrix, rm
-
-            # TODO: make normal matrix with inverse transpose instead of this way
-            mat3.mul nm, @parent.normal_matrix, nm
             mat4.mul wm, @matrix_parent_inverse, wm
-            mat4.mul @world_matrix, @parent.world_matrix, @world_matrix
+            mat4.mul wm, @parent.world_matrix, wm
             #pwm = @parent.world_matrix
             #ppos  =vec3.new(pwm.m12,pwm.m13,pwm.m14)
             #pos = [pos.x + ppos.x, pos.y + ppos.y, pos.z + ppos.z]
@@ -489,7 +468,6 @@ class GameObject
         n.offset_scale = vec3.clone @offset_scale
         n.world_matrix = mat4.clone @world_matrix
         n.rotation_matrix = mat3.clone @rotation_matrix
-        n.normal_matrix = mat3.clone @normal_matrix
         n.color = color4.clone @color
         n.properties = Object.create @properties
         n.actions = @actions[...]
