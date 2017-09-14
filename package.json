@@ -2,7 +2,7 @@
   "name": "myou-engine",
   "version": "0.4.2",
   "description": "Myou is a game engine for web, it features an editor based on Blender.",
-  "main": "./main.js",
+  "main": "./dist/myou.js",
   "scripts": {
     "build": "webpack",
     "test": "echo \"Error: no test specified\" && exit 1",
