@@ -171,7 +171,7 @@ load_datablock = (scene, data, context) ->
                         if not /^data:/.test data_uri
                             throw "Texture #{u.image} not found (in material #{data.name})."
                         # Support for old ramps
-                        console.warn "Obsolete ramp format", u.image
+                        # console.warn "Obsolete ramp format", u.image
                         {filepath, filter, wrap, size} = u
                         formats = {png: [{width: 0, height: 0, file_size: size, file_name: '', data_uri}]}
                         tex = new Texture scene, {name: u.image, formats, wrap, filter}
