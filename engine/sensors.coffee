@@ -1,14 +1,13 @@
 {vec2, vec3, quat} = require 'vmath'
 phy = require './physics.coffee'
-{LogicBlock} = require './logic_block.coffee'
-r3 = require './math_utils/r3.coffee'
+{SceneBehaviour} = require './behaviour.coffee'
 v3 = vec3.create()
-
+PI_2 = Math.PI * 2
 # Capture all the multitouch gestures over the objects in a collision mask
 
 # input: int_mask (binary collision mask as integer)
 # output:  {objet_name: {pos, rel_pos, pinch, rel_pinch, rot, rel_rot}, ...}
-class TouchGesturesOver extends LogicBlock
+class TouchGesturesOver extends SceneBehaviour
     init: ->
         #hits by object_name
         @hits = {}
@@ -130,7 +129,7 @@ class TouchGesturesOver extends LogicBlock
 
 # Input: pointer_event (It accepts 2D/3D pointer_event as input).
 # output: {pos, rel_pos}
-class DragGesture extends LogicBlock
+class DragGesture extends SceneBehaviour
     init: ->
         @pos = []
         @last_pos = null
@@ -177,7 +176,7 @@ class DragGesture extends LogicBlock
 
 # Input: pointer_events [array] (It accepts 2D/3D pointer_event as input).
 # output: {pinch, rel_pinch}
-class PinchGesture extends LogicBlock
+class PinchGesture extends SceneBehaviour
     init: ->
         @pos1 = []
         @pos2 = []
@@ -225,7 +224,7 @@ class PinchGesture extends LogicBlock
 
 # Input: pointer_events [array]. (It accepts 2D/3D pointer_event as input).
 # output: {rot, rel_rot}
-class RotationGesture extends LogicBlock
+class RotationGesture extends SceneBehaviour
     init: ->
         @pos1 = []
         @pos2 = []

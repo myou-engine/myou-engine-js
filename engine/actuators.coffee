@@ -1,9 +1,9 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
-{LogicBlock} = require './logic_block.coffee'
+{SceneBehaviour} = require './behaviour.coffee'
 SIGNED_AXES = {'X': 1, 'Y': 2, 'Z': 3, '-X': -1, '-Y': -2, '-Z': -3}
 
 #rotate objet around target
-class RotateAround extends LogicBlock
+class RotateAround extends SceneBehaviour
     init: ->
         @invrot = quat.create()
         @obrot = quat.create()
@@ -35,7 +35,7 @@ class RotateAround extends LogicBlock
 
 
 #rotate object to look at target.
-class LookAt extends LogicBlock
+class LookAt extends SceneBehaviour
     init: ->
         #TODO: Optimization: mat3.fromRows
         @tup = {x: 0, y:0, z:1}
@@ -126,7 +126,7 @@ class LookAt extends LogicBlock
         quat.normalize(viewer.rotation, viewer.rotation)
 
 # Move objet into the closest point of a curve.
-class SnapToCurve extends LogicBlock
+class SnapToCurve extends SceneBehaviour
     init:->
         @antifilter = vec3.create()
         @pre_filtered = vec3.create()
