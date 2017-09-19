@@ -1,4 +1,5 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
+{cubic_bezier} = require './math_utils/math_extra'
 {GameObject} = require './gameobject.coffee'
 
 class Curve extends GameObject
@@ -41,11 +42,11 @@ class Curve extends GameObject
                 p3z = c[i9+14]
 
                 for j in [0...resolution]
-                    # interpolate() is in animation.py
+                    # cubic_bezier() is in animation.py
 
-                    x = interpolate j/resolution, p0x, p1x, p2x, p3x
-                    y = interpolate j/resolution, p0y, p1y, p2y, p3y
-                    z = interpolate j/resolution, p0z, p1z, p2z, p3z
+                    x = cubic_bezier j/resolution, p0x, p1x, p2x, p3x
+                    y = cubic_bezier j/resolution, p0y, p1y, p2y, p3y
+                    z = cubic_bezier j/resolution, p0z, p1z, p2z, p3z
 
                     vertices.push x, y, z
                     indices.append n

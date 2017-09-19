@@ -1,6 +1,5 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, color3, color4, quat} = require 'vmath'
+{clamp, mat2, mat3, mat4, vec2, vec3, vec4, color3, color4, quat} = require 'vmath'
 {update_ob_physics} = require './physics.coffee'
-{clamp} = window
 
 # An action is a bunch of animation splines, without specific start, end
 # or any other setting
@@ -61,7 +60,7 @@ class Action
                 rr = solve_roots(time, spline[0], spline[2],
                                        spline[4], spline[6])
                 rr = Math.max(0, Math.min(1, rr))
-                v = interpolate rr, spline[1], spline[3], spline[5], spline[7]
+                v = cubic_bezier rr, spline[1], spline[3], spline[5], spline[7]
 
                 #slen = spline[6] - spline[0]
                 #f = (time-spline[0]) / slen

@@ -1,8 +1,7 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
+{clamp, mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
 {GameObject} = require './gameobject.coffee'
 {Material} = require './material.coffee'
 {ShapeKeyModifier, ArmatureModifier} = require './vertex_modifiers.coffee'
-{clamp} = window
 
 #   Mesh format:
 #

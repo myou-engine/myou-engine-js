@@ -1,6 +1,6 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
 {nearest_POT} = require './math_utils/math_extra'
-{plane_from_norm_point} = require './math_utils/r3'
+{plane_from_norm_point} = require './math_utils/g3'
 
 range_mat = mat4.new .5,0,0,0, 0,.5,0,0, 0,0,.5,0, .5,.5,.5,1
 

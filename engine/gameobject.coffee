@@ -265,7 +265,7 @@ class GameObject
                         -@scene.world.getGravity().z()*1
                         @jump_force
                         @max_fall_speed
-                        PI_2 #slope
+                        Math.PI * 2 #slope
                         )
 
                     @scene.rigid_bodies.push @

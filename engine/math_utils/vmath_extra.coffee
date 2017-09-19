@@ -1,4 +1,4 @@
-glm = require 'vmath'
+vmath = require 'vmath'
 
 # http://stackoverflow.com/questions/1031005/is-there-an-algorithm-for-converting-quaternion-rotations-to-euler-angle-rotatio
 
@@ -7,7 +7,7 @@ threeaxisrot = (out, r11, r12, r21, r31, r32) ->
     out.y = Math.asin ( r21 )
     out.z = Math.atan2( r11, r12 )
 
-glm.quat.to_euler = (out={x: 0, y:0, z:0}, q, order='XYZ') ->
+vmath.quat.to_euler = (out={x: 0, y:0, z:0}, q, order='XYZ') ->
     {x, y, z, w} = q
     switch order
         when 'XYZ'
@@ -23,7 +23,7 @@ glm.quat.to_euler = (out={x: 0, y:0, z:0}, q, order='XYZ') ->
 # NOTE: It uses Blender's convention for euler rotations:
 # XYZ means that to convert back to quat you must rotate Z, then Y, then X
 
-glm.quat.to_euler_XYZ = (out, q) ->
+vmath.quat.to_euler_XYZ = (out, q) ->
     {x, y, z, w} = q
     threeaxisrot(out, 2*(x*y + w*z),
                     w*w + x*x - y*y - z*z,
@@ -32,7 +32,7 @@ glm.quat.to_euler_XYZ = (out, q) ->
                     w*w - x*x - y*y + z*z)
     return out
 
-glm.quat.to_euler_XZY = (out, q) ->
+vmath.quat.to_euler_XZY = (out, q) ->
     {x, y, z, w} = q
     threeaxisrot(out, -2*(x*z - w*y),
                     w*w + x*x - y*y - z*z,
@@ -41,7 +41,7 @@ glm.quat.to_euler_XZY = (out, q) ->
                     w*w - x*x + y*y - z*z)
     return out
 
-glm.quat.to_euler_YXZ = (out, q) ->
+vmath.quat.to_euler_YXZ = (out, q) ->
     {x, y, z, w} = q
     threeaxisrot(out, -2*(x*y - w*z),
                     w*w - x*x + y*y - z*z,
@@ -50,7 +50,7 @@ glm.quat.to_euler_YXZ = (out, q) ->
                     w*w - x*x - y*y + z*z)
     return out
 
-glm.quat.to_euler_YZX = (out, q) ->
+vmath.quat.to_euler_YZX = (out, q) ->
     {x, y, z, w} = q
     threeaxisrot(out, 2*(y*z + w*x),
                     w*w - x*x + y*y - z*z,
@@ -59,7 +59,7 @@ glm.quat.to_euler_YZX = (out, q) ->
                     w*w + x*x - y*y - z*z)
     return out
 
-glm.quat.to_euler_ZXY = (out, q) ->
+vmath.quat.to_euler_ZXY = (out, q) ->
     {x, y, z, w} = q
     threeaxisrot(out, 2*(x*z + w*y),
                     w*w - x*x - y*y + z*z,
@@ -68,7 +68,7 @@ glm.quat.to_euler_ZXY = (out, q) ->
                     w*w - x*x + y*y - z*z)
     return out
 
-glm.quat.to_euler_ZYX = (out, q) ->
+vmath.quat.to_euler_ZYX = (out, q) ->
     {x, y, z, w} = q
     threeaxisrot(out, -2*(y*z - w*x),
                     w*w - x*x - y*y + z*z,
@@ -77,8 +77,8 @@ glm.quat.to_euler_ZYX = (out, q) ->
                     w*w + x*x - y*y - z*z)
     return out
 
-glm.vec3.signedAngle = (a, b, n) ->
-    {scale, dot, cross, normalize, angle, create} = glm.vec3
+vmath.vec3.signedAngle = (a, b, n) ->
+    {scale, dot, cross, normalize, angle, create} = vmath.vec3
     result = angle a, b
     c = cross create(), a, b
     if dot(n, c) < 0
@@ -86,33 +86,33 @@ glm.vec3.signedAngle = (a, b, n) ->
 
     return result
 
-glm.vec3.copyArray = (out, arr) ->
+vmath.vec3.copyArray = (out, arr) ->
     out.x = arr[0]
     out.y = arr[1]
     out.z = arr[2]
     return out
 
-glm.quat.copyArray = (out, arr) ->
+vmath.quat.copyArray = (out, arr) ->
     out.x = arr[0]
     out.y = arr[1]
     out.z = arr[2]
     out.w = arr[3]
     return out
 
-glm.color3.copyArray = (out, arr) ->
+vmath.color3.copyArray = (out, arr) ->
     out.r = arr[0]
     out.g = arr[1]
     out.b = arr[2]
     return out
 
-glm.color4.copyArray = (out, arr) ->
+vmath.color4.copyArray = (out, arr) ->
     out.r = arr[0]
     out.g = arr[1]
     out.b = arr[2]
     out.a = arr[3]
     return out
 
-glm.mat4.fromMat3 = (out, m) ->
+vmath.mat4.fromMat3 = (out, m) ->
     out.m00 = m.m00
     out.m01 = m.m01
     out.m02 = m.m02
@@ -131,7 +131,7 @@ glm.mat4.fromMat3 = (out, m) ->
     out.m15 = 1
     return out
 
-glm.mat4.copyArray = (out, arr) ->
+vmath.mat4.copyArray = (out, arr) ->
     out.m00 = arr[0]
     out.m01 = arr[1]
     out.m02 = arr[2]
@@ -150,13 +150,13 @@ glm.mat4.copyArray = (out, arr) ->
     out.m15 = arr[15]
     return out
 
-glm.mat4.setTranslation = (out, v) ->
+vmath.mat4.setTranslation = (out, v) ->
     out.m12 = v.x
     out.m13 = v.y
     out.m14 = v.z
     return out
 
-glm.mat4.fromVec4Columns = (out, a, b, c, d) ->
+vmath.mat4.fromVec4Columns = (out, a, b, c, d) ->
     out.m00 = a.x
     out.m01 = a.y
     out.m02 = a.z
@@ -175,7 +175,7 @@ glm.mat4.fromVec4Columns = (out, a, b, c, d) ->
     out.m15 = d.w
     return out
 
-glm.mat3.fromColumns = (out, a, b, c) ->
+vmath.mat3.fromColumns = (out, a, b, c) ->
     out.m00 = a.x
     out.m01 = a.y
     out.m02 = a.z
@@ -187,7 +187,7 @@ glm.mat3.fromColumns = (out, a, b, c) ->
     out.m08 = c.z
     return out
 
-glm.quat.setAxisAngle = (out, axis, rad) ->
+vmath.quat.setAxisAngle = (out, axis, rad) ->
   rad = rad * 0.5
   s = Math.sin(rad)
   out.x = s * axis.x
@@ -199,4 +199,4 @@ glm.quat.setAxisAngle = (out, axis, rad) ->
 # export function getAxisAngle(out_axis, q) {
 
 
-module.exports = glm
+module.exports = vmath
