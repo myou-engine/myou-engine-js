@@ -125,6 +125,9 @@ class Scene
 
         @probe?.destroy()
 
+        for b in ob.behaviours
+            b.unassign ob
+
         if recursive
             children = ob.children
             for i in [0...children.length]

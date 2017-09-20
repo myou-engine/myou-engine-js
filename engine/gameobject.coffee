@@ -59,6 +59,7 @@ class GameObject
         @original_name = null
         @lod_objects = []
         @parent_bone_index = -1
+        @behaviours = []
         # Physics
         @body = null
         @shape = null
@@ -94,7 +95,6 @@ class GameObject
         @particle_systems = null
         @avg_poly_area = 0
         @avg_poly_length = 0
-
 
         # Remember to add any new mutable member to clone()
 
@@ -451,11 +451,26 @@ class GameObject
         vec3.add @position, @position, vector
 
 
+    add_behaviour: (behaviour)->
+        behaviour.assign @
+
+    remove_behaviour: (behaviour)->
+        behaviour.unassign @
+
+    add_behavior: (behaviour)->
+        behaviour.assign @
+
+    remove_behavior: (behaviour)->
+        behaviour.unassign @
 
     # Returns a clone of the object
     # @param [Scene] scene: Destination scene
     # @param [bool] recursive: Whether to clone its children
-    clone: (scene=this.scene, recursive=false) ->
+    clone: (scene=this.scene, options={}) ->
+        {
+            recursive=false
+            behaviours=true
+        } = options
         n = Object.create @
         n.children = children = []
         n.position = vec3.clone @position
@@ -471,6 +486,7 @@ class GameObject
         n.passes = @passes and @passes[...]
         n.avg_poly_area = @avg_poly_area
         n.avg_poly_length = @avg_poly_length
+        n.behaviours = []
 
         #n.state_machines = Object.create @state_machines
         #n.friction_coefficients = @friction_coefficients[...]
@@ -486,10 +502,13 @@ class GameObject
                 mat = materials[i] = materials[i].clone_to_scene scene
 
         scene?.add_object n, @name
+        if behaviours
+            for b in @behaviours
+                b.assign n
         # Adding children after ensures objects don't need to be sorted
         if recursive
             for child in @children
-                child = child.clone(scene, true)
+                child = child.clone(scene, {recursive: true})
                 child.parent = n
                 children.push child
         if @body
