@@ -80,7 +80,7 @@ class GLRay
             name: 'gl_ray', vertex: gl_ray_vs(@max_distance), fragment: gl_ray_fs(@max_distance)},
             null,
             [{"name":"vertex","type":"f","count":3,"offset":0},
-             {"name":"vnormal","type":"b","count":4,"offset":12}],[])
+             {"name":"vnormal","type":"b","count":4,"offset":12}],[],{})
         @m4 = mat4.create()
         @world2cam = mat4.create()
         @world2cam_mx = mat4.create()

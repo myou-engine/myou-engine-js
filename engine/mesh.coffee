@@ -121,6 +121,7 @@ class Mesh extends GameObject
         @type = 'MESH'
         @data = null
         @materials = []
+        @material_defines = {} # TODO: Function to change these
         @passes = [0]
         @armature = null
         @uv_rect = [0, 0, 1, 1] # x, y, w, h
@@ -289,7 +290,7 @@ class Mesh extends GameObject
                 else
                     console.log "Unknown element" + etype
 
-        @_signature = JSON.stringify layout
+        @_signature = JSON.stringify(layout) + JSON.stringify(@material_defines)
         vertex_modifiers = []
         if @_shape_names.length != 0
             # New shape keys format

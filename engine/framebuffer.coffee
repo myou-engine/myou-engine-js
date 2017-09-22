@@ -4,6 +4,7 @@ class FbTexture
     set: (@gl_tex, @gl_target) ->
         @loaded = true
         @bound_unit = -1
+        @is_framebuffer_active = false
     load: ->
 
 component_types =
@@ -146,7 +147,13 @@ class Framebuffer
         gl.bindFramebuffer gl.FRAMEBUFFER, @framebuffer
         gl.viewport left, top, size_x, size_y
         vec4.set Framebuffer.active_rect, left, top, size_x, size_y
+        if Framebuffer.active_buffer?.texture?
+            Framebuffer.active_buffer.texture.is_framebuffer_active = false
+            Framebuffer.active_buffer.depth_texture?.is_framebuffer_active = false
         Framebuffer.active_buffer = this
+        @texture?.is_framebuffer_active = true
+        @depth_texture?.is_framebuffer_active = true
+        return this
 
     clear: ->
         @enable()

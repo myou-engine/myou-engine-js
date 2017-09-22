@@ -29,6 +29,9 @@ class RenderManager
         @use_frustum_culling = true
         @unbind_textures_on_draw_viewport = true
         @probes = []
+        # to simulate glClipPlane
+        # (it can be all zero but we put -1 in case of hw bugs)
+        @clipping_plane = vec4.new(0,0,-1,0)
 
         # Temporary variables
         @_cam2world = mat4.create()
@@ -182,7 +185,7 @@ class RenderManager
         gl.depthFunc gl.LEQUAL
         gl.enable gl.CULL_FACE
         gl.cullFace gl.BACK
-        @flip = false
+        @front_face_is_cw = false
         @cull_face_enabled = true
         # Not premultiplied alpha textures
         gl.blendFunc gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA
@@ -364,15 +367,20 @@ class RenderManager
     # Draws all enabled scenes of all the viewports in `render_manager.viewports`.
     # Usually called from {MainLoop}
     draw_all: ->
-        # TODO: calculate all matrices first
-        # TODO: have a list of objects instead of probes?
-        for probe in @probes
-            probe.render()
-
         @frame_start = performance.now()
         @render_tick += 1
         @triangles_drawn = 0
         @meshes_drawn = 0
+
+        # calculate all matrices first
+        for screen in @context.screens when screen.enabled
+            for {camera: {scene}} in screen.viewports \
+                when scene.enabled and scene.last_update_matrices_tick < @render_tick
+                    scene.update_all_matrices()
+
+        # TODO: have a list of objects instead of probes?
+        for probe in @probes
+            probe.render()
 
         for screen in @context.screens when screen.enabled
             screen.pre_draw()
@@ -461,8 +469,10 @@ class RenderManager
                 return
 
         flip_normals = mesh._flip
-        if @flip != flip_normals
-            if (@flip = flip_normals)
+        if @flip_normals
+            flip_normals = not flip_normals
+        if @front_face_is_cw != flip_normals
+            if (@front_face_is_cw = flip_normals)
                 gl.frontFace 2304 # gl.CW
             else
                 gl.frontFace 2305 # gl.CCW
@@ -506,10 +516,18 @@ class RenderManager
             for {value} in mat._texture_list
                 value.last_used_material = mat
             for tex_input in mat._texture_list
+                # TODO: Simplify this
                 if tex_input.is_probe
                     # this means it's the probe cube texture
-                    tex = mesh.probe?.cubemap or @blank_cube_texture
+                    tex = mesh.probe?.cubemap or mesh.scene?.background_probe?.cubemap or @blank_cube_texture
                     tex_input.value = tex
+                    tex.last_used_material = mat
+                else if tex_input.is_reflect
+                    # this means it's the probe planar reflection texture
+                    tex = mesh.probe?.planar?.texture or @blank_texture
+                    tex_input.value = tex
+                    if tex.is_framebuffer_active
+                        tex_input.value = tex = @blank_texture
                     tex.last_used_material = mat
                 else
                     tex = tex_input.value
@@ -590,9 +608,10 @@ class RenderManager
 
         # This condition is necessary for when the scene is drawn
         # several times in several viewports
+        # TODO: Separate into draw_shadows()
         shadows_pending = false
-        if scene.last_render_tick < @render_tick
-            scene.last_render_tick = @render_tick
+        if scene.last_shadow_render_tick < @render_tick
+            scene.last_shadow_render_tick = @render_tick
             if @enable_shadows
                 shadows_pending = true
             else if @_shadows_were_enabled
@@ -601,18 +620,6 @@ class RenderManager
                         lamp.destroy_shadow()
                 @common_shadow_fb?.destroy()
             @_shadows_were_enabled = @enable_shadows
-
-            if scene._children_are_ordered == false
-                scene.reorder_children()
-            # TODO: do this only for visible and modified objects
-            #       (also, this is used in LookAt and other nodes)
-            for ob in scene.armatures
-                for c in ob.children
-                    if c.visible and c.render
-                        ob.recalculate_bone_matrices()
-                        break
-            for ob in scene.auto_updated_children
-                ob._update_matrices()
 
         debug = @debug
         filter_fb = @common_filter_fb

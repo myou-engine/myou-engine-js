@@ -48,6 +48,7 @@ class Texture
         @bound_unit = -1
         @last_used_material = null
         @loaded = false
+        @is_framebuffer_active = false
         @promise = null
         # If it tries to load the same data as @promised_data,
         # it won't load it again but instead return the existing promise

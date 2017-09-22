@@ -35,6 +35,7 @@ class Cubemap
         @loaded = false
         @bound_unit = -1
         @last_used_material = null
+        @is_framebuffer_active = false
         @context.all_cubemaps.push this
         @instance()
 
@@ -115,6 +116,8 @@ class Cubemap
     # @return [Cubemap] self
     render_to_framebuffer: (fb, size=@size) ->
         {gl, quad} = @context.render_manager
+        # TODO: Simplify all this by converting to filter
+        # and remove render_manager.quad
         material = get_resize_material(@context, @)
         shader = material.shaders.shader
         fb.enable [0, 0, size*3, size*2]
@@ -227,6 +230,7 @@ get_resize_material = (context, any_cubemap) ->
         _signature:'shader'
         layout: [{"name":"vertex","type":"f","count":3,"offset":0}]
         vertex_modifiers: []
+        material_defines: {}
     }
     resize_material.get_shader fake_mesh
     return resize_material

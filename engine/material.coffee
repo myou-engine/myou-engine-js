@@ -42,7 +42,8 @@ class Material
         shader = @shaders[mesh._signature]
         if not shader? and @generator?
             @get_texture_list()
-            shader = @shaders[mesh._signature] = new Shader(@context, @data, this, mesh.layout, mesh.vertex_modifiers)
+            shader = @shaders[mesh._signature] = new Shader(@context, @data, this,
+                mesh.layout, mesh.vertex_modifiers, mesh.material_defines)
             shader.material = this
             @last_shader = shader
         return shader
@@ -86,8 +87,9 @@ class Material
         # * Draw it in a 2x2 px framebuffer for this purpose.
         # * Fulfill promise after this.
         promises = []
-        for {value, is_probe} in @get_texture_list() when not is_probe
-            promises.push value.load {size_ratio: texture_size_ratio}
+        for {value, is_probe, is_reflect} in @get_texture_list()
+            if not is_probe and not is_reflect
+                promises.push value.load {size_ratio: texture_size_ratio}
         return Promise.all(promises)
 
     clone_to_scene: (scene) ->
@@ -133,7 +135,7 @@ class Shader
     #   }
     #   Data type of each uniform is inferred from the type or the custom value.
     # * varyings: list of varyings, TODO. See loader.coffee:93
-    constructor: (@context, @data, @material, @layout, @vertex_modifiers) ->
+    constructor: (@context, @data, @material, @layout, @vertex_modifiers, @defines) ->
         @id = id++
         {@name, uniforms, varyings} = @data
         @shading_params_dict = {}
@@ -146,7 +148,7 @@ class Shader
         {@name} = @material if @material?
         generator = @material?.generator or new PlainShaderMaterial({@data})
 
-        {fragment, glsl_version} = generator?.get_code()
+        {fragment, glsl_version} = generator?.get_code(@defines)
 
         if @data.vertex
             vs = @data.vertex
@@ -399,7 +401,7 @@ class Shader
         return prog
 
     reupload: ->
-        @constructor(@context, @data, @material, @layout, @vertex_modifiers)
+        @constructor(@context, @data, @material, @layout, @vertex_modifiers, @defines)
 
     destroy: ->
         @context.render_manager.gl.deleteProgram @_program

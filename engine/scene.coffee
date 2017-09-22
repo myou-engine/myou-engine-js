@@ -42,7 +42,8 @@ class Scene
         @background_probe_data = null
         @probes = []
         @_children_are_ordered = true
-        @last_render_tick = 0
+        @last_shadow_render_tick = 0
+        @last_update_matrices_tick = 0
         @pre_draw_callbacks = []
         @post_draw_callbacks = []
         @use_physics = true
@@ -179,6 +180,20 @@ class Scene
         for ob in @children when not ob.parent
             reorder ob
         @_children_are_ordered = true
+
+    update_all_matrices: ->
+        if @_children_are_ordered == false
+            @reorder_children()
+        # TODO: do this only for visible and modified objects
+        #       (also, this is used in LookAt and other nodes)
+        for ob in @armatures
+            for c in ob.children
+                if c.visible and c.render
+                    ob.recalculate_bone_matrices()
+                    break
+        for ob in @auto_updated_children
+            ob._update_matrices()
+        return
 
     unload: ->
         for ob in @children[...]

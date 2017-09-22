@@ -515,8 +515,6 @@ class GameObject
                     return @probe = @scene.background_probe
                 return @probe = ob.probe or ob.instance_probe()
             @probe = new Probe @, probe_options
-        else
-            @probe = @scene.background_probe
         return @probe
 
 module.exports = {GameObject}

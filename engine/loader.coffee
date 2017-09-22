@@ -226,6 +226,8 @@ load_object = (data, scene) ->
 
         color4.copyArray ob.color, data.color
         load_mesh_properties = (ob, data)=>
+            # NOTE: This condition was used in live mode, but many of these
+            # things should be updated regardless
             if ob.hash != data.hash
                 # This data should not used on render
                 # Only at mesh loading/configuring
@@ -237,6 +239,7 @@ load_object = (data, scene) ->
                 ob.materials = for mat_name in data.materials
                     scene.materials[mat_name] or new Material(
                         context, mat_name, null, scene)
+                ob.material_defines = data.material_defines or {}
                 ob.all_f = data.all_f
                 ob.shape_multiplier = data.shape_multiplier or 1
                 if data.uv_rect?

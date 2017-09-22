@@ -18,6 +18,8 @@ class BlenderCyclesPBRMaterial
         _texture_list.push {value: get_lutsamples_texture(scene)}
         @unfprobe_index = _texture_list.length
         _texture_list.push {value: {}, is_probe: true}
+        @unfreflect_index = _texture_list.length
+        _texture_list.push {value: {}, is_reflect: true}
         return
 
     assign_textures: ->
@@ -63,14 +65,17 @@ class BlenderCyclesPBRMaterial
         @material.data.uniforms.push {type: 'PROJ_IMAT', datatype: 'mat4', varname}
         return varname
 
-    get_code: ->
-        head = ''
+    get_code: (defines) ->
+        head = []
         glsl_version = 100
         if @context.is_webgl2
-            head = '#version 300 es\n'
+            head.push '#version 300 es'
             glsl_version = 300
+        for def,val of defines
+            head.push "#define #{def} #{val}"
+        head.push "#define CLIPPING_PLANE"
         fragment = @material.data.fragment
-        fragment = head + @material.context.SHADER_LIB + fragment
+        fragment = head.join('\n') + @material.context.SHADER_LIB + fragment
         return {fragment, glsl_version}
 
     get_uniform_assign: (gl, program) ->
@@ -114,8 +119,8 @@ class BlenderCyclesPBRMaterial
                     null # Already being set by the renderer
                 when 'OB_VIEW_IMAT' # model_view_matrix_inverse
                     # NOTE: Objects with zero scale are not drawn, otherwise m4 could be null
-                    code.push "m4 = mat4.invert(render._m4, render._model_view_matrix.toJSON());"
-                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, m4);"
+                    code.push "m4 = mat4.invert(render._m4, render._model_view_matrix);"
+                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, m4.toJSON());"
                 when 'VIEW_MAT' # view_matrix
                     code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false, render._world2cam.toJSON());"
                 when 'VIEW_IMAT' # inverse view_matrix
@@ -197,9 +202,29 @@ class BlenderCyclesPBRMaterial
             code.push "gl.uniform1i(locations[#{locations.length}], tex_list[#{@unfprobe_index}].value.bound_unit);"
             locations.push loc
 
+        if (loc = gl.getUniformLocation program, 'unfreflect')?
+            code.push "gl.uniform1i(locations[#{locations.length}], tex_list[#{@unfreflect_index}].value.bound_unit);"
+            locations.push loc
+
+        if (loc = gl.getUniformLocation program, 'unfplanarvec')?
+            if not has_probe++
+                code.push var_probe
+            code.push "if(probe){v=probe.normal;gl.uniform3f(locations[#{locations.length}], v.x, v.y, v.z);}"
+            locations.push loc
+
+        if (loc = gl.getUniformLocation program, 'unfplanarreflectmat')?
+            if not has_probe++
+                code.push var_probe
+            code.push "if(probe){gl.uniformMatrix4fv(locations[#{locations.length}], false, probe.planarreflectmat.toJSON());}"
+            locations.push loc
+
+        if (loc = gl.getUniformLocation program, 'unf_clipping_plane')?
+            code.push "v=render.clipping_plane;gl.uniform4f(locations[#{locations.length}], v.x, v.y, v.z, v.w);"
+            locations.push loc
+
         # detect presence of any of all the unhandled uniforms in the shader
         @unfs = {}
-        for unf in 'unfreflect unfrefract unfltcmat unfltcmag unfscenebuf unfdepthbuf unfbackfacebuf unfprobepos unfplanarvec unfssrparam unfssaoparam unfclip unfprobecorrectionmat unfplanarreflectmat unfpixelprojmat'.split ' '
+        for unf in 'unfrefract unfltcmat unfltcmag unfscenebuf unfdepthbuf unfbackfacebuf unfprobepos unfssrparam unfssaoparam unfclip unfprobecorrectionmat unfpixelprojmat'.split ' '
             if gl.getUniformLocation(program, unf)?
                 console.warn "Unhandled uniform:", unf
 
