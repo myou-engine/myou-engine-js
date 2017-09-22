@@ -417,14 +417,20 @@ class GameObject
     get_world_rotation: (out=quat.create())  ->
         # TODO: would it be more efficient to convert
         # matrix_parent_inverse into a quat?
-        wm = @get_world_matrix()
-        quat.fromMat3 out, mat3.fromMat4(mat3.create(), wm)
+        @get_world_matrix()
+        quat.fromMat3 out, @rotation_matrix
 
     get_world_pos_rot: ->
         wm = @get_world_matrix()
         pos = vec3.new(wm.m12,wm.m13,wm.m14)
         rot = quat.fromMat3 quat.create(), mat3.fromMat4(mat3.create(), wm)
         return [pos, rot]
+
+    get_world_position_rotation: (out_pos, out_rot) ->
+        wm = @get_world_matrix()
+        vec3.set out_pos, wm.m12, wm.m13, wm.m14
+        quat.fromMat3 out_rot, @rotation_matrix
+        return
 
     get_world_matrix: ->
         @parent?.get_world_matrix()
