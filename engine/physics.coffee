@@ -55,8 +55,13 @@ SphereShape = (radius, margin)->
     return shape
 
 CylinderShape = (radius, height, margin)->
-    _tmp_Vector3.setValue radius, radius, height
+    _tmp_Vector3.setValue radius, radius, height*0.5
     shape =  new Ammo.btCylinderShapeZ _tmp_Vector3
+    shape.setMargin margin
+    return shape
+
+ConeShape = (radius, height, margin)->
+    shape =  new Ammo.btConeShapeZ radius, height
     shape.setMargin margin
     return shape
 
@@ -83,7 +88,7 @@ ConvexShape = (vertices, vstride, scale, margin)->
         j = i*vstride
         _tmp_Vector3.setValue vertices[j], vertices[j+1], vertices[j+2]
         shape.addPoint _tmp_Vector3, i==last
-    _tmp_Vector3.setValue scale[0], scale[1], scale[2]
+    _tmp_Vector3.setValue scale.x, scale.y, scale.z
     shape.setLocalScaling _tmp_Vector3
     shape.setMargin margin
     return shape
@@ -157,7 +162,7 @@ TriangleMeshShape = (vertices, indices, vstride, scale, margin, name)->
                                                 vlen, verts, 3*4)
     shape =  new Ammo.btBvhTriangleMeshShape mesh, true, true
     shape.name = name
-    _tmp_Vector3.setValue scale[0], scale[1], scale[2]
+    _tmp_Vector3.setValue scale.x, scale.y, scale.z
     shape.setLocalScaling _tmp_Vector3
     shape.setMargin margin
     shape.calculateLocalInertia = ->
@@ -171,9 +176,9 @@ RigidBody = (mass, shape, position, rotation, friction, elasticity, form_factor)
     if mass
         shape.calculateLocalInertia mass, localInertia
     startTransform = new Ammo.btTransform
-    _tmp_Vector3.setValue position[0], position[1], position[2]
+    _tmp_Vector3.setValue position.x, position.y, position.z
     startTransform.setOrigin _tmp_Vector3
-    _tmp_Quaternion.setValue rotation[0], rotation[1], rotation[2], rotation[3]
+    _tmp_Quaternion.setValue rotation.x, rotation.y, rotation.z, rotation.w
     startTransform.setRotation _tmp_Quaternion
     myMotionState =  new Ammo.btDefaultMotionState startTransform
     rbInfo =  new Ammo.btRigidBodyConstructionInfo mass, myMotionState, shape, localInertia
@@ -204,9 +209,9 @@ CharacterBody = (shape, position, rotation, step_height, axis, gravity, jump_spe
     char.setMaxSlope max_slope
     _character_controllers.push body.char
     startTransform = new Ammo.btTransform
-    _tmp_Vector3.setValue position[0], position[1], position[2]
+    _tmp_Vector3.setValue position.x, position.y, position.z
     startTransform.setOrigin _tmp_Vector3
-    _tmp_Quaternion.setValue rotation[0], rotation[1], rotation[2], rotation[3]
+    _tmp_Quaternion.setValue rotation.x, rotation.y, rotation.z, rotation.w
     startTransform.setRotation _tmp_Quaternion
     body.setWorldTransform startTransform
     body.pointers = [body.char, startTransform]
@@ -242,8 +247,8 @@ class Ray
 # Shape methods
 
 add_child_shape = (comp, shape, p, o)->
-    _tmp_Vector3.setValue(p[0], p[1], p[2])
-    _tmp_Quaternion.setValue(o[0], o[1], o[2], o[3])
+    _tmp_Vector3.setValue(p.x, p.y, p.z)
+    _tmp_Quaternion.setValue(o.x, o.y, o.z, o.w)
     _tmp_Transform.setOrigin(_tmp_Vector3)
     _tmp_Transform.setRotation(_tmp_Quaternion)
     comp.addChildShape(_tmp_Transform, shape)
@@ -287,15 +292,15 @@ activate_body = (body)->
 update_ob_physics = (ob)->
     if ob.body?
         if ob.parent
-            posrot = ob.get_world_pos_rot()
-            pos = posrot[0]
-            rot = posrot[1]
+            pos = vec3.create()
+            rot = quat.create()
+            posrot = ob.get_world_position_rotation(pos, rot)
         else
             pos = ob.position
-            rot = ob.rotation
-        _tmp_Vector3.setValue(pos[0], pos[1], pos[2])
+            rot = ob.rotation #cosa
+        _tmp_Vector3.setValue(pos.x, pos.y, pos.z)
         _tmp_Transform.setOrigin(_tmp_Vector3)
-        _tmp_Quaternion.setValue(rot[0], rot[1], rot[2], rot[3])
+        _tmp_Quaternion.setValue(rot.x, rot.y, rot.z, rot.w)
         _tmp_Transform.setRotation(_tmp_Quaternion)
         ob.body.setWorldTransform(_tmp_Transform)
         ob.body.activate()
@@ -305,7 +310,7 @@ set_phy_scale = (ob, scale)->
     body = ob.body
     world.removeRigidBody(body)
     ob.phy_he = scale
-    _tmp_Vector3.setValue(scale[0], scale[1], scale[2])
+    _tmp_Vector3.setValue(scale.x, scale.y, scale.z)
     ob.shape.setImplicitShapeDimensions(_tmp_Vector3)
     world.addRigidBody(body, ob.collision_group, ob.collision_mask)
 
@@ -358,19 +363,19 @@ colliding_bodies = (body)->
 
 get_linear_velocity = (body, local = false)->
     v = body.getLinearVelocity()
+    new_v = vec3.new v.x(), v.y(), v.z()
     if local
         ir = quat.invert(quat.create(), body.owner.get_world_rotation())
-        new_v = vec3.transformQuat(vec3.create(), [v.x(), v.y(), v.z()], ir)
-        return new_v
-    return [v.x(), v.y(), v.z()]
+        vec3.transformQuat(new_v, new_v, ir)
+    return new_v
 
 set_linear_velocity = (body, v)->
-    _tmp_Vector3.setValue(v[0], v[1], v[2])
+    _tmp_Vector3.setValue(v.x, v.y, v.z)
     body.setLinearVelocity(_tmp_Vector3)
 
 
 set_character_velocity = (body, v)->
-    _tmp_Vector3.setValue(v[0] * 0.016666666666666666, v[1] * 0.016666666666666666, v[2] * 0.016666666666666666)
+    _tmp_Vector3.setValue(v.x * 0.016666666666666666, v.y * 0.016666666666666666, v.z * 0.016666666666666666)
     body.char.setWalkDirection(_tmp_Vector3)
 
 set_character_jump_force = (body, f)->
@@ -389,15 +394,16 @@ set_max_fall_speed = (body, f)->
 
 get_angular_velocity = (body, local = false)->
     v = body.getAngularVelocity()
+    new_v = vec3.new v.x(), v.y(), v.z()
     if local
-        ir = quat.invert(quat.create(), body.owner.get_world_rotation())
-        new_v = vec3.transformQuat(vec3.create(), [v.x(), v.y(), v.z()], ir)
-        return new_v
-    return [v.x(), v.y(), v.z()]
+        ir = body.owner.get_world_rotation(quat.create())
+        quat.invert(ir, ir)
+        new_v = vec3.transformQuat(new_v, new_v, ir)
+    return new_v
 
 
 set_angular_velocity = (body, v)->
-    _tmp_Vector3.setValue(v[0], v[1], v[2])
+    _tmp_Vector3.setValue(v.x, v.y, v.z)
     body.setAngularVelocity(_tmp_Vector3)
 
 get_mass = (body)->
@@ -410,39 +416,39 @@ apply_force = (body, force, rel_pos)->
     #f = 1/frame_factor
     # TODO: Find out why is this necesary and how to fix it
     #f = Math.pow(1/frame_factor, 1.025)
-    _tmp_Vector3.setValue(force[0], force[1], force[2])
-    _tmp_Vector3b.setValue(rel_pos[0], rel_pos[1], rel_pos[2])
+    _tmp_Vector3.setValue(force.x, force.y, force.z)
+    _tmp_Vector3b.setValue(rel_pos.x, rel_pos.y, rel_pos.z)
     body.applyForce(_tmp_Vector3, _tmp_Vector3b)
 
 apply_central_force = (body, force)->
     f = Math.pow(1/frame_factor, 1.025)
-    _tmp_Vector3.setValue(force[0] * f, force[1] * f, force[2] * f)
+    _tmp_Vector3.setValue(force.x * f, force.y * f, force.z * f)
     body.applyCentralForce(_tmp_Vector3)
 
 apply_central_impulse = (body, force)->
-    _tmp_Vector3.setValue(force[0], force[1], force[2])
+    _tmp_Vector3.setValue(force.x, force.y, force.z)
     body.applyCentralImpulse(_tmp_Vector3)
 
 set_linear_factor = (body, factor)->
-    _tmp_Vector3.setValue(factor[0], factor[1], factor[2])
+    _tmp_Vector3.setValue(factor.x, factor.y, factor.z)
     body.setLinearFactor(_tmp_Vector3)
 
 set_angular_factor = (body, factor)->
-    _tmp_Vector3.setValue(factor[0], factor[1], factor[2])
+    _tmp_Vector3.setValue(factor.x, factor.y, factor.z)
     body.setAngularFactor(_tmp_Vector3)
 
 ob_to_phy = (ob_list)->
     for ob in ob_list
         if ob.parent or ob.rotation_order != 'Q'
             posrot = ob.get_world_pos_rot()
-            pos = posrot[0]
-            rot = posrot[1]
+            pos = posrot.x
+            rot = posrot.y
         else
             pos = ob.position
             rot = ob.rotation
-        _tmp_Vector3.setValue(pos[0], pos[1], pos[2])
+        _tmp_Vector3.setValue(pos.x, pos.y, pos.z)
         _tmp_Transform.setOrigin(_tmp_Vector3)
-        _tmp_Quaternion.setValue(rot[0], rot[1], rot[2], rot[3])
+        _tmp_Quaternion.setValue(rot.x, rot.y, rot.z, rot.w)
         _tmp_Transform.setRotation(_tmp_Quaternion)
         ob.body.setWorldTransform(_tmp_Transform)
     return
@@ -454,17 +460,17 @@ ob_to_phy_with_scale = (ob_list)->
         p = ob.parent
         vec3.copy pos, ob.position
         quat.copy rot, ob.rotation
-        scale = ob.scale[0]
+        scale = ob.scale.x
         while p
             vec3.mul pos, pos, p.scale
             vec3.transformQuat pos, pos, p.rotation
             vec3.add pos, pos, p.position
             quat.mul rot, p.rotation, rot
-            scale *= p.scale[0]
+            scale *= p.scale.x
             p = p.parent
-        _tmp_Vector3.setValue(pos[0], pos[1], pos[2])
+        _tmp_Vector3.setValue(pos.x, pos.y, pos.z)
         _tmp_Transform.setOrigin(_tmp_Vector3)
-        _tmp_Quaternion.setValue(rot[0], rot[1], rot[2], rot[3])
+        _tmp_Quaternion.setValue(rot.x, rot.y, rot.z, rot.w)
         _tmp_Transform.setRotation(_tmp_Quaternion)
         ob.body.setWorldTransform(_tmp_Transform)
         if ob.data.phy_mesh
@@ -487,15 +493,15 @@ phy_to_ob = (ob_list)->
             transform = body.getWorldTransform(transform)
         pos = ob.position
         origin = transform.getOrigin()
-        pos[0] = origin.x()
-        pos[1] = origin.y()
-        pos[2] = origin.z()
+        pos.x = origin.x()
+        pos.y = origin.y()
+        pos.z = origin.z()
         rot = ob.rotation
         brot = transform.getRotation()
-        rot[0] = brot.x()
-        rot[1] = brot.y()
-        rot[2] = brot.z()
-        rot[3] = brot.w()
+        rot.x = brot.x()
+        rot.y = brot.y()
+        rot.z = brot.z()
+        rot.w = brot.w()
     return
 
 get_last_char_phy = (ob_list)->
@@ -506,9 +512,9 @@ get_last_char_phy = (ob_list)->
         transform = body.getWorldTransform(transform)
         pos = ob.last_position
         origin = transform.getOrigin()
-        pos[0] = origin.x()
-        pos[1] = origin.y()
-        pos[2] = origin.z()
+        pos.x = origin.x()
+        pos.y = origin.y()
+        pos.z = origin.z()
 
     return
 # Ray methods
@@ -517,11 +523,11 @@ ray_intersect_body = (scene, origin, direction, int_mask=-1)->
     if not scene.world
         return []
     ray_origin = _tmp_Vector3b
-    ray_origin.setValue(origin[0], origin[1], origin[2])
+    ray_origin.setValue(origin.x, origin.y, origin.z)
     ray_rayto = _tmp_Vector3c
-    ray_rayto.setValue(origin[0] + direction[0],
-                       origin[1] + direction[1],
-                       origin[2] + direction[2])
+    ray_rayto.setValue(origin.x + direction.x,
+                       origin.y + direction.y,
+                       origin.z + direction.z)
     callback = _tmp_ClosestRayResultCallback
     callback.set_m_rayFromWorld(ray_origin)
     callback.set_m_rayToWorld(ray_rayto)
@@ -537,26 +543,25 @@ ray_intersect_body = (scene, origin, direction, int_mask=-1)->
         hit_point = _tmp_Vector3
         hit_point.setInterpolate3(ray_origin, ray_rayto, callback.get_m_closestHitFraction())
         hit_normal = callback.get_m_hitNormalWorld()
-        point[0] = hit_point.x()
-        point[1] = hit_point.y()
-        point[2] = hit_point.z()
+        point.x = hit_point.x()
+        point.y = hit_point.y()
+        point.z = hit_point.z()
         # TODO optim: check if the pointers of members of callback are always the same
         cob = callback.get_m_collisionObject()
         return {
-            body: _phy_obs_ptrs[cob.ptr or cob.getPtr()],  # replace by getPtr() for node
-           point: point,
-           normal: [hit_normal.x(), hit_normal.y(), hit_normal.z()],
-           distance: vec3.dist(point, origin)
-           }
-
+            body: _phy_obs_ptrs[cob.ptr or cob.getPtr()]
+            point: vec3.new hit_point.x(), hit_point.y(), hit_point.z()
+            normal: vec3.new hit_normal.x(), hit_normal.y(), hit_normal.z()
+            distance: vec3.dist(point, origin)
+        }
     return null
 
 ray_intersect_body_absolute = (scene, rayfrom, rayto, int_mask)->
     # returns [body, point, normal]
     ray_origin = _tmp_Vector3
     ray_rayto = _tmp_Vector3b
-    ray_origin.setValue(rayfrom[0], rayfrom[1], rayfrom[2])
-    ray_rayto.setValue(rayto[0], rayto[1], rayto[2])
+    ray_origin.setValue(rayfrom.x, rayfrom.y, rayfrom.z)
+    ray_rayto.setValue(rayto.x, rayto.y, rayto.z)
     callback = _tmp_ClosestRayResultCallback
     callback.set_m_rayFromWorld(ray_origin)
     callback.set_m_rayToWorld(ray_rayto)
@@ -577,19 +582,20 @@ ray_intersect_body_absolute = (scene, rayfrom, rayto, int_mask)->
         if cob.ptr
             p = hit_point.ptr>>2
             n = hit_normal.ptr>>2
+            hf32 = Ammo.HEAPF32
             return [_phy_obs_ptrs[cob.ptr],
-                    new Float32Array(Ammo.HEAPF32.subarray(p,p+3)),
-                    new Float32Array(Ammo.HEAPF32.subarray(n,n+3))]
+                vec3.new(hf32[p], hf32[p+1], hf32[p+2]),
+                vec3.new(hf32[n], hf32[n+1], hf32[n+2])]
         return [_phy_obs_ptrs[cob.getPtr()],
-            vec3.create(hit_point.x(), hit_point.y(), hit_point.z()),
-            vec3.create(hit_normal.x(), hit_normal.y(), hit_normal.z())]
+            vec3.new(hit_point.x(), hit_point.y(), hit_point.z()),
+            vec3.new(hit_normal.x(), hit_normal.y(), hit_normal.z())]
     return null
 
 ray_intersect_body_bool = (scene, rayfrom, rayto, mask)->
     cp = _tmp_ClosestRayResultCallback.ptr
     cp32 = cp>>2
-    _tmp_Vector3.setValue(rayfrom[0], rayfrom[1], rayfrom[2])
-    _tmp_Vector3b.setValue(rayto[0], rayto[1], rayto[2])
+    _tmp_Vector3.setValue(rayfrom.x, rayfrom.y, rayfrom.z)
+    _tmp_Vector3b.setValue(rayto.x, rayto.y, rayto.z)
     callback = _tmp_ClosestRayResultCallback
     callback.set_m_collisionFilterGroup(-1)
     callback.set_m_collisionFilterMask(mask)
@@ -602,8 +608,8 @@ ray_intersect_body_bool = (scene, rayfrom, rayto, mask)->
 ray_intersect_body_bool_not_target = (scene, rayfrom, rayto, mask, target_body)->
     cp = _tmp_ClosestRayResultCallback.ptr
     cp32 = cp>>2
-    _tmp_Vector3.setValue(rayfrom[0], rayfrom[1], rayfrom[2])
-    _tmp_Vector3b.setValue(rayto[0], rayto[1], rayto[2])
+    _tmp_Vector3.setValue(rayfrom.x, rayfrom.y, rayfrom.z)
+    _tmp_Vector3b.setValue(rayto.x, rayto.y, rayto.z)
     callback = _tmp_ClosestRayResultCallback
     callback.set_m_collisionFilterGroup(-1)
     callback.set_m_collisionFilterMask(mask)
@@ -620,7 +626,7 @@ module.exports = {
     step_world, update_ob_physics, set_phy_scale,
     ob_to_phy, ob_to_phy_with_scale, phy_to_ob, get_last_char_phy,
 
-    BoxShape, SphereShape, CylinderShape, CapsuleShape,
+    BoxShape, SphereShape, CylinderShape, ConeShape, CapsuleShape,
     ConvexShape, TriangleMeshShape, CompoundShape,
     get_convex_hull_edges, add_child_shape,
 

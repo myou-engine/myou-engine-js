@@ -6,7 +6,7 @@ fetch_assets = require './fetch_assets'
 {
     update_ob_physics,
 
-    BoxShape, SphereShape, CylinderShape, CapsuleShape,
+    BoxShape, SphereShape, CylinderShape, ConeShape, CapsuleShape,
     ConvexShape, TriangleMeshShape, CompoundShape,
     get_convex_hull_edges, add_child_shape, ob_to_phy_with_scale,
 
@@ -126,10 +126,6 @@ class GameObject
             if not @scene.world
                 return
 
-            is_hull =  @collision_shape == 'CONVEX_HULL'
-            is_tmesh =  @collision_shape == 'TRIANGLE_MESH'
-
-            # TODO: CONE
 
             # half extents
             he = @phy_he
@@ -139,76 +135,82 @@ class GameObject
             else
                 vec3.scale he, dim, 0.5
 
-            if @collision_shape=='BOX'
-                shape = new BoxShape he.x, he.y, he.z, @collision_margin
-                @phy_debug_mesh = @context.render_manager.debug.box
-            else if @collision_shape=='SPHERE'
-                radius = Math.max he.x, he.y, he.z
-                shape = new SphereShape radius, @collision_margin
-                @phy_debug_mesh = @context.render_manager.debug.sphere
-            else if @collision_shape=='CYLINDER'
-                radius = Math.max he.x, he.y
-                shape = new CylinderShape radius, he.z, @collision_margin
-                @phy_debug_mesh = @context.render_manager.debug.cylinder
-            else if @collision_shape=='CAPSULE'
-                radius = Math.max he.x, he.y
-                shape = new CapsuleShape radius, he.z, @collision_margin
-                @phy_debug_mesh = @context.render_manager.debug.cylinder
-            else if is_hull or is_tmesh
-                # Choose which mesh to use as physics
+            switch @collision_shape
+                when 'BOX'
+                    shape = new BoxShape he.x, he.y, he.z, @collision_margin
+                    @phy_debug_mesh = @context.render_manager.debug.box
+                when 'SPHERE'
+                    radius = Math.max he.x, he.y, he.z
+                    shape = new SphereShape radius, @collision_margin
+                    @phy_debug_mesh = @context.render_manager.debug.sphere
+                when 'CYLINDER'
+                    radius = Math.max he.x, he.y
+                    shape = new CylinderShape radius, he.z*2, @collision_margin
+                    @phy_debug_mesh = @context.render_manager.debug.cylinder
+                when 'CONE'
+                    radius = Math.max he.x, he.y
+                    shape = new ConeShape radius, he.z*2, @collision_margin
+                    @phy_debug_mesh = @context.render_manager.debug.cone
+                when 'CAPSULE'
+                    radius = Math.max he.x, he.y
+                    shape = new CapsuleShape radius, he.z, @collision_margin
+                    @phy_debug_mesh = @context.render_manager.debug.cylinder
+                when 'CONVEX_HULL', 'TRIANGLE_MESH'
 
-                if @physics_mesh
-                    if use_visual_mesh
+                    # Choose which mesh to use as physics
+
+                    if @physics_mesh
+                        if use_visual_mesh
+                            ob = @
+                        else
+                            ob = @physics_mesh
+                    else
+                        use_visual_mesh = true
                         ob = @
+                    data = ob.data
+
+                    if not data?
+                        return
+
+                    if (is_hull = @collision_shape == 'CONVEX_HULL')
+                        shape = data.phy_convex_hull
                     else
-                        ob = @physics_mesh
+                        shape = data.phy_mesh
+
+                    if shape and (not use_visual_mesh) != (not @_use_visual_mesh)
+                        shape.mesh and destroy shape.mesh
+                        destroy shape
+                        shape = null
+
+                    @_use_visual_mesh = use_visual_mesh
+
+                    if not shape
+                        # Get "global" scale
+                        # TODO: Get average scale and add an option for recomputing real scale
+                        scale = vec3.clone @scale
+                        while p
+                            vec3.scale scale, scale, p.scale.z
+                            p = p.parent
+                        if is_hull
+                            shape = new ConvexShape data.varray, ob.stride/4, @scale, @collision_margin
+                            data.phy_convex_hull = shape
+                            if @debug and not @phy_debug_hull
+                                va_ia = get_convex_hull_edges data.varray, ob.stride/4, scale
+                                @phy_debug_hull = @context.render_manager.debug.debug_mesh_from_va_ia va_ia[0], va_ia[1]
+                            @phy_debug_mesh = @phy_debug_hull
+                        else
+                            shape = TriangleMeshShape(
+                                data.varray,
+                                # TODO: use all submeshes
+                                data.iarray.subarray(0, ob.offsets[2]),
+                                ob.stride/4,
+                                scale,
+                                @collision_margin,
+                                ob.hash
+                            )
+                            data.phy_mesh = shape
                 else
-                    use_visual_mesh = true
-                    ob = @
-                data = ob.data
-
-                if not data?
-                    return
-
-                if is_hull
-                    shape = data.phy_convex_hull
-                else
-                    shape = data.phy_mesh
-
-                if shape and (not use_visual_mesh) != (not @_use_visual_mesh)
-                    shape.mesh and destroy shape.mesh
-                    destroy shape
-                    shape = null
-
-                @_use_visual_mesh = use_visual_mesh
-
-                if not shape
-                    # Get "global" scale
-                    # TODO: Get average scale and add an option for recomputing real scale
-                    scale = vec3.clone @scale
-                    while p
-                        vec3.scale scale, scale, p.scale.z
-                        p = p.parent
-                    if is_hull
-                        shape = new ConvexShape data.varray, ob.stride/4, @scale, @collision_margin
-                        data.phy_convex_hull = shape
-                        if @debug and not @phy_debug_hull
-                            va_ia = get_convex_hull_edges data.varray, ob.stride/4, scale
-                            @phy_debug_hull = @context.render_manager.debug.debug_mesh_from_va_ia va_ia[0], va_ia[1]
-                        @phy_debug_mesh = @phy_debug_hull
-                    else
-                        shape = TriangleMeshShape(
-                            data.varray,
-                            # TODO: use all submeshes
-                            data.iarray.subarray(0, ob.offsets[2]),
-                            ob.stride/4,
-                            scale,
-                            @collision_margin,
-                            ob.hash
-                        )
-                        data.phy_mesh = shape
-            else
-                console.log "Warning: Unknown shape", @collision_shape
+                    console.warn "Warning: Unknown shape", @collision_shape
 
             #TODO: changing compunds live don't work well unless they're reinstanced in order
             if @collision_compound and shape
@@ -249,6 +251,8 @@ class GameObject
                     set_angular_factor body, @angular_factor
                     @scene.rigid_bodies.push @
                 else if @physics_type == 'DYNAMIC'
+                    @rotation_order = 'Q'
+                    quat.copy @rotation, rot
                     body = new RigidBody mass, shape, pos, rot, @friction, @elasticity, @form_factor
                     set_linear_factor body, @linear_factor
                     set_angular_factor body, {x: 0, y:0, z:0}
@@ -421,9 +425,9 @@ class GameObject
         quat.fromMat3 out, @rotation_matrix
 
     get_world_pos_rot: ->
-        wm = @get_world_matrix()
-        pos = vec3.new(wm.m12,wm.m13,wm.m14)
-        rot = quat.fromMat3 quat.create(), mat3.fromMat4(mat3.create(), wm)
+        pos = vec3.create()
+        rot = quat.create()
+        @get_world_position_rotation(pos, rot)
         return [pos, rot]
 
     get_world_position_rotation: (out_pos, out_rot) ->

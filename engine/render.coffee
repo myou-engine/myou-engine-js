@@ -1218,25 +1218,37 @@ class Debug
         idx=[]
         a=(3.1416*2)/16
         for i in [0...16]
-            d=d.concat [sin(a*i),cos(a*i),1]
-            d=d.concat [sin(a*i),cos(a*i),-1]
-            idx=idx.concat [i*2,(i*2+2)%32,i*2+1,(i*2+3)%32,]
+            d.push sin(a*i),cos(a*i),1
+            d.push sin(a*i),cos(a*i),-1
+            idx.push i*2,(i*2+2)%32,i*2+1,(i*2+3)%32
             if i%2==0
-                idx=idx.concat [i*2,i*2+1,]
+                idx.push i*2,i*2+1
         cylinder.load_from_lists d, idx
+
+        cone = new Mesh @context
+        d=[]
+        idx=[]
+        a=(3.1416*2)/16
+        for i in [0...16]
+            d.push 0,0,1
+            d.push sin(a*i),cos(a*i),-1
+            idx.push i*2+1,(i*2+3)%32
+            if i%2==0
+                idx.push i*2,i*2+1
+        cone.load_from_lists d, idx
 
         sphere = new Mesh @context
         d = []
         idx = []
         for i in [0...16]
-            d = d.concat sin(a*i),cos(a*i),0
-            idx = idx.concat i, (i+1)%16
+            d.push sin(a*i),cos(a*i),0
+            idx.push i, (i+1)%16
         for i in [0...16]
-            d = d.concat 0,sin(a*i),cos(a*i)
-            idx = idx.concat i+16, (i+1)%16+16
+            d.push 0,sin(a*i),cos(a*i)
+            idx.push i+16, (i+1)%16+16
         for i in [0...16]
-            d = d.concat sin(a*i),0,cos(a*i)
-            idx = idx.concat i+32, (i+1)%16+32
+            d.push sin(a*i),0,cos(a*i)
+            idx.push i+32, (i+1)%16+32
         sphere.load_from_lists d, idx
 
         arrow = new Mesh @context
@@ -1261,17 +1273,19 @@ class Debug
             uniforms: [{varname:'color', value: color4.create()}],
         }
 
-        for ob in [box, cylinder, sphere, arrow, bone]
+        for ob in [box, cylinder, cone, sphere, arrow, bone]
             ob.elements = []
             ob.stride = 4
             ob.materials = [mat]
             ob.color = color4.new 1,1,1,1
             ob.data.draw_method = @context.render_manager.gl.LINES
             ob.scale = {x: 1, y:1, z:1}
+            ob.rotation_order = 'Q'
             ob._update_matrices()
 
         @box = box
         @cylinder = cylinder
+        @cone = cone
         @sphere = sphere
         @arrow = arrow
         @bone = bone
