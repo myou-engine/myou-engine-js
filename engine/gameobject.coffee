@@ -31,6 +31,7 @@ class GameObject
         @rotation_order = 'XYZ'
         @scale = vec3.new 1, 1, 1
         @dimensions = vec3.create()
+        @bound_box = [vec3.create(), vec3.create()]
         @color = color4.new 1, 1, 1, 1
         @alpha = 1
         @offset_scale = vec3.new 1, 1, 1
@@ -408,16 +409,6 @@ class GameObject
     update_matrices_recursive: ->
         @parent?.update_matrices_recursive()
         @_update_matrices()
-
-    calc_bounding_box: ->
-        @bounding_box_low = vec4.create()
-        @bounding_box_high = vec4.create()
-        @bounding_box_low.w = @bounding_box_high.w = 1
-        dim_half = vec3.create()
-        vec3.scale(dim_half, @dimensions, 0.5)
-        vec3.sub(@bounding_box_low, @position, dim_half)
-        vec3.add(@bounding_box_high, @position, dim_half)
-
 
     get_world_position: (out=vec3.create()) ->
         wm = @get_world_matrix()
