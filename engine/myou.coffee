@@ -1,14 +1,11 @@
 {RenderManager} = require './render'
 {Loader} = require './loader'
-{Events} = require './events'
 {MainLoop} = require './main_loop'
 loader = require './loader'
 vr = require './webvr'
 {MeshFactory} = require './mesh_factory'
 
 physics = require './physics'
-sensors = require './sensors'
-actuators = require './actuators'
 {fetch_objects} = require './fetch_assets'
 {Action, Animation, LoopedAnimation, FiniteAnimation} = require './animation'
 {Viewport} = require './viewport'
@@ -43,16 +40,12 @@ dict = ->
 # This is the main engine class. You need to instance it to start using the engine.
 # The engine instance is frequently referred internally as `context`.
 #
-# It instances and contains several singletons like `render_manager`, `events` and `main_loop`.
+# It instances and contains several singletons like `render_manager` and `main_loop`.
 #
 # @ property foo [foo] tal
 class Myou
     # Physics engine functions
     physics:physics
-    # @nodoc
-    sensors:sensors
-    # @nodoc
-    actuators:actuators
     # @nodoc
     fetch_objects:fetch_objects
     Action:Action
@@ -67,8 +60,6 @@ class Myou
     main_loop: null
     # @property [RenderManager] Render manager singleton.
     render_manager: null
-    # @property [Events] Events singleton.
-    events: null
     # @property [number] Minimum length of the average poligon for LoD calculation, in pixels.
     mesh_lod_min_length_px: 13
 
@@ -78,20 +69,16 @@ class Myou
         if not options?
             throw "Missing options"
         @screens = []
+        @behaviours = @behaviors = []
         @canvas_screen = null
         @vr_screen = null
         @scenes = dict()
-        # @property bar [bar] asdf
         @loaded_scenes = []
-        @active_sprites = []
         @objects = dict()
         @actions = dict()
-        @groups = dict()
-        @log = []
         @video_textures = dict()
         @debug_loader = null
         @canvas = null
-        @root = null
         @all_materials = dict()
         @mesh_datas = dict()
         @embed_meshes = dict()
@@ -99,7 +86,6 @@ class Myou
         @active_animations = dict()
         @all_cubemaps = []
         @all_framebuffers = []
-
         @root = root
         @options = @MYOU_PARAMS = options
         @use_physics = not options.disable_physics
@@ -110,7 +96,6 @@ class Myou
         # VR
         @_HMD = @_vrscene = null
         @use_VR_position = true
-
 
         # Adding context to context_dependent_modules
         for name,cls of context_dependent_modules
@@ -130,6 +115,12 @@ class Myou
             root
         else
             root.querySelector 'canvas'
+
+        @update_root_rect = =>
+            @root_rect = @root.getClientRects()[0]
+        window.addEventListener 'resize', @update_root_rect
+        @update_root_rect()
+
         @main_loop = new MainLoop @
         render_manager = new RenderManager(
             @,
@@ -140,9 +131,9 @@ class Myou
         data_dir = options.data_dir or './data'
         data_dir = options.data_dir = data_dir.replace(/\/$/g, '')
 
-        @events = new Events root, options.event_options
         @mesh_factory = new MeshFactory @
         @main_loop.run()
+
 
     load_scene: (name, options={load_physics: true}) ->
         if typeof options != 'object'

@@ -4,7 +4,6 @@ timsort = require 'timsort'
 {Mesh} = require './mesh'
 {Material} = require './material'
 {next_POT} = require './math_utils/math_extra'
-{Events} = require './events'
 
 VECTOR_MINUS_Z = vec3.new 0,0,-1
 canvas = undefined # avoid bugs where the global id "canvas" is read
@@ -64,8 +63,12 @@ class RenderManager
     recreate_gl_canvas: ->
         new_canvas = @canvas.cloneNode()
         @canvas.parentNode.replaceChild new_canvas, @canvas
-        if @context.events.root_element == @canvas
-            @context.events = new Events new_canvas, @context.events.options
+        # recreate events of root element if it's the canvas
+        if @context.root == @canvas
+            @context.root = new_canvas
+            for b in @context.behaviours
+                b._destroy_events()
+                b._create_events()
         @canvas = @context.canvas_screen.canvas = new_canvas
         @context.vr_screen?.canvas = new_canvas
         return

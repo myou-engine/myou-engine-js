@@ -297,7 +297,7 @@ update_ob_physics = (ob)->
             posrot = ob.get_world_position_rotation(pos, rot)
         else
             pos = ob.position
-            rot = ob.rotation #cosa
+            rot = ob.rotation
         _tmp_Vector3.setValue(pos.x, pos.y, pos.z)
         _tmp_Transform.setOrigin(_tmp_Vector3)
         _tmp_Quaternion.setValue(rot.x, rot.y, rot.z, rot.w)

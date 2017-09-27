@@ -59,7 +59,7 @@ class GameObject
         @original_name = null
         @lod_objects = []
         @parent_bone_index = -1
-        @behaviours = []
+        @behaviours = {}
         # Physics
         @body = null
         @shape = null

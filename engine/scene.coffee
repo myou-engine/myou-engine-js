@@ -1,5 +1,5 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat, color4} = require 'vmath'
-{PhysicsWorld, set_gravity, remove_body, destroy_world} = require './physics.coffee'
+{PhysicsWorld, set_gravity, remove_body, destroy_world, ray_intersect_body_absolute} = require './physics.coffee'
 {load_scene} = require './loader.coffee'
 {fetch_objects} = require './fetch_assets.coffee'
 {Probe} = require './probe'
@@ -55,6 +55,8 @@ class Scene
         @extra_data = null
         @data_dir = ''
         @original_scene_name = ''
+        # We will save here the results of @get_ray_hit_under_pointer
+        @hits_under_pointer = {}
 
     set_gravity: (gravity)->
         g = vec3.copy @gravity, gravity
@@ -369,5 +371,27 @@ class Scene
             probe.set_lod_factor()
         return
 
+    get_ray_hit_under_pointer: (pointer_event, int_mask=-1) ->
+        pos_id = (pointer_event.clientX<<16)|pointer_event.clientY
+        result = @hits_under_pointer[pos_id]
+        context = @context
+        if not result or result[3] != context.main_loop.frame_number
+            cam = @active_camera
+
+            pos = cam.get_world_position()
+            {width, height} = context.render_manager.canvas
+
+            x = pointer_event.clientX - @context.root_rect.left - pageXOffset
+            y = pointer_event.clientY - @context.root_rect.top - pageYOffset
+            x = x/width
+            y = y/height
+
+            rayto = cam.get_ray_direction(x,y)
+
+            @context.render_manager.debug.vectors.push {position:vec3.create(), vector:rayto, color:color4.new(1,1,1,1)}
+            result = ray_intersect_body_absolute(@, pos, rayto, int_mask) or []
+            result[3] = context.main_loop.frame_number
+            @hits_under_pointer[pos_id] = result
+        return result
 
 module.exports = {Scene}

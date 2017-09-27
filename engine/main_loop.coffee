@@ -143,7 +143,6 @@ class MainLoop
             while --i != 0
                 scene.post_draw_callbacks[scene.post_draw_callbacks.length-i] scene, frame_duration
 
-        @context.events.reset_frame_events()
         @frame_number += 1
 
         time6 = performance.now()
