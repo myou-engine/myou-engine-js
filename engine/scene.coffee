@@ -372,6 +372,8 @@ class Scene
         return
 
     get_ray_hit_under_pointer: (pointer_event, int_mask=-1) ->
+        if not @world?
+            return []
         pos_id = (pointer_event.clientX<<16)|pointer_event.clientY
         result = @hits_under_pointer[pos_id]
         context = @context
@@ -388,7 +390,6 @@ class Scene
 
             rayto = cam.get_ray_direction(x,y)
 
-            @context.render_manager.debug.vectors.push {position:vec3.create(), vector:rayto, color:color4.new(1,1,1,1)}
             result = ray_intersect_body_absolute(@, pos, rayto, int_mask) or []
             result[3] = context.main_loop.frame_number
             @hits_under_pointer[pos_id] = result
