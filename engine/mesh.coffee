@@ -115,8 +115,8 @@ class MeshData
 # To learn how to create a mesh from code go [here](../extra/Advanced tutorials/Creating a mesh from code.md)
 class Mesh extends GameObject
 
-    constructor: (@context)->
-        super @context
+    constructor: (context)->
+        super context
         @type = 'MESH'
         @data = null
         @materials = []

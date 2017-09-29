@@ -3,11 +3,9 @@
 
 class BaseFilter
     constructor: (@context, @name) ->
-        @name = 'base'
-        @fragment = ''
+        @fragment = '#error Filter has no fragment shader'
         @uniforms = []
         @material = null
-        throw "Abstract class or missing constructor."
 
     get_material: ->
         if @material?
@@ -49,8 +47,8 @@ class BaseFilter
         source.draw_with_filter this, inputs
 
 class CopyFilter extends BaseFilter
-    constructor: (@context) ->
-        @name = 'copy'
+    constructor: (context) ->
+        super context, 'copy'
         @fragment = '''
             precision highp float;
             uniform sampler2D source;
@@ -59,13 +57,10 @@ class CopyFilter extends BaseFilter
                 gl_FragColor = texture2D(source, source_coord);
             }
         '''
-        @uniforms = [
-        ]
-        @material = null
 
 class FlipFilter extends BaseFilter
-    constructor: (@context) ->
-        @name = 'flip'
+    constructor: (context) ->
+        super context, 'flip'
         @fragment = '''
             precision highp float;
             uniform sampler2D source;
@@ -77,13 +72,10 @@ class FlipFilter extends BaseFilter
                 gl_FragColor = texture2D(source, co);
             }
         '''
-        @uniforms = [
-        ]
-        @material = null
 
 class BoxBlurFilter extends BaseFilter
-    constructor: (@context) ->
-        @name = 'boxblur'
+    constructor: (context) ->
+        super context, 'boxblur'
         @fragment = """
             precision highp float;
             uniform sampler2D source;
@@ -104,13 +96,10 @@ class BoxBlurFilter extends BaseFilter
                 )*#{1/9};
             }
         """
-        @uniforms = [
-        ]
-        @material = null
 
 class MipmapBiasFilter extends BaseFilter
     constructor: (@context, @bias) ->
-        @name = 'mipmapbias'
+        super context, 'mipmapbias'
         @fragment = """
             //#extension GL_OES_standard_derivatives : enable
             //#extension GL_EXT_shader_texture_lod : enable
@@ -122,13 +111,10 @@ class MipmapBiasFilter extends BaseFilter
                 gl_FragColor = texture2D(source, source_coord, #{@bias.toFixed 7});
             }
         """
-        @uniforms = [
-        ]
-        @material = null
 
 class RadialBlurFilter extends BaseFilter
     constructor: (@context, @bias) ->
-        @name = 'radialblur'
+        super context, 'radialblur'
         @fragment = """
             precision highp float;
             uniform sampler2D source;
@@ -145,11 +131,10 @@ class RadialBlurFilter extends BaseFilter
         @uniforms = [
             {varname: 'vector', value: vec2.new(0,0)},
         ]
-        @material = null
 
 class ExprFilter extends BaseFilter
     constructor: (@context, @num_inputs=2, @expression="a+b") ->
-        @name = 'expr'
+        super context, 'expr'
         names = 'abcdefghijkl'
         code = ["""
             precision highp float;
@@ -182,7 +167,6 @@ class ExprFilter extends BaseFilter
             {varname: 'b_texture', value: @context.render_manager.blank_texture},
             {varname: 'b_scale', value: vec2.new(1,1)},
         ]
-        @material = null
 
 
 

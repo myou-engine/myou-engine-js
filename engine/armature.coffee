@@ -13,8 +13,7 @@
 #UNIT_MAT4 = mat4.create()
 VECTOR_Y = vec3.new 0, 1, 0
 
-class Bone extends GameObject
-
+class Bone
     constructor: (@context)->
         # Base pose position and rotation in PARENT space
         @base_position = vec3.create()
@@ -47,8 +46,8 @@ class Armature extends GameObject
 
     type : 'ARMATURE'
 
-    constructor: (@context)->
-        super @context
+    constructor: (context)->
+        super context
         @bones = {} # all bones by name
         @_bone_list = [] # all bones, ordered, parents first
         @deform_bones = []

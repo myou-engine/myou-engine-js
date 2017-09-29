@@ -87,7 +87,8 @@ void main(void)
 {FilterEffect} = require './base'
 
 class SSAOFilter extends BaseFilter
-    constructor: (@context, @radius, @zrange, @strength) ->
+    constructor: (context, @radius, @zrange, @strength) ->
+        super context, 'ssao'
         @fragment = library
         @uniforms = [
             {varname: 'radius', value: @radius}
@@ -95,19 +96,16 @@ class SSAOFilter extends BaseFilter
             {varname: 'zrange', value: @zrange}
             {varname: 'source_depth', value: @context.render_manager.blank_texture}
         ]
-        @material = null
 
 class SSAOEffect extends FilterEffect
-    constructor: (@context, @radius=10, @zrange=2, @strength=100) ->
-        @filter = new SSAOFilter @context, @radius, @zrange, @strength
+    constructor: (context, @radius=10, @zrange=2, @strength=100) ->
+        super context
+        @filter = new SSAOFilter(@context, @radius, @zrange, @strength)
 
-	on_viewport_update: (@viewport) ->
+    apply: (source, temporary, rect) ->
+        destination = temporary
+        @filter.apply source, destination, rect
+        return {destination, temporary: source}
 
-	apply: (source, temporary, rect) ->
-		destination = temporary
-		@filter.apply source, destination, rect
-		return {destination, temporary: source}
-
-	on_viewport_remove: ->
 
 module.exports = {SSAOEffect}

@@ -15,7 +15,8 @@ class BaseEffect
         # Remove buffers here
 
 class FilterEffect extends BaseEffect
-    constructor: (@context, @filter) ->
+    constructor: (context, @filter) ->
+        super context
 
     apply: (source, temporary, rect) ->
         destination = temporary

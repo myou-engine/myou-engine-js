@@ -3,12 +3,10 @@
 {CanvasScreen} = require './screen'
 
 class VRScreen extends CanvasScreen
-    constructor: (@context, @HMD, @scene) ->
+    init: (@context, @HMD, @scene) ->
         if @context.vr_screen?
             throw "There's a VR screen already"
         @context.vr_screen = this
-        @context.screens.push this
-        @viewports = []
         @canvas = @context.canvas
         {@framebuffer} = @context.canvas_screen
         @frame_data = new VRFrameData
@@ -38,7 +36,6 @@ class VRScreen extends CanvasScreen
         @was_using_frustrum_culling = @context.render_manager.use_frustum_culling
         @context.render_manager.use_frustum_culling = false
         @context.canvas_screen.enabled = false
-        @enabled = true
 
     destroy: ->
         @context.vr_screen = null

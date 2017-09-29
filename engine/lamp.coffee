@@ -22,8 +22,8 @@ class Lamp extends GameObject
         bias: 0.0
         bleed_bias: 0.0
 
-    constructor: (@context)->
-        super(@context)
+    constructor: (context)->
+        super context
         @lamp_type = 'POINT'
         @shadow_fb = null
         @shadow_texture = null

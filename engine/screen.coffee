@@ -3,13 +3,13 @@
 {Framebuffer, MainFramebuffer} = require './framebuffer'
 
 class Screen
-    constructor: (@context) ->
-        throw "Abstract method"
+    constructor: (@context, args...) ->
         @context.screens.push this
         @viewports = []
         @framebuffer = null
         @width = @height = @diagonal = 0
         @enabled = true
+        @init @context, args...
 
     add_viewport: (camera) ->
         v = new Viewport @context, this, camera
@@ -17,7 +17,6 @@ class Screen
         return v
 
     resize: ->
-        throw "Abstract method"
 
     # Change the aspect ratio of viewports. Useful for very quick changes
     # of the size of the canvas or framebuffer, such as with a CSS animation.
@@ -34,11 +33,11 @@ class Screen
 
 
 class CanvasScreen extends Screen
-    constructor: (@context) ->
+
+    init: (@context) ->
         if @context.canvas_screen?
             throw "There's a canvas screen already"
         @context.canvas_screen = this
-        @context.screens.push this
         @viewports = []
         @canvas = @context.canvas
         @framebuffer = new MainFramebuffer @context
@@ -47,7 +46,6 @@ class CanvasScreen extends Screen
         window.addEventListener 'resize', =>
             if not @context.vr_screen? and @auto_resize_to_canvas
                 @resize_to_canvas()
-        @enabled = true
 
     resize_to_canvas: ->
         @resize(@canvas.clientWidth, @canvas.clientHeight)

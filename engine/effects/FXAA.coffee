@@ -51,7 +51,8 @@ library = ''' #line 8 /**/
 {FilterEffect} = require './base'
 
 class FXAAFilter extends BaseFilter
-    constructor: (@context) ->
+    constructor: (context) ->
+        super context, 'fxaa'
         @fragment = """
             precision highp float;
             #{library}
@@ -61,12 +62,9 @@ class FXAAFilter extends BaseFilter
                 gl_FragColor = FXAA(source, source_size_inverse);
             }
         """
-        @uniforms = [
-        ]
-        @material = null
 
 class FXAAEffect extends FilterEffect
-    constructor: (@context) ->
-        @filter = new FXAAFilter @context
+    constructor: (context) ->
+        super context, new FXAAFilter context
 
 module.exports = {FXAAEffect}

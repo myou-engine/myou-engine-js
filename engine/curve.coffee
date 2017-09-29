@@ -4,8 +4,8 @@
 
 class Curve extends GameObject
 
-    constructor: (@context)->
-        super @context
+    constructor: (context)->
+        super context
         @type = 'CURVE'
 
     instance_physics: ->

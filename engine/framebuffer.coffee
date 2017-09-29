@@ -23,7 +23,10 @@ unused_mat4 = mat4.create()
 # with a framebuffer as `dest_buffer`.
 # Also used internally for cubemaps, filters, post-processing effects, etc.
 class Framebuffer
-    constructor: (@context, @options) ->
+    constructor: (args...)->
+        @init args...
+
+    init: (@context, @options) ->
         {gl, is_webgl2, extensions, has_float_texture_support,
             has_float_fb_support, has_half_float_fb_support} = @context.render_manager
         {
@@ -225,14 +228,14 @@ class Framebuffer
             @context.all_framebuffers.splice @context.all_framebuffers.indexOf(this), 1
 
 class ByteFramebuffer extends Framebuffer
-    constructor: (context, options) ->
+    init: (context, options) ->
         {size, use_depth} = options
         super context, {size, use_depth, color_type: 'UNSIGNED_BYTE'}
 
 # Screen framebuffer target. Usually instanced as `render_manager.main_fb`.
 class MainFramebuffer extends Framebuffer
 
-    constructor: (@context)->
+    init: (@context)->
         # sizes set in render_manager.resize()
         @texture = @depth_texture = null
         @framebuffer = null

@@ -8,8 +8,8 @@ VECTOR_MINUS_Z = vec3.new 0,0,-1
 class Camera extends GameObject
 
 
-    constructor: (@context, options) ->
-        super @context
+    constructor: (context, options) ->
+        super context
         @type = 'CAMERA'
         {
             @near_plane = 0.1,
