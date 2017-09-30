@@ -48,21 +48,25 @@ class Camera extends GameObject
     #Avoid physical lamps and cameras
     instance_physics: ->
 
-    get_ray_direction: (x, y)->
+    get_ray_direction: (x, y)-> @get_ray_direction_into vec3.create(), x, y
+
+    get_ray_direction_into: (out, x, y)->
         # Assumes screen coordinates (0 to 1)
-        v = vec3.create()
+        v = out
         v.x = x*2-1
         v.y = 1-y*2
         v.z = 1
-        pos_rot = @get_world_pos_rot()
+        {position, rotation} = @get_world_position_rotation()
         vec3.transformMat4 v, v, @projection_matrix_inv
-        vec3.transformQuat v, v, pos_rot[1]
-        vec3.add(v, v, pos_rot[0])
+        vec3.transformQuat v, v, rotation
+        vec3.add(v, v, position)
         return v
 
-    get_ray_direction_local: (x, y)->
+    get_ray_direction_local: (x, y)-> @get_ray_direction_local_into vec3.create(), x, y
+
+    get_ray_direction_local_into: (out, x, y)->
         # Assumes screen coordinates (0 to 1)
-        v = vec3.create()
+        v = out
         v.x = x*2-1
         v.y = 1-y*2
         v.z = 1

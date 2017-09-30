@@ -219,13 +219,13 @@ class GameObject
                     while parent.parent and parent.parent.collision_compound
                         parent = parent.parent
 
-                    posrot = @get_world_pos_rot()
-                    pos = posrot[0]
-                    rot = posrot[1]
+                    {position: pos, rotation: rot} = @get_world_position_rotation()
                     # TODO: avoid calling this all the time
-                    parent_posrot = parent.get_world_pos_rot()
-                    vec3.sub pos, pos, parent_posrot[0]
-                    inv = quat.invert quat.create(), parent_posrot[1]
+                    # TODO: this probably fails with matrix_parent_inverse
+                    {position: parent_pos, rotation: parent_rot} = \
+                        parent.get_world_position_rotation()
+                    vec3.sub pos, pos, parent_pos
+                    inv = quat.invert quat.create(), parent_rot
                     vec3.transformQuat pos, pos, inv
                     quat.mul rot, inv, rot
                     comp = parent.shape
@@ -239,9 +239,7 @@ class GameObject
                 @collision_compound = false
 
             if shape
-                posrot = @get_world_pos_rot()
-                pos = posrot[0]
-                rot = posrot[1]
+                {position: pos, rotation: rot} = @get_world_position_rotation()
                 # TODO: SOFT_BODY, OCCLUDE, NAVMESH
                 if @physics_type == 'RIGID_BODY'
                     @rotation_order = 'Q'
@@ -414,23 +412,33 @@ class GameObject
         @parent?.update_matrices_recursive()
         @_update_matrices()
 
-    get_world_position: (out=vec3.create()) ->
+    get_world_position: () ->
+        wm = @get_world_matrix()
+        return vec3.set vec3.create(), wm.m12, wm.m13, wm.m14
+
+    get_world_rotation: ()  ->
+        # TODO: would it be more efficient to convert
+        # matrix_parent_inverse into a quat?
+        @get_world_matrix()
+        quat.fromMat3 quat.create(), @rotation_matrix
+
+    get_world_position_into: (out) ->
         wm = @get_world_matrix()
         return vec3.set out, wm.m12, wm.m13, wm.m14
 
-    get_world_rotation: (out=quat.create())  ->
+    get_world_rotation_into: (out)  ->
         # TODO: would it be more efficient to convert
         # matrix_parent_inverse into a quat?
         @get_world_matrix()
         quat.fromMat3 out, @rotation_matrix
 
-    get_world_pos_rot: ->
-        pos = vec3.create()
-        rot = quat.create()
-        @get_world_position_rotation(pos, rot)
-        return [pos, rot]
+    get_world_position_rotation: ->
+        wm = @get_world_matrix()
+        position = vec3.new wm.m12, wm.m13, wm.m14
+        rotation = quat.fromMat3 quat.create(), @rotation_matrix
+        return {position, rotation}
 
-    get_world_position_rotation: (out_pos, out_rot) ->
+    get_world_position_rotation_into: (out_pos, out_rot) ->
         wm = @get_world_matrix()
         vec3.set out_pos, wm.m12, wm.m13, wm.m14
         quat.fromMat3 out_rot, @rotation_matrix

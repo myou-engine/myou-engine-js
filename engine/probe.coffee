@@ -78,7 +78,7 @@ class Probe
                 @cubemap.size = @size
                 @cubemap.set_data()
                 @set_lod_factor()
-            @object?.get_world_position?(@position)
+            @object?.get_world_position_into(@position)
             @context.render_manager.draw_cubemap(@scene, @cubemap,
                 @position, @clip_start, @clip_end, @background_only)
             # TODO: Detect if any material uses this!
@@ -86,7 +86,7 @@ class Probe
                 @cubemap.generate_spherical_harmonics(@sh_quality)
             @cubemap.loaded = true
         else if @planar?
-            @object.get_world_position_rotation?(@position, @rotation)
+            @object?.get_world_position_rotation_into(@position, @rotation)
             # plane normal
             vec3.set @normal, 0, 0, 1
             vec3.transformQuat @normal, @normal, @rotation

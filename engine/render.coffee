@@ -794,10 +794,8 @@ class RenderManager
                 dob = ob.phy_debug_mesh
                 if dob
                     if dob!=ob
-                        posrot = ob.get_world_pos_rot()
-                        dob.position = posrot[0]
-                        dob.rotation = posrot[1]
-                        dob.scale = ob.phy_he
+                        ob.write_world_position_rotation dob.position, dob.rotation
+                        vec3.copy dob.scale, ob.phy_he
                         dob._update_matrices()
                         # TODO: It's better to have a separate debug mesh
                         # than recalculating the matrices of the same mesh

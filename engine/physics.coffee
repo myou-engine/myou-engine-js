@@ -294,7 +294,7 @@ update_ob_physics = (ob)->
         if ob.parent
             pos = vec3.create()
             rot = quat.create()
-            posrot = ob.get_world_position_rotation(pos, rot)
+            ob.get_world_position_rotation_into(pos, rot)
         else
             pos = ob.position
             rot = ob.rotation
@@ -438,17 +438,19 @@ set_angular_factor = (body, factor)->
     body.setAngularFactor(_tmp_Vector3)
 
 ob_to_phy = (ob_list)->
+    tmp_pos = vec3.create()
+    tmp_rot = quat.create()
     for ob in ob_list
         if ob.parent or ob.rotation_order != 'Q'
-            posrot = ob.get_world_pos_rot()
-            pos = posrot.x
-            rot = posrot.y
+            ob.get_world_position_rotation_into(tmp_pos, tmp_rot)
+            _tmp_Vector3.setValue(tmp_pos.x, tmp_pos.y, tmp_pos.z)
+            _tmp_Quaternion.setValue(tmp_rot.x, tmp_rot.y, tmp_rot.z, tmp_rot.w)
         else
             pos = ob.position
             rot = ob.rotation
-        _tmp_Vector3.setValue(pos.x, pos.y, pos.z)
+            _tmp_Vector3.setValue(pos.x, pos.y, pos.z)
+            _tmp_Quaternion.setValue(rot.x, rot.y, rot.z, rot.w)
         _tmp_Transform.setOrigin(_tmp_Vector3)
-        _tmp_Quaternion.setValue(rot.x, rot.y, rot.z, rot.w)
         _tmp_Transform.setRotation(_tmp_Quaternion)
         ob.body.setWorldTransform(_tmp_Transform)
     return
@@ -461,6 +463,8 @@ ob_to_phy_with_scale = (ob_list)->
         vec3.copy pos, ob.position
         quat.copy rot, ob.rotation
         scale = ob.scale.x
+        # TODO: This is probably broken for objects with parents,
+        # as it doesn't use the matrix_parent_inverse
         while p
             vec3.mul pos, pos, p.scale
             vec3.transformQuat pos, pos, p.rotation
