@@ -42,8 +42,6 @@ class Curve extends GameObject
                 p3z = c[i9+14]
 
                 for j in [0...resolution]
-                    # cubic_bezier() is in animation.py
-
                     x = cubic_bezier j/resolution, p0x, p1x, p2x, p3x
                     y = cubic_bezier j/resolution, p0y, p1y, p2y, p3y
                     z = cubic_bezier j/resolution, p0z, p1z, p2z, p3z

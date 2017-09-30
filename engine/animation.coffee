@@ -1,4 +1,5 @@
 {clamp, mat2, mat3, mat4, vec2, vec3, vec4, color3, color4, quat} = require 'vmath'
+{cubic_bezier} = require './math_utils/math_extra'
 {update_ob_physics} = require './physics.coffee'
 
 # An action is a bunch of animation splines, without specific start, end
