@@ -507,9 +507,7 @@ class RenderManager
             mat4.multiply model_view_matrix, world2cam_override or @_world2cam, mesh2world
             gl.uniformMatrix4fv shader.u_model_view_matrix, false, model_view_matrix.toJSON()
             if shader.u_normal_matrix?
-                mat3.fromMat4 m3, model_view_matrix
-                mat3.invert m3, m3
-                mat3.transpose m3, m3
+                mat3.normalFromMat4 m3, model_view_matrix
                 gl.uniformMatrix3fv shader.u_normal_matrix, false, m3.toJSON()
             proj = projection_override or cam.projection_matrix
             gl.uniformMatrix4fv shader.u_projection_matrix, false, proj.toJSON()
