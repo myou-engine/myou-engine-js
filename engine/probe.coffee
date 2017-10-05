@@ -106,7 +106,6 @@ class Probe
             wm.m10 = -wm.m10
             wm.m14 = -wm.m14
             mat4.mul wm, @object.world_matrix, wm
-            mat3.fromMat4 rcam.rotation_matrix, wm
             mat4.copy rcam.projection_matrix, cam.projection_matrix
 
             # set planarreflectmat (range_mat * projection * view of reflection)
@@ -116,10 +115,11 @@ class Probe
 
             # get view position and normal to calculate clipping plane
             # TODO: optimize?
+            wmi = mat4.invert(mat4.create(), rcam.world_matrix)
             view_pos = vec3.create()
-            vec3.transformMat4 view_pos, @position, mat4.invert(mat4.create(), rcam.world_matrix)
-            view_nor = vec3.create()
-            vec3.transformMat3 view_nor, @normal, mat3.invert(mat3.create(), rcam.rotation_matrix)
+            vec3.transformMat4 view_pos, @position, wmi
+            view_nor = vec4.new @normal.x, @normal.y, @normal.z, 0
+            vec4.transformMat4 view_nor, view_nor, wmi
 
             # render camera
             rm = @context.render_manager

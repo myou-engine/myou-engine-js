@@ -429,7 +429,7 @@ class RenderManager
     # Draws a mesh.
     draw_mesh: (mesh, mesh2world, pass_=-1, material_override, world2cam_override, projection_override)->
         # TODO: Put all camera matrices into a single argument:
-        # world2cam, cam2world, world2cam3, cam2world3 (aka camera.rotation_matrix),
+        # world2cam, cam2world, world2cam3, cam2world3
         # projection, projection inverse
         # TODO: check epsilon, probably better to check sum of absolutes instead of sqrLen
         if @_sqscale < 0.000001
@@ -630,8 +630,8 @@ class RenderManager
         world2cam_mx = @_world2cam_mx
         world2cam3_mx = @_world2cam3_mx
         world2light = @_world2light
-        # Create cam2world from camera world matrix but ignoring scale
-        cam_rm = mat3.copy @_cam2world3, cam.rotation_matrix
+        # Create cam2world from camera world matrix but ignoring scale/skew
+        cam_rm = mat3.rotationFromMat4 @_cam2world3, cam.get_world_matrix()
         cam_wm = cam.world_matrix
         cam_zvec = vec3.new cam_wm.m08, cam_wm.m09, cam_wm.m10
         cam_pos = vec3.new cam_wm.m12, cam_wm.m13, cam_wm.m14
@@ -652,16 +652,16 @@ class RenderManager
         world2cam_mx.y = -world2cam_mx.y
         world2cam_mx.z = -world2cam_mx.z
         mat3.fromMat4 world2cam3_mx, world2cam_mx
-        vec3.transformMat3 @camera_z, VECTOR_MINUS_Z, cam.rotation_matrix
+        vec3.transformMat3 @camera_z, VECTOR_MINUS_Z, cam_rm
         # Set plane vectors that will be used for culling objects in perspective
-        vec3.transformMat3 @_cull_left, cam.cull_left, cam.rotation_matrix
+        vec3.transformMat3 @_cull_left, cam.cull_left, cam_rm
         v = vec3.copy @_cull_right, cam.cull_left
         v.x = -v.x
-        vec3.transformMat3 v, v, cam.rotation_matrix
-        vec3.transformMat3 @_cull_bottom, cam.cull_bottom, cam.rotation_matrix
+        vec3.transformMat3 v, v, cam_rm
+        vec3.transformMat3 @_cull_bottom, cam.cull_bottom, cam_rm
         v = vec3.copy @_cull_top, cam.cull_bottom
         v.y = -v.y
-        vec3.transformMat3 v, v, cam.rotation_matrix
+        vec3.transformMat3 v, v, cam_rm
 
         mat4.invert @projection_matrix_inverse, cam.projection_matrix
 

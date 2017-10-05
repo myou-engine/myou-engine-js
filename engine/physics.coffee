@@ -396,7 +396,7 @@ get_angular_velocity = (body, local = false)->
     v = body.getAngularVelocity()
     new_v = vec3.new v.x(), v.y(), v.z()
     if local
-        ir = body.owner.get_world_rotation(quat.create())
+        ir = body.owner.get_world_rotation()
         quat.invert(ir, ir)
         new_v = vec3.transformQuat(new_v, new_v, ir)
     return new_v

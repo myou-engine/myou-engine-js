@@ -34,7 +34,6 @@ class GameObject
         @bound_box = [vec3.create(), vec3.create()]
         @color = color4.new 1, 1, 1, 1
         @alpha = 1
-        @offset_scale = vec3.new 1, 1, 1
         @matrix_parent_inverse = mat4.create()
         @scene = null
         @original_scene = null
@@ -49,7 +48,6 @@ class GameObject
         @children = []
         @static = false
         @world_matrix = mat4.create()
-        @rotation_matrix = mat3.create()
         @_m3 = mat3.create()
         @probe = null
         @properties = {}
@@ -307,18 +305,10 @@ class GameObject
         return
 
     _update_matrices:  ->
-        rm = @rotation_matrix
         {x, y, z, w} = @rotation
         if @rotation_order != 'Q'
             q = quat.create()
-            for i in [2..0] by -1
-                switch @rotation_order[i]
-                    when 'X'
-                        quat.rotateX q, q, x
-                    when 'Y'
-                        quat.rotateY q, q, y
-                    when 'Z'
-                        quat.rotateZ q, q, z
+            q = quat.fromEulerOrder quat.create(), @rotation, @rotation_order
             {x, y, z, w} = q
 
         scl = @scale
@@ -331,55 +321,32 @@ class GameObject
             x=-x
             w=-w
             @_flip = not @_flip
-        rm.m00 = w*w + x*x - y*y - z*z
-        rm.m01 = 2 * (x * y + z * w)
-        rm.m02 = 2 * (x * z - y * w)
-        rm.m03 = 2 * (x * y - z * w)
-        rm.m04 = w*w - x*x + y*y - z*z
-        rm.m05 = 2 * (z * y + x * w)
-        rm.m06 = 2 * (x * z + y * w)
-        rm.m07 = 2 * (y * z - x * w)
-        rm.m08 = w*w - x*x - y*y + z*z
-
-        pos = @position
-        ox = @offset_scale.x
-        oy = @offset_scale.y
-        oz = @offset_scale.z
-
-        # Assumes objects are evaluated in order,
-        # Parents before children
-
         wm = @world_matrix
-        wm.m00 = rm.m00*ox*scl.x
-        wm.m01 = rm.m01*oy*scl.x
-        wm.m02 = rm.m02*oz*scl.x
-        wm.m04 = rm.m03*ox*scl.y
-        wm.m05 = rm.m04*oy*scl.y
-        wm.m06 = rm.m05*oz*scl.y
-        wm.m08 = rm.m06*ox*scl.z
-        wm.m09 = rm.m07*oy*scl.z
-        wm.m10 = rm.m08*oz*scl.z
+        pos = @position
+        wm.m00 = (w*w + x*x - y*y - z*z) * scl.x
+        wm.m01 = (2 * (x * y + z * w)) * scl.x
+        wm.m02 = (2 * (x * z - y * w)) * scl.x
+        wm.m04 = (2 * (x * y - z * w)) * scl.y
+        wm.m05 = (w*w - x*x + y*y - z*z) * scl.y
+        wm.m06 = (2 * (z * y + x * w)) * scl.y
+        wm.m08 = (2 * (x * z + y * w)) * scl.z
+        wm.m09 = (2 * (y * z - x * w)) * scl.z
+        wm.m10 = (w*w - x*x - y*y + z*z) * scl.z
         wm.m12 = pos.x
         wm.m13 = pos.y
         wm.m14 = pos.z
 
+        # Assumes objects are evaluated in order,
+        # Parents before children
         if @parent
             bi = @parent_bone_index
             if bi >= 0
                 bone = @parent._bone_list[bi]
                 m3 = mat3.fromMat4(@_m3, bone.ol_matrix)
-                mat3.mul(rm, m3, rm)
-                mat3.mul(nm, m3, nm)
                 mat4.mul(@world_matrix, bone.ol_matrix, @world_matrix)
 
-            ## TODO: Rotation matrix is incorrect, esp after scaling parents and having matrix_parent_inverse
-            ## Should only be used for the camera, calculated after the wm
-            mat3.mul rm, @parent.rotation_matrix, rm
             mat4.mul wm, @matrix_parent_inverse, wm
             mat4.mul wm, @parent.world_matrix, wm
-            #pwm = @parent.world_matrix
-            #ppos  =vec3.new(pwm.m12,pwm.m13,pwm.m14)
-            #pos = [pos.x + ppos.x, pos.y + ppos.y, pos.z + ppos.z]
 
     set_rotation_order: (order) ->
         if order == @rotation_order
@@ -391,77 +358,136 @@ class GameObject
                     Should be one of: Q XYZ XZY YXZ YZX ZXY ZYX."
         q = @rotation
         if @rotation_order != 'Q'
-            {x,y,z} = q
-            q.x = q.y = q.z = 0
-            q.w = 1
-            for i in [2..0] by -1
-                switch @rotation_order[i]
-                    when 'X'
-                        quat.rotateX q, q, x
-                    when 'Y'
-                        quat.rotateY q, q, y
-                    when 'Z'
-                        quat.rotateZ q, q, z
+            quat.fromEulerOrder q, q, @rotation_order
         if f?
             f(q,q)
             q.w = 0
         @rotation_order = order
 
 
-    update_matrices_recursive: ->
-        @parent?.update_matrices_recursive()
+    get_world_matrix: ->
+        @parent?.get_world_matrix()
         @_update_matrices()
+        return @world_matrix
 
     get_world_position: () ->
         wm = @get_world_matrix()
         return vec3.set vec3.create(), wm.m12, wm.m13, wm.m14
 
     get_world_rotation: ()  ->
-        # TODO: would it be more efficient to convert
-        # matrix_parent_inverse into a quat?
-        @get_world_matrix()
-        quat.fromMat3 quat.create(), @rotation_matrix
+        wm = @get_world_matrix()
+        # TODO: Calculate rotation matrix more efficiently
+        rot_matrix = mat3.rotationFromMat4 mat3.create(), wm
+        quat.fromMat3 quat.create(), rot_matrix
 
     get_world_position_into: (out) ->
         wm = @get_world_matrix()
         return vec3.set out, wm.m12, wm.m13, wm.m14
 
     get_world_rotation_into: (out)  ->
-        # TODO: would it be more efficient to convert
-        # matrix_parent_inverse into a quat?
-        @get_world_matrix()
-        quat.fromMat3 out, @rotation_matrix
+        wm = @get_world_matrix()
+        # TODO: Calculate rotation matrix more efficiently
+        rot_matrix = mat3.rotationFromMat4 mat3.create(), wm
+        quat.fromMat3 out, rot_matrix
 
     get_world_position_rotation: ->
         wm = @get_world_matrix()
         position = vec3.new wm.m12, wm.m13, wm.m14
-        rotation = quat.fromMat3 quat.create(), @rotation_matrix
+        # TODO: Calculate rotation matrix more efficiently
+        rot_matrix = mat3.rotationFromMat4 mat3.create(), wm
+        rotation = quat.fromMat3 quat.create(), rot_matrix
         return {position, rotation}
 
     get_world_position_rotation_into: (out_pos, out_rot) ->
         wm = @get_world_matrix()
         vec3.set out_pos, wm.m12, wm.m13, wm.m14
-        quat.fromMat3 out_rot, @rotation_matrix
+        # TODO: Calculate rotation matrix more efficiently
+        rot_matrix = mat3.rotationFromMat4 mat3.create(), wm
+        quat.fromMat3 out_rot, rot_matrix
         return
-
-    get_world_matrix: ->
-        @parent?.get_world_matrix()
-        @_update_matrices()
-        return @world_matrix
 
     translate: (vector, relative_object) ->
         if relative_object? or @parent?
             vector = vec3.clone vector
             q = quat.create()
         if relative_object?
-            relative_object.get_world_rotation q
+            relative_object.get_world_rotation_into q
             vec3.transformQuat vector, vector, q
         if @parent?
-            @parent.get_world_rotation q
+            # we're using our world_matrix as temporary matrix
+            # because it's invalid and will be recalculated anyway
+            m = @world_matrix
+            mat4.mul m, @parent.get_world_matrix(), @matrix_parent_inverse
+            quat.fromMat3 q, mat3.rotationFromMat4(mat3.create(), m)
             quat.invert q, q
             vec3.transformQuat vector, vector, q
         vec3.add @position, @position, vector
+        return this
 
+    translate_x: (x, relative_object) -> @translate vec3.new(x, 0, 0), relative_object
+
+    translate_y: (y, relative_object) -> @translate vec3.new(0, y, 0), relative_object
+
+    translate_z: (z, relative_object) -> @translate vec3.new(0, 0, z), relative_object
+
+    rotate_euler: (vector, order, relative_object) ->
+        @rotate_quat quat.fromEulerOrder(quat.create(), vector, order), relative_object
+
+    rotate_euler_deg: (vector, order, relative_object) ->
+        v = vec3.scale vec3.create(), vector, 0.017453292519943295 # PI*2 / 360
+        @rotate_quat quat.fromEulerOrder(quat.create(), vector, order), relative_object
+
+    rotate_quat: (q, relative_object) ->
+        # TODO: optimize
+        rel = quat.create()
+        inv_rel = quat.create()
+        par = quat.create()
+        inv_par = quat.create()
+        if relative_object?
+            relative_object.get_world_rotation_into(rel)
+            quat.invert inv_rel, rel
+        if @parent?
+            # we're using our world_matrix as temporary matrix
+            # because it's invalid and will be recalculated anyway
+            m = @world_matrix
+            mat4.mul m, @parent.get_world_matrix(), @matrix_parent_inverse
+            quat.fromMat3 par, mat3.rotationFromMat4(mat3.create(), m)
+            quat.invert inv_par, par
+        {rotation_order} = this
+        if rotation_order != 'Q'
+            @set_rotation_order 'Q'
+        quat.mul @rotation, par, @rotation
+        quat.mul @rotation, inv_rel, @rotation
+        quat.mul @rotation, q, @rotation
+        quat.mul @rotation, rel, @rotation
+        quat.mul @rotation, inv_par, @rotation
+        if rotation_order != 'Q'
+            @set_rotation_order rotation_order
+        return this
+
+    rotate_x: (angle, relative_object) ->
+        q = quat.create()
+        @rotate_quat(quat.rotateX(q, q, angle), relative_object)
+
+    rotate_y: (angle, relative_object) ->
+        q = quat.create()
+        @rotate_quat(quat.rotateY(q, q, angle), relative_object)
+
+    rotate_z: (angle, relative_object) ->
+        q = quat.create()
+        @rotate_quat(quat.rotateZ(q, q, angle), relative_object)
+
+    rotate_x_deg: (angle, relative_object) ->
+        q = quat.create()
+        @rotate_quat(quat.rotateX(q, q, angle*0.017453292519943295), relative_object)
+
+    rotate_y_deg: (angle, relative_object) ->
+        q = quat.create()
+        @rotate_quat(quat.rotateY(q, q, angle*0.017453292519943295), relative_object)
+
+    rotate_z_deg: (angle, relative_object) ->
+        q = quat.create()
+        @rotate_quat(quat.rotateZ(q, q, angle*0.017453292519943295), relative_object)
 
     add_behaviour: (behaviour)->
         behaviour.assign @
@@ -489,9 +515,7 @@ class GameObject
         n.rotation = vec4.clone @rotation
         n.scale = vec3.clone @scale
         n.dimensions = vec3.clone @dimensions
-        n.offset_scale = vec3.clone @offset_scale
         n.world_matrix = mat4.clone @world_matrix
-        n.rotation_matrix = mat3.clone @rotation_matrix
         n.color = color4.clone @color
         n.properties = Object.create @properties
         n.actions = @actions[...]

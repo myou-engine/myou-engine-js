@@ -275,16 +275,16 @@ class Camera extends GameObject
             mat4.invert @projection_matrix_inv, @projection_matrix
             throw "TODO: frustum culling for ortho!"
 
-        @update_matrices_recursive()
-        camera_z = vec3.transformMat3 vec3.create(), VECTOR_MINUS_Z, @rotation_matrix
-        normal_left = vec3.transformMat3 vec3.create(), cull_left_local, @rotation_matrix
+        rot_matrix = mat3.rotationFromMat4 mat3.create(), @get_world_matrix()
+        camera_z = vec3.transformMat3 vec3.create(), VECTOR_MINUS_Z, rot_matrix
+        normal_left = vec3.transformMat3 vec3.create(), cull_left_local, rot_matrix
         normal_right = v = vec3.copy vec3.create(), cull_left_local
         v.x = -v.x
-        vec3.transformMat3 v, v, @rotation_matrix
-        normal_bottom = vec3.transformMat3 vec3.create(), cull_bottom_local, @rotation_matrix
+        vec3.transformMat3 v, v, rot_matrix
+        normal_bottom = vec3.transformMat3 vec3.create(), cull_bottom_local, rot_matrix
         normal_top = v = vec3.copy vec3.create(), cull_bottom_local
         v.y = -v.y
-        vec3.transformMat3 v, v, @rotation_matrix
+        vec3.transformMat3 v, v, rot_matrix
         return {normal_top, normal_bottom, normal_right, normal_left}
 
 

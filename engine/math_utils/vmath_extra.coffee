@@ -7,19 +7,6 @@ threeaxisrot = (out, r11, r12, r21, r31, r32) ->
     out.y = Math.asin ( r21 )
     out.z = Math.atan2( r11, r12 )
 
-vmath.quat.to_euler = (out={x: 0, y:0, z:0}, q, order='XYZ') ->
-    {x, y, z, w} = q
-    switch order
-        when 'XYZ'
-            threeaxisrot(out, 2*(x*y + w*z),
-                            w*w + x*x - y*y - z*z,
-                           -2*(x*z - w*y),
-                            2*(y*z + w*x),
-                            w*w - x*x - y*y + z*z)
-        else
-            throw new Error "Use to_euler_"+order+" instead."
-    return out
-
 # NOTE: It uses Blender's convention for euler rotations:
 # XYZ means that to convert back to quat you must rotate Z, then Y, then X
 
@@ -187,6 +174,20 @@ vmath.mat3.fromColumns = (out, a, b, c) ->
     out.m08 = c.z
     return out
 
+{vec3} = vmath
+vmath.mat3.rotationFromMat4 = (out, m) ->
+    x = vec3.new m.m00, m.m01, m.m02
+    y = vec3.new m.m04, m.m05, m.m06
+    z = vec3.new m.m08, m.m09, m.m10
+    vec3.normalize x,x
+    vec3.normalize y,y
+    vec3.normalize z,z
+    # This favours the Z axis to preserve
+    # the direction of cameras and lights
+    vec3.cross x,y,z
+    vec3.cross y,z,x
+    return vmath.mat3.fromColumns out, x,y,z
+
 vmath.quat.setAxisAngle = (out, axis, rad) ->
   rad = rad * 0.5
   s = Math.sin(rad)
@@ -195,6 +196,38 @@ vmath.quat.setAxisAngle = (out, axis, rad) ->
   out.z = s * axis.z
   out.w = Math.cos(rad)
   return out
+
+{rotateX, rotateY, rotateZ} = vmath.quat
+vmath.quat.fromEulerOrder = (out, v, order) ->
+    {x,y,z} = v
+    out.x = out.y = out.z = 0
+    out.w = 1
+    switch order
+        when 'XYZ'
+            rotateZ out, out, z
+            rotateY out, out, y
+            rotateX out, out, x
+        when 'XZY'
+            rotateY out, out, y
+            rotateZ out, out, z
+            rotateX out, out, x
+        when 'YXZ'
+            rotateZ out, out, z
+            rotateX out, out, x
+            rotateY out, out, y
+        when 'YZX'
+            rotateX out, out, x
+            rotateZ out, out, z
+            rotateY out, out, y
+        when 'ZXY'
+            rotateY out, out, y
+            rotateX out, out, x
+            rotateZ out, out, z
+        when 'ZYX'
+            rotateX out, out, x
+            rotateY out, out, y
+            rotateZ out, out, z
+    return out
 
 # export function getAxisAngle(out_axis, q) {
 

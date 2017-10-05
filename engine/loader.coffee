@@ -407,7 +407,6 @@ load_object = (data, scene) ->
     quat.set ob.rotation, r[1], r[2], r[3], r[0]
     ob.rotation_order = data.rot_mode
     vec3.copyArray ob.scale, data.scale
-    vec3.copyArray ob.offset_scale, data.offset_scale
     ob.visible = data.visible
     vec3.copyArray ob.dimensions, data.dimensions # is this used outside physics?
     ob.radius = data.mesh_radius or vec3.len(ob.dimensions) * 0.5
