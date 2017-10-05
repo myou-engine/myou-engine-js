@@ -788,18 +788,19 @@ class RenderManager
         # Debug physics and vectors (TODO: move vector to debug properties?)
         if @context.MYOU_PARAMS.debug
             mm4 = mat4.create()
+            {color} = @debug
             for ob in scene.children
                 dob = ob.phy_debug_mesh
                 if dob
                     if dob!=ob
-                        ob.write_world_position_rotation dob.position, dob.rotation
+                        ob.get_world_position_rotation_into dob.position, dob.rotation
                         vec3.copy dob.scale, ob.phy_he
                         dob._update_matrices()
                         # TODO: It's better to have a separate debug mesh
                         # than recalculating the matrices of the same mesh
 
                     # occluded pass
-                    color4.set dob.color, 1, 1, 1, .2
+                    color4.set color, 1, 1, 1, .2
                     gl.enable gl.BLEND
                     gl.disable gl.DEPTH_TEST
                     @draw_mesh dob, dob.world_matrix
@@ -807,8 +808,48 @@ class RenderManager
                     # visible pass
                     gl.disable gl.BLEND
                     gl.enable gl.DEPTH_TEST
-                    color4.set dob.color, 1, 1, 1, 1
+                    color4.set color, 1, 1, 1, 1
                     @draw_mesh dob, dob.world_matrix
+                if ob != cam and ob.type == 'CAMERA'
+                    dob = @debug.box
+                    # Draw camera with frustum of far=1
+                    {near_plane, far_plane} = ob
+                    ob.near_plane = 1e-4
+                    ob.far_plane = 1
+                    ob.recalculate_projection()
+                    mat4.invert mm4, ob.projection_matrix
+                    mat4.mul mm4, ob.world_matrix, mm4
+                    ob.near_plane = near_plane
+                    ob.far_plane = far_plane
+                    ob.recalculate_projection()
+
+                    # occluded pass
+                    color4.set color, 1, 1, 1, .2
+                    gl.enable gl.BLEND
+                    gl.disable gl.DEPTH_TEST
+                    @draw_mesh dob, mm4
+
+                    # visible pass
+                    gl.disable gl.BLEND
+                    gl.enable gl.DEPTH_TEST
+                    color4.set color, 1, 1, 1, 1
+                    @draw_mesh dob, mm4
+
+                    # Draw whole frustum
+                    mat4.invert mm4, ob.projection_matrix
+                    mat4.mul mm4, ob.world_matrix, mm4
+
+                    # occluded pass
+                    color4.set color, 1, 1, 1, .1
+                    gl.enable gl.BLEND
+                    gl.disable gl.DEPTH_TEST
+                    @draw_mesh dob, mm4
+
+                    # visible pass
+                    gl.enable gl.DEPTH_TEST
+                    color4.set color, 1, 1, 1, .5
+                    @draw_mesh dob, mm4
+                    gl.disable gl.BLEND
 
             gl.disable gl.DEPTH_TEST
             for dvec in @debug.vectors
@@ -816,9 +857,9 @@ class RenderManager
                 #       and a circle when it's 0
                 dob = @debug.arrow
                 if dvec.color?
-                    color4.copy dob.materials[0].inputs.color.value, dvec.color
+                    color4.copy color, dvec.color
                 else
-                    color4.set dob.materials[0].inputs.color.value, 1,1,1,1
+                    color4.set color, 1,1,1,1
                 dob.position = dvec.position
                 v3 = dvec.vector
                 v2 = vec3.cross vec3.create(), cam.position, v3
@@ -1265,18 +1306,18 @@ class Debug
         bone.load_from_lists(d, [0,1,0,2,0,3,0,4,1,2,2,3,3,4,4,1,
                            5,1,5,2,5,3,5,4])
 
+        @color = color4.create()
         @material = mat = new Material @context, '_debug', {
             material_type: 'PLAIN_SHADER'
             vertex: plain_vs,
             fragment: plain_fs,
-            uniforms: [{varname:'color', value: color4.create()}],
+            uniforms: [{varname:'color', value: @color}],
         }
 
         for ob in [box, cylinder, cone, sphere, arrow, bone]
             ob.elements = []
             ob.stride = 4
             ob.materials = [mat]
-            ob.color = color4.new 1,1,1,1
             ob.data.draw_method = @context.render_manager.gl.LINES
             ob.scale = {x: 1, y:1, z:1}
             ob.rotation_order = 'Q'
@@ -1299,7 +1340,6 @@ class Debug
         mesh.load_from_va_ia va, ia
         mesh.elements = []
         mesh.materials = [@material]
-        mesh.color = color4.new 1,1,1,1 # TODO FIXME plain shader
         mesh.data.draw_method = render_manager.gl.LINES
         mesh.scale = vec3.new 1,1,1
         mesh._update_matrices()
