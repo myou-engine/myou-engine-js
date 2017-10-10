@@ -71,10 +71,6 @@ class MeshData
         @vertex_buffers = []
         @index_buffers = []
         @num_indices = []
-        # List of (lists of attribute pointers), one per material
-        # pointer = [location, number of components, type, offset]
-        @attrib_pointers = []
-        @attrib_bitmasks = []  # an int for each submesh
         @stride = 0
         @draw_method = GL_TRIANGLES
         @phy_convex_hull = null
@@ -107,6 +103,21 @@ class MeshData
                     gl.deleteBuffer buf
             delete @context.mesh_datas[@hash]
         ob.data = null
+
+    clone: ->
+        d = Object.create this
+        d.users = []
+        if (va = d.varray)?
+            d.varray = new Float32Array va
+            d.varray_byte = new Uint8Array va.buffer, va.byteOffset, va.byteLength
+        d.iarray = new Uint16Array d.iarray if d.iarray?
+        d.vertex_buffers = d.vertex_buffers[...]
+        d.index_buffers = d.index_buffers[...]
+        d.num_indices = d.num_indices[...]
+        return d
+
+
+
 
 # Mesh object class.
 #

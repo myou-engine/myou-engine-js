@@ -57,6 +57,7 @@ class Scene
         @original_scene_name = ''
         # We will save here the results of @get_ray_hit_under_pointer
         @hits_under_pointer = {}
+        @_debug_draw = null
 
     set_gravity: (gravity)->
         g = vec3.copy @gravity, gravity
@@ -118,7 +119,7 @@ class Scene
         if ob.type=='ARMATURE'
             @armatures.splice _,1 if (_ = @armatures.indexOf ob)!=-1
 
-        if ob.body
+        if ob.body? and not ob.fake_body
             remove_body @world, ob.body
             @rigid_bodies.splice _,1 if (_ = @rigid_bodies.indexOf ob)!=-1
             @static_ghosts.splice _,1 if (_ = @static_ghosts.indexOf ob)!=-1
@@ -394,5 +395,25 @@ class Scene
             result[3] = context.main_loop.frame_number
             @hits_under_pointer[pos_id] = result
         return result
+
+    # Returns a DebugDraw instance for this scene, creating it if necessary.
+    get_debug_draw: ->
+        if not @_debug_draw?
+            @_debug_draw = new @context.DebugDraw this
+        return @_debug_draw
+
+    # Returns whether it has a DebugDraw instance
+    has_debug_draw: -> @_debug_draw?
+
+    # Destroys the DebugDraw instance of this scene, if any
+    remove_debug_draw: ->
+        if @_debug_draw?
+            if @_debug_draw.shape_instances.length != 0
+                console.warn "There are debug shape instances in debug draw of #{@name}."
+                console.warn "The debug draw instance will be deleted nevertheless."
+            delete @_debug_draw
+            @_debug_draw = null
+        return
+
 
 module.exports = {Scene}

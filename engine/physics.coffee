@@ -290,7 +290,7 @@ activate_body = (body)->
     body.activate()
 
 update_ob_physics = (ob)->
-    if ob.body?
+    if ob.body? and not ob.body.fake_body
         if ob.parent
             pos = vec3.create()
             rot = quat.create()
@@ -309,7 +309,6 @@ set_phy_scale = (ob, scale)->
     world = ob.scene.world
     body = ob.body
     world.removeRigidBody(body)
-    ob.phy_he = scale
     _tmp_Vector3.setValue(scale.x, scale.y, scale.z)
     ob.shape.setImplicitShapeDimensions(_tmp_Vector3)
     world.addRigidBody(body, ob.collision_group, ob.collision_mask)
@@ -458,7 +457,7 @@ ob_to_phy = (ob_list)->
 ob_to_phy_with_scale = (ob_list)->
     pos = vec3.create()
     rot = quat.create()
-    for ob in ob_list when ob.body
+    for ob in ob_list when ob.body? and not ob.body.fake_body
         p = ob.parent
         vec3.copy pos, ob.position
         quat.copy rot, ob.rotation

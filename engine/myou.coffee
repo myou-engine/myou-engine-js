@@ -24,10 +24,12 @@ filters = require './filters'
 {Material} = require './material'
 {Mesh} = require './mesh'
 {Scene} = require './scene'
+{DebugDraw} = require './debug_draw'
 
 context_dependent_modules = {
     Armature, Camera, Curve, Framebuffer, ByteFramebuffer,
     Cubemap, GameObject, GLRay, Lamp, Material, Mesh, Scene,
+    DebugDraw,
 }
 
 # Using objects as dicts by disabling hidden object optimization

@@ -180,7 +180,6 @@ class RenderManager
         @common_shadow_fb = null
         @tmp_fb0 = null
         @tmp_fb1 = null
-        @debug = new Debug @context
 
         # Initial GL state
         gl.clearDepth 1.0
@@ -410,7 +409,6 @@ class RenderManager
             screen.post_draw()
 
         #@gl.flush()
-        @debug.vectors.splice 0 # TODO: have them per scene? preserve for a bunch of frames?
         @compiled_shaders_this_frame = 0
 
     ensure_post_processing_framebuffers: (width, height) ->
@@ -622,7 +620,6 @@ class RenderManager
                 @common_shadow_fb?.destroy()
             @_shadows_were_enabled = @enable_shadows
 
-        debug = @debug
         filter_fb = @common_filter_fb
         cam2world = @_cam2world
         world2cam = @_world2cam
@@ -784,103 +781,8 @@ class RenderManager
                 if ob.visible == true and ob.render
                     @draw_mesh ob, ob.world_matrix, 2
 
-
-        # Debug physics and vectors (TODO: move vector to debug properties?)
-        if @context.MYOU_PARAMS.debug
-            mm4 = mat4.create()
-            {color} = @debug
-            for ob in scene.children
-                dob = ob.phy_debug_mesh
-                if dob
-                    if dob!=ob
-                        ob.get_world_position_rotation_into dob.position, dob.rotation
-                        vec3.copy dob.scale, ob.phy_he
-                        dob._update_matrices()
-                        # TODO: It's better to have a separate debug mesh
-                        # than recalculating the matrices of the same mesh
-
-                    # occluded pass
-                    color4.set color, 1, 1, 1, .2
-                    gl.enable gl.BLEND
-                    gl.disable gl.DEPTH_TEST
-                    @draw_mesh dob, dob.world_matrix
-
-                    # visible pass
-                    gl.disable gl.BLEND
-                    gl.enable gl.DEPTH_TEST
-                    color4.set color, 1, 1, 1, 1
-                    @draw_mesh dob, dob.world_matrix
-                if ob != cam and ob.type == 'CAMERA'
-                    dob = @debug.box
-                    # Draw camera with frustum of far=1
-                    {near_plane, far_plane} = ob
-                    ob.near_plane = 1e-4
-                    ob.far_plane = 1
-                    ob.recalculate_projection()
-                    mat4.invert mm4, ob.projection_matrix
-                    mat4.mul mm4, ob.world_matrix, mm4
-                    ob.near_plane = near_plane
-                    ob.far_plane = far_plane
-                    ob.recalculate_projection()
-
-                    # occluded pass
-                    color4.set color, 1, 1, 1, .2
-                    gl.enable gl.BLEND
-                    gl.disable gl.DEPTH_TEST
-                    @draw_mesh dob, mm4
-
-                    # visible pass
-                    gl.disable gl.BLEND
-                    gl.enable gl.DEPTH_TEST
-                    color4.set color, 1, 1, 1, 1
-                    @draw_mesh dob, mm4
-
-                    # Draw whole frustum
-                    mat4.invert mm4, ob.projection_matrix
-                    mat4.mul mm4, ob.world_matrix, mm4
-
-                    # occluded pass
-                    color4.set color, 1, 1, 1, .1
-                    gl.enable gl.BLEND
-                    gl.disable gl.DEPTH_TEST
-                    @draw_mesh dob, mm4
-
-                    # visible pass
-                    gl.enable gl.DEPTH_TEST
-                    color4.set color, 1, 1, 1, .5
-                    @draw_mesh dob, mm4
-                    gl.disable gl.BLEND
-
-            gl.disable gl.DEPTH_TEST
-            for dvec in @debug.vectors
-                # TODO: draw something else when it's too small (a different arrow?)
-                #       and a circle when it's 0
-                dob = @debug.arrow
-                if dvec.color?
-                    color4.copy color, dvec.color
-                else
-                    color4.set color, 1,1,1,1
-                dob.position = dvec.position
-                v3 = dvec.vector
-                v2 = vec3.cross vec3.create(), cam.position, v3
-                v1 = vec3.normalize vec3.create(), vec3.cross(vec3.create(),v2,v3)
-                v2 = vec3.normalize vec3.create(), vec3.cross(v2,v3,v1)
-                s = vec3.len v3
-                vec3.scale v2,v2,s
-                vec3.scale v1,v1,s
-                ma = mat4.new v1.x, v1.y, v1.z, 0,
-                    v2.x, v2.y, v2.z, 0,
-                    v3.x, v3.y, v3.z, 0,
-                    dob.position.x, dob.position.y, dob.position.z, 1
-                @draw_mesh dob, ma
-
-            dob = @debug.bone
-            for ob in scene.armatures
-                for b in ob._bone_list
-                    mat4.scale(mm4, b.matrix, [b.blength,b.blength,b.blength])
-                    @draw_mesh dob, mm4
-
-            gl.enable gl.DEPTH_TEST
+        scene._debug_draw?._draw gl, cam
+        return
 
     # Draws a cubemap texture.
     # Usually called from {Probe}
@@ -1212,138 +1114,6 @@ class RenderManager
         return
 
 
-
-#Shader for debug shapes
-
-plain_vs = """
-        precision highp float;
-        precision highp int;
-        uniform mat4 model_view_matrix;
-        uniform mat4 projection_matrix;
-        attribute vec3 vertex;
-        void main()
-        {
-            vec4 pos = projection_matrix * model_view_matrix * vec4(vertex, 1.0);
-            pos.z -= 0.0005;
-            gl_Position = pos;
-        }"""
-plain_fs = "precision mediump float;uniform vec4 color;void main(){gl_FragColor = color;}"
-
-
-# Singleton instanced in {RenderManager} to draw the debug view of objects.
-class Debug
-
-    constructor: (@context)->
-        @vectors = []
-        if not @context.MYOU_PARAMS.debug
-            return
-        sin=Math.sin
-        cos=Math.cos
-
-        # Generate and save generic shapes for debug_physics
-        box = new Mesh @context
-        d=[1,1,1,
-            1,-1,1,
-            -1,-1,1,
-            -1,1,1,
-            1,1,-1,
-            1,-1,-1,
-            -1,-1,-1,
-            -1,1,-1]
-        box.load_from_lists(d, [0,1,1,2,2,3,3,0,4,5,5,6,6,7,7,4,
-                    0,4,1,5,2,6,3,7])
-
-        cylinder = new Mesh @context
-        d=[]
-        idx=[]
-        a=(3.1416*2)/16
-        for i in [0...16]
-            d.push sin(a*i),cos(a*i),1
-            d.push sin(a*i),cos(a*i),-1
-            idx.push i*2,(i*2+2)%32,i*2+1,(i*2+3)%32
-            if i%2==0
-                idx.push i*2,i*2+1
-        cylinder.load_from_lists d, idx
-
-        cone = new Mesh @context
-        d=[]
-        idx=[]
-        a=(3.1416*2)/16
-        for i in [0...16]
-            d.push 0,0,1
-            d.push sin(a*i),cos(a*i),-1
-            idx.push i*2+1,(i*2+3)%32
-            if i%2==0
-                idx.push i*2,i*2+1
-        cone.load_from_lists d, idx
-
-        sphere = new Mesh @context
-        d = []
-        idx = []
-        for i in [0...16]
-            d.push sin(a*i),cos(a*i),0
-            idx.push i, (i+1)%16
-        for i in [0...16]
-            d.push 0,sin(a*i),cos(a*i)
-            idx.push i+16, (i+1)%16+16
-        for i in [0...16]
-            d.push sin(a*i),0,cos(a*i)
-            idx.push i+32, (i+1)%16+32
-        sphere.load_from_lists d, idx
-
-        arrow = new Mesh @context
-        d = [0,0,0,  0,0,1,  0,0.07,0.7,  0,-0.07,0.7,]
-        arrow.load_from_lists d, [0,1,1,2,1,3]
-
-        bone = new Mesh @context
-        d = [0,0,0,
-             -0.1, 0.1, -0.1,
-              0.1, 0.1, -0.1,
-              0.1, 0.1,  0.1,
-             -0.1, 0.1,  0.1,
-             0,1,0,1,
-             ]
-        bone.load_from_lists(d, [0,1,0,2,0,3,0,4,1,2,2,3,3,4,4,1,
-                           5,1,5,2,5,3,5,4])
-
-        @color = color4.create()
-        @material = mat = new Material @context, '_debug', {
-            material_type: 'PLAIN_SHADER'
-            vertex: plain_vs,
-            fragment: plain_fs,
-            uniforms: [{varname:'color', value: @color}],
-        }
-
-        for ob in [box, cylinder, cone, sphere, arrow, bone]
-            ob.elements = []
-            ob.stride = 4
-            ob.materials = [mat]
-            ob.data.draw_method = @context.render_manager.gl.LINES
-            ob.scale = {x: 1, y:1, z:1}
-            ob.rotation_order = 'Q'
-            ob._update_matrices()
-
-        @box = box
-        @cylinder = cylinder
-        @cone = cone
-        @sphere = sphere
-        @arrow = arrow
-        @bone = bone
-
-        @vectors = []
-
-    # @private
-    debug_mesh_from_va_ia: (va, ia)->
-        mesh = new Mesh @context
-        mesh.stride = 3*4
-        mesh.offsets = [0, 0, va.length, ia.length]
-        mesh.load_from_va_ia va, ia
-        mesh.elements = []
-        mesh.materials = [@material]
-        mesh.data.draw_method = render_manager.gl.LINES
-        mesh.scale = vec3.new 1,1,1
-        mesh._update_matrices()
-        return mesh
 
 # @nodoc
 sort_by_mat_id = (a,b) ->

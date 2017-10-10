@@ -81,8 +81,6 @@ class GameObject
             @elasticity = 0
             @phy_mesh = null
             @phy_he = vec3.create() # half extents
-            @phy_debug_mesh = null
-            @phy_debug_hull = null
             @_use_visual_mesh = false
             # for kinematic characters
             @step_height = 0.15
@@ -109,21 +107,18 @@ class GameObject
             @visible_mesh.instance_physics()
             return
 
-        if @body# and @body.world == @scene.world
+        if @body? and not @body.fake_body
             remove_body @scene.world, @body
             @scene.rigid_bodies.splice _,1 if (_ = @scene.rigid_bodies.indexOf @)!=-1
             @scene.static_ghosts.splice _,1 if (_ = @scene.static_ghosts.indexOf @)!=-1
             @body = null
-            @phy_debug_mesh = null  # but it preserves phy_debug_hull
 
         mass = @mass
         shape = null
-        #@phy_debug_mesh = null
         has_collision = @physics_type != 'NO_COLLISION'
         if has_collision
             if not @scene.world
                 return
-
 
             # half extents
             he = @phy_he
@@ -136,23 +131,18 @@ class GameObject
             switch @collision_shape
                 when 'BOX'
                     shape = new BoxShape he.x, he.y, he.z, @collision_margin
-                    @phy_debug_mesh = @context.render_manager.debug.box
                 when 'SPHERE'
                     radius = Math.max he.x, he.y, he.z
                     shape = new SphereShape radius, @collision_margin
-                    @phy_debug_mesh = @context.render_manager.debug.sphere
                 when 'CYLINDER'
                     radius = Math.max he.x, he.y
                     shape = new CylinderShape radius, he.z*2, @collision_margin
-                    @phy_debug_mesh = @context.render_manager.debug.cylinder
                 when 'CONE'
                     radius = Math.max he.x, he.y
                     shape = new ConeShape radius, he.z*2, @collision_margin
-                    @phy_debug_mesh = @context.render_manager.debug.cone
                 when 'CAPSULE'
                     radius = Math.max he.x, he.y
                     shape = new CapsuleShape radius, he.z, @collision_margin
-                    @phy_debug_mesh = @context.render_manager.debug.cylinder
                 when 'CONVEX_HULL', 'TRIANGLE_MESH'
 
                     # Choose which mesh to use as physics
@@ -184,18 +174,20 @@ class GameObject
 
                     if not shape
                         # Get "global" scale
-                        # TODO: Get average scale and add an option for recomputing real scale
-                        scale = vec3.clone @scale
-                        while p
-                            vec3.scale scale, scale, p.scale.z
-                            p = p.parent
+                        # @phy_he is used as scale for debug objects, so we
+                        # assign it here as regular scale instead of half-extents
+                        if @parent
+                            # TODO: test
+                            # TODO: Avoid multiple calls to get_world_matrix()
+                            scale = vec3.fromMat4Scale he, @get_world_matrix()
+                        else
+                            scale = vec3.copy he, @scale
                         if is_hull
                             shape = new ConvexShape data.varray, ob.stride/4, @scale, @collision_margin
                             data.phy_convex_hull = shape
-                            if @debug and not @phy_debug_hull
-                                va_ia = get_convex_hull_edges data.varray, ob.stride/4, scale
-                                @phy_debug_hull = @context.render_manager.debug.debug_mesh_from_va_ia va_ia[0], va_ia[1]
-                            @phy_debug_mesh = @phy_debug_hull
+                            # if @debug and not @phy_debug_hull
+                            #     va_ia = get_convex_hull_edges data.varray, ob.stride/4, scale
+                            #     @phy_debug_hull = @context.render_manager.debug.debug_mesh_from_va_ia va_ia[0], va_ia[1]
                         else
                             shape = TriangleMeshShape(
                                 data.varray,
@@ -272,10 +264,13 @@ class GameObject
                 else
                     console.log "Warning: Type not handled", @physics_type
                 @shape = shape
+            else if @collision_compound
+                # fake body to store debug data
+                body = {fake_body: true}
             else
                 body = null
 
-            if body
+            if body and not body.fake_body
                 add_body @scene.world, body, @collision_group, @collision_mask
                 body.owner = @
                 if @no_sleeping
@@ -524,11 +519,11 @@ class GameObject
         n.avg_poly_length = @avg_poly_length
         n.behaviours = []
 
-        #n.state_machines = Object.create @state_machines
-        #n.friction_coefficients = @friction_coefficients[...]
-        #n.linear_factor = @linear_factor[...]
-        #n.angular_factor = @angular_factor[...]
-        #n.phy_he = @phy_he[...]
+        if @context.use_physics
+            n.friction_coefficients = @friction_coefficients[...]
+            n.linear_factor = @linear_factor[...]
+            n.angular_factor = @angular_factor[...]
+            n.phy_he = @phy_he[...]
 
         # Warning! This only works reliably
         # if the target scene have the same type of lamps!

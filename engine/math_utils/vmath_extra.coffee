@@ -175,6 +175,12 @@ vmath.mat3.fromColumns = (out, a, b, c) ->
     return out
 
 {vec3} = vmath
+vmath.vec3.fromMat4Scale = (out, m) ->
+    x = vec3.new m.m00, m.m01, m.m02
+    y = vec3.new m.m04, m.m05, m.m06
+    z = vec3.new m.m08, m.m09, m.m10
+    return vec3.set out, vec3.len(x), vec3.len(y), vec3.len(z)
+
 vmath.mat3.rotationFromMat4 = (out, m) ->
     x = vec3.new m.m00, m.m01, m.m02
     y = vec3.new m.m04, m.m05, m.m06
