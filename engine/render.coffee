@@ -366,7 +366,7 @@ class RenderManager
             texture.last_used_material = null
         return
 
-    # Draws all enabled scenes of all the viewports in `render_manager.viewports`.
+    # Draws all enabled scenes of all the viewports of all screens
     # Usually called from {MainLoop}
     draw_all: ->
         @frame_start = performance.now()
@@ -400,7 +400,7 @@ class RenderManager
                         source = result.destination
                         dest = result.temporary
                     last = effects[effects.length-1]
-                    result = last.apply source, screen.framebuffer
+                    result = last.apply source, screen.framebuffer, viewport.rect_pix
                     if result.destination != screen.framebuffer
                         throw "The last effect is not allowed to be pass-through
                             (second argument of effect.apply must be destination)."

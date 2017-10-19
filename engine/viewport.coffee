@@ -1,6 +1,5 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
-
-v = vec3.create()
+{DebugCamera} = require './debug_camera'
 
 # A viewport is part of the screen/canvas associated with a camera, with a specific size.
 #
@@ -22,6 +21,7 @@ class Viewport
         @custom_fov = null
         @debug_camera = null
         @units_to_pixels = 100
+        @_v = vec3.create()
         @set_clear true, true
         @recalc_aspect()
 
@@ -37,8 +37,11 @@ class Viewport
         @height = size_y * h
         @camera.aspect_ratio = @width/@height
         @camera.recalculate_projection()
+        if @debug_camera?
+            @debug_camera.aspect_ratio = @width/@height
+            @debug_camera.recalculate_projection()
         @rect_pix = [@left, @bottom, @width, @height]
-        vec3.set v, 1,0,-1
+        v = vec3.set @_v, 1,0,-1
         vec3.transformMat4(v, v, @camera.projection_matrix)
         @units_to_pixels = v.x * @width
         @pixels_to_units = 1/@units_to_pixels
@@ -56,11 +59,17 @@ class Viewport
         c |= if depth then 256 else 0 # GL_DEPTH_BUFFER_BIT
         @clear_bits = c
 
-    # Clones the viewport. Note that it is added to the list of viewports,
-    # and they will be rendering over the same area unless rect is changed.
+    # Clones the viewport and adds it to the screen.
+    # Note that it will be rendering over the same area unless rect is changed.
     # @return {Viewport}
     clone: ->
-        return new Viewport(@screen, @camera)
+        v = @screen.add_viewport @camera
+        v.effects = @effects[...]
+        v.effects_by_id = Object.create @effects_by_id
+        for behaviour in @context.behaviours
+            if this in behaviour.viewports
+                behaviour.viewports.push v
+        return v
 
     # Returns size of viewport in pixels.
     # @return [vec2]
@@ -68,10 +77,14 @@ class Viewport
         return vec2.new @width, @height
 
     destroy: ->
-        idx = @render_manager.viewports.indexOf @
-        if ~idx
-            @render_manager.viewports.splice idx, 1
-        # TODO: Destroy compositor if single user?
+        @clear_effects()
+        idx = @screen.viewports.indexOf @
+        if idx != -1
+            @screen.viewports.splice idx, 1
+        for behaviour in @context.behaviours
+            idx = behaviour.viewports.indexOf @
+            if idx != -1
+                behaviour.viewports.splice idx, 1
         return
 
     # Add effect at the end of the stack
@@ -112,6 +125,46 @@ class Viewport
                 return effect
         return @insert_effect 0, new effect_class @context, a, b, c, d
 
+    # Splits the viewport into two, side by side, by converting this to
+    # the left one, and returning the right one.
+    split_left_right: ->
+        @rect[2] *= .5
+        v2 = @clone()
+        v2.rect = @rect[...]
+        v2.rect[0] += @rect[2]
+        @recalc_aspect()
+        v2.recalc_aspect()
+        return v2
+
+    # Splits the viewport into two, over/under, by converting this to
+    # the top one, and returning the bottom one.
+    split_top_bottom: ->
+        @rect[3] *= .5
+        v2 = @clone()
+        v2.rect = @rect[...]
+        v2.rect[1] += @rect[3]
+        @recalc_aspect()
+        v2.recalc_aspect()
+        return v2
+
+    enable_debug_camera: ->
+        if not @debug_camera_behaviour?
+            @debug_camera_behaviour = new DebugCamera @camera.scene,
+                viewports: [this]
+            {@debug_camera} = @debug_camera_behaviour
+        return
+
+    disable_debug_camera: ->
+        if @debug_camera_behaviour?
+            @debug_camera_behaviour.disable()
+            @debug_camera_behaviour = null
+        return
+
+    get_viewport_coordinates: (x, y) ->
+        x -= @left
+        y = @screen.height - y
+        y = @screen.height - (y - @bottom)
+        return {x, y}
 
 
 module.exports = {Viewport}

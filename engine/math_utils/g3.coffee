@@ -22,7 +22,7 @@ planes_intersection = (out, a, b, c)->
 
 plane_from_norm_point = (out, n, p)->
     # p is a point of the plane
-    # n is the normal of the plane
+    # n is the normal of the plane (NOTE: must be normalized)
     # returns a vec4
     return vec4.set out, n.x, n.y, n.z, n.x*p.x+n.y*p.y+n.z*p.z
 

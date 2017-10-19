@@ -45,34 +45,29 @@ class Camera extends GameObject
         clone.sensor_fit = @sensor_fit
         return clone
 
-    #Avoid physical lamps and cameras
+    # @nodoc
+    # Avoid physical lamps and cameras
     instance_physics: ->
 
+    # Returns a world vector from screen coordinates,
+    # 0 to 1, where (0,0) is the upper left corner.
     get_ray_direction: (x, y)-> @get_ray_direction_into vec3.create(), x, y
 
+    # Returns a world vector from screen coordinates,
+    # 0 to 1, where (0,0) is the upper left corner.
     get_ray_direction_into: (out, x, y)->
-        # Assumes screen coordinates (0 to 1)
-        v = out
-        v.x = x*2-1
-        v.y = 1-y*2
-        v.z = 1
-        {position, rotation} = @get_world_position_rotation()
-        vec3.transformMat4 v, v, @projection_matrix_inv
-        vec3.transformQuat v, v, rotation
-        vec3.add(v, v, position)
-        return v
+        vec3.set out, x*2-1, 1-y*2, 1
+        vec3.transformMat4 out, out, @projection_matrix_inv
+        vec3.transformQuat out, out, @get_world_rotation()
+        return out
 
     get_ray_direction_local: (x, y)-> @get_ray_direction_local_into vec3.create(), x, y
 
     get_ray_direction_local_into: (out, x, y)->
-        # Assumes screen coordinates (0 to 1)
-        v = out
-        v.x = x*2-1
-        v.y = 1-y*2
-        v.z = 1
-        vec3.transformMat4 v, v, @projection_matrix_inv
-        vec3.transformQuat v, v, @rotation
-        return v
+        vec3.set out, x*2-1, 1-y*2, 1
+        vec3.transformMat4 out, out, @projection_matrix_inv
+        vec3.transformQuat out, out, @rotation
+        return out
 
     is_vertical_fit: ->
         {sensor_fit} = @

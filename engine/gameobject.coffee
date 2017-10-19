@@ -547,6 +547,14 @@ class GameObject
             n.instance_physics @_use_visual_mesh
         return n
 
+    parent_to: (parent, keep_transform=true) ->
+        if @parent?
+            @scene.clear_parent this, keep_transform
+        @scene.make_parent parent, this, keep_transform
+
+    clear_parent: (keep_transform) ->
+        @scene.clear_parent this, keep_transform
+
     remove: (recursive) ->
         if @properties.probe_options?
             @probe?.destroy()

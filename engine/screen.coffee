@@ -30,6 +30,20 @@ class Screen
 
     post_draw: ->
 
+    # From a screen (x,y) pixel position, return the viewport and the
+    # (x,y) relative to that viewport. Upper left corner is (0,0)
+    get_viewport_coordinates: (x, y) ->
+        y = @height - y
+        for viewport in @viewports by -1
+            [left, bottom, width, height] = viewport.rect_pix
+            right = left+width
+            top = bottom+height
+            if left < x < right and bottom < y < top
+                x -= left
+                y = @height - (y - bottom)
+                return {x, y, viewport}
+        return {x, y, viewport: null}
+
 
 
 class CanvasScreen extends Screen

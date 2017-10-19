@@ -51,7 +51,7 @@ class Lamp extends GameObject
 
         # mat4.multiply m4, world2cam, @world_matrix
         # @_dir.x = -m4.m08
-        # @_dir.y = -m4-m09
+        # @_dir.y = -m4.m09
         # @_dir.z = -m4.m10
         ##We're doing the previous lines, but just for the terms we need
         a = world2cam

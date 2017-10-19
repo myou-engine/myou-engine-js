@@ -98,6 +98,7 @@ class Scene
             @lamps.push ob
         if ob.type=='ARMATURE'
             @armatures.push ob
+        return
 
     remove_object: (ob, recursive=true)->
         @children.splice _,1 if (_ = @children.indexOf ob)!=-1
@@ -218,9 +219,12 @@ class Scene
         # remove texture.users and garabage collect them after textures
         # of the next scene are enumerated
 
-        for v in @context.render_manager.viewports[...]
-            if v.camera.scene == @
-                @context.render_manager.viewports.splice _,1 if (_ = @context.render_manager.viewports.indexOf v)!=-1
+        # TODO: test this
+        for screen in @context.screens
+            for v,i in screen.viewports by -1
+                if v.camera.scene == @
+                    screen.viewports.splice i, 1
+        return
 
     reload: ->
         @unload()
@@ -372,24 +376,18 @@ class Scene
             probe.set_lod_factor()
         return
 
-    get_ray_hit_under_pointer: (pointer_event, int_mask=-1) ->
+    get_ray_hit: (x, y, camera, int_mask=-1) ->
         if not @world?
             return []
-        pos_id = (pointer_event.clientX<<16)|pointer_event.clientY
+        pos_id = (x<<16)|y
         result = @hits_under_pointer[pos_id]
         context = @context
         if not result or result[3] != context.main_loop.frame_number
-            cam = @active_camera
-
-            pos = cam.get_world_position()
+            pos = camera.get_world_position()
             {width, height} = context.render_manager.canvas
 
-            x = pointer_event.clientX - @context.root_rect.left - pageXOffset
-            y = pointer_event.clientY - @context.root_rect.top - pageYOffset
-            x = x/width
-            y = y/height
-
-            rayto = cam.get_ray_direction(x,y)
+            rayto = camera.get_ray_direction(x/width, y/height)
+            vec3.add rayto, rayto, camera.position
 
             result = ray_intersect_body_absolute(@, pos, rayto, int_mask) or []
             result[3] = context.main_loop.frame_number

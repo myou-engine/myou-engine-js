@@ -6,13 +6,21 @@ class Behaviour
     constructor: (@scene, options={})->
         if @scene?.type != 'SCENE'
             throw 'Expected a scene'
+        {@context} = @scene
         {
             objects
+            @camera=@scene.active_camera
+            viewports=@context.canvas_screen.viewports
             #TODO: destroy or improve when we have GLRay
             @ray_int_mask=-1
         } = options
         if not @id
             @id = (Math.random()+'')[2...]
+        @viewports = []
+        for v in viewports when v.camera == @camera
+            @viewports.push v
+        if @viewports.length == 0
+            throw 'There are no viewports where the specified camera is drawn to screen.'
 
         @assignment_times = {}
         @objects = []
@@ -20,26 +28,41 @@ class Behaviour
             for ob in objects
                 @assign ob
 
-        {@root} = @scene.context
-        @scene.context.behaviours.push @
+        @_root = @context.root
+        @context.behaviours.push @
         @init_time = performance.now()
         @_enabled = false
         @_object_under_pointer = {}
         @_last_hit = {}
         @_objects_frame_callback = _frame_callback = null
+        @_prev_events = {}
+        @_over_viewport = null
+        @_locked_viewport = null
+        @_menu_prevent_default = null
+        @_object_picking_method = ''
+        @_pick_on_move = false
         @enable()
         @on_init?()
+        if @_object_picking_method == '' and (@on_object_pointer_down? or @on_object_pointer_up?\
+            or @on_object_pointer_move? or @on_object_pointer_over? or @on_object_pointer_out?)
+                # TODO: Warn with a timer?
+                console.warn "There are on_object_pointer_* events but object picking is disabled."
+                console.warn 'Add "this.enable_object_picking()" to on_init()'
 
     enable: ->
         if not @_enabled
             @_create_events()
             @scene.post_draw_callbacks.push @_add_callbacks
+            if @_menu_prevent_default?
+                @_root.addEventListener 'contextmenu', @_menu_prevent_default
             @_enabled = true
 
     disable: ->
         if @_enabled
             @_destroy_events()
             @scene.post_draw_callbacks.push @_remove_callbacks
+            if @_menu_prevent_default?
+                @_root.removeEventListener 'contextmenu', @_menu_prevent_default
             @_enabled = false
 
     age: ->
@@ -65,6 +88,51 @@ class Behaviour
         i = @objects.indexOf object
         if i > -1 then @objects.splice(i, 1)
 
+    disable_context_menu: ->
+        if not @_menu_prevent_default?
+            @_menu_prevent_default = (e) -> e.preventDefault()
+            if @_enabled
+                @_root.addEventListener 'contextmenu', @_menu_prevent_default
+        return
+
+    enable_context_menu: ->
+        if @_menu_prevent_default?
+            @_root.removeEventListener 'contextmenu', @_menu_prevent_default
+            @_menu_prevent_default = null
+        return
+
+    enable_object_picking: (options={}) ->
+        {
+            method='physics'
+        } = options
+        @disable_object_picking()
+        if @_enabled
+            # TODO: make more efficient?
+            @_destroy_events()
+            @_create_events()
+        method = {physics: 'phy'}[method]
+        if not method?
+            throw "Object picking method not supported: "+method
+        @_object_picking_method = method
+        return
+
+    disable_object_picking: ->
+        @_object_picking_method = ''
+        @_pick_on_move = false
+        return
+
+    pick_object: (x, y, viewport) ->
+        switch @_object_picking_method
+            when ''
+                null
+            when 'phy'
+                if not viewport?
+                    {x, y, viewport} = @context.canvas_screen.get_viewport_coordinates x, y
+                [body, point, normal] = @scene.get_ray_hit x, y, viewport.camera
+                if body?.owner
+                    return {object: body.owner, point, normal}
+        return {}
+
     _add_callbacks: =>
         @_remove_callbacks()
         if @on_tick?
@@ -87,82 +155,155 @@ class Behaviour
             pdc.splice pdc.indexOf(@_frame_callback), 1
         @_objects_frame_callback = _frame_callback = null
 
-    _create_events: ->
-        {@root} = @scene.context
-        @on_pointer_over? and addListener @root, 'pointerover', @on_pointer_over
-        @on_pointer_out? and addListener @root, 'pointerout', @on_pointer_out
-        @on_pointer_down? and addListener @root, 'pointerdown', @on_pointer_down
-        @on_pointer_up? and addListener @root, 'pointerup', @on_pointer_up
-        @on_pointer_move? and addListener @root, 'pointermove', @on_pointer_move
-        @on_key_down? and addListener @root, 'keydown', @onkeydown
-        @on_key_up? and addListener @root, 'keyup', @onkeyup
-        @on_wheel? and addListener @root, 'wheel', @onwheel
-        @on_click? and addListener @root, 'click', @onclick
-        if @on_object_pointer_over? or @on_object_pointer_out?
-            addListener @root, 'pointerover', @_on_object_pointer_over_out_listener
-            addListener @root, 'pointermove', @_on_object_pointer_over_out_listener
-            addListener @root, 'pointerout', @_on_object_pointer_over_out_listener
-        @on_object_pointer_down? and addListener @root, 'pointerdown', @_on_object_pointer_down_listener
-        @on_object_pointer_up? and addListener @root, 'pointerup', @_on_object_pointer_up_listener
-        @on_object_pointer_move? and addListener @root, 'pointermove', @_on_object_pointer_move_listener
+    _on_pointer_down: (event) =>
+        x = event.clientX - @context.root_rect.left - pageXOffset
+        y = event.clientY - @context.root_rect.top - pageYOffset
+        prev = @_prev_events['mouse']
+        if not prev?
+            prev = @_prev_events['mouse'] = {x, y}
+        prev.x = x; prev.y = y
+        {x, y, viewport} = @context.canvas_screen.get_viewport_coordinates x, y
+        if viewport in @viewports
+            {button, buttons} = event
+            @_locked_viewport = viewport
+            @on_pointer_down? {x, y, delta_x: 0, delta_y: 0, button, buttons, viewport}
+            if @on_object_pointer_down?
+                {object, point, normal} = @pick_object x, y, viewport
+                if object?
+                    @on_object_pointer_down {
+                        x, y, delta_x: 0, delta_y: 0, button, buttons, viewport
+                        object, point, normal
+                    }
+        return
 
+    _on_pointer_up: (event) =>
+        x = event.clientX - @context.root_rect.left - pageXOffset
+        y = event.clientY - @context.root_rect.top - pageYOffset
+        prev = @_prev_events['mouse']
+        if not prev?
+            prev = @_prev_events['mouse'] = {x, y}
+        delta_x = x - prev.x
+        delta_y = y - prev.y
+        prev.x = x; prev.y = y
+        # TODO: Should we only lock outside the window?
+        if @_locked_viewport?
+            viewport = @_locked_viewport
+            {x, y} = viewport.get_viewport_coordinates x, y
+            @_locked_viewport = null
+        else
+            {x, y, viewport} = @context.canvas_screen.get_viewport_coordinates x, y
+        if viewport in @viewports
+            {button, buttons} = event
+            @on_pointer_up {x, y, delta_x, delta_y, button, buttons, viewport}
+            if @on_object_pointer_up?
+                {object, point, normal} = @pick_object x, y, viewport
+                if object?
+                    @on_object_pointer_up {
+                        x, y, delta_x: 0, delta_y: 0, button, buttons, viewport
+                        object, point, normal
+                    }
+        return
+
+    _on_pointer_move: (event) =>
+        # TODO: Use pointer IDs, both for deltas and for viewport/object over/out
+        x = event.clientX - @context.root_rect.left - pageXOffset
+        y = event.clientY - @context.root_rect.top - pageYOffset
+        prev = @_prev_events['mouse']
+        if not prev?
+            prev = @_prev_events['mouse'] = {x, y}
+        delta_x = x - prev.x
+        delta_y = y - prev.y
+        prev.x = x; prev.y = y
+        {button, buttons} = event
+        # TODO: Should we only lock outside the window?
+        if @_locked_viewport?
+            viewport = @_locked_viewport
+            {x, y} = viewport.get_viewport_coordinates x, y
+        else
+            if event.type != 'pointerout'
+                {x, y, viewport} = @context.canvas_screen.get_viewport_coordinates x, y
+                if @_pick_on_move and viewport?
+                    # we rely in these being hoisted to the top as "undefined"
+                    {object, point, normal} = @pick_object x, y, viewport
+        if @_over_object? and @_over_object != object
+            @on_object_pointer_out? {
+                x, y, delta_x: 0, delta_y: 0, button, buttons, viewport
+                object: @_over_object, point, normal
+            }
+        if @_over_viewport? and @_over_viewport != viewport
+            @on_pointer_out? {x, y, delta_x, delta_y, button, buttons, viewport: @_over_viewport}
+            @_over_viewport = null
+        if viewport in @viewports
+            if object? and @_over_object != object
+                @on_object_pointer_over? {
+                    x, y, delta_x: 0, delta_y: 0, button, buttons, viewport
+                    object, point, normal
+                }
+                @_over_object = object
+            out_event = {x, y, delta_x, delta_y, button, buttons, viewport}
+            if not @_over_viewport?
+                @_over_viewport = viewport
+                @on_pointer_over? out_event
+            if event.type != 'pointerout'
+                @on_pointer_move? out_event
+                object? and @on_object_pointer_move? {
+                    x, y, delta_x: 0, delta_y: 0, button, buttons, viewport
+                    object, point, normal
+                }
+        return
+
+    # TODO: Detect full screen canvas/root to decide whether to fire the events
+    # always or only after clicking ("focusing") it
+    _on_key_down: (event) =>
+        # Only sending members that are well supported, easy, and not obsolete
+        {key, location, shiftKey, ctrlKey, altKey, metaKey} = event
+        @on_key_down({key, location, shiftKey, ctrlKey, altKey, metaKey})
+
+    _on_key_up: (event) =>
+        {key, location, shiftKey, ctrlKey, altKey, metaKey} = event
+        @on_key_up({key, location, shiftKey, ctrlKey, altKey, metaKey})
+
+    _on_wheel_listener: (event) =>
+        if event.deltaMode == 1
+            event.deltaMode = 0
+            event.deltaY *= 18
+        event.stepsY = Math.round event.deltaY / (18*3)
+        @on_wheel event
+
+    _create_events: ->
+        root = @_root
+        @on_pointer_over? and addListener root, 'pointerover', @_on_pointer_over
+        @on_pointer_out? and addListener root, 'pointerout', @_on_pointer_out
+        if @on_pointer_down? or @on_object_pointer_down?
+            addListener root, 'pointerdown', @_on_pointer_down
+        if @on_pointer_up? or @on_object_pointer_up?
+            addListener root, 'pointerup', @_on_pointer_up
+        if @on_pointer_move? or @on_pointer_over? or @on_pointer_out? or\
+                @on_object_pointer_move? or @on_object_pointer_over? or @on_object_pointer_out?
+            addListener window, 'pointermove', @_on_pointer_move
+            addListener window, 'pointerout', @_on_pointer_move
+        @_pick_on_move = @on_object_pointer_move? or @on_object_pointer_over?
+        @on_key_down? and window.addEventListener 'keydown', @_on_key_down
+        @on_key_up? and window.addEventListener 'keyup', @_on_key_up
+        @on_wheel? and root.addEventListener 'wheel', @_on_wheel_listener
+        # @on_click? and addListener root, 'click', @on_click
 
     _destroy_events: ->
-        {root} = @
-        @on_pointer_over? and removeListener root, 'pointerover', @on_pointer_over
-        @on_pointer_out? and removeListener root, 'pointerout', @on_pointer_out
-        @on_pointer_down? and removeListener root, 'pointerdown', @on_pointer_down
-        @on_pointer_up? and removeListener root, 'pointerup', @on_pointer_up
-        @on_pointer_move? and removeListener root, 'pointermove', @on_pointer_move
-        @on_key_down? and removeListener root, 'keydown', @onkeydown
-        @on_key_up? and removeListener root, 'keyup', @onkeyup
-        @on_wheel? and removeListener root, 'wheel', @onwheel
-        @on_click? and removeListener root, 'click', @onclick
-        if @on_object_pointer_over? or @on_object_pointer_out?
-            removeListener root, 'pointerover', @_on_object_pointer_over_out_listener
-            removeListener root, 'pointermove', @_on_object_pointer_over_out_listener
-            removeListener root, 'pointerout', @_on_object_pointer_over_out_listener
-        @on_object_pointer_down? and removeListener root, 'pointerdown', @_on_object_pointer_down_listener
-        @on_object_pointer_up? and removeListener root, 'pointerup', @_on_object_pointer_up_listener
-        @on_object_pointer_move? and removeListener root, 'pointermove', @_on_object_pointer_move_listener
-
-    _on_object_pointer_over_out_listener: (e) =>
-        obhit = null
-        if e.type != 'pointerout'
-            hit = @scene.get_ray_hit_under_pointer(e, @ray_int_mask)
-            obhit = hit[0]?.owner
-            if not obhit in @objects
-                obhit = null
-        last_hit = @_last_hit[e.pointerId]
-        last_obhit = last_hit?[0]?.owner
-
-        are_different = last_obhit != obhit
-        if last_obhit? and are_different
-            @on_object_pointer_out?(e, last_obhit, last_hit[1], last_hit[2])
-        if obhit? and are_different
-            @on_object_pointer_over?(e, obhit, hit[1], hit[2])
-
-        @_object_under_pointer[e.pointerId] = obhit
-        @_last_hit[e.pointerId] = hit
-        return
-
-    _on_object_pointer_move_listener: (e)=>
-        hit = @scene.get_ray_hit_under_pointer(e, @ray_int_mask)
-        if (obhit = hit[0]?.owner) in @objects
-            @on_object_pointer_move(e, obhit, hit[1], hit[2])
-        return
-
-    _on_object_pointer_down_listener: (e)=>
-        hit = @scene.get_ray_hit_under_pointer(e, @ray_int_mask)
-        if (obhit = hit[0]?.owner) in @objects
-            @on_object_pointer_down(e, obhit, hit[1], hit[2])
-        return
-
-    _on_object_pointer_up_listener: (e)=>
-        hit = @scene.get_ray_hit_under_pointer(e, @ray_int_mask)
-        if (obhit = hit[0]?.owner) in @objects
-            @on_object_pointer_up(e, obhit, hit[1], hit[2])
-        return
+        root = @_root
+        @on_pointer_over? and removeListener root, 'pointerover', @_on_pointer_over
+        @on_pointer_out? and removeListener root, 'pointerout', @_on_pointer_out
+        if @on_pointer_down? or @on_object_pointer_down?
+            removeListener root, 'pointerdown', @_on_pointer_down
+        if @on_pointer_up? or @on_object_pointer_up?
+            removeListener root, 'pointerup', @_on_pointer_up
+        if @on_pointer_move? or @on_pointer_over? or @on_pointer_out? or\
+                @on_object_pointer_over? or @on_object_pointer_out?
+            removeListener window, 'pointermove', @_on_pointer_move
+            removeListener window, 'pointerout', @_on_pointer_move
+        @on_key_down? and window.removeEventListener 'keydown', @_on_key_down
+        @on_key_up? and window.removeEventListener 'keyup', @_on_key_up
+        @on_wheel? and root.removeEventListener 'wheel', @_on_wheel_listener
+        # @on_click? and removeListener root, 'click', @on_click
 
 
 

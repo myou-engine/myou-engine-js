@@ -126,30 +126,31 @@ class Framebuffer
             @constructor @context, @options
 
     # Sets the framebuffer as the active one for further rendering operations.
+    # Lower left corner is (0,0)
     # @param rect [Array<number>] Viewport rect in pixels: X position, Y position, width, height.
     enable: (rect=null)->
         {gl} = @context.render_manager
         @has_mipmap = false
         if not rect?
-            left = top = 0
+            left = bottom = 0
             size_x = @size_x
             size_y = @size_y
         else
             left = rect[0]
-            top = rect[1]
+            bottom = rect[1]
             size_x = rect[2]
             size_y = rect[3]
         if Framebuffer.active_buffer == this
             {x,y,z,w} = Framebuffer.active_rect
-            if left == x and top == y and size_x == z and size_y == w
+            if left == x and bottom == y and size_x == z and size_y == w
                 return
         @current_size_x = size_x
         @current_size_y = size_y
         @context.render_manager.unbind_texture @texture if @texture?.bound_unit >= 0
         @context.render_manager.unbind_texture @depth_texture if @depth_texture?.bound_unit >= 0
         gl.bindFramebuffer gl.FRAMEBUFFER, @framebuffer
-        gl.viewport left, top, size_x, size_y
-        vec4.set Framebuffer.active_rect, left, top, size_x, size_y
+        gl.viewport left, bottom, size_x, size_y
+        vec4.set Framebuffer.active_rect, left, bottom, size_x, size_y
         if Framebuffer.active_buffer?.texture?
             Framebuffer.active_buffer.texture.is_framebuffer_active = false
             Framebuffer.active_buffer.depth_texture?.is_framebuffer_active = false
@@ -241,6 +242,7 @@ class MainFramebuffer extends Framebuffer
         @framebuffer = null
         @is_complete = true
 
+# TODO: move to context
 Framebuffer.active_rect = new vec4.create()
 Framebuffer.active_buffer = null
 
