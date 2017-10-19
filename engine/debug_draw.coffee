@@ -98,20 +98,17 @@ class DebugDraw
         return
 
     _draw_frustum: (gl, rm, ob, mm4) ->
-        orig_proj = mat4.create()
         {color} = @_shapes
         dob = @_shapes.box
         # Draw camera with frustum of far=1
         {near_plane, far_plane} = ob
-        mat4.copy orig_proj, ob.projection_matrix
         ob.near_plane = 1e-4
         ob.far_plane = 1
         ob.recalculate_projection()
-        mat4.invert mm4, ob.projection_matrix
-        mat4.mul mm4, ob.world_matrix, mm4
+        mat4.mul mm4, ob.world_matrix, ob.projection_matrix_inv
         ob.near_plane = near_plane
         ob.far_plane = far_plane
-        mat4.copy ob.projection_matrix, orig_proj
+        ob.recalculate_projection()
 
         # occluded pass
         color4.set color, 1, 1, 1, @hidden_alpha
@@ -126,8 +123,7 @@ class DebugDraw
         rm.draw_mesh dob, mm4
 
         # Draw whole frustum
-        mat4.invert mm4, ob.projection_matrix
-        mat4.mul mm4, ob.world_matrix, mm4
+        mat4.mul mm4, ob.world_matrix, ob.projection_matrix_inv
 
         # occluded pass
         color4.set color, 1, 1, 1, @hidden_alpha

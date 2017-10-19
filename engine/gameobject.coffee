@@ -520,10 +520,10 @@ class GameObject
         n.behaviours = []
 
         if @context.use_physics
-            n.friction_coefficients = @friction_coefficients[...]
-            n.linear_factor = @linear_factor[...]
-            n.angular_factor = @angular_factor[...]
-            n.phy_he = @phy_he[...]
+            n.friction_coefficients = vec3.clone @friction_coefficients
+            n.linear_factor = vec3.clone @linear_factor
+            n.angular_factor = vec3.clone @angular_factor
+            n.phy_he = vec3.clone @phy_he
 
         # Warning! This only works reliably
         # if the target scene have the same type of lamps!
