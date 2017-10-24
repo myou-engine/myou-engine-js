@@ -34,6 +34,7 @@ class Behaviour
         @_prev_events = {}
         @_over_viewport = null
         @_locked_viewport = null
+        @_real_viewports = @viewports # to be modified by debug camera
         @_menu_prevent_default = null
         @_object_picking_method = ''
         @_pick_on_move = false
@@ -167,7 +168,7 @@ class Behaviour
             prev = @_prev_events['mouse'] = {x, y}
         prev.x = x; prev.y = y
         {x, y, viewport} = @context.canvas_screen.get_viewport_coordinates x, y
-        if viewport in @viewports
+        if viewport in @_real_viewports
             {button, buttons, shiftKey, ctrlKey, altKey, metaKey} = event
             @_locked_viewport = viewport
             @on_pointer_down? {x, y, delta_x: 0, delta_y: 0, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport}
@@ -196,7 +197,7 @@ class Behaviour
             @_locked_viewport = null
         else
             {x, y, viewport} = @context.canvas_screen.get_viewport_coordinates x, y
-        if viewport in @viewports
+        if viewport in @_real_viewports
             {button, buttons, shiftKey, ctrlKey, altKey, metaKey} = event
             @on_pointer_up {x, y, delta_x, delta_y, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport}
             if @on_object_pointer_up?
@@ -237,7 +238,7 @@ class Behaviour
         if @_over_viewport? and @_over_viewport != viewport
             @on_pointer_out? {x, y, delta_x, delta_y, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport: @_over_viewport}
             @_over_viewport = null
-        if viewport in @viewports
+        if viewport in @_real_viewports
             if object? and @_over_object != object
                 @on_object_pointer_over? {
                     x, y, delta_x: 0, delta_y: 0, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport
@@ -275,7 +276,7 @@ class Behaviour
             {x, y} = viewport.get_viewport_coordinates x, y
         else
             {x, y, viewport} = @context.canvas_screen.get_viewport_coordinates x, y
-        if viewport in @viewports
+        if viewport in @_real_viewports
             {deltaX: delta_x, deltaY: delta_y, shiftKey, ctrlKey, altKey, metaKey} = event
             if event.deltaMode == 1
                 delta_x *= 18

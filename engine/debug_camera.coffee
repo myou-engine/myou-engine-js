@@ -1,10 +1,9 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat, color4, clamp} = require 'vmath'
 {Behaviour} = require './behaviour'
-{ray_intersect_body_absolute} = require './physics'
 
 class DebugCamera extends Behaviour
     on_init: ->
-        @debug_camera = @viewports[0].debug_camera = @viewports[0].camera.clone()
+        @debug_camera = @viewports[0].camera.clone()
         @scene.clear_parent @debug_camera
         @debug_camera.set_rotation_order 'XYZ'
         @pivot = new @context.GameObject
@@ -12,7 +11,7 @@ class DebugCamera extends Behaviour
         @debug = @scene.get_debug_draw()
         # we use @active instead of enabling/disabling the behaviour,
         # to be able to re-enable with a key
-        @active = true
+        @active = false
         @rotating = false
         @panning = false
         @distance = @pan_distance = 5
@@ -21,6 +20,7 @@ class DebugCamera extends Behaviour
         @pivot_vis.position = @pivot.position
         @disable_context_menu()
         this.enable_object_picking()
+        @activate()
 
     on_tick: ->
         return if not @active
@@ -72,20 +72,42 @@ class DebugCamera extends Behaviour
     on_wheel: (event) ->
         return if not @active
         # zoom with wheel, but avoid going through objects
-        dist = @distance * .2 * (event.delta_y/54)
-        dist = Math.max dist, -(@distance - @debug_camera.near_plane*1.2)
-        @debug_camera.translate_z dist, @debug_camera
+        # 54 is the approximate amount of pixels of one scroll step
+        delta = @distance * (4/5) ** (-event.delta_y/54) - @distance
+        delta = Math.max delta, -(@distance - @debug_camera.near_plane*1.2)
+        @debug_camera.translate_z delta, @debug_camera
         @distance = vec3.dist @debug_camera.position, @pivot.position
+
+    activate: ->
+        if not @active
+            [viewport] = @viewports
+            viewport.debug_camera = @debug_camera
+            viewport.recalc_aspect()
+            for behaviour in @context.behaviours when behaviour != this
+                if viewport in behaviour._real_viewports
+                    behaviour._real_viewports = behaviour._real_viewports[...]
+                    behaviour._real_viewports.splice(
+                        behaviour._real_viewports.indexOf(viewport), 1)
+            @active = true
+
+    deactivate: ->
+        if @active
+            [viewport] = @viewports
+            viewport.debug_camera = null
+            for behaviour in @context.behaviours when behaviour != this
+                if viewport in behaviour.viewports
+                    behaviour._real_viewports = rv = []
+                    for v in behaviour.viewports when not v.debug_camera?
+                        rv.push v
+            @active = false
 
     on_key_down: (event) ->
         switch event.key.toLowerCase()
             when 'q'
-                @active = not @active
                 if @active
-                    @viewports[0].debug_camera = @debug_camera
-                    @viewports[0].recalc_aspect()
+                    @deactivate()
                 else
-                    @viewports[0].debug_camera = null
+                    @activate()
 
     # on_object_pointer_down: (event) -> console.log 'down', event.object.name
     # on_object_pointer_up: (event) -> console.log 'up', event.object.name

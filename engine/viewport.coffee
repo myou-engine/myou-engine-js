@@ -66,7 +66,7 @@ class Viewport
     clone: (options={}) ->
         {
             copy_effects=true
-            copy_behaviours=false
+            copy_behaviours=true
         } = options
         v = @screen.add_viewport @camera
         v.rect = @rect[...]
@@ -75,8 +75,11 @@ class Viewport
             v.effects_by_id = Object.create @effects_by_id
         if copy_behaviours
             for behaviour in @context.behaviours
-                if this in behaviour.viewports
+                if this in behaviour.viewports and behaviour != @debug_camera_behaviour
+                    # TODO: should we add and use behaviour.add_viewport()?
                     behaviour.viewports.push v
+                    if behaviour._real_viewports != behaviour.viewports
+                        behaviour._real_viewports.push v
         return v
 
     # Returns size of viewport in pixels.
