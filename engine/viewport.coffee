@@ -32,7 +32,7 @@ class Viewport
         [x,y,w,h] = @rect
         {size_x, size_y} = @screen.framebuffer
         @left = size_x * x
-        @bottom = size_x * y
+        @bottom = size_y * y
         @width = size_x * w
         @height = size_y * h
         # TODO: Warn if several viewports with different ratios have same camera
@@ -69,6 +69,7 @@ class Viewport
             copy_behaviours=false
         } = options
         v = @screen.add_viewport @camera
+        v.rect = @rect[...]
         if copy_effects
             v.effects = @effects[...]
             v.effects_by_id = Object.create @effects_by_id
@@ -137,7 +138,6 @@ class Viewport
     split_left_right: (options) ->
         @rect[2] *= .5
         v2 = @clone(options)
-        v2.rect = @rect[...]
         v2.rect[0] += @rect[2]
         @recalc_aspect()
         v2.recalc_aspect()
@@ -148,7 +148,6 @@ class Viewport
     split_top_bottom: (options) ->
         @rect[3] *= .5
         v2 = @clone(options)
-        v2.rect = @rect[...]
         v2.rect[1] += @rect[3]
         @recalc_aspect()
         v2.recalc_aspect()
