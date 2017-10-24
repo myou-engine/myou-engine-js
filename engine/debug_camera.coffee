@@ -1,10 +1,10 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat, clamp} = require 'vmath'
+{mat2, mat3, mat4, vec2, vec3, vec4, quat, color4, clamp} = require 'vmath'
 {Behaviour} = require './behaviour'
 {ray_intersect_body_absolute} = require './physics'
 
 class DebugCamera extends Behaviour
     on_init: ->
-        @debug_camera = @camera.clone()
+        @debug_camera = @viewports[0].debug_camera = @viewports[0].camera.clone()
         @scene.clear_parent @debug_camera
         @debug_camera.set_rotation_order 'XYZ'
         @pivot = new @context.GameObject
@@ -26,13 +26,10 @@ class DebugCamera extends Behaviour
         return if not @active
         if not @rotating
             # Change pivot and distance
-            {position} = @debug_camera
-            rayto = @debug_camera.get_ray_direction(.5, .5)
-            vec3.add rayto, rayto, position
-            if @scene.world?
-                [body, point, normal] = ray_intersect_body_absolute(@scene, position, rayto, -1) or []
+            {width, height} = @viewports[0]
+            {object, point, normal} = @pick_object width*.5, height*.5, @viewports[0]
             if point?
-                @distance = vec3.dist position, point
+                @distance = vec3.dist @debug_camera.position, point
                 vec3.copy @pivot.position, point
             else
                 vec3.set @pivot.position, 0, 0, -@distance
@@ -75,7 +72,7 @@ class DebugCamera extends Behaviour
     on_wheel: (event) ->
         return if not @active
         # zoom with wheel, but avoid going through objects
-        dist = @distance * .2 * (event.deltaY/54)
+        dist = @distance * .2 * (event.delta_y/54)
         dist = Math.max dist, -(@distance - @debug_camera.near_plane*1.2)
         @debug_camera.translate_z dist, @debug_camera
         @distance = vec3.dist @debug_camera.position, @pivot.position
@@ -85,9 +82,10 @@ class DebugCamera extends Behaviour
             when 'q'
                 @active = not @active
                 if @active
-                    1
+                    @viewports[0].debug_camera = @debug_camera
+                    @viewports[0].recalc_aspect()
                 else
-                    1
+                    @viewports[0].debug_camera = null
 
     # on_object_pointer_down: (event) -> console.log 'down', event.object.name
     # on_object_pointer_up: (event) -> console.log 'up', event.object.name

@@ -1,5 +1,7 @@
 
+{vec3} = require 'vmath'
 {addListener, removeListener} = require 'spur-events'
+{ray_intersect_body_absolute} = require './physics'
 
 class Behaviour
     id = ''
@@ -9,18 +11,12 @@ class Behaviour
         {@context} = @scene
         {
             objects
-            @camera=@scene.active_camera
-            viewports=@context.canvas_screen.viewports
+            @viewports=@context.canvas_screen.viewports[...]
             #TODO: destroy or improve when we have GLRay
             @ray_int_mask=-1
         } = options
         if not @id
             @id = (Math.random()+'')[2...]
-        @viewports = []
-        for v in viewports when v.camera == @camera
-            @viewports.push v
-        if @viewports.length == 0
-            throw 'There are no viewports where the specified camera is drawn to screen.'
 
         @assignment_times = {}
         @objects = []
@@ -126,9 +122,17 @@ class Behaviour
             when ''
                 null
             when 'phy'
+                if not @scene.world?
+                    # TODO: warn?
+                    return {}
                 if not viewport?
                     {x, y, viewport} = @context.canvas_screen.get_viewport_coordinates x, y
-                [body, point, normal] = @scene.get_ray_hit x, y, viewport.camera
+                {width, height} = viewport
+                camera = viewport.debug_camera or viewport.camera
+                pos = camera.get_world_position()
+                rayto = camera.get_ray_direction(x/width, y/height)
+                vec3.add rayto, rayto, pos
+                [body, point, normal] = ray_intersect_body_absolute(@scene, pos, rayto, @ray_int_mask) or []
                 if body?.owner
                     return {object: body.owner, point, normal}
         return {}
@@ -164,14 +168,14 @@ class Behaviour
         prev.x = x; prev.y = y
         {x, y, viewport} = @context.canvas_screen.get_viewport_coordinates x, y
         if viewport in @viewports
-            {button, buttons} = event
+            {button, buttons, shiftKey, ctrlKey, altKey, metaKey} = event
             @_locked_viewport = viewport
-            @on_pointer_down? {x, y, delta_x: 0, delta_y: 0, button, buttons, viewport}
+            @on_pointer_down? {x, y, delta_x: 0, delta_y: 0, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport}
             if @on_object_pointer_down?
                 {object, point, normal} = @pick_object x, y, viewport
                 if object?
                     @on_object_pointer_down {
-                        x, y, delta_x: 0, delta_y: 0, button, buttons, viewport
+                        x, y, delta_x: 0, delta_y: 0, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport
                         object, point, normal
                     }
         return
@@ -193,13 +197,13 @@ class Behaviour
         else
             {x, y, viewport} = @context.canvas_screen.get_viewport_coordinates x, y
         if viewport in @viewports
-            {button, buttons} = event
-            @on_pointer_up {x, y, delta_x, delta_y, button, buttons, viewport}
+            {button, buttons, shiftKey, ctrlKey, altKey, metaKey} = event
+            @on_pointer_up {x, y, delta_x, delta_y, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport}
             if @on_object_pointer_up?
                 {object, point, normal} = @pick_object x, y, viewport
                 if object?
                     @on_object_pointer_up {
-                        x, y, delta_x: 0, delta_y: 0, button, buttons, viewport
+                        x, y, delta_x: 0, delta_y: 0, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport
                         object, point, normal
                     }
         return
@@ -214,7 +218,7 @@ class Behaviour
         delta_x = x - prev.x
         delta_y = y - prev.y
         prev.x = x; prev.y = y
-        {button, buttons} = event
+        {button, buttons, shiftKey, ctrlKey, altKey, metaKey} = event
         # TODO: Should we only lock outside the window?
         if @_locked_viewport?
             viewport = @_locked_viewport
@@ -227,27 +231,27 @@ class Behaviour
                     {object, point, normal} = @pick_object x, y, viewport
         if @_over_object? and @_over_object != object
             @on_object_pointer_out? {
-                x, y, delta_x: 0, delta_y: 0, button, buttons, viewport
+                x, y, delta_x: 0, delta_y: 0, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport
                 object: @_over_object, point, normal
             }
         if @_over_viewport? and @_over_viewport != viewport
-            @on_pointer_out? {x, y, delta_x, delta_y, button, buttons, viewport: @_over_viewport}
+            @on_pointer_out? {x, y, delta_x, delta_y, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport: @_over_viewport}
             @_over_viewport = null
         if viewport in @viewports
             if object? and @_over_object != object
                 @on_object_pointer_over? {
-                    x, y, delta_x: 0, delta_y: 0, button, buttons, viewport
+                    x, y, delta_x: 0, delta_y: 0, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport
                     object, point, normal
                 }
                 @_over_object = object
-            out_event = {x, y, delta_x, delta_y, button, buttons, viewport}
+            out_event = {x, y, delta_x, delta_y, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport}
             if not @_over_viewport?
                 @_over_viewport = viewport
                 @on_pointer_over? out_event
             if event.type != 'pointerout'
                 @on_pointer_move? out_event
                 object? and @on_object_pointer_move? {
-                    x, y, delta_x: 0, delta_y: 0, button, buttons, viewport
+                    x, y, delta_x: 0, delta_y: 0, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport
                     object, point, normal
                 }
         return
@@ -264,11 +268,21 @@ class Behaviour
         @on_key_up({key, location, shiftKey, ctrlKey, altKey, metaKey})
 
     _on_wheel_listener: (event) =>
-        if event.deltaMode == 1
-            event.deltaMode = 0
-            event.deltaY *= 18
-        event.stepsY = Math.round event.deltaY / (18*3)
-        @on_wheel event
+        x = event.clientX - @context.root_rect.left - pageXOffset
+        y = event.clientY - @context.root_rect.top - pageYOffset
+        if @_locked_viewport?
+            viewport = @_locked_viewport
+            {x, y} = viewport.get_viewport_coordinates x, y
+        else
+            {x, y, viewport} = @context.canvas_screen.get_viewport_coordinates x, y
+        if viewport in @viewports
+            {deltaX: delta_x, deltaY: delta_y, shiftKey, ctrlKey, altKey, metaKey} = event
+            if event.deltaMode == 1
+                delta_x *= 18
+                delta_y *= 18
+            steps_x = Math.round delta_x / (18*3)
+            steps_y = Math.round delta_y / (18*3)
+            @on_wheel {delta_x, delta_y, steps_x, steps_y, x, y, shiftKey, ctrlKey, altKey, metaKey}
 
     _create_events: ->
         root = @_root

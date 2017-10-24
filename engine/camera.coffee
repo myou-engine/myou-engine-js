@@ -43,6 +43,8 @@ class Camera extends GameObject
         clone.target_aspect_ratio = @target_aspect_ratio
         clone.cam_type = @cam_type
         clone.sensor_fit = @sensor_fit
+        clone.cull_left = vec3.create()
+        clone.cull_bottom = vec3.create()
         return clone
 
     # @nodoc

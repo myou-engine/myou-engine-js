@@ -35,6 +35,7 @@ class Viewport
         @bottom = size_x * y
         @width = size_x * w
         @height = size_y * h
+        # TODO: Warn if several viewports with different ratios have same camera
         @camera.aspect_ratio = @width/@height
         @camera.recalculate_projection()
         if @debug_camera?
@@ -62,13 +63,19 @@ class Viewport
     # Clones the viewport and adds it to the screen.
     # Note that it will be rendering over the same area unless rect is changed.
     # @return {Viewport}
-    clone: ->
+    clone: (options={}) ->
+        {
+            copy_effects=true
+            copy_behaviours=false
+        } = options
         v = @screen.add_viewport @camera
-        v.effects = @effects[...]
-        v.effects_by_id = Object.create @effects_by_id
-        for behaviour in @context.behaviours
-            if this in behaviour.viewports
-                behaviour.viewports.push v
+        if copy_effects
+            v.effects = @effects[...]
+            v.effects_by_id = Object.create @effects_by_id
+        if copy_behaviours
+            for behaviour in @context.behaviours
+                if this in behaviour.viewports
+                    behaviour.viewports.push v
         return v
 
     # Returns size of viewport in pixels.
@@ -127,9 +134,9 @@ class Viewport
 
     # Splits the viewport into two, side by side, by converting this to
     # the left one, and returning the right one.
-    split_left_right: ->
+    split_left_right: (options) ->
         @rect[2] *= .5
-        v2 = @clone()
+        v2 = @clone(options)
         v2.rect = @rect[...]
         v2.rect[0] += @rect[2]
         @recalc_aspect()
@@ -138,9 +145,9 @@ class Viewport
 
     # Splits the viewport into two, over/under, by converting this to
     # the top one, and returning the bottom one.
-    split_top_bottom: ->
+    split_top_bottom: (options) ->
         @rect[3] *= .5
-        v2 = @clone()
+        v2 = @clone(options)
         v2.rect = @rect[...]
         v2.rect[1] += @rect[3]
         @recalc_aspect()
@@ -151,7 +158,6 @@ class Viewport
         if not @debug_camera_behaviour?
             @debug_camera_behaviour = new DebugCamera @camera.scene,
                 viewports: [this]
-            {@debug_camera} = @debug_camera_behaviour
         return
 
     disable_debug_camera: ->

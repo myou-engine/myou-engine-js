@@ -40,7 +40,6 @@ class GameObject
         @dupli_group = null
         @visible = true
         @render = true
-        @_world_position = vec3.create()
         @_sqdist = 0  # Squared distance to camera
         @_flip = false
         @_sqscale = 1 # Globally squared scale, to avoid rendering zero scale
@@ -48,7 +47,6 @@ class GameObject
         @children = []
         @static = false
         @world_matrix = mat4.create()
-        @_m3 = mat3.create()
         @probe = null
         @properties = {}
         @animation_strips = []
@@ -112,6 +110,7 @@ class GameObject
             @scene.rigid_bodies.splice _,1 if (_ = @scene.rigid_bodies.indexOf @)!=-1
             @scene.static_ghosts.splice _,1 if (_ = @scene.static_ghosts.indexOf @)!=-1
             @body = null
+            # TODO: Ensure shape is destroyed!
 
         mass = @mass
         shape = null
@@ -337,7 +336,6 @@ class GameObject
             bi = @parent_bone_index
             if bi >= 0
                 bone = @parent._bone_list[bi]
-                m3 = mat3.fromMat4(@_m3, bone.ol_matrix)
                 mat4.mul(@world_matrix, bone.ol_matrix, @world_matrix)
 
             mat4.mul wm, @matrix_parent_inverse, wm
@@ -504,13 +502,17 @@ class GameObject
             recursive=false
             behaviours=true
         } = options
+        # TODO: Is it better or more efficient to instance a new object
+        # and then copy all the values? (i.e. "new GameObject")
         n = Object.create @
         n.children = children = []
         n.position = vec3.clone @position
         n.rotation = vec4.clone @rotation
         n.scale = vec3.clone @scale
         n.dimensions = vec3.clone @dimensions
+        n.bound_box = [vec3.clone(@bound_box[0]), vec3.clone(@bound_box[1])]
         n.world_matrix = mat4.clone @world_matrix
+        n.matrix_parent_inverse = mat4.clone @matrix_parent_inverse
         n.color = color4.clone @color
         n.properties = Object.create @properties
         n.actions = @actions[...]
@@ -524,6 +526,8 @@ class GameObject
             n.linear_factor = vec3.clone @linear_factor
             n.angular_factor = vec3.clone @angular_factor
             n.phy_he = vec3.clone @phy_he
+            n.last_position = vec3.clone @last_position
+            n.body = n.shape = null
 
         # Warning! This only works reliably
         # if the target scene have the same type of lamps!

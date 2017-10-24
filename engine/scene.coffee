@@ -55,8 +55,6 @@ class Scene
         @extra_data = null
         @data_dir = ''
         @original_scene_name = ''
-        # We will save here the results of @get_ray_hit_under_pointer
-        @hits_under_pointer = {}
         @_debug_draw = null
 
     set_gravity: (gravity)->
@@ -375,24 +373,6 @@ class Scene
         for probe in @probes
             probe.set_lod_factor()
         return
-
-    get_ray_hit: (x, y, camera, int_mask=-1) ->
-        if not @world?
-            return []
-        pos_id = (x<<16)|y
-        result = @hits_under_pointer[pos_id]
-        context = @context
-        if not result or result[3] != context.main_loop.frame_number
-            pos = camera.get_world_position()
-            {width, height} = context.render_manager.canvas
-
-            rayto = camera.get_ray_direction(x/width, y/height)
-            vec3.add rayto, rayto, camera.position
-
-            result = ray_intersect_body_absolute(@, pos, rayto, int_mask) or []
-            result[3] = context.main_loop.frame_number
-            @hits_under_pointer[pos_id] = result
-        return result
 
     # Returns a DebugDraw instance for this scene, creating it if necessary.
     get_debug_draw: ->
