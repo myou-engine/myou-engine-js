@@ -12,6 +12,8 @@ debug_shape_meshes = null
 class DebugDraw
     constructor: (@context, @scene, options={}) ->
         {
+            @draw_physics=true
+            @draw_invisibles=true
             @hidden_alpha=.1
         } = options
         if not debug_shape_meshes
@@ -32,10 +34,21 @@ class DebugDraw
             if (shape.ttl_frames -= 1) == 0
                 shape.destroy()
         for ob in @scene.children
-            if ob.body?
+            if ob.body? and @draw_physics
                 @_draw_physics gl, render_manager, ob, mm4
-            if ob != camera and ob.type == 'CAMERA'
-                @_draw_frustum gl, render_manager,  ob, mm4
+            if @draw_invisibles
+                switch ob.type
+                    when 'CAMERA'
+                        if ob != camera
+                            @_draw_frustum gl, render_manager,  ob, mm4
+                    when 'MESH'
+                        # TODO: Load meshes?
+                        if not ob.visible and ob.data?
+                            if not ob.properties._invisible_mesh?
+                                ob.properties._invisible_mesh = @_shapes.make_debug_mesh_from(ob)
+                            @_draw_empty gl, render_manager, ob, mm4
+                    else
+                        @_draw_empty gl, render_manager, ob, mm4
         gl.disable gl.DEPTH_TEST
         for ob in @scene.armatures
             @_draw_armature gl, render_manager, ob, mm4
@@ -45,6 +58,7 @@ class DebugDraw
     _draw_physics: (gl, rm, ob, mm4) ->
         {color, material} = @_shapes
         {body} = ob
+        dob = body.debug_mesh
         if not dob?
             switch ob.collision_shape
                 when 'BOX'
@@ -136,6 +150,41 @@ class DebugDraw
         color4.set color, 1, 1, 1, .5
         rm.draw_mesh dob, mm4
         gl.disable gl.BLEND
+
+    _draw_empty: (gl, rm, ob, mm4) ->
+        {color, material} = @_shapes
+        dob = ob.properties._invisible_mesh
+        if not dob?
+            switch ob.properties._empty_draw_type
+                when 'SINGLE_ARROW'
+                    dob = @_shapes.arrow
+                when 'CIRCLE'
+                    dob = @_shapes.circle_y
+                when 'CUBE'
+                    dob = @_shapes.box
+                when 'SPHERE'
+                    dob = @_shapes.sphere
+                when 'CONE'
+                    dob = @_shapes.cone_y_base
+                else
+                    dob = @_shapes.cross3d
+            ob.properties._invisible_mesh = dob
+        ob.get_world_position_rotation_into dob.position, dob.rotation
+        vec3.copy dob.scale, ob.scale
+        vec3.scale dob.scale, dob.scale, ob.properties._empty_draw_size or 1
+        dob._update_matrices()
+
+        # occluded pass
+        color4.set color, 1, 1, 1, @hidden_alpha
+        gl.enable gl.BLEND
+        gl.disable gl.DEPTH_TEST
+        rm.draw_mesh dob, dob.world_matrix, -1, material
+
+        # visible pass
+        gl.disable gl.BLEND
+        gl.enable gl.DEPTH_TEST
+        color4.set color, 1, 1, 1, 1
+        rm.draw_mesh dob, dob.world_matrix, -1, material
 
 
 class DebugShape
@@ -299,6 +348,18 @@ class DebugShapeMeshes
                 idx.push i*2,i*2+1
         @cone.load_from_lists d, idx
 
+        @cone_y_base = new @context.Mesh
+        d=[]
+        idx=[]
+        a=(Math.PI*2)/16
+        for i in [0...16]
+            d.push 0,2,0
+            d.push sin(a*i),0,cos(a*i)
+            idx.push i*2+1,(i*2+3)%32
+            if i%2==0
+                idx.push i*2,i*2+1
+        @cone_y_base.load_from_lists d, idx
+
         @sphere = new @context.Mesh
         d = []
         idx = []
@@ -312,6 +373,14 @@ class DebugShapeMeshes
             d.push sin(a*i),0,cos(a*i)
             idx.push i+32, (i+1)%16+32
         @sphere.load_from_lists d, idx
+
+        @circle_y = new @context.Mesh
+        d = []
+        idx = []
+        for i in [0...16]
+            d.push sin(a*i),0,cos(a*i)
+            idx.push i, (i+1)%16
+        @circle_y.load_from_lists d, idx
 
         @arrow = new @context.Mesh
         d = [0,0,0,  0,0,1,  0,0.07,0.7,  0,-0.07,0.7,]
@@ -441,7 +510,7 @@ class DebugShapeMeshes
                 for i in [0...8]
                     d.push cos(a*i)*radius, 0, sin(a*i)*radius*j + z
                     idx.push i+v_offset, i+v_offset+1
-                d.push 0, -1, z
+                d.push -1, 0, z
                 v_offset += 9
             ob.load_from_lists d, idx
             ob.elements = []
