@@ -362,7 +362,8 @@ class Mesh extends GameObject
             distance_to_camera = vec3.dist p, cam_pos
 
             # world scale: assuming all three axes have same scale as X
-            world_scale = vec3.len @world_matrix # [0...3] implied
+            {m00, m01, m02} = @world_matrix
+            world_scale = Math.sqrt m00*m00, m01*m01, m02*m02
 
             # number that converts a length to screen pixels
             poly_length_to_visual_size = (viewport.units_to_pixels/distance_to_camera) * world_scale
