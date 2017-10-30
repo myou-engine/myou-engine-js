@@ -77,8 +77,9 @@ class GameObject
             @form_factor = 0.4
             @friction = 0.5
             @elasticity = 0
-            @phy_mesh = null
+            @phy_mesh = null # triangle mesh/convex hull shape
             @phy_he = vec3.create() # half extents
+            @physics_mesh = null # Mesh GameObject
             @_use_visual_mesh = false
             # for kinematic characters
             @step_height = 0.15
@@ -89,6 +90,7 @@ class GameObject
         @particle_systems = null
         @avg_poly_area = 0
         @avg_poly_length = 0
+        @zindex = 1
 
         # Remember to add any new mutable member to clone()
 
@@ -132,28 +134,25 @@ class GameObject
                     shape = new BoxShape he.x, he.y, he.z, @collision_margin
                 when 'SPHERE'
                     radius = Math.max he.x, he.y, he.z
+                    he.x = he.y = he.z = radius
                     shape = new SphereShape radius, @collision_margin
                 when 'CYLINDER'
                     radius = Math.max he.x, he.y
+                    he.x = he.y = radius
                     shape = new CylinderShape radius, he.z*2, @collision_margin
                 when 'CONE'
                     radius = Math.max he.x, he.y
+                    he.x = he.y = radius
                     shape = new ConeShape radius, he.z*2, @collision_margin
                 when 'CAPSULE'
                     radius = Math.max he.x, he.y
+                    he.x = he.y = radius
                     shape = new CapsuleShape radius, he.z, @collision_margin
                 when 'CONVEX_HULL', 'TRIANGLE_MESH'
 
                     # Choose which mesh to use as physics
-
-                    if @physics_mesh
-                        if use_visual_mesh
-                            ob = @
-                        else
-                            ob = @physics_mesh
-                    else
-                        use_visual_mesh = true
-                        ob = @
+                    ob = @get_physics_mesh use_visual_mesh
+                    use_visual_mesh = ob == this
                     data = ob.data
 
                     if not data?
@@ -247,18 +246,19 @@ class GameObject
                 else if @physics_type == 'STATIC' or @physics_type == 'SENSOR'
                     body = new StaticBody shape, pos, rot, @friction, @elasticity
                 else if @physics_type == 'CHARACTER'
+                    @rotation_order = 'Q'
+                    quat.copy @rotation, rot
                     body = CharacterBody(
                         shape
                         pos
                         rot
                         @step_height
-                        2 #axis
+                        2 # Z axis
                         -@scene.world.getGravity().z()*1
                         @jump_force
                         @max_fall_speed
                         Math.PI * 2 #slope
-                        )
-
+                    )
                     @scene.rigid_bodies.push @
                 else
                     console.log "Warning: Type not handled", @physics_type
@@ -281,6 +281,11 @@ class GameObject
                     @scene.kinematic_characters.push @
                 update_ob_physics @
             @body = body
+
+    get_physics_mesh: (use_visual_mesh=@_use_visual_mesh) ->
+        if @physics_mesh and not use_visual_mesh
+            return @physics_mesh
+        return this
 
     # Function meant for static meshes or objects that change scale.
     # This is very fast except when a static triangle mesh had a change in scale

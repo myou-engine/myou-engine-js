@@ -22,8 +22,8 @@ PhysicsWorld = ->
     configuration = new Ammo.btDefaultCollisionConfiguration
     dispatcher = new Ammo.btCollisionDispatcher configuration
     broadphase = new Ammo.btDbvtBroadphase
-    #ghost_pair_callback = new Ammo.btGhostPairCallback
-    #broadphase.getOverlappingPairCache().setInternalGhostPairCallback(ghost_pair_callback)
+    ghost_pair_callback = new Ammo.btGhostPairCallback
+    broadphase.getOverlappingPairCache().setInternalGhostPairCallback(ghost_pair_callback)
     solver = new Ammo.btSequentialImpulseConstraintSolver
     world = new Ammo.btDiscreteDynamicsWorld dispatcher, broadphase, solver, configuration
     world.pointers = [solver, broadphase, dispatcher, configuration]
@@ -261,8 +261,9 @@ add_child_shape = (comp, shape, p, o)->
 set_gravity = (world, x, y, z)->
     _tmp_Vector3.setValue(x, y, z)
     world.setGravity(_tmp_Vector3)
-    #for b in _character_controllers
-        #b.setGravity(-z)
+    for b in _character_controllers
+        b.setGravity(-z)
+    return
 
 add_body = (world, body, collision_filter_group, collision_filter_mask)->
     if body.char
@@ -520,8 +521,8 @@ get_last_char_phy = (ob_list)->
         pos.z = origin.z()
 
     return
-# Ray methods
 
+# Ray methods
 ray_intersect_body = (scene, origin, direction, int_mask=-1)->
     if not scene.world
         return []
@@ -641,6 +642,7 @@ module.exports = {
 
     allow_sleeping, make_ghost,
     get_linear_velocity, set_linear_velocity,
+    set_character_velocity,
     set_character_jump_force, character_jump, on_ground,
     set_max_fall_speed, get_angular_velocity, set_angular_velocity,
     get_mass, set_mass,

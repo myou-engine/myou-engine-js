@@ -1,5 +1,5 @@
 {evaluate_all_animations} = require './animation.coffee'
-{get_last_char_phy, step_world, step_world, phy_to_ob} = require './physics.coffee'
+{get_last_char_phy, step_world, step_world, ob_to_phy, phy_to_ob} = require './physics.coffee'
 # Logic assumes a frame won't be longer than this
 # Below that point, things go slow motion
 MAX_FRAME_DURATION = 167  # 6 fps
@@ -118,6 +118,7 @@ class MainLoop
         for scene_name in @context.loaded_scenes
             if scene.physics_enabled and (scene.rigid_bodies.length or scene.kinematic_characters.length)
                 get_last_char_phy scene.kinematic_characters
+                # ob_to_phy scene.rigid_bodies
                 step_world scene.world, frame_duration * 0.001
                 phy_to_ob scene.rigid_bodies
 

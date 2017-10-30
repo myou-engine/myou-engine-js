@@ -302,9 +302,7 @@ load_object = (data, scene) ->
                     factor: lod_data.factor,
                     object: lod_ob
 
-
-        ob.zindex = 1
-        if 'zindex' of data
+        if data.zindex?
             ob.zindex = data.zindex
 
     else if data.type == 'CURVE'

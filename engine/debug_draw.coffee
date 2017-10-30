@@ -76,9 +76,11 @@ class DebugDraw
                     dob = body.debug_mesh = @_shapes.get_capsule {radius, height}
                     body.debug_mesh_has_transform = true
                 when 'CONVEX_HULL'
-                    dob = body.debug_mesh = @_shapes.make_convex_hull_from(ob)
+                    dob = body.debug_mesh = @_shapes.make_convex_hull_from(ob.get_physics_mesh())
+                    ob.body.debug_mesh_has_transform = true
                 when 'TRIANGLE_MESH'
-                    dob = body.debug_mesh = @_shapes.make_debug_mesh_from(ob)
+                    dob = body.debug_mesh = @_shapes.make_debug_mesh_from(ob.get_physics_mesh())
+                    ob.body.debug_mesh_has_transform = true
         ob.get_world_position_rotation_into dob.position, dob.rotation
         if body.debug_mesh_has_transform
             # I'm not sure why we have to do this...
@@ -556,7 +558,6 @@ class DebugShapeMeshes
         new_iarray = new_iarray.subarray 0, i*2
         dob.load_from_va_ia varray, new_iarray
         dob.data.draw_method = @context.render_manager.gl.LINES
-        ob.body.debug_mesh_has_transform = true
         return dob
 
     # @nodoc
@@ -589,7 +590,6 @@ class DebugShapeMeshes
         dob.offsets[3] = i
         dob.load_from_va_ia varray, new_iarray
         dob.data.draw_method = @context.render_manager.gl.LINES
-        ob.body.debug_mesh_has_transform = true
         return dob
 
 

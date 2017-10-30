@@ -1,6 +1,7 @@
 require './engine/init.coffee'
 {Myou, create_canvas, create_full_window_canvas} = require './engine/myou.coffee'
 {Behaviour, SceneBehaviour} = require './engine/behaviour.coffee'
+physics = require './engine/physics'
 
 # geometry utils
 gmath =
@@ -20,5 +21,6 @@ module.exports = {
     #myou engine
     Myou, Behaviour, SceneBehaviour, Behavior, SceneBehavior,
     #Utils
-    create_canvas, create_full_window_canvas, gmath, vmath, math
+    create_canvas, create_full_window_canvas, gmath, vmath, math,
+    physics,
 }

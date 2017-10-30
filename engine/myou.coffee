@@ -5,7 +5,6 @@ loader = require './loader'
 vr = require './webvr'
 {MeshFactory} = require './mesh_factory'
 
-physics = require './physics'
 {fetch_objects} = require './fetch_assets'
 {Action, Animation, LoopedAnimation, FiniteAnimation} = require './animation'
 {Viewport} = require './viewport'
@@ -46,8 +45,6 @@ dict = ->
 #
 # @ property foo [foo] tal
 class Myou
-    # Physics engine functions
-    physics:physics
     # @nodoc
     fetch_objects:fetch_objects
     Action:Action
