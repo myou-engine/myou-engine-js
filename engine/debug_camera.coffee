@@ -6,6 +6,8 @@ class DebugCamera extends Behaviour
         @debug_camera = @viewports[0].camera.clone()
         @scene.clear_parent @debug_camera
         @debug_camera.set_rotation_order 'XYZ'
+        @debug_camera.far_plane *= 10
+        @debug_camera.recalculate_projection()
         @pivot = new @context.GameObject
         @pivot.set_rotation_order 'XYZ'
         @debug = @scene.get_debug_draw()
