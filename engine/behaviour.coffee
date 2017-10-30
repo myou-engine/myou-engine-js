@@ -21,8 +21,11 @@ class Behaviour
         @assignment_times = {}
         @objects = []
         if objects
-            for ob in objects
-                @assign ob
+            for ob,i in objects
+                if ob?
+                    @assign ob
+                else
+                    throw "Behaviour 'objects' list has a null element at index #{i}"
 
         @_root = @context.root
         @context.behaviours.push @
