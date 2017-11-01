@@ -409,7 +409,6 @@ load_object = (data, scene) ->
     vec3.copyArray ob.dimensions, data.dimensions # is this used outside physics?
     ob.radius = data.mesh_radius or vec3.len(ob.dimensions) * 0.5
     ob.properties = data.properties or {}
-    ob.actions = data.actions or []
     ob.animation_strips = data.animation_strips or []
     ob.physics_type = data.phy_type
     if context.use_physics

@@ -86,7 +86,6 @@ class GameObject
             @jump_force = 10
             @max_fall_speed = 55
             @last_position = vec3.create()
-        @actions = []
         @particle_systems = null
         @avg_poly_area = 0
         @avg_poly_length = 0
@@ -520,7 +519,6 @@ class GameObject
         n.matrix_parent_inverse = mat4.clone @matrix_parent_inverse
         n.color = color4.clone @color
         n.properties = Object.create @properties
-        n.actions = @actions[...]
         n.passes = @passes and @passes[...]
         n.avg_poly_area = @avg_poly_area
         n.avg_poly_length = @avg_poly_length

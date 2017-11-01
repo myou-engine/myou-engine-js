@@ -103,23 +103,6 @@ class Animation
         @strips = []
         @objects = for ob in objects when ob not in exclude
             object_is_used = false
-            # DEPRECATED
-            if ob.actions?.length
-                object_is_used = true
-                ob.animation_strips.push {
-                    action: ob.actions[0]
-                    frame_start: 0
-                    frame_end: 1e99
-                    action_frame_start: 0
-                    action_frame_end: 1e99
-                    scale: 1
-                    blend_in: 0
-                    blend_out: 0
-                    reversed: false
-                    extrapolation: 'HOLD'
-                    blend_type: 'REPLACE'
-                    name: ''
-                }
             for strip in ob.animation_strips
                 if (not strip_name? or strip_name==strip.name) and \
                         strip_name_filter.test (strip.name or '')
