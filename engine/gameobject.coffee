@@ -85,6 +85,7 @@ class GameObject
             @step_height = 0.15
             @jump_force = 10
             @max_fall_speed = 55
+            @slope = Math.PI / 4 # 45 degrees
             @last_position = vec3.create()
         @particle_systems = null
         @avg_poly_area = 0
@@ -256,7 +257,7 @@ class GameObject
                         -@scene.world.getGravity().z()*1
                         @jump_force
                         @max_fall_speed
-                        Math.PI * 2 #slope
+                        @slope
                     )
                     @scene.rigid_bodies.push @
                 else
