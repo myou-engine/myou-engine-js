@@ -142,7 +142,6 @@ class Mesh extends GameObject
         @last_lod_tick = -1
         @culled_in_last_frame = false
         @center = vec3.create()
-        @bound_box = null
         @sort_vector = vec3.create()
 
         # Populated when loading, used in load_from_va_ia()
