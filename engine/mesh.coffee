@@ -220,7 +220,7 @@ class Mesh extends GameObject
         data.stride = @stride
 
         #@phy_mesh = null # only necessary for live server, otherwise it may cause bugs
-        if @scene and @scene.world
+        if @scene?.world and not @body? and @collision_shape in ['TRIANGLE_MESH', 'CONVEX_HULL']
             @instance_physics()
         @context.main_loop?.reset_timeout()
         # This forces the mesh to be uploaded
