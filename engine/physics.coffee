@@ -1,34 +1,41 @@
+
 {mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
 
 _phy_obs_ptrs = {} # used in body creation/destruction, colliding_bodies and ray_intersect_bodies
 _tmp_Vector3 = _tmp_Vector3b = _tmp_Vector3c = _tmp_Quaternion = _tmp_Transform = \
 _tmp_ClosestRayResultCallback = destroy = null
+Ammo = null
 
 physics_engine_init = ->
-    # avoiding allocations
-    _tmp_Vector3 = new Ammo.btVector3 0, 0, 0
-    _tmp_Vector3b = new Ammo.btVector3 0, 0, 0
-    _tmp_Vector3c = new Ammo.btVector3 0, 0, 0
-    _tmp_Quaternion = new Ammo.btQuaternion 0, 0, 0, 0
-    _tmp_Transform = new Ammo.btTransform
-    _tmp_ClosestRayResultCallback = new Ammo.ClosestRayResultCallback new Ammo.btVector3(0, 0, 0), new Ammo.btVector3(0, 0, 0)
-    destroy = Ammo.destroy or (o)-> o.destroy()
+    window.Ammo().then (ammo) ->
+        Ammo = ammo
+        # avoiding allocations
+        _tmp_Vector3 = new Ammo.btVector3 0, 0, 0
+        _tmp_Vector3b = new Ammo.btVector3 0, 0, 0
+        _tmp_Vector3c = new Ammo.btVector3 0, 0, 0
+        _tmp_Quaternion = new Ammo.btQuaternion 0, 0, 0, 0
+        _tmp_Transform = new Ammo.btTransform
+        _tmp_ClosestRayResultCallback = new Ammo.ClosestRayResultCallback new Ammo.btVector3(0, 0, 0), new Ammo.btVector3(0, 0, 0)
+        destroy = Ammo.destroy or (o)-> o.destroy()
 
 xyz = (v)->
     p = v.ptr>>2
     return Ammo.HEAPF32.subarray p,p+3
 
+# loader, should be class constructor
+# maybe also hold temporary vars
 PhysicsWorld = ->
     configuration = new Ammo.btDefaultCollisionConfiguration
     dispatcher = new Ammo.btCollisionDispatcher configuration
     broadphase = new Ammo.btDbvtBroadphase
-    ghost_pair_callback = new Ammo.btGhostPairCallback
-    broadphase.getOverlappingPairCache().setInternalGhostPairCallback(ghost_pair_callback)
     solver = new Ammo.btSequentialImpulseConstraintSolver
     world = new Ammo.btDiscreteDynamicsWorld dispatcher, broadphase, solver, configuration
+    ghost_pair_callback = new Ammo.btGhostPairCallback
+    world.getPairCache().setInternalGhostPairCallback(ghost_pair_callback)
     world.pointers = [solver, broadphase, dispatcher, configuration]
     return world
 
+# world
 destroy_world = (world)->
     pointers = world.pointers
     destroy world
@@ -36,13 +43,7 @@ destroy_world = (world)->
         destroy p
     return
 
-PhyVec3 = (x, y, z)->
-    return  new Ammo.btVector3 x, y, z
-    # warning: new objects are not freed automatically
-
-PhyQuat = (x, y, z, w)->
-    return  new Ammo.btQuaternion x, y, z, w
-
+# shapes: all in body.instance
 BoxShape = (x, y, z, margin)->
     _tmp_Vector3.setValue x, y, z
     shape =  new Ammo.btBoxShape _tmp_Vector3
@@ -93,35 +94,6 @@ ConvexShape = (vertices, vstride, scale, margin)->
     shape.setMargin margin
     return shape
 
-get_convex_hull_edges = (vertices, vstride)->
-    # TODO: return faces instead of edges,
-    # use a different function to get edges
-    # and use original vertices
-    vlen = vertices.length/vstride
-    verts = []
-    for i in [0...vlen]
-        j = i*vstride
-        verts.push [vertices[j], vertices[j+1], vertices[j+2]]
-    faces = convexHull verts
-    verts = new Float32Array faces.length*9
-    indices = new Int16Array faces.length*6
-    for i in [0...faces.length]
-        i3 = i*3
-        i6 = i*6
-        i9 = i*9
-        f = faces[i].vertices
-        verts.set f[0], i9
-        verts.set f[1], i9+3
-        verts.set f[2], i9+6
-        indices[i6] = i3
-        indices[i6+1] = i3+1
-        indices[i6+2] = i3+1
-        indices[i6+3] = i3+2
-        indices[i6+4] = i3+2
-        indices[i6+5] = i3
-        i+=1
-    return [verts, indices]
-
 TriangleMeshShape = (vertices, indices, vstride, scale, margin, name)->
     # TODO all this is not deleted
     #pn = performance.now()
@@ -171,6 +143,7 @@ TriangleMeshShape = (vertices, indices, vstride, scale, margin, name)->
 CompoundShape = ->
     return new Ammo.btCompoundShape
 
+# body.set_type
 RigidBody = (mass, shape, position, rotation, friction, elasticity, form_factor)->
     localInertia =  new Ammo.btVector3 0, 0, 0
     if mass
@@ -193,11 +166,13 @@ RigidBody = (mass, shape, position, rotation, friction, elasticity, form_factor)
         _phy_obs_ptrs[body.ptr] = body
     return body
 
+# body.set_type
 StaticBody = (shape, position, rotation, friction, elasticity)->
     return RigidBody 0, shape, position, rotation, friction, elasticity, 0
 
 _character_controllers = []
 
+# body.set_type
 CharacterBody = (shape, position, rotation, step_height, axis, gravity, jump_speed, fall_speed, max_slope)->
     body = new Ammo.btPairCachingGhostObject
     body.setCollisionFlags 16 # CF_CHARACTER_OBJECT
@@ -234,15 +209,6 @@ destroy_body = (body)->
     for p in pointers
         destroy p
     return
-
-class Ray
-    constructor: ->
-        @origin =  new Ammo.btVector3 0, 0, 0
-        @rayto =  new Ammo.btVector3 0, 0, 0
-
-    destroy: ->
-        destroy @origin
-        destroy @rayto
 
 # Shape methods
 
@@ -353,12 +319,79 @@ colliding_bodies = (body)->
                 if point.get_m_distance1()<0
                     has_contact = true
             if has_contact
-                b0 = m.getBody0()
-                b1 = m.getBody1()
+                b0 = m.getBody0().ptr
+                b1 = m.getBody1().ptr
                 if b0 == p
                     ret.push(_phy_obs_ptrs[b1])
                 else if b1 == p
                     ret.push(_phy_obs_ptrs[b0])
+    return ret
+
+# http://www.bulletphysics.org/mediawiki-1.5.8/index.php/Collision_Callbacks_and_Triggers
+colliding_points = (body) ->
+    ret = []
+    p = body.ptr
+    if body.getOverlappingPairCache?
+        # TODO: Should we move the code above to C++?
+        manifoldArray = new Ammo.btManifoldArray
+        pairArray = body.getOverlappingPairCache().getOverlappingPairArray()
+        for i in [0...pairArray.size()]
+            manifoldArray.clear()
+            pair = pairArray.at(i)
+            collisionPair = body.owner.scene.world.getPairCache().findPair(
+                pair.get_m_pProxy0(), pair.get_m_pProxy1())
+            continue if collisionPair.ptr == 0
+            algo = collisionPair.get_m_algorithm()
+            if algo.ptr != 0
+                algo.getAllContactManifolds manifoldArray
+
+            for j in [0...manifoldArray.size()]
+                manifold = manifoldArray.at(j)
+                isFirstBody = manifold.getBody0().ptr == p
+                for j in [0...manifold.getNumContacts()]
+                    point = manifold.getContactPoint(j)
+                    if point.getDistance() < 0
+                        v = point.getPositionWorldOnA()
+                        a = vec3.new v.x(), v.y(), v.z()
+                        v = point.getPositionWorldOnB()
+                        b = vec3.new v.x(), v.y(), v.z()
+                        n = point.get_m_normalWorldOnB()
+                        if isFirstBody
+                            normal = vec3.new -n.x(), -n.y(), -n.z()
+                            ret.push {point_on_body: a, point_on_other: b, normal}
+                        else
+                            normal = vec3.new n.x(), n.y(), n.z()
+                            ret.push {point_on_body: b, point_on_other: a, normal}
+
+        destroy manifoldArray
+    else
+        # This is faster than the above when there's less than ~30 rigid bodies
+        # (downside is that it gets duplicates)
+        # Should we choose it automatically?
+        # TODO: Should we add btPairCachingGhostObject to every rigid body
+        # that needs collision checking?
+        dispatcher = body.owner.scene.world.getDispatcher()
+        for i in [0...dispatcher.getNumManifolds()]
+            m = dispatcher.getManifoldByIndexInternal(i)
+            num_contacts = m.getNumContacts()
+            if num_contacts!=0
+                b0 = m.getBody0().ptr
+                b1 = m.getBody1().ptr
+                if b0 == p or b1 == p
+                    for j in [0...num_contacts]
+                        point = m.getContactPoint(j)
+                        if point.getDistance() < 0
+                            v = point.getPositionWorldOnA()
+                            a = vec3.new v.x(), v.y(), v.z()
+                            v = point.getPositionWorldOnB()
+                            b = vec3.new v.x(), v.y(), v.z()
+                            n = point.get_m_normalWorldOnB()
+                            if b1 == p
+                                normal = vec3.new n.x(), n.y(), n.z()
+                                ret.push {point_on_body: b, point_on_other: a, normal}
+                            else
+                                normal = vec3.new -n.x(), -n.y(), -n.z()
+                                ret.push {point_on_body: a, point_on_other: b, normal}
     return ret
 
 get_linear_velocity = (body, local = false)->
@@ -545,7 +578,10 @@ ray_intersect_body = (scene, origin, direction, int_mask=-1)->
     point = vec3.create()
     if callback.hasHit()
         hit_point = _tmp_Vector3
-        hit_point.setInterpolate3(ray_origin, ray_rayto, callback.get_m_closestHitFraction())
+        f = callback.get_m_closestHitFraction()
+        hit_point.setValue(origin.x + direction.x * f,
+                           origin.y + direction.y * f,
+                           origin.z + direction.z * f)
         hit_normal = callback.get_m_hitNormalWorld()
         point.x = hit_point.x()
         point.y = hit_point.y()
@@ -564,7 +600,8 @@ ray_intersect_body_absolute = (scene, rayfrom, rayto, int_mask)->
     # returns [body, point, normal]
     ray_origin = _tmp_Vector3
     ray_rayto = _tmp_Vector3b
-    ray_origin.setValue(rayfrom.x, rayfrom.y, rayfrom.z)
+    {x, y, z} = rayfrom
+    ray_origin.setValue(x, y, z)
     ray_rayto.setValue(rayto.x, rayto.y, rayto.z)
     callback = _tmp_ClosestRayResultCallback
     callback.set_m_rayFromWorld(ray_origin)
@@ -577,7 +614,10 @@ ray_intersect_body_absolute = (scene, rayfrom, rayto, int_mask)->
     scene.world.rayTest(ray_origin, ray_rayto, callback)
     if callback.hasHit()
         hit_point = _tmp_Vector3c
-        hit_point.setInterpolate3(ray_origin, ray_rayto, callback.get_m_closestHitFraction())
+        f = callback.get_m_closestHitFraction()
+        hit_point.setValue(x + f * (rayto.x - x),
+                           y + f * (rayto.y - y),
+                           z + f * (rayto.z - z))
         hit_normal = callback.get_m_hitNormalWorld()
 
         # TODO optim: check if the pointers of members of callback are always the same
@@ -632,7 +672,7 @@ module.exports = {
 
     BoxShape, SphereShape, CylinderShape, ConeShape, CapsuleShape,
     ConvexShape, TriangleMeshShape, CompoundShape,
-    get_convex_hull_edges, add_child_shape,
+    add_child_shape,
 
     RigidBody, StaticBody, CharacterBody,
     add_body, remove_body, destroy_body,
@@ -649,6 +689,7 @@ module.exports = {
     apply_force, apply_central_force, apply_central_impulse,
     set_linear_factor, set_angular_factor,
 
-    Ray, ray_intersect_body, ray_intersect_body_absolute,
+    ray_intersect_body, ray_intersect_body_absolute,
     ray_intersect_body_bool, ray_intersect_body_bool_not_target,
+    colliding_points,
 }
