@@ -386,14 +386,6 @@ load_object = (data, scene) ->
         console.log "Warning: unsupported type",data.type
         return
 
-    if 'particles' of data
-        ob.particle_systems = []
-        for p in data.particles
-            if 'formula' of p
-                #string function to code
-                p.formula = (new Function('return ' + p.formula))()
-            ob.particle_systems.push {'properties':p}
-
     if data.position?
         # current format
         vec3.copyArray ob.position, data.position

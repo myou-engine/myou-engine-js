@@ -87,7 +87,6 @@ class GameObject
             @max_fall_speed = 55
             @slope = Math.PI / 4 # 45 degrees
             @last_position = vec3.create()
-        @particle_systems = null
         @avg_poly_area = 0
         @avg_poly_length = 0
         @zindex = 1
