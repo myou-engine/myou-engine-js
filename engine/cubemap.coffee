@@ -48,7 +48,7 @@ class Cubemap
         if @color?
             @fill_color(@color)
         else
-            @set_data(data)
+            @set_data(data or undefined)
         if @use_filter
             min_filter = mag_filter = gl.LINEAR
             if @use_mipmap
