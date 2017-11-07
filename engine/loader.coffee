@@ -1,16 +1,15 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat, color3, color4} = require 'vmath'
-{Action} = require './animation.coffee'
+{mat4, vec3, quat, color3, color4} = require 'vmath'
+{Action} = require './animation'
 {CanvasScreen} = require './screen'
-{Camera} = require './camera.coffee'
-{Lamp} = require './lamp.coffee'
-{Mesh} = require './mesh.coffee'
-{Scene} = require './scene.coffee'
-{Curve} = require './curve.coffee'
-{GameObject} = require './gameobject.coffee'
-{Armature} = require './armature.coffee'
-{fetch_objects} = require './fetch_assets.coffee'
-{Texture} = require './texture.coffee'
-{Material} = require './material.coffee'
+{Camera} = require './camera'
+{Lamp} = require './lamp'
+{Mesh} = require './mesh'
+{Scene} = require './scene'
+{Curve} = require './curve'
+{GameObject} = require './gameobject'
+{Armature} = require './armature'
+{Texture} = require './texture'
+{Material} = require './material'
 {nearest_POT} = require './math_utils/math_extra'
 {load_physics_engine} = require './physics/bullet'
 
@@ -331,7 +330,8 @@ load_object = (data, scene) ->
             ob = new Lamp context
             ob.name = data.name
             ob.static = data.static or false
-            if data.lamp_type!='POINT' and data.shadow
+            ob.use_shadow = data.lamp_type!='POINT' and !!data.shadow
+            if ob.use_shadow
                 tex_size = nearest_POT(if data.tex_size? then data.tex_size else 256)
                 tex_size = Math.min(tex_size, context.MYOU_PARAMS.maximum_shadow_size or Infinity)
                 ob.shadow_options =

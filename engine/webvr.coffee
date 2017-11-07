@@ -1,5 +1,5 @@
 
-{vec3, vec4, quat, mat4} = require 'vmath'
+{vec3, quat, mat4} = require 'vmath'
 {CanvasScreen} = require './screen'
 
 class VRScreen extends CanvasScreen
@@ -74,7 +74,6 @@ navigator.getVRDisplays?().then (_displays) ->
 vrdisplaypresentchange = null
 
 exports.has_HMD = ->
-    ctx = this
     new Promise (resolve, reject) ->
         if not navigator.getVRDisplays
             if navigator.getVRDevices

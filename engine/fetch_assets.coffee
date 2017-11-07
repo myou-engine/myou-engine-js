@@ -1,4 +1,3 @@
-texture = require './texture.coffee'
 
 fetch_promises = {}  # {file_name: promise}
 
@@ -108,7 +107,6 @@ fetch_objects = (object_list, options={}) ->
         if render?
             ob.render = render
         if ob.type == 'MESH'
-            {scene} = ob
             if not ob.data
                 promises.push fetch_mesh(ob, options)
             for mat in ob.materials

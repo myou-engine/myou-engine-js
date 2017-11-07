@@ -64,8 +64,9 @@ vmath.quat.to_euler_ZYX = (out, q) ->
                     w*w + x*x - y*y - z*z)
     return out
 
+# TODO: inline and add to vmath?
 vmath.vec3.signedAngle = (a, b, n) ->
-    {scale, dot, cross, normalize, angle, create} = vmath.vec3
+    {dot, cross, angle, create} = vmath.vec3
     result = angle a, b
     c = cross create(), a, b
     if dot(n, c) < 0

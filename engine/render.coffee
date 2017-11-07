@@ -1,8 +1,6 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat, color4} = require 'vmath'
+{mat3, mat4, vec3, vec4} = require 'vmath'
 timsort = require 'timsort'
 {Framebuffer} = require './framebuffer'
-{Mesh} = require './mesh'
-{Material} = require './material'
 {next_POT} = require './math_utils/math_extra'
 
 VECTOR_MINUS_Z = vec3.new 0,0,-1
@@ -197,13 +195,13 @@ class RenderManager
 
         @blank_texture = new @context.Texture {@context},
             formats: raw_pixels: {
-                width: 2, height: 2, pixels: 0 for [0...2*2*4]
+                width: 2, height: 2, pixels: 0 for [0...2*2*4] by 1
             }
         @blank_texture.load()
 
         @white_texture = new @context.Texture {@context},
             formats: raw_pixels: {
-                width: 2, height: 2, pixels: 255 for [0...2*2*4]
+                width: 2, height: 2, pixels: 255 for [0...2*2*4] by 1
             }
         @white_texture.load()
 
@@ -435,7 +433,6 @@ class RenderManager
             return
 
         gl = @gl
-        bound_textures = @bound_textures
         m3 = @_m3
         cam = @_cam
 
@@ -602,9 +599,6 @@ class RenderManager
         @_vp = viewport
         scene = cam.scene
 
-        m4 = @_m4
-        m3 = @_m3
-
         # This condition is necessary for when the scene is drawn
         # several times in several viewports
         # TODO: Separate into draw_shadows()
@@ -620,7 +614,6 @@ class RenderManager
                 @common_shadow_fb?.destroy()
             @_shadows_were_enabled = @enable_shadows
 
-        filter_fb = @common_filter_fb
         cam2world = @_cam2world
         world2cam = @_world2cam
         world2cam3 = @_world2cam3
@@ -680,11 +673,11 @@ class RenderManager
 
         {mesh_lod_min_length_px} = @context
 
-        # Render shadow buffers
         for lamp in scene.lamps
-            if lamp.shadow_fb?
+            if lamp.use_shadow
                 mat4.invert world2light, lamp.world_matrix
-            if shadows_pending and lamp.shadow_fb? and lamp.render_shadow
+            # Render shadow buffers
+            if shadows_pending and lamp.use_shadow and lamp.render_shadow
                 if not lamp.shadow_fb?
                     # TODO: enable all at once to decide common fb size
                     lamp.init_shadow()
@@ -705,11 +698,8 @@ class RenderManager
                 lamp.shadow_fb.enable()
                 @common_shadow_fb.draw_with_filter @filters.shadow_box_blur
 
-
-
             # Update lamp view pos and direction
             lamp.recalculate_render_data(world2cam, cam2world, world2light)
-
 
         # Main drawing code to destination buffer (usually the screen)
         dest_buffer.enable rect
@@ -1071,7 +1061,7 @@ class RenderManager
             gl['_'+k] = gl[k]
             gl[k] = do (k, gl) => (args...)->
                 r = gl["_"+k](args...)
-                if error = gl.getError()
+                if gl.getError()
                     debugger
                 return r
         return

@@ -30,4 +30,4 @@ nearest_POT = (x) ->
     x = Math.max(0, x)
     return Math.pow(2, Math.round(Math.log(x)/Math.log(2)))
 
-module.exports = {cubic_bezier, next_POT, nearest_POT}
+module.exports = {cubic_bezier, next_POT, previous_POT, nearest_POT}

@@ -1,7 +1,5 @@
 
 
-{vec3} = require 'vmath'
-
 # TODO: Should jitter be generated with a different random distrubition?
 
 
@@ -31,13 +29,13 @@ class BlenderCyclesPBRMaterial
                     tex = scene?.textures[u.image]
                     if not tex?
                         throw "Texture #{u.image} not found (in material #{@material.name})."
-                    @material._texture_list[texture_count++].value = tex
+                    _texture_list[texture_count++].value = tex
                 when 'LAMP_SHADOW_MAP'
                     tex = render_scene.objects[u.lamp].shadow_texture
                     if not tex?
                         console.warn "Material #{@material.name} tries to use unexisting shadow of lamp #{u.lamp}"
                         tex = @context.render_manager.white_texture
-                    @material._texture_list[texture_count++].value = tex
+                    _texture_list[texture_count++].value = tex
         return
 
     get_model_view_matrix_name: ->
@@ -80,7 +78,7 @@ class BlenderCyclesPBRMaterial
 
     get_uniform_assign: (gl, program) ->
         # TODO: reassign lamps when cloning etc
-        {scene, scene:{objects}, render_scene} = @material
+        {scene:{objects}} = @material
         code = [] # lines for the @uniform_assign_func function
         lamp_indices = {}
         lamps = []
@@ -276,7 +274,7 @@ get_lutsamples_texture = (scene) ->
             # This is the maximum BSDF samples
             samples = 1024
             pixels = new Float32Array samples*4
-            for i in [0...samples]
+            for i in [0...samples] by 1
                 phi = radical_inverse(i) * 2.0 * Math.PI
                 i4 = i<<2
                 pixels[i4] = Math.cos(phi)

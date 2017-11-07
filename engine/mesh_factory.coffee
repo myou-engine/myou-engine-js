@@ -1,5 +1,5 @@
 
-{Mesh} = require './mesh.coffee'
+{Mesh} = require './mesh'
 
 class MeshFactory
     constructor: (@context) ->

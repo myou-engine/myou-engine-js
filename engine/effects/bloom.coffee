@@ -1,7 +1,7 @@
 
 {vec2} = require 'vmath'
 {next_POT} = require '../math_utils/math_extra'
-0.2126+0.7152+0.0722
+
 class BloomEffect
     constructor: (@context, @steps=4, @intensity=1.2, @threshold=0.8) ->
         @highlight = new @context.ExprFilter 1,
@@ -39,7 +39,7 @@ class BloomEffect
         # (TODO: benchmark against clearing whole buffer)
         bleed = 1
         drect = [0, 0, @width+bleed, @height+bleed]
-        for i in [0...@steps] by 1
+        for [0...@steps] by 1
             drect[2]=((drect[2]-bleed)>>1)+bleed
             drect[3]=((drect[3]-bleed)>>1)+bleed
             # this is downscaling by a factor of 2, so

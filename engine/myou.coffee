@@ -1,12 +1,11 @@
 {RenderManager} = require './render'
-{Loader} = require './loader'
 {MainLoop} = require './main_loop'
 loader = require './loader'
 vr = require './webvr'
 {MeshFactory} = require './mesh_factory'
 
 {fetch_objects} = require './fetch_assets'
-{Action, Animation, LoopedAnimation, FiniteAnimation} = require './animation'
+{Action, Animation, LoopedAnimation, FiniteAnimation, PingPongAnimation} = require './animation'
 {Viewport} = require './viewport'
 {Texture} = require './texture'
 
@@ -42,17 +41,16 @@ dict = ->
 # The engine instance is frequently referred internally as `context`.
 #
 # It instances and contains several singletons like `render_manager` and `main_loop`.
-#
-# @ property foo [foo] tal
 class Myou
     # @nodoc
-    fetch_objects:fetch_objects
-    Action:Action
-    Animation:Animation
-    LoopedAnimation:LoopedAnimation
-    FiniteAnimation:FiniteAnimation
-    Viewport:Viewport
-    Texture:Texture
+    fetch_objects: fetch_objects
+    Action: Action
+    Animation: Animation
+    LoopedAnimation: LoopedAnimation
+    FiniteAnimation: FiniteAnimation
+    PingPongAnimation: PingPongAnimation
+    Viewport: Viewport
+    Texture: Texture
     # @property [Object<GameObject>] Object with all game objects in memory. The key is the name.
     objects: null
     # @property [MainLoop] Main loop singleton.
@@ -121,7 +119,7 @@ class Myou
         @update_root_rect()
 
         @main_loop = new MainLoop @
-        render_manager = new RenderManager(
+        new RenderManager(
             @,
             canvas,
             options.gl_options or {antialias: true, alpha: false}

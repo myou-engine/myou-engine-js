@@ -1,4 +1,4 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
+{vec2, vec3} = require 'vmath'
 {DebugCamera} = require './debug_camera'
 
 # A viewport is part of the screen/canvas associated with a camera, with a specific size.
@@ -113,8 +113,11 @@ class Viewport
         return effect
 
     replace_effect: (before, after) ->
-        @remove_effect(before)
-        @insert_effect(after)
+        index = @remove_effect(before)
+        if index != -1
+            @insert_effect(index, after)
+        else
+            @add_effect(after)
 
     # Remove an effect from the stack
     remove_effect: (index_or_effect)->
@@ -122,8 +125,8 @@ class Viewport
         if typeof index != 'number'
             index = @effects.indexOf index_or_effect
         if index != -1
-            @effects[index]
             @effects.splice(index, 1)[0].on_viewport_remove?()
+        return index
 
     clear_effects: ->
         for effect in @effects

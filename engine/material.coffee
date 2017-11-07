@@ -1,4 +1,3 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
 
 _active_program = null
 
@@ -87,9 +86,10 @@ class Material
         # * Draw it in a 2x2 px framebuffer for this purpose.
         # * Fulfill promise after this.
         promises = []
-        for {value, is_probe, is_reflect} in @get_texture_list()
-            if not is_probe and not is_reflect
-                promises.push value.load {size_ratio: texture_size_ratio}
+        if fetch_textures
+            for {value, is_probe, is_reflect} in @get_texture_list()
+                if not is_probe and not is_reflect
+                    promises.push value.load {size_ratio: texture_size_ratio}
         return Promise.all(promises)
 
     clone_to_scene: (scene) ->
@@ -137,7 +137,7 @@ class Shader
     # * varyings: list of varyings, TODO. See loader.coffee:93
     constructor: (@context, @data, @material, @layout, @vertex_modifiers, @defines) ->
         @id = id++
-        {@name, uniforms, varyings} = @data
+        {@name, varyings} = @data
         @shading_params_dict = {}
         {gl, is_webgl2} = @context.render_manager
         lamps = {} # lamp_name: {varpos, varcolor3, varcolor4, dist}
@@ -147,14 +147,14 @@ class Shader
         @group_id = -1
         {@name} = @material if @material?
         generator = @material?.generator or new PlainShaderMaterial({@data})
-
-        {fragment, glsl_version} = generator?.get_code(@defines)
+        {fragment, glsl_version} = generator.get_code(@defines)
 
         if @data.vertex
             vs = @data.vertex
             var_model_view_matrix = 'model_view_matrix'
             var_projection_matrix = 'projection_matrix'
         else
+            # TODO: use this
             {has_normal=true} = @data
             var_model_view_matrix = generator.get_model_view_matrix_name()
             var_projection_matrix = generator.get_projection_matrix_name()

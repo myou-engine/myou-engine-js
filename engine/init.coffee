@@ -2,9 +2,9 @@
 if not window.fetch?
     require 'whatwg-fetch'
 
-require './node_fetch_file.coffee'
+require './node_fetch_file'
 
-require './math_utils/math_extra.coffee'
+require './math_utils/math_extra'
 
 # Browser prefix management
 window.requestAnimationFrame =

@@ -282,13 +282,13 @@ class Texture
                         T = Float32Array
                 for buffer, i in @buffers
                     gl.texImage2D(gl.TEXTURE_2D, i, @gl_internal_format, @width>>i, @height>>i, 0,
-                        @gl_format, @gl_type, new T(@buffers[0]))
+                        @gl_format, @gl_type, new T(buffer))
                 if @buffers.length == 1 and @use_mipmap
                     gl.generateMipmap gl.TEXTURE_2D
             when 'compressed'
                 for buffer, i in @buffers
                     gl.compressedTexImage2D(gl.TEXTURE_2D, i, @gl_internal_format,
-                        @width>>i, @height>>i, 0, new Uint8Array(@buffers[0], @offset))
+                        @width>>i, @height>>i, 0, new Uint8Array(buffer, @offset))
                 if @buffers.length == 1 and @use_mipmap
                     console.error "Compressed texture #{@name} doesn't have requested mipmaps."
             when 'image'

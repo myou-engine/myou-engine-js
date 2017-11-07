@@ -1,4 +1,4 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat, color4, clamp} = require 'vmath'
+{vec3, vec4, clamp} = require 'vmath'
 {Behaviour} = require './behaviour'
 
 class DebugCamera extends Behaviour
@@ -29,7 +29,7 @@ class DebugCamera extends Behaviour
         if not @rotating
             # Change pivot and distance
             {width, height} = @viewports[0]
-            {object, point, normal} = @pick_object width*.5, height*.5, @viewports[0]
+            {point} = @pick_object width*.5, height*.5, @viewports[0]
             if point?
                 @distance = vec3.dist @debug_camera.position, point
                 vec3.copy @pivot.position, point

@@ -1,6 +1,6 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
+{vec3} = require 'vmath'
 {cubic_bezier} = require './math_utils/math_extra'
-{GameObject} = require './gameobject.coffee'
+{GameObject} = require './gameobject'
 
 class Curve extends GameObject
 
@@ -14,6 +14,7 @@ class Curve extends GameObject
         # pass
 
     set_curves: (curves, resolution, nodes=false)->
+        # TODO: This hasn't been tested since the port
         #The nodes could be precalculed while exporting
         @curves = curves
         @calculated_curves = []
@@ -47,26 +48,26 @@ class Curve extends GameObject
                     z = cubic_bezier j/resolution, p0z, p1z, p2z, p3z
 
                     vertices.push x, y, z
-                    indices.append n
-                    indices.append n+1
+                    indices.push n
+                    indices.push n+1
 
                     #sub_curve vertices and indices
                     c_vertices.push x, y, z
-                    c_indices.append cn
-                    c_indices.append cn+1
+                    c_indices.push cn
+                    c_indices.push cn+1
 
                     n += 1
                     cn += 1
 
 
-            c_vertices.extend [p3x, p3y, p3z]
+            c_vertices.push p3x, p3y, p3z
             cva = new Float32Array c_vertices
             cia = new Uint16Array c_indices
-            @calculated_curves.append {'ia':cia, 'va':cva}
-            vertices.extend [p3x, p3y, p3z]
+            @calculated_curves.push {'ia':cia, 'va':cva}
+            vertices.push p3x, p3y, p3z
             n += 1
-        va = @va = new Float32Array vertices
-        ia = @ia = new Uint16Array indices
+        @va = new Float32Array vertices
+        @ia = new Uint16Array indices
 
         curve_index = 0
         for c in @calculated_curves
@@ -84,6 +85,7 @@ class Curve extends GameObject
         return
 
     closest_point: (q, scale={x: 1, y:1, z:1}) ->
+        # TODO: This is completely broken since vmath
         # winning point
         wp = vec3.create()
         wn = vec3.create()  # normal
@@ -137,7 +139,7 @@ class Curve extends GameObject
             i2 = i*2
             vec3.mul p1, va.subarray(ia[i2]*3, ia[i2]*3+3), scale
             vec3.mul p2, va.subarray(ia[i2+1]*3, ia[i2+1]*3+3), scale
-            l.append vec3.dist(p1, p2)
+            l.push vec3.dist(p1, p2)
         return new Float32Array l
 
     get_curve_direction_vectors: (curve_index)->
@@ -152,10 +154,12 @@ class Curve extends GameObject
             i2 = i*2
             vec3.mul p1, va.subarray(ia[i2]*3, ia[i2]*3+3), scale
             vec3.mul p2, va.subarray(ia[i2+1]*3, ia[i2+1]*3+3), scale
-            l=l.concat vec3.normalize(vec3.create(),vec3.sub(vec3.create(),p2, p1))
+            v = vec3.normalize(vec3.create(),vec3.sub(vec3.create(),p2, p1))
+            l.push v.x, v.y, v.z
         return new Float32Array l
 
-    get_nodes: (main_curve_index=0, precission=0.0001)->
+    get_nodes: (main_curve_index=0, precision=0.0001)->
+        # TODO: This hasn't been tested since the port
         main_curve = @calculated_curves[main_curve_index]
 
         nodes = {}
@@ -169,14 +173,12 @@ class Curve extends GameObject
                         ii2 = ii*2
                         p = curve.va.subarray curve.ia[ii2]*3, curve.ia[ii2]*3+3
                         d = vec3.dist main_p,p
-                        if d < precission
+                        if d < precision
                             if not (i in nodes)
                                 nodes[i]=[[ci,ii]]
                             else
-                                nodes[i].append [ci,ii]
-            ci += 1
-
-                                #nodes[node_vertex_index] = [attached_curve_index, attached_vertex_index]
+                                nodes[i].push [ci,ii]
+                ci += 1
         return nodes
 
 module.exports = {Curve}

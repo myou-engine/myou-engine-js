@@ -1,5 +1,5 @@
 
-{vec2, vec3, vec4, quat, mat4, color4} = require 'vmath'
+{vec2, vec3, quat, mat4, color4} = require 'vmath'
 qh = require 'quickhull3d'
 
 debug_shape_meshes = null

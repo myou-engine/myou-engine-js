@@ -1,5 +1,5 @@
 
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
+{vec3, quat} = require 'vmath'
 
 is_browser = not process? or process.browser
 if is_browser
@@ -77,7 +77,7 @@ class World
         return if not @btworld?
         # Getting body velocity of characters (TODO is there another way?)
         for {btbody, last_position} in @character_bodies
-            origin = btbody.getWorldTransform(transform).getOrigin()
+            origin = btbody.getWorldTransform().getOrigin()
             vec3.set last_position, origin.x(), origin.y(), origin.z()
         @btworld.stepSimulation frame_duration * 0.001, @max_substeps, 1/@physics_fps
         # Copy physics back to objects
@@ -87,7 +87,7 @@ class World
                 transform = tmp_Transform
                 btbody.getMotionState().getWorldTransform(transform)
             else
-                transform = btbody.getWorldTransform(transform)
+                transform = btbody.getWorldTransform()
             origin = transform.getOrigin()
             vec3.set owner.position, origin.x(), origin.y(), origin.z()
             brot = transform.getRotation()
@@ -109,7 +109,6 @@ class World
         callback.set_m_closestHitFraction(1)
         callback.set_m_flags(0)
         @btworld.rayTest(tmp_Vector3, tmp_Vector3b, callback)
-        point = vec3.create()
         if callback.hasHit()
             f = callback.get_m_closestHitFraction()
             point = vec3.lerp vec3.create(), ray_from, ray_to, f
@@ -449,7 +448,7 @@ class Body
         @max_fall_speed = f
         @btchar.setFallSpeed(f)
 
-    set_angular_velocity = (v)->
+    set_angular_velocity: (v)->
         throw "Object '#{@owner.name}' is not a character body" if not @btchar?
         {tmp_Vector3} = @world
         tmp_Vector3.setValue(v.x, v.y, v.z)
@@ -553,7 +552,6 @@ class Body
         #_free(verts)
         {tmp_Vector3} = @world
         shape = new Ammo.btConvexHullShape
-        p = shape.ptr
         i = 0
         last = vlen-1
         for i in [0...vlen]
@@ -619,10 +617,11 @@ class Body
             Ammo.destroy @btcomp
             for btshape in @btcomp.children
                 Ammo.destroy btshape
-        else if btshape?
-            if btshape.users? # only happens with convex hull/triangle mesh
-                btshape.users.splice _,1 if (_ = btshape.users.indexOf this)!=-1
-                if btshape.users.length == 0
+        else if @btshape?
+            {users} = @btshape
+            if users? # only happens with convex hull/triangle mesh
+                users.splice _,1 if (_ = users.indexOf this)!=-1
+                if users.length == 0
                     Ammo.destroy @btshape
                     Ammo.destroy @btmesh if @btmesh?
                     if @type == 'CONVEX_HULL'

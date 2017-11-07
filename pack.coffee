@@ -1,17 +1,17 @@
-require './engine/init.coffee'
-{Myou, create_canvas, create_full_window_canvas} = require './engine/myou.coffee'
-{Behaviour, SceneBehaviour} = require './engine/behaviour.coffee'
+require './engine/init'
+{Myou, create_canvas, create_full_window_canvas} = require './engine/myou'
+{Behaviour, SceneBehaviour} = require './engine/behaviour'
 
 # geometry utils
 gmath =
-    g2: require './engine/math_utils/g2.coffee'
-    g3: require './engine/math_utils/g3.coffee'
+    g2: require './engine/math_utils/g2'
+    g3: require './engine/math_utils/g3'
 
 # vector utils
-vmath = require './engine/math_utils/vmath_extra.coffee'
+vmath = require './engine/math_utils/vmath_extra'
 
 # math utils
-math = require './engine/math_utils/math_extra.coffee'
+math = require './engine/math_utils/math_extra'
 
 Behavior = Behaviour
 SceneBehavior = SceneBehaviour

@@ -91,12 +91,13 @@ class ArmatureModifier
         body_lines = [
             'vec4 blendco = vec4(0.0);'
             'vec3 blendnor = vec3(0.0);'
-            'mat4 m;'
+            'mat4 m; float w;'
             'ivec4 inds = ivec4(b_indices);'
             'for(int i=0;i<4;i++){'
             '  m = bones[inds[i]];'
-            '  blendco += m * co * weights[i];'
-            '  blendnor += mat3(m) * normal * weights[i];'
+            "  w = weights[i]#{weight_multiplier};"
+            '  blendco += m * co * w;'
+            '  blendnor += mat3(m) * normal * w;'
             '}'
             'co = blendco; normal = blendnor;'
         ]

@@ -1,4 +1,4 @@
-{evaluate_all_animations} = require './animation.coffee'
+{evaluate_all_animations} = require './animation'
 # Logic assumes a frame won't be longer than this
 # Below that point, things go slow motion
 MAX_FRAME_DURATION = 167  # 6 fps
@@ -154,13 +154,13 @@ class MainLoop
                 min_fps: 1000/Math.max.apply(null, @last_frame_durations),
                 average_fps: 1000/average(@last_frame_durations),
                 max_logic_duration: 1000/Math.max.apply(null, @logic_durations),
-                average_logic_duration: average @logic_durations,
+                average_logic_duration: average(@logic_durations),
                 max_physics_durations: 1000/Math.max.apply(null, @physics_durations),
-                average_physics_durations: average @physics_durations,
+                average_physics_durations: average(@physics_durations),
                 max_animation_durations: 1000/Math.max.apply(null, @animation_durations),
-                average_animation_durations: average @animation_durations,
+                average_animation_durations: average(@animation_durations),
                 max_render_durations: 1000/Math.max.apply(null, @render_durations),
-                average_render_durations: average @render_durations,
+                average_render_durations: average(@render_durations),
             }
 
 

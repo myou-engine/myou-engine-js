@@ -1,6 +1,5 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat, color4} = require 'vmath'
-{load_scene} = require './loader.coffee'
-{fetch_objects} = require './fetch_assets.coffee'
+{vec3, quat, color4} = require 'vmath'
+{fetch_objects} = require './fetch_assets'
 {Probe} = require './probe'
 {World} = require './physics/bullet'
 
@@ -116,10 +115,8 @@ class Scene
             b.unassign ob
 
         if recursive
-            children = ob.children
-            for i in [0...children.length]
-                child = l-i-1
-                @remove_object children[i]
+            for child in ob.children by -1
+                @remove_object child
         return
 
     make_parent: (parent, child, keep_transform=true)->

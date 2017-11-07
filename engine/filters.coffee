@@ -1,4 +1,3 @@
-{Shader} = require './material.coffee'
 {vec2} = require 'vmath'
 
 class BaseFilter

@@ -1,4 +1,4 @@
-{clamp, mat2, mat3, mat4, vec2, vec3, vec4, color3, color4, quat} = require 'vmath'
+{clamp, vec2, vec3, vec4, color3, color4, quat} = require 'vmath'
 {cubic_bezier} = require './math_utils/math_extra'
 
 # An action is a bunch of animation splines, without specific start, end
@@ -238,7 +238,7 @@ class Animation
                         {type, name, prop, data_type} = orig_chan
                         blend = v[...]
                         initial_value = +(prop=='scale') # 1 if scale, 0 otherwise
-                        for _,i in blend
+                        for i in [0...blend.length] by 1
                             blend[i] = initial_value
                         blend_factor = 1
                     switch strip.blend_type
@@ -434,5 +434,5 @@ akEq = (v) ->
     return v >= -0.000000119209290 and v < 1+0.000000119209290
 
 module.exports = {
-    Action, Animation, LoopedAnimation, FiniteAnimation,
+    Action, Animation, LoopedAnimation, FiniteAnimation, PingPongAnimation,
     evaluate_all_animations}

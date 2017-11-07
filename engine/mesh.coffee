@@ -1,7 +1,6 @@
-{clamp, mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
-{GameObject} = require './gameobject.coffee'
-{Material} = require './material.coffee'
-{ShapeKeyModifier, ArmatureModifier} = require './vertex_modifiers.coffee'
+{mat4, vec3} = require 'vmath'
+{GameObject} = require './gameobject'
+{ShapeKeyModifier, ArmatureModifier} = require './vertex_modifiers'
 
 #   Mesh format:
 #
@@ -48,14 +47,6 @@
 
 # Safari 9 doesn't have the constants in WebGLRenderingContext
 GL_TRIANGLES = 4
-GL_BYTE = 0x1400
-GL_UNSIGNED_BYTE = 0x1401
-GL_SHORT = 0x1402
-GL_UNSIGNED_SHORT = 0x1403
-GL_INT = 0x1404
-GL_UNSIGNED_INT = 0x1405
-GL_FLOAT = 0x1406
-ZERO_BBOX = [vec3.create(), vec3.create()]
 
 # MeshData contains all data of a mesh object that is loaded separately
 # from the object itself. Available as `mesh_object.data`.
@@ -219,7 +210,7 @@ class Mesh extends GameObject
             data.index_buffers.push ib
             data.num_indices.push offsets[i2+3] - offsets[i2+1]
         data.stride = @stride
-        
+
         @context.main_loop?.reset_timeout()
         # This forces the mesh to be uploaded
         # ZERO_MATRIX = mat4.new 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,1
@@ -304,13 +295,13 @@ class Mesh extends GameObject
             keys = {}
             for name,index in @_shape_names
                 keys[name] = {value: 0, index}
-            vertex_modifiers.push m = new ShapeKeyModifier {
+            vertex_modifiers.push new ShapeKeyModifier {
                 count: @_shape_names.length
                 data_type: shape_type
                 keys: keys
             }
         if @armature and @parent_bone_index == -1
-            vertex_modifiers.push m = new ArmatureModifier {
+            vertex_modifiers.push new ArmatureModifier {
                 armature: @armature
                 data_type: 'f'
             }
@@ -360,7 +351,7 @@ class Mesh extends GameObject
 
             # world scale: assuming all three axes have same scale as X
             {m00, m01, m02} = @world_matrix
-            world_scale = Math.sqrt m00*m00, m01*m01, m02*m02
+            world_scale = Math.sqrt m00*m00 + m01*m01 + m02*m02
 
             # number that converts a length to screen pixels
             poly_length_to_visual_size = (viewport.units_to_pixels/distance_to_camera) * world_scale

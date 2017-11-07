@@ -1,7 +1,7 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat, color4} = require 'vmath'
-{GameObject} = require './gameobject.coffee'
-{Framebuffer} = require './framebuffer.coffee'
-{Material, glsl100to300} = require './material.coffee'
+{mat4, vec3, color4} = require 'vmath'
+{GameObject} = require './gameobject'
+{Framebuffer} = require './framebuffer'
+{Material, glsl100to300} = require './material'
 LIGHT_PROJ_TO_DEPTH = mat4.new(
     0.5, 0.0, 0.0, 0.0,
     0.0, 0.5, 0.0, 0.0,
@@ -25,6 +25,7 @@ class Lamp extends GameObject
     constructor: (context)->
         super context
         @lamp_type = 'POINT'
+        @use_shadow = false
         @shadow_fb = null
         @shadow_texture = null
         # this option allows to stop rendering the shadow when stuff didn't change
@@ -77,7 +78,6 @@ class Lamp extends GameObject
         @shadow_texture = @shadow_fb.texture
 
         # If using half float buffers, add a little bit of extra bias
-        {extensions} = @context.render_manager
         extra_bias = ''
         if @shadow_fb.tex_type == 0x8D61 # HALF_FLOAT_OES
             # TODO: make configurable? or calculate depending on scene size?

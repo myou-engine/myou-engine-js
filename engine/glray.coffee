@@ -1,6 +1,6 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
-{Framebuffer} = require './framebuffer.coffee'
-{Shader} = require './material.coffee'
+{mat4, vec3} = require 'vmath'
+{Framebuffer} = require './framebuffer'
+{Shader} = require './material'
 
 # TODO: assign different group_ids to mirrored and linked meshes
 # TODO: use depth buffer instead of short depth when available

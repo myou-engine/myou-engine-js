@@ -1,8 +1,5 @@
-{mat2, mat3, mat4, vec2, vec3, vec4, quat, color4} = require 'vmath'
-{Animation} = require './animation'
-{Cubemap} = require './cubemap'
+{mat3, mat4, vec3, vec4, quat, color4} = require 'vmath'
 {Probe} = require './probe'
-fetch_assets = require './fetch_assets'
 {Body} = require './physics/bullet'
 
 # Main 3D Object class (Called GameObject to distinguish from JS Object).
@@ -55,7 +52,6 @@ class GameObject
     _update_matrices:  ->
         {x, y, z, w} = @rotation
         if @rotation_order != 'Q'
-            q = quat.create()
             q = quat.fromEulerOrder quat.create(), @rotation, @rotation_order
             {x, y, z, w} = q
 
@@ -182,7 +178,7 @@ class GameObject
 
     rotate_euler_deg: (vector, order, relative_object) ->
         v = vec3.scale vec3.create(), vector, 0.017453292519943295 # PI*2 / 360
-        @rotate_quat quat.fromEulerOrder(quat.create(), vector, order), relative_object
+        @rotate_quat quat.fromEulerOrder(quat.create(), v, order), relative_object
 
     rotate_quat: (q, relative_object) ->
         # TODO: optimize
@@ -282,7 +278,7 @@ class GameObject
         n.materials = materials = n.materials?[...]
         if n.materials and scene != this.scene
             for i in [0...materials.length]
-                mat = materials[i] = materials[i].clone_to_scene scene
+                n.materials[i] = materials[i].clone_to_scene scene
 
         scene?.add_object n, @name
         if behaviours

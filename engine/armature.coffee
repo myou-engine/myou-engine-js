@@ -1,5 +1,5 @@
-{GameObject} = require './gameobject.coffee'
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
+{GameObject} = require './gameobject'
+{mat4, vec3, quat} = require 'vmath'
 
 # FUTURE OPTIMIZATION STRATEGIES
 # Make a single flat array for positions and rotations,
@@ -214,7 +214,7 @@ class BoneConstraints
 
         q = []
 
-        for iteration in [0...num_iterations]
+        for [0...num_iterations] by 1
             vec3.sub target, target, points[0]
             for i in [0...points.length-1]
                 vec3.sub points[i], points[i], points[i+1]
@@ -240,7 +240,6 @@ class BoneConstraints
         #for i in [0...points.length]
             #objects['Icosphere.00'+i].position = vec3.clone points[i]
 
-        v = vec3.create()
         points.push first
         original_points.push first
         points.push {x: 0, y:0, z:0}

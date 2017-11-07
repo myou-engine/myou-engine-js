@@ -1,11 +1,10 @@
 
-{mat3, mat4, vec3, vec4, quat} = require 'vmath'
+{mat3, vec3, vec4, quat} = require 'vmath'
 
 #Constants
 Z_VECTOR = vec3.new 0,0,1
 
-#Temporal
-m4 = mat4.create()
+#Temporary
 m3 = mat3.create()
 v1 = vec3.create()
 v2 = vec3.create()

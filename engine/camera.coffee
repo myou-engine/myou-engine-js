@@ -1,9 +1,8 @@
-{GameObject} = require './gameobject.coffee'
-{mat2, mat3, mat4, vec2, vec3, vec4, quat} = require 'vmath'
+{GameObject} = require './gameobject'
+{mat3, mat4, vec3} = require 'vmath'
 
 VECTOR_X = vec3.new 1,0,0
 VECTOR_Y = vec3.new 0,1,0
-VECTOR_MINUS_Z = vec3.new 0,0,-1
 
 class Camera extends GameObject
 
@@ -72,19 +71,20 @@ class Camera extends GameObject
         return out
 
     is_vertical_fit: ->
-        {sensor_fit} = @
-        if sensor_fit == 'AUTO'
-            return @aspect_ratio <= 1
-        if sensor_fit == 'HORIZONTAL'
-            return false
-        else if sensor_fit == 'VERTICAL'
-            return true
-        else if sensor_fit == 'COVER'
-            return @aspect_ratio <= @target_aspect_ratio
-        else if sensor_fit == 'CONTAIN'
-            return @aspect_ratio > @target_aspect_ratio
-        else
-            throw "Camera.sensor_fit must be AUTO, HORIZONTAL or VERTICAL."
+        switch @sensor_fit
+            when 'AUTO'
+                return @aspect_ratio <= 1
+            when 'HORIZONTAL'
+                return false
+            when 'VERTICAL'
+                return true
+            when 'COVER'
+                return @aspect_ratio <= @target_aspect_ratio
+            when 'CONTAIN'
+                return @aspect_ratio > @target_aspect_ratio
+            else
+                throw "Camera.sensor_fit must be
+                    AUTO, HORIZONTAL, VERTICAL, COVER or CONTAIN."
 
     recalculate_projection: ->
 
@@ -92,7 +92,6 @@ class Camera extends GameObject
         far_plane = @far_plane
         if @fov_4[0] == 0
             # Regular symmetrical FoV
-            sensor_fit = @sensor_fit
             if @cam_type == 'PERSP'
                 half_size = near_plane * Math.tan(@field_of_view/2)
             else if @cam_type == 'ORTHO'
@@ -273,7 +272,6 @@ class Camera extends GameObject
             throw "TODO: frustum culling for ortho!"
 
         rot_matrix = mat3.rotationFromMat4 mat3.create(), @get_world_matrix()
-        camera_z = vec3.transformMat3 vec3.create(), VECTOR_MINUS_Z, rot_matrix
         normal_left = vec3.transformMat3 vec3.create(), cull_left_local, rot_matrix
         normal_right = v = vec3.copy vec3.create(), cull_left_local
         v.x = -v.x

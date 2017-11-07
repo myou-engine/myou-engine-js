@@ -1,5 +1,4 @@
 
-{vec2, vec3} = require 'vmath'
 sh = require 'cubemap-sh'
 
 _temp_framebuffers = {}

@@ -1,6 +1,6 @@
 
 {Viewport} = require './viewport'
-{Framebuffer, MainFramebuffer} = require './framebuffer'
+{MainFramebuffer} = require './framebuffer'
 
 class Screen
     constructor: (@context, args...) ->

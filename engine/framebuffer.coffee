@@ -38,6 +38,7 @@ class Framebuffer
         [@size_x, @size_y] = size
         if not @size_x or not @size_y
             throw "Invalid framebuffer size"
+        @use_mipmap = use_mipmap # TODO: coffee-loader bug adding @ above?
         # We're using the existing texture if available so when we're restoring
         # the GL context, references to the texture that already exist in
         # material inputs are still valid
@@ -66,7 +67,7 @@ class Framebuffer
                 if extensions.texture_half_float_linear and has_half_float_fb_support
                     @tex_type = component_types.HALF_FLOAT
                 else
-                    @tex_type == component_types.UNSIGNED_BYTE
+                    @tex_type = component_types.UNSIGNED_BYTE
 
         gl.texImage2D gl.TEXTURE_2D, 0, internal_format, @size_x, @size_y, 0, tex_format, @tex_type, null
         if @use_mipmap
@@ -210,7 +211,7 @@ class Framebuffer
 
     generate_mipmap: ->
         {gl} = @context.render_manager
-        if not @has_mipmap
+        if @use_mipmap and not @has_mipmap
             if Framebuffer.active_buffer == this
                 gl.bindFramebuffer gl.FRAMEBUFFER, null
                 Framebuffer.active_buffer = null
