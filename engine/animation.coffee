@@ -274,7 +274,7 @@ class Animation
                 if not target
                     continue
                 v = blend
-                switch v.length
+                switch data_type
                     when 1
                         target[prop] = v[0]
                     when 2
