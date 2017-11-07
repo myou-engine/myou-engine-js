@@ -72,6 +72,7 @@ class MeshData
         @index_buffers = []
         @num_indices = []
         @stride = 0
+        @offsets = [] # only used in tri mesh physics for now
         @draw_method = GL_TRIANGLES
         @phy_convex_hull = null
         @phy_mesh = null
@@ -196,7 +197,7 @@ class Mesh extends GameObject
                     bytes[i] = mesh_id
                     i+=@stride
         # Upload mesh
-        offsets = @offsets
+        offsets = data.offsets = @offsets
         num_submeshes = (offsets.length/2) - 1
         gl = @context.render_manager.gl
         for i in [0...num_submeshes]
@@ -218,10 +219,7 @@ class Mesh extends GameObject
             data.index_buffers.push ib
             data.num_indices.push offsets[i2+3] - offsets[i2+1]
         data.stride = @stride
-
-        #@phy_mesh = null # only necessary for live server, otherwise it may cause bugs
-        if @scene?.world and not @body? and @collision_shape in ['TRIANGLE_MESH', 'CONVEX_HULL']
-            @instance_physics()
+        
         @context.main_loop?.reset_timeout()
         # This forces the mesh to be uploaded
         # ZERO_MATRIX = mat4.new 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,1

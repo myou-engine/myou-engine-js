@@ -67,8 +67,6 @@ class Curve extends GameObject
             n += 1
         va = @va = new Float32Array vertices
         ia = @ia = new Uint16Array indices
-        # @phy_debug_mesh = render_manager.debug.debug_mesh_from_va_ia va, ia
-        @phy_he = {x: 1, y:1, z:1}
 
         curve_index = 0
         for c in @calculated_curves
@@ -83,6 +81,7 @@ class Curve extends GameObject
             for e in c.la
                 c.length+=e
             curve_index += 1
+        return
 
     closest_point: (q, scale={x: 1, y:1, z:1}) ->
         # winning point

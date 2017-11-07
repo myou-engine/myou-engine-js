@@ -3,20 +3,7 @@
 {Cubemap} = require './cubemap'
 {Probe} = require './probe'
 fetch_assets = require './fetch_assets'
-{
-    update_ob_physics,
-
-    BoxShape, SphereShape, CylinderShape, ConeShape, CapsuleShape,
-    ConvexShape, TriangleMeshShape, CompoundShape,
-    get_convex_hull_edges, add_child_shape, ob_to_phy_with_scale,
-
-    RigidBody, StaticBody, CharacterBody,
-    add_body, remove_body,
-
-    allow_sleeping, make_ghost,
-    set_linear_factor, set_angular_factor
-
-} = require './physics'
+{Body} = require './physics/bullet'
 
 # Main 3D Object class (Called GameObject to distinguish from JS Object).
 #
@@ -56,251 +43,14 @@ class GameObject
         @lod_objects = []
         @parent_bone_index = -1
         @behaviours = {}
-        # Physics
-        @body = null
-        @shape = null
-        @physics_type = 'NO_COLLISION'
-        if @context.use_physics
-            @physical_radius = 1
-            @anisotropic_friction = false
-            @friction_coefficients = vec3.new 1, 1, 1
-            @collision_group = 1   # [1, 0, 0, 0, 0, 0, 0, 0]
-            @collision_mask = 255  # [1, 1, 1, 1, 1, 1, 1, 1]
-            @collision_shape = null
-            @collision_margin = 0
-            @collision_compound = false
-            @mass = 0
-            @no_sleeping = false
-            @is_ghost = false
-            @linear_factor = vec3.new 1, 1, 1
-            @angular_factor = vec3.new 1, 1, 1
-            @form_factor = 0.4
-            @friction = 0.5
-            @elasticity = 0
-            @phy_mesh = null # triangle mesh/convex hull shape
-            @phy_he = vec3.create() # half extents
-            @physics_mesh = null # Mesh GameObject
-            @_use_visual_mesh = false
-            # for kinematic characters
-            @step_height = 0.15
-            @jump_force = 10
-            @max_fall_speed = 55
-            @slope = Math.PI / 4 # 45 degrees
-            @last_position = vec3.create()
+        @body = new Body this
         @avg_poly_area = 0
         @avg_poly_length = 0
         @zindex = 1
 
+        @pending_bodies = [] # physics bodies that depend on this object
+
         # Remember to add any new mutable member to clone()
-
-    # Creates or recreates the body in the physics world,
-    # or destroys it if physics have been disabled for this object.
-    #
-    # Usually called after both the object and the physics engine have loaded.
-    # But can also be called after changing physics settings.
-    instance_physics: (use_visual_mesh=false) ->
-        #This function only can be called if the object is in a scene.
-        if @visible_mesh
-            # Logic for physical submeshes is run for
-            # the real "visible" mesh
-            @visible_mesh.instance_physics()
-            return
-
-        if @body? and not @body.fake_body
-            remove_body @scene.world, @body
-            @scene.rigid_bodies.splice _,1 if (_ = @scene.rigid_bodies.indexOf @)!=-1
-            @scene.static_ghosts.splice _,1 if (_ = @scene.static_ghosts.indexOf @)!=-1
-            @body = null
-            # TODO: Ensure shape is destroyed!
-
-        mass = @mass
-        shape = null
-        has_collision = @physics_type != 'NO_COLLISION'
-        if has_collision
-            if not @scene.world
-                return
-
-            # half extents
-            he = @phy_he
-            dim = @dimensions
-            if dim.x == 0 and dim.y == 0 and dim.z == 0
-                he = vec3.scale he, @scale, @physical_radius
-            else
-                vec3.scale he, dim, 0.5
-
-            switch @collision_shape
-                when 'BOX'
-                    shape = new BoxShape he.x, he.y, he.z, @collision_margin
-                when 'SPHERE'
-                    radius = Math.max he.x, he.y, he.z
-                    he.x = he.y = he.z = radius
-                    shape = new SphereShape radius, @collision_margin
-                when 'CYLINDER'
-                    radius = Math.max he.x, he.y
-                    he.x = he.y = radius
-                    shape = new CylinderShape radius, he.z*2, @collision_margin
-                when 'CONE'
-                    radius = Math.max he.x, he.y
-                    he.x = he.y = radius
-                    shape = new ConeShape radius, he.z*2, @collision_margin
-                when 'CAPSULE'
-                    radius = Math.max he.x, he.y
-                    he.x = he.y = radius
-                    shape = new CapsuleShape radius, he.z, @collision_margin
-                when 'CONVEX_HULL', 'TRIANGLE_MESH'
-
-                    # Choose which mesh to use as physics
-                    ob = @get_physics_mesh use_visual_mesh
-                    use_visual_mesh = ob == this
-                    data = ob.data
-
-                    if not data?
-                        return
-
-                    if (is_hull = @collision_shape == 'CONVEX_HULL')
-                        shape = data.phy_convex_hull
-                    else
-                        shape = data.phy_mesh
-
-                    if shape and (not use_visual_mesh) != (not @_use_visual_mesh)
-                        shape.mesh and destroy shape.mesh
-                        destroy shape
-                        shape = null
-
-                    @_use_visual_mesh = use_visual_mesh
-
-                    if not shape
-                        # Get "global" scale
-                        # @phy_he is used as scale for debug objects, so we
-                        # assign it here as regular scale instead of half-extents
-                        if @parent
-                            # TODO: test
-                            # TODO: Avoid multiple calls to get_world_matrix()
-                            scale = vec3.fromMat4Scale he, @get_world_matrix()
-                        else
-                            scale = vec3.copy he, @scale
-                        if is_hull
-                            shape = new ConvexShape data.varray, ob.stride/4, @scale, @collision_margin
-                            data.phy_convex_hull = shape
-                            # if @debug and not @phy_debug_hull
-                            #     va_ia = get_convex_hull_edges data.varray, ob.stride/4, scale
-                            #     @phy_debug_hull = @context.render_manager.debug.debug_mesh_from_va_ia va_ia[0], va_ia[1]
-                        else
-                            shape = TriangleMeshShape(
-                                data.varray,
-                                # TODO: use all submeshes
-                                data.iarray.subarray(0, ob.offsets[2]),
-                                ob.stride/4,
-                                scale,
-                                @collision_margin,
-                                ob.hash
-                            )
-                            data.phy_mesh = shape
-                else
-                    console.warn "Warning: Unknown shape", @collision_shape
-
-            #TODO: changing compunds live don't work well unless they're reinstanced in order
-            if @collision_compound and shape
-                if @parent and @parent.collision_compound
-                    parent = @parent
-                    while parent.parent and parent.parent.collision_compound
-                        parent = parent.parent
-
-                    {position: pos, rotation: rot} = @get_world_position_rotation()
-                    # TODO: avoid calling this all the time
-                    # TODO: this probably fails with matrix_parent_inverse
-                    {position: parent_pos, rotation: parent_rot} = \
-                        parent.get_world_position_rotation()
-                    vec3.sub pos, pos, parent_pos
-                    inv = quat.invert quat.create(), parent_rot
-                    vec3.transformQuat pos, pos, inv
-                    quat.mul rot, inv, rot
-                    comp = parent.shape
-                    add_child_shape comp, shape, pos, rot
-                    shape = null
-                else
-                    comp = new CompoundShape
-                    add_child_shape comp, shape, {x: 0, y:0, z:0}, {x: 0, y:0, z:0, w:1}
-                    shape = comp
-            else
-                @collision_compound = false
-
-            if shape
-                {position: pos, rotation: rot} = @get_world_position_rotation()
-                # TODO: SOFT_BODY, OCCLUDE, NAVMESH
-                if @physics_type == 'RIGID_BODY'
-                    @rotation_order = 'Q'
-                    quat.copy @rotation, rot
-                    body = new RigidBody mass, shape, pos, rot, @friction, @elasticity, @form_factor
-                    set_linear_factor body, @linear_factor
-                    set_angular_factor body, @angular_factor
-                    @scene.rigid_bodies.push @
-                else if @physics_type == 'DYNAMIC'
-                    @rotation_order = 'Q'
-                    quat.copy @rotation, rot
-                    body = new RigidBody mass, shape, pos, rot, @friction, @elasticity, @form_factor
-                    set_linear_factor body, @linear_factor
-                    set_angular_factor body, {x: 0, y:0, z:0}
-                    @scene.rigid_bodies.push @
-                else if @physics_type == 'STATIC' or @physics_type == 'SENSOR'
-                    body = new StaticBody shape, pos, rot, @friction, @elasticity
-                else if @physics_type == 'CHARACTER'
-                    @rotation_order = 'Q'
-                    quat.copy @rotation, rot
-                    body = CharacterBody(
-                        shape
-                        pos
-                        rot
-                        @step_height
-                        2 # Z axis
-                        -@scene.world.getGravity().z()*1
-                        @jump_force
-                        @max_fall_speed
-                        @slope
-                    )
-                    @scene.rigid_bodies.push @
-                else
-                    console.log "Warning: Type not handled", @physics_type
-                @shape = shape
-            else if @collision_compound
-                # fake body to store debug data
-                body = {fake_body: true}
-            else
-                body = null
-
-            if body and not body.fake_body
-                add_body @scene.world, body, @collision_group, @collision_mask
-                body.owner = @
-                if @no_sleeping
-                    allow_sleeping body, false
-                if @is_ghost or @physics_type == 'SENSOR'
-                    @scene.static_ghosts.push @
-                    make_ghost body, true
-                if @physics_type == 'CHARACTER'
-                    @scene.kinematic_characters.push @
-                update_ob_physics @
-            @body = body
-
-    get_physics_mesh: (use_visual_mesh=@_use_visual_mesh) ->
-        if @physics_mesh and not use_visual_mesh
-            return @physics_mesh
-        return this
-
-    # Function meant for static meshes or objects that change scale.
-    # This is very fast except when a static triangle mesh had a change in scale
-    # which is very slow to do every frame (maybe other phy types too)
-    update_physics_transform: ->
-        @_update_physics_transform_of_children()
-        if @body
-            ob_to_phy_with_scale [@]
-        return
-
-    _update_physics_transform_of_children: ->
-        for child in @children
-            if child.children.length
-                child._update_physics_transform_of_children()
-        ob_to_phy_with_scale @children
-        return
 
     _update_matrices:  ->
         {x, y, z, w} = @rotation
@@ -525,12 +275,7 @@ class GameObject
         n.behaviours = []
 
         if @context.use_physics
-            n.friction_coefficients = vec3.clone @friction_coefficients
-            n.linear_factor = vec3.clone @linear_factor
-            n.angular_factor = vec3.clone @angular_factor
-            n.phy_he = vec3.clone @phy_he
-            n.last_position = vec3.clone @last_position
-            n.body = n.shape = null
+            @body._clone_to(n)
 
         # Warning! This only works reliably
         # if the target scene have the same type of lamps!
@@ -549,9 +294,10 @@ class GameObject
                 child = child.clone(scene, {recursive: true})
                 child.parent = n
                 children.push child
-        if @body
-            n.body = null
-            n.instance_physics @_use_visual_mesh
+        if @context.use_physics
+            n.body.instance()
+            for child in n.children
+                child.body.instance()
         return n
 
     parent_to: (parent, keep_transform=true) ->

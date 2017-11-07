@@ -1,7 +1,6 @@
 
 {vec3} = require 'vmath'
 {addListener, removeListener} = require 'spur-events'
-{ray_intersect_body_absolute} = require './physics'
 
 class Behaviour
     id = ''
@@ -126,9 +125,6 @@ class Behaviour
             when ''
                 null
             when 'phy'
-                if not @scene.world?
-                    # TODO: warn?
-                    return {}
                 if not viewport?
                     {x, y, viewport} = @context.canvas_screen.get_viewport_coordinates x, y
                 {width, height} = viewport
@@ -136,9 +132,7 @@ class Behaviour
                 pos = camera.get_world_position()
                 rayto = camera.get_ray_direction(x/width, y/height)
                 vec3.add rayto, rayto, pos
-                [body, point, normal] = ray_intersect_body_absolute(@scene, pos, rayto, @ray_int_mask) or []
-                if body?.owner
-                    return {object: body.owner, point, normal}
+                return @scene.world.ray_test pos, rayto, @int_mask
         return {}
 
     _add_callbacks: =>

@@ -34,7 +34,7 @@ class DebugDraw
             if (shape.ttl_frames -= 1) == 0
                 shape.destroy()
         for ob in @scene.children
-            if ob.body? and @draw_physics
+            if @draw_physics and ob.body.type != 'NO_COLLISION'
                 @_draw_physics gl, render_manager, ob, mm4
             if @draw_invisibles
                 switch ob.type
@@ -60,7 +60,7 @@ class DebugDraw
         {body} = ob
         dob = body.debug_mesh
         if not dob?
-            switch ob.collision_shape
+            switch ob.body.shape
                 when 'BOX'
                     dob = body.debug_mesh = @_shapes.box
                 when 'SPHERE'
@@ -70,24 +70,24 @@ class DebugDraw
                 when 'CONE'
                     dob = body.debug_mesh = @_shapes.cone
                 when 'CAPSULE'
-                    {x,y,z} = ob.phy_he
+                    {x,y,z} = ob.body.half_extents
                     radius = Math.max(x,y)
                     height = z*2
                     dob = body.debug_mesh = @_shapes.get_capsule {radius, height}
                     body.debug_mesh_has_transform = true
                 when 'CONVEX_HULL'
-                    dob = body.debug_mesh = @_shapes.make_convex_hull_from(ob.get_physics_mesh())
+                    dob = body.debug_mesh = @_shapes.make_convex_hull_from(ob.body.get_physics_mesh())
                     ob.body.debug_mesh_has_transform = true
                 when 'TRIANGLE_MESH'
-                    dob = body.debug_mesh = @_shapes.make_debug_mesh_from(ob.get_physics_mesh())
+                    dob = body.debug_mesh = @_shapes.make_debug_mesh_from(ob.body.get_physics_mesh())
                     ob.body.debug_mesh_has_transform = true
         ob.get_world_position_rotation_into dob.position, dob.rotation
         if body.debug_mesh_has_transform
             # I'm not sure why we have to do this...
-            # phy_he is supposed to be correct but it isn't
+            # half_extents is supposed to be correct but it isn't
             vec3.copy dob.scale, ob.scale
         else
-            vec3.copy dob.scale, ob.phy_he
+            vec3.copy dob.scale, ob.body.half_extents
         dob._update_matrices()
 
         # occluded pass

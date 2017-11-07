@@ -1,6 +1,5 @@
 {clamp, mat2, mat3, mat4, vec2, vec3, vec4, color3, color4, quat} = require 'vmath'
 {cubic_bezier} = require './math_utils/math_extra'
-{update_ob_physics} = require './physics.coffee'
 
 # An action is a bunch of animation splines, without specific start, end
 # or any other setting
@@ -290,9 +289,9 @@ class Animation
                     when 7
                         quat.set target[prop], v[0], v[1], v[2], v[3]
                         quat.normalize p, p
-
-
-            update_ob_physics ob
+            # TODO: physics with eulers and with scale
+            # also avoid doing it several times for children
+            # ob.body.update_transform()
         return @
 
 class LoopedAnimation extends Animation

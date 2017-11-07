@@ -8,17 +8,11 @@
 {Curve} = require './curve.coffee'
 {GameObject} = require './gameobject.coffee'
 {Armature} = require './armature.coffee'
-{physics_engine_url, physics_engine_init, PhysicsWorld, set_gravity} = require './physics.coffee'
 {fetch_objects} = require './fetch_assets.coffee'
 {Texture} = require './texture.coffee'
 {Material} = require './material.coffee'
 {nearest_POT} = require './math_utils/math_extra'
-
-is_browser = not process? or process.browser
-if is_browser
-    # for loading ammo.js relative to the output .js
-    scripts = document.querySelectorAll 'script'
-    current_script_path = scripts[scripts.length-1].src?.split('/')[...-1].join('/') or ''
+{load_physics_engine} = require './physics/bullet'
 
 load_scene = (name, filter, options, context) ->
     scene = context.scenes[name]
@@ -51,12 +45,9 @@ load_scene = (name, filter, options, context) ->
         scene.instance_probe()
 
         if load_physics
+
             load_physics_engine().then ->
-                scene.world = new PhysicsWorld
-                g = scene.gravity
-                set_gravity scene.world, g.x, g.y, g.z
-                for ob in scene.children
-                    ob.instance_physics()
+                scene.world.instance()
                 return Promise.resolve(scene)
         else
             return Promise.resolve(scene)
@@ -73,11 +64,10 @@ load_datablock = (scene, data, context) ->
     # We should use switch
     if data.type=='SCENE'
         [gx,gy,gz] = data.gravity
-        scene.set_gravity vec3.new gx,gy,gz
+        scene.world.set_gravity vec3.new gx,gy,gz
         vec3.copyArray(scene.background_color, data.background_color)
         if data.ambient_color
             vec3.copyArray(scene.ambient_color, data.ambient_color)
-        scene.debug_physics = context.MYOU_PARAMS.debug_physics or data.debug_physics
         scene.active_camera_name = data.active_camera
         if data.world_material?
             scene.world_material = new Material(context, \
@@ -402,68 +392,32 @@ load_object = (data, scene) ->
     ob.radius = data.mesh_radius or vec3.len(ob.dimensions) * 0.5
     ob.properties = data.properties or {}
     ob.animation_strips = data.animation_strips or []
-    ob.physics_type = data.phy_type
+    ob.body.type = data.phy_type
     if context.use_physics
-        ob.physical_radius = data.radius
-        ob.anisotropic_friction = data.use_anisotropic_friction
-        ob.friction_coefficients = data.friction_coefficients
-        ob.collision_group = data.collision_group
-        ob.collision_mask = data.collision_mask
-        ob.collision_shape = data.collision_bounds_type
-        ob.collision_margin = data.collision_margin
-        ob.collision_compound = data.collision_compound
-        ob.mass = data.mass
-        ob.no_sleeping = data.no_sleeping
-        ob.is_ghost = data.is_ghost
-        vec3.copyArray ob.linear_factor, data.linear_factor
-        vec3.copyArray ob.angular_factor, data.angular_factor
-        ob.form_factor = data.form_factor
-        ob.friction = data.friction
-        ob.elasticity = data.elasticity
-        ob.step_height = data.step_height
-        ob.jump_force = data.jump_force
-        ob.max_fall_speed = data.max_fall_speed
-        if scene.world
-            ob.instance_physics()
+        {body} = ob
+        body.radius = data.radius
+        body.use_anisotropic_friction = data.use_anisotropic_friction
+        body.friction_coefficients = data.friction_coefficients
+        body.group = data.collision_group
+        body.mask = data.collision_mask
+        body.shape = data.collision_bounds_type
+        body.margin = data.collision_margin
+        body.is_compound = data.collision_compound
+        body.mass = data.mass
+        body.no_sleeping = data.no_sleeping
+        body.is_ghost = data.is_ghost
+        vec3.copyArray body.linear_factor, data.linear_factor
+        vec3.copyArray body.angular_factor, data.angular_factor
+        body.form_factor = data.form_factor
+        body.friction = data.friction
+        body.elasticity = data.elasticity
+        body.step_height = data.step_height
+        body.jump_force = data.jump_force
+        body.max_fall_speed = data.max_fall_speed
+        body.instance()
     ob._update_matrices()
 
     ob.dupli_group = data.dupli_group
-
-load_physics_engine = ()->
-    # Add promise if it doesn't exist yet (to be used by any engine instance)
-    if not window.global_ammo_promise
-        if Ammo?
-            window.global_ammo_promise = Promise.resolve()
-        else
-            window.global_ammo_promise = new Promise (resolve, reject) ->
-                check_ammo_is_loaded = ->
-                    if not Ammo?
-                        if window.Module?.allocate
-                            reject("There was an error initializing physics")
-                        else
-                            setTimeout(check_ammo_is_loaded, 300)
-                    else
-                        resolve()
-                setTimeout(check_ammo_is_loaded, 300)
-
-            script = document.createElement 'script'
-            script.type = 'text/javascript'
-            script.async = true
-
-            if is_browser
-                physics_engine_url = current_script_path + '/' + require("file-loader?name=/libs/ammo.asm.js!./libs/ammo.asm.js")
-            else
-                dirname =  __dirname.replace(/\\/g, '/')
-                physics_engine_url = 'file://' + dirname + "/libs/ammo.asm.js"
-
-            script.src = physics_engine_url
-            document.body.appendChild script
-
-    # Callback for when the engine has loaded
-    # (will be executed immediately if the promise was already resolved)
-    return window.global_ammo_promise.then ->
-        physics_engine_init()
-        return
 
 module.exports = {
     load_scene

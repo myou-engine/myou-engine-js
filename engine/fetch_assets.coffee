@@ -79,12 +79,11 @@ fetch_mesh = (mesh_object, options={}) ->
                         offset = data.byteOffset
                         data = data.buffer
                     mesh_object.load_from_arraybuffer data, offset
-                    if mesh_object.physics_type != 'NO_COLLISION' and mesh_object.scene.world\
-                            and not mesh_object.body? \
-                            and mesh_object.collision_shape in ['TRIANGLE_MESH', 'CONVEX_HULL']
-                        #TODO: Remove without resolving the promise too early
+                    if mesh_object.pending_bodies.length != 0
                         context.main_loop.add_frame_callback =>
-                            mesh_object.instance_physics()
+                            for body in mesh_object.pending_bodies
+                                body.instance()
+                            mesh_object.pending_bodies.splice 0
                             resolve(mesh_object)
                     else
                         resolve(mesh_object)

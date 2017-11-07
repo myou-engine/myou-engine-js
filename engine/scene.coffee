@@ -1,8 +1,8 @@
 {mat2, mat3, mat4, vec2, vec3, vec4, quat, color4} = require 'vmath'
-{PhysicsWorld, set_gravity, remove_body, destroy_world, ray_intersect_body_absolute} = require './physics.coffee'
 {load_scene} = require './loader.coffee'
 {fetch_objects} = require './fetch_assets.coffee'
 {Probe} = require './probe'
+{World} = require './physics/bullet'
 
 _collision_seq = 0
 
@@ -23,16 +23,11 @@ class Scene
         @objects = {}
         # Just like objects but used for parenting (no global name collision)
         @parents = {}
-        @rigid_bodies = []
-        @static_ghosts = []
-        @kinematic_characters = []
-        @debug_physics = false
         @materials = {}
         @textures = {}
         @active_camera = null
         @physics_enabled = false
-        @world = null
-        @gravity = vec3.create()
+        @world = new World this
         @background_color = color4.new 0,0,0,1
         @ambient_color = color4.new 0,0,0,1
         @bsdf_samples = 16
@@ -56,11 +51,6 @@ class Scene
         @data_dir = ''
         @original_scene_name = ''
         @_debug_draw = null
-
-    set_gravity: (gravity)->
-        g = vec3.copy @gravity, gravity
-        if @world
-            set_gravity @world, g.x, g.y, g.z
 
     add_object: (ob, name='no_name', parent_name='', parent_bone)->
         ob.original_scene = ob.original_scene or ob.scene or @
@@ -118,12 +108,7 @@ class Scene
         if ob.type=='ARMATURE'
             @armatures.splice _,1 if (_ = @armatures.indexOf ob)!=-1
 
-        if ob.body? and not ob.fake_body
-            remove_body @world, ob.body
-            @rigid_bodies.splice _,1 if (_ = @rigid_bodies.indexOf ob)!=-1
-            @static_ghosts.splice _,1 if (_ = @static_ghosts.indexOf ob)!=-1
-            # TODO: activate any colliding object to activate the whole island
-            # TODO: free phy_mesh btVector3
+        ob.body.destroy()
 
         @probe?.destroy()
 
@@ -204,7 +189,7 @@ class Scene
         for ob in @children[...]
             @remove_object ob, false
             delete @context.objects[ob.name]
-        if @world? then destroy_world @world
+        @world.destroy()
 
         # Reduce itself to a stub by deleting itself and copying callbacks
         stub = @context.scenes[@name] = new Scene @context
@@ -245,12 +230,9 @@ class Scene
     load_physics_objects: (options) ->
         physics_objects = []
         for ob in @children
-            if not ob.data and ob.physics_type!='NO_COLLISION'\
-            and /CONVEX_HULL|TRIANGLE_MESH/.test(ob.collision_shape)
-                physics_objects.push ob
-                phy = ob.physics_mesh
-                if phy and not phy.data
-                    physics_objects.push phy
+            phy_mesh = ob.body.get_physics_mesh()
+            if phy_mesh? and not phy_mesh.data?
+                physics_objects.push phy_mesh
 
         return fetch_objects(physics_objects, options).then(=>@)
 
@@ -262,12 +244,13 @@ class Scene
     load_visible_and_physics_objects: (options) ->
         objects = []
         for ob in @children
-            if (ob.visible or (ob.physics_type!='NO_COLLISION'\
-            and /CONVEX_HULL|TRIANGLE_MESH/.test(ob.collision_shape)))
+            ob_being_loaded = null
+            if ob.visible
+                ob_being_loaded = ob
                 objects.push ob
-                phy = ob.physics_mesh
-                if phy and not phy.data
-                    objects.push phy
+            phy_mesh = ob.body.get_physics_mesh()
+            if phy_mesh? and phy_mesh != ob_being_loaded and not phy_mesh.data?
+                objects.push phy_mesh
         return fetch_objects(objects, options).then(=>@)
 
     # Loads all objects of the scene, returns a promise
@@ -278,6 +261,7 @@ class Scene
     load_all_objects: (options) ->
         # TODO: This may not work the second time is not called.
         # Meshes should always return data's promises
+        # TODO: Are modifier-based physics objects being loaded with this?
         return fetch_objects(@children, options).then(=>@)
 
 
