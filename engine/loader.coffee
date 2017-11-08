@@ -392,7 +392,8 @@ load_object = (data, scene) ->
     ob.radius = data.mesh_radius or vec3.len(ob.dimensions) * 0.5
     ob.properties = data.properties or {}
     ob.animation_strips = data.animation_strips or []
-    ob.body.type = data.phy_type
+    if not /^(CAMERA|LAMP)$/.test ob.type
+        ob.body.type = data.phy_type
     if context.use_physics
         {body} = ob
         body.radius = data.radius
