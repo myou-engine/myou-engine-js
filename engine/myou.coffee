@@ -3,12 +3,10 @@
 loader = require './loader'
 vr = require './webvr'
 {MeshFactory} = require './mesh_factory'
-
 {fetch_objects} = require './fetch_assets'
 {Action, Animation, LoopedAnimation, FiniteAnimation, PingPongAnimation} = require './animation'
 {Viewport} = require './viewport'
 {Texture} = require './texture'
-
 {Armature} = require './armature'
 {Camera} = require './camera'
 {Curve} = require './curve'
@@ -23,11 +21,13 @@ filters = require './filters'
 {Mesh} = require './mesh'
 {Scene} = require './scene'
 {DebugDraw} = require './debug_draw'
+{Button, Axis, Axes2, InputSource, InputManager} = require './input'
 
 context_dependent_modules = {
     Armature, Camera, Curve, Framebuffer, ByteFramebuffer,
     Cubemap, GameObject, GLRay, Lamp, Material, Mesh, Scene,
     DebugDraw,
+    Button, Axis, Axes2, InputSource,
 }
 
 # Using objects as dicts by disabling hidden object optimization
@@ -129,6 +129,7 @@ class Myou
         data_dir = options.data_dir = data_dir.replace(/\/$/g, '')
 
         @mesh_factory = new MeshFactory @
+        @input_manager = new InputManager @
         @main_loop.run()
 
 

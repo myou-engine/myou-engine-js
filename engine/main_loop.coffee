@@ -112,6 +112,8 @@ class MainLoop
         # Limit low speed of logic and physics
         frame_duration = Math.min(frame_duration, MAX_FRAME_DURATION)
 
+        @context.input_manager.update_axes()
+
         for scene_name in @context.loaded_scenes
             scene = @context.scenes[scene_name]
             i = scene.pre_draw_callbacks.length+1
@@ -142,6 +144,8 @@ class MainLoop
             i = scene.post_draw_callbacks.length+1
             while --i != 0
                 scene.post_draw_callbacks[scene.post_draw_callbacks.length-i] scene, frame_duration
+
+        @context.input_manager.reset_buttons()
 
         @frame_number += 1
 
