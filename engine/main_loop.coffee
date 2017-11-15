@@ -4,6 +4,9 @@
 MAX_FRAME_DURATION = 167  # 6 fps
 MAX_TASK_DURATION = MAX_FRAME_DURATION * 0.5
 
+# setImmediate emulation
+set_immediate_pending = []
+
 class MainLoop
 
     constructor: (context)->
@@ -89,6 +92,9 @@ class MainLoop
             @req_tick = HMD.requestAnimationFrame @_bound_tick
         else
             @req_tick = requestAnimationFrame @_bound_tick
+        if set_immediate_pending.length != 0
+            for f in set_immediate_pending.splice 0
+                f()
         time = performance.now()
         @frame_duration = frame_duration = time - @last_time
         @last_time = time
@@ -127,8 +133,6 @@ class MainLoop
             #TODO: Optimize updating only the video_textures whose video is being played
             video_texture.update_texture?()
 
-        # for s in @context.active_sprites
-        #     s.evaluate_sprite frame_duration
         @context.render_manager.draw_all()
 
         time5 = performance.now()
@@ -162,6 +166,10 @@ class MainLoop
                 max_render_durations: 1000/Math.max.apply(null, @render_durations),
                 average_render_durations: average(@render_durations),
             }
+        if set_immediate_pending.length != 0
+            for f in set_immediate_pending.splice 0
+                f()
+        return
 
 
 average = (list) ->
@@ -170,4 +178,8 @@ average = (list) ->
         r += v
     return r/list.length
 
-module.exports = {MainLoop}
+set_immediate = (func) ->
+    set_immediate_pending.push func
+    return
+
+module.exports = {MainLoop, set_immediate}

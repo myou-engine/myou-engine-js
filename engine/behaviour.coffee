@@ -1,6 +1,7 @@
 
 {vec3} = require 'vmath'
 {addListener, removeListener} = require 'spur-events'
+{set_immediate} = require './main_loop'
 
 class Behaviour
     id = ''
@@ -40,13 +41,20 @@ class Behaviour
         @_menu_prevent_default = null
         @_object_picking_method = ''
         @_pick_on_move = false
-        @enable()
-        @on_init?()
-        if @_object_picking_method == '' and (@on_object_pointer_down? or @on_object_pointer_up?\
-            or @on_object_pointer_move? or @on_object_pointer_over? or @on_object_pointer_out?)
-                # TODO: Warn with a timer?
-                console.warn "There are on_object_pointer_* events but object picking is disabled."
-                console.warn 'Add "this.enable_object_picking()" to on_init()'
+        # We use set_immediate to be able to use pre-bound methods in on_init()
+        # e.g. when doing button.on_press = @some_method
+        set_immediate =>
+            @enable()
+            @on_init?()
+            if @_object_picking_method == '' and \
+                (@on_object_pointer_down? or @on_object_pointer_up? \
+                or @on_object_pointer_move? or @on_object_pointer_over? or
+                @on_object_pointer_out?)
+                    # TODO: Warn with a timer?
+                    console.warn "There are on_object_pointer_* events
+                        but object picking is disabled."
+                    console.warn 'Add "this.enable_object_picking()"
+                        to on_init()'
 
     enable: ->
         if not @_enabled
