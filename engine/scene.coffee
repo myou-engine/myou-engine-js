@@ -270,7 +270,7 @@ class Scene
     # @return [Promise]
     load_objects: (list, options={})->
         if not list?.length?
-            throw "Invalid arguments, expects (list, options). Did you mean 'load_all_objects()'?"
+            throw Error "Invalid arguments, expects (list, options). Did you mean 'load_all_objects()'?"
         # TODO: This may not work the second time is not called.
         # Meshes should always return data's promises
         return fetch_objects(list, options).then(=>@)

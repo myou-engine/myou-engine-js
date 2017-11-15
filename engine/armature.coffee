@@ -132,7 +132,8 @@ class Armature extends GameObject
         return
 
 rotation_to = (out, p1, p2, maxang)->
-    angle = Math.atan2 vec3.len(vec3.cross(vec3.create(),p1,p2)), vec3.dot(p1,p2)
+    angle =
+        Math.atan2 vec3.len(vec3.cross(vec3.create(),p1,p2)), vec3.dot(p1,p2)
     angle = Math.max -maxang, Math.min(maxang, angle)
     axis = vec3.cross vec3.create(), p1, p2
     vec3.normalize axis, axis
@@ -231,14 +232,6 @@ class BoneConstraints
         for i in [0...points.length]
             vec3.add points[i], points[i], first
             vec3.add original_points[i], original_points[i], first
-        #for i in [0...point.length-1]
-            #render_manager.debug.vectors.push [vec3.sub(vec3.create(), points[i], points[i+1]), vec3.clone(points[i+1]), {r: 1, g:1, b:0, a:1}]
-        #render_manager.debug.vectors.push [vec3.sub(vec3.create(), points[points.length-1], first), first, {r: 1, g:1, b:0, a:1}]
-        #for i in [0...original_points.length-1]
-            #render_manager.debug.vectors.push [vec3.sub(vec3.create(), original_points[i], original_points[i+1]), vec3.clone(original_points[i+1]), {r: 1, g:0, b:1, a:1}]
-        #render_manager.debug.vectors.push [vec3.sub(vec3.create(), original_points[original_points.length-1], first), first, {r: 1, g:0, b:1, a:1}]
-        #for i in [0...points.length]
-            #objects['Icosphere.00'+i].position = vec3.clone points[i]
 
         points.push first
         original_points.push first
@@ -249,9 +242,11 @@ class BoneConstraints
             vec3.copy bones[i].final_position, points[i+1]
             # Make relative and exctract rotation
             vec3.sub points[i], points[i], points[i+1]
-            vec3.sub original_points[i], original_points[i], original_points[i+1]
+            original_point = original_points[i]
+            vec3.sub original_point, original_point, original_points[i+1]
             rotation_to q, original_points[i], points[i], 100
             r = bones[i].final_rotation
             quat.mul r, q, r
+        return
 
 module.exports = {Armature}

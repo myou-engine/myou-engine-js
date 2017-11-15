@@ -27,8 +27,10 @@ class Framebuffer
         @init args...
 
     init: (@context, @options) ->
-        {gl, is_webgl2, extensions, has_float_texture_support,
-            has_float_fb_support, has_half_float_fb_support} = @context.render_manager
+        {
+            gl, is_webgl2, extensions, has_float_texture_support,
+            has_float_fb_support, has_half_float_fb_support,
+        } = @context.render_manager
         {
             size
             use_depth=false
@@ -37,7 +39,7 @@ class Framebuffer
         } = @options
         [@size_x, @size_y] = size
         if not @size_x or not @size_y
-            throw "Invalid framebuffer size"
+            throw Error "Invalid framebuffer size"
         @use_mipmap = use_mipmap # TODO: coffee-loader bug adding @ above?
         # We're using the existing texture if available so when we're restoring
         # the GL context, references to the texture that already exist in
@@ -64,12 +66,14 @@ class Framebuffer
                 # NOTE: we're assuming we need linear interpolation
                 # (because we're using them for variance shadow maps)
                 # but that may not be the case at some point
-                if extensions.texture_half_float_linear and has_half_float_fb_support
+                if extensions.texture_half_float_linear \
+                        and has_half_float_fb_support
                     @tex_type = component_types.HALF_FLOAT
                 else
                     @tex_type = component_types.UNSIGNED_BYTE
 
-        gl.texImage2D gl.TEXTURE_2D, 0, internal_format, @size_x, @size_y, 0, tex_format, @tex_type, null
+        gl.texImage2D gl.TEXTURE_2D, 0, internal_format, @size_x, @size_y, 0,
+            tex_format, @tex_type, null
         if @use_mipmap
             gl.generateMipmap gl.TEXTURE_2D
 
@@ -85,32 +89,38 @@ class Framebuffer
             gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT
             if is_webgl2
                 if extensions.texture_float_linear
-                    gl.texImage2D gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT32F, @size_x, @size_y, \
-                        0, gl.DEPTH_COMPONENT, gl.FLOAT, null
+                    gl.texImage2D gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT32F,
+                        @size_x, @size_y, 0, gl.DEPTH_COMPONENT, gl.FLOAT, null
                 else
-                    gl.texImage2D gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, @size_x, @size_y, \
-                        0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null
+                    gl.texImage2D gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24,
+                        @size_x, @size_y, 0, gl.DEPTH_COMPONENT,
+                        gl.UNSIGNED_INT, null
             else
-                # Always asking for UNSIGNED_INT even though the implementation may
-                # choose to use 16 or 24 bits instead, otherwise the depth may be too
-                # limited in some cases
+                # Always asking for UNSIGNED_INT even though the implementation
+                # may choose to use 16 or 24 bits instead, otherwise the depth
+                # may be too limited in some cases
                 # TODO: Test performance compared to UNSIGNED_SHORT textures
-                gl.texImage2D gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, @size_x, @size_y, \
-                    0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null
+                gl.texImage2D gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, @size_x,
+                    @size_y, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null
 
         @framebuffer = fb = gl.createFramebuffer()
         gl.bindFramebuffer gl.FRAMEBUFFER, fb
-        gl.framebufferTexture2D gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, @texture.gl_tex, 0
+        gl.framebufferTexture2D gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
+            gl.TEXTURE_2D, @texture.gl_tex, 0
         if use_depth
             if @depth_texture
-                gl.framebufferTexture2D gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, @depth_texture.gl_tex, 0
+                gl.framebufferTexture2D gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,
+                    gl.TEXTURE_2D, @depth_texture.gl_tex, 0
             else
                 @render_buffer = rb = gl.createRenderbuffer()
                 gl.bindRenderbuffer gl.RENDERBUFFER, rb
-                gl.renderbufferStorage gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, @size_x, @size_y
-                gl.framebufferRenderbuffer gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb
+                gl.renderbufferStorage gl.RENDERBUFFER, gl.DEPTH_COMPONENT16,
+                    @size_x, @size_y
+                gl.framebufferRenderbuffer gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,
+                    gl.RENDERBUFFER, rb
 
-        @is_complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER) == gl.FRAMEBUFFER_COMPLETE
+        @is_complete =
+            gl.checkFramebufferStatus(gl.FRAMEBUFFER) == gl.FRAMEBUFFER_COMPLETE
         @has_mipmap = false
 
         @context.render_manager.unbind_texture @texture
@@ -141,20 +151,23 @@ class Framebuffer
             bottom = rect[1]
             size_x = rect[2]
             size_y = rect[3]
-        if Framebuffer.active_buffer == this
+        {active_buffer} = Framebuffer
+        if active_buffer == this
             {x,y,z,w} = Framebuffer.active_rect
             if left == x and bottom == y and size_x == z and size_y == w
                 return
         @current_size_x = size_x
         @current_size_y = size_y
-        @context.render_manager.unbind_texture @texture if @texture?.bound_unit >= 0
-        @context.render_manager.unbind_texture @depth_texture if @depth_texture?.bound_unit >= 0
+        if @texture?.bound_unit >= 0
+            @context.render_manager.unbind_texture @texture
+        if @depth_texture?.bound_unit >= 0
+            @context.render_manager.unbind_texture @depth_texture
         gl.bindFramebuffer gl.FRAMEBUFFER, @framebuffer
         gl.viewport left, bottom, size_x, size_y
         vec4.set Framebuffer.active_rect, left, bottom, size_x, size_y
-        if Framebuffer.active_buffer?.texture?
-            Framebuffer.active_buffer.texture.is_framebuffer_active = false
-            Framebuffer.active_buffer.depth_texture?.is_framebuffer_active = false
+        if active_buffer?.texture? and active_buffer != this
+            active_buffer.texture.is_framebuffer_active = false
+            active_buffer.depth_texture?.is_framebuffer_active = false
         Framebuffer.active_buffer = this
         @texture?.is_framebuffer_active = true
         @depth_texture?.is_framebuffer_active = true
@@ -178,14 +191,16 @@ class Framebuffer
         # TODO: Allow null textures?
         material.inputs.source_depth?.value = @depth_texture
         # We're assuming offsets are always 0,0, since the final position of the
-        # viewport is only drawn elsewhere in a buffer or screen that is not read back.
+        # viewport is only drawn elsewhere in a buffer
+        # or screen that is not read back.
         # Also we're assuming it's only one viewport what we've drawn.
         vec2.set material.inputs.source_size.value, @size_x, @size_y
-        vec2.set material.inputs.source_scale.value, @current_size_x/@size_x, @current_size_y/@size_y
+        vec2.set material.inputs.source_scale.value,
+            @current_size_x/@size_x, @current_size_y/@size_y
         for name, value of inputs
             material.inputs[name].value = value
-        {render_manager} = @context
-        render_manager.draw_mesh(render_manager.bg_mesh, unused_mat4, -1, material)
+        {render_manager, render_manager: {bg_mesh}} = @context
+        render_manager.draw_mesh(bg_mesh, unused_mat4, -1, material)
 
     bind_to_cubemap_side: (cubemap, side) ->
         # NOTE: It has to be enabled
@@ -195,7 +210,8 @@ class Framebuffer
 
     unbind_cubemap: ->
         {gl} = @context.render_manager
-        gl.framebufferTexture2D gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, @texture.gl_tex, 0
+        gl.framebufferTexture2D gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
+            gl.TEXTURE_2D, @texture.gl_tex, 0
 
     get_framebuffer_status: ->
         {gl} = @context.render_manager
@@ -227,7 +243,9 @@ class Framebuffer
         gl.deleteRenderbuffer @render_buffer if @render_buffer?
         gl.deleteFramebuffer @framebuffer
         if remove_from_context
-            @context.all_framebuffers.splice @context.all_framebuffers.indexOf(this), 1
+            index = @context.all_framebuffers.indexOf(this)
+            if index != -1
+                @context.all_framebuffers.splice index, 1
 
 class ByteFramebuffer extends Framebuffer
     init: (context, options) ->

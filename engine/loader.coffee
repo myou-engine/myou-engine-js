@@ -158,16 +158,20 @@ load_datablock = (scene, data, context) ->
                     if not tex?
                         data_uri = u.filepath or ''
                         if not /^data:/.test data_uri
-                            throw "Texture #{u.image} not found (in material #{data.name})."
+                            throw Error "Texture #{u.image} not found
+                                (in material #{data.name})."
                         # Support for old ramps
                         # console.warn "Obsolete ramp format", u.image
                         {filepath, filter, wrap, size} = u
-                        formats = {png: [{width: 0, height: 0, file_size: size, file_name: '', data_uri}]}
-                        tex = new Texture scene, {name: u.image, formats, wrap, filter}
+                        formats = {png: [{width: 0, height: 0, file_size: size,\
+                                            file_name: '', data_uri}]}
+                        tex = new Texture scene,
+                            {name: u.image, formats, wrap, filter}
                         scene.textures[u.image] = tex
                     # Defaults to texture stored settings
-                    {wrap=tex.wrap, filter=tex.filter, use_mipmap=tex.use_mipmap} = u
-                    # Check for mismatch between material textures and warn about it
+                    {wrap, filter, use_mipmap} = tex
+                    {wrap=wrap, filter=filter, use_mipmap=use_mipmap} = u
+                    # Check for mismatch between material textures and warn
                     if tex.users.length != 0 and \
                             (tex.wrap != wrap or tex.filter != filter or
                             tex.use_mipmap != use_mipmap)
@@ -187,7 +191,8 @@ load_datablock = (scene, data, context) ->
         window.eval data.code
 
     else if data.type=='ACTION'
-        context.actions[data.name] = new Action data.name, data.channels, (data.markers or [])
+        context.actions[data.name] =
+            new Action data.name, data.channels, (data.markers or [])
 
     else if data.type=='EMBED_MESH'
         context.embed_meshes[data.hash] = data
@@ -206,7 +211,8 @@ load_object = (data, scene) ->
     if data.type == 'MESH'
         if not ob
             if data.materials.length == 0
-                console.warn "Mesh #{data.name} won't be rendered because it has no material."
+                console.warn "Mesh #{data.name} won't be rendered because
+                                it has no material."
             ob = new Mesh context
             ob.name = data.name
             ob.static = data.static or false
@@ -262,8 +268,6 @@ load_object = (data, scene) ->
             ob.active_mesh_index = data.active_mesh_index
 
         if data.phy_mesh?
-            # it will be used in the decision of whether this mesh must be loaded or not
-            data.phy_mesh.visible = data.visible
             m = ob.physics_mesh = new Mesh context
             m.visible_mesh = ob
             m.name = ob.name
@@ -281,8 +285,8 @@ load_object = (data, scene) ->
                 # the base level already have them
                 lod_data.elements = data.elements
                 lod_data.stride = data.stride
-                lod_data.materials = lod_data.materials or data.materials # workaround
-                lod_data.visible = data.visible
+                # workaround (TODO: still necessary?)
+                lod_data.materials = lod_data.materials or data.materials
                 lod_ob = new Mesh context
                 lod_ob.scene = ob.scene
                 lod_ob.parent = ob.parent # for armature in configure_materials
@@ -320,10 +324,10 @@ load_object = (data, scene) ->
             if data.name == scene.active_camera_name
                 scene.active_camera = ob
                 if not context.canvas_screen?
-                    screen = new CanvasScreen(context, context.render_manager.canvas)
+                    screen = new CanvasScreen(context)
                     screen.add_viewport ob
         else
-            throw "Live server no longer in use"
+            throw Error "Live server no longer in use"
 
     else if data.type=='LAMP'
         if not ob
@@ -332,8 +336,9 @@ load_object = (data, scene) ->
             ob.static = data.static or false
             ob.use_shadow = data.lamp_type!='POINT' and !!data.shadow
             if ob.use_shadow
-                tex_size = nearest_POT(if data.tex_size? then data.tex_size else 256)
-                tex_size = Math.min(tex_size, context.MYOU_PARAMS.maximum_shadow_size or Infinity)
+                tex_size = nearest_POT(data.tex_size ? 256)
+                {maximum_shadow_size} = context.options
+                tex_size = Math.min(tex_size, maximum_shadow_size ? Infinity)
                 ob.shadow_options =
                     texture_size: tex_size
                     frustum_size: data.frustum_size
@@ -388,7 +393,7 @@ load_object = (data, scene) ->
     ob.rotation_order = data.rot_mode
     vec3.copyArray ob.scale, data.scale
     ob.visible = data.visible
-    vec3.copyArray ob.dimensions, data.dimensions # is this used outside physics?
+    vec3.copyArray ob.dimensions, data.dimensions
     ob.radius = data.mesh_radius or vec3.len(ob.dimensions) * 0.5
     ob.properties = data.properties or {}
     ob.animation_strips = data.animation_strips or []

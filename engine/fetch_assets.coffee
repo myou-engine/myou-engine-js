@@ -34,7 +34,7 @@ fetch_mesh = (mesh_object, options={}) ->
             if lod_ob.factor <= max_mesh_lod
                 lod_promises.push fetch_mesh(lod_ob.object)
 
-        # Not load self if only lower LoDs were loaded, or it was already loaded.
+        # Not load self if only lower LoDs were loaded, or it was already loaded
         if (max_mesh_lod < 1 and lod_promises.length != 0) or mesh_object.data
             return resolve Promise.all(lod_promises)
 
@@ -50,10 +50,12 @@ fetch_mesh = (mesh_object, options={}) ->
             else
                 scene = mesh_object.original_scene or mesh_object.scene
                 base = scene.data_dir + '/scenes/'
-                uri = base + scene.original_scene_name + '/' + file_name + '.mesh'
+                uri = base + scene.original_scene_name + "/#{file_name}.mesh"
                 fetch(uri).then (response)->
                     if not response.ok
-                        return Promise.reject "Mesh '#{mesh_object.name}' could not be loaded from URL '#{uri}' with error '#{response.status} #{response.statusText}'"
+                        return Promise.reject "Mesh '#{mesh_object.name}'
+                            could not be loaded from URL '#{uri}' with error
+                            '#{response.status} #{response.statusText}'"
                     response.arrayBuffer()
 
 
@@ -71,15 +73,16 @@ fetch_mesh = (mesh_object, options={}) ->
             else
                 # If there was no mesh_data, actually load it
                 # (load_from_arraybuffer will populate mesh_datas)
-                context.main_loop.add_frame_callback =>
+                context.main_loop.add_frame_callback ->
                     offset = 0
                     if data.buffer? and data.byteOffset?
-                        # this is a node Buffer or a Uint8Array, only in node or electron
+                        # this is a node Buffer or a Uint8Array,
+                        # only in node or electron
                         offset = data.byteOffset
                         data = data.buffer
                     mesh_object.load_from_arraybuffer data, offset
                     if mesh_object.pending_bodies.length != 0
-                        context.main_loop.add_frame_callback =>
+                        context.main_loop.add_frame_callback ->
                             for body in mesh_object.pending_bodies
                                 body.instance()
                             mesh_object.pending_bodies.splice 0

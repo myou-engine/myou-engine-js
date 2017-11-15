@@ -9,6 +9,7 @@ class BaseFilter
     get_material: ->
         if @material?
             return @material
+        {blank_texture} = @context.render_manager
         return @material = new @context.Material '_filter_'+@name, {
             material_type: 'PLAIN_SHADER',
             vertex: '''
@@ -23,9 +24,9 @@ class BaseFilter
                     gl_Position = vec4(vertex.xy*2.0-1.0, 0.0, 1.0); }''',
             fragment: @fragment
             uniforms: [
-                {varname: 'source', value: @context.render_manager.blank_texture},
+                {varname: 'source', value: blank_texture},
                 # Add this input explicitely when needed
-                # {varname: 'source_depth', value: @context.render_manager.blank_texture},
+                # {varname: 'source_depth', value: blank_texture},
                 {varname: 'source_size', value: vec2.new(128, 128)},
                 {varname: 'source_scale', value: vec2.new(1, 1)},
             ].concat @uniforms,
@@ -33,13 +34,13 @@ class BaseFilter
 
     set_input: (name, value) ->
         if not value?
-            throw "Invalid value"
+            throw Error "Invalid value"
         @get_material().inputs[name].value = value
 
     apply: (source, destination, rect, inputs, options={}) ->
         {clear=false} = options
         if not source.texture?
-            throw "Source must be a regular framebuffer"
+            throw Error "Source must be a regular framebuffer"
         if clear
             destination.clear()
         destination.enable rect
@@ -107,7 +108,8 @@ class MipmapBiasFilter extends BaseFilter
             varying vec2 source_coord, source_size_inverse;
             uniform float bias;
             void main() {
-                gl_FragColor = texture2D(source, source_coord, #{@bias.toFixed 7});
+                gl_FragColor =
+                    texture2D(source, source_coord, #{@bias.toFixed 7});
             }
         """
 
@@ -155,15 +157,17 @@ class ExprFilter extends BaseFilter
         """
         for i in [1...@num_inputs] by 1
             code.push "
-                vec3 b = texture2D(#{names[i]}_texture, coord*#{names[i]}_scale).rgb;
+                vec3 b =
+                    texture2D(#{names[i]}_texture, coord*#{names[i]}_scale).rgb;
             "
         code.push """
                 gl_FragColor = vec4(#{@expression}, 1.0);
             }
         """
         @fragment = code.join '\n'
+        {blank_texture} = @context.render_manager
         @uniforms = [
-            {varname: 'b_texture', value: @context.render_manager.blank_texture},
+            {varname: 'b_texture', value: blank_texture},
             {varname: 'b_scale', value: vec2.new(1,1)},
         ]
 

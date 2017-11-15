@@ -5,7 +5,7 @@
 class VRScreen extends CanvasScreen
     init: (@context, @HMD, @scene) ->
         if @context.vr_screen?
-            throw "There's a VR screen already"
+            throw Error "There's a VR screen already"
         @context.vr_screen = this
         @canvas = @context.canvas
         {@framebuffer} = @context.canvas_screen

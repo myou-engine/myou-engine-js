@@ -35,7 +35,8 @@ class DebugCamera extends Behaviour
                 vec3.copy @pivot.position, point
             else
                 vec3.set @pivot.position, 0, 0, -@distance
-                vec3.transformMat4 @pivot.position, @pivot.position, @debug_camera.get_world_matrix()
+                wm = @debug_camera.get_world_matrix()
+                vec3.transformMat4 @pivot.position, @pivot.position, wm
 
     on_pointer_down: (event) ->
         return if not @active

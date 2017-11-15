@@ -7,7 +7,7 @@ class Behaviour
     id = ''
     constructor: (@scene, options={})->
         if @scene?.type != 'SCENE'
-            throw 'Expected a scene'
+            throw Error "Expected a scene"
         {@context} = @scene
         {
             objects
@@ -25,7 +25,8 @@ class Behaviour
                 if ob?
                     @assign ob
                 else
-                    throw "Behaviour 'objects' list has a null element at index #{i}"
+                    throw Error "Behaviour 'objects' list
+                        has a null element at index #{i}"
 
         @_root = @context.root
         @context.behaviours.push @
@@ -80,13 +81,13 @@ class Behaviour
 
     assign: (object)->
         if @id of object.behaviours
-            throw "#{object.name} already has a behaviour with id #{@id}"
+            throw Error "#{object.name} already has a behaviour with id #{@id}"
         if object.scene != @scene
-            throw "Object #{object.name} is not in expected scene #{@scene.name}"
+            throw Error "Object #{object.name}
+                is not in expected scene #{@scene.name}"
         object.behaviours[@id] = @
         @objects.push(object)
         @assignment_times[object.name] = performance.now()
-        @on_init?(object)
 
     unassign: (object)->
         i = object.behaviours.indexOf @
@@ -119,7 +120,7 @@ class Behaviour
             @_create_events()
         method = {physics: 'phy'}[method]
         if not method?
-            throw "Object picking method not supported: "+method
+            throw Error "Object picking method not supported: "+method
         @_object_picking_method = method
         return
 
@@ -134,7 +135,8 @@ class Behaviour
                 null
             when 'phy'
                 if not viewport?
-                    {x, y, viewport} = @context.canvas_screen.get_viewport_coordinates x, y
+                    {x, y, viewport} = \
+                        @context.canvas_screen.get_viewport_coordinates x, y
                 {width, height} = viewport
                 camera = viewport.debug_camera or viewport.camera
                 pos = camera.get_world_position()
@@ -176,12 +178,14 @@ class Behaviour
         if viewport in @_real_viewports
             {button, buttons, shiftKey, ctrlKey, altKey, metaKey} = event
             @_locked_viewport = viewport
-            @on_pointer_down? {x, y, delta_x: 0, delta_y: 0, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport}
+            @on_pointer_down? {x, y, delta_x: 0, delta_y: 0, button, buttons,
+                shiftKey, ctrlKey, altKey, metaKey, viewport}
             if @on_object_pointer_down?
                 {object, point, normal} = @pick_object x, y, viewport
                 if object?
                     @on_object_pointer_down {
-                        x, y, delta_x: 0, delta_y: 0, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport
+                        x, y, delta_x: 0, delta_y: 0, button, buttons,
+                        shiftKey, ctrlKey, altKey, metaKey, viewport,
                         object, point, normal
                     }
         return
@@ -201,21 +205,24 @@ class Behaviour
             {x, y} = viewport.get_viewport_coordinates x, y
             @_locked_viewport = null
         else
-            {x, y, viewport} = @context.canvas_screen.get_viewport_coordinates x, y
+            {canvas_screen} = @context
+            {x, y, viewport} = canvas_screen.get_viewport_coordinates x, y
         if viewport in @_real_viewports
             {button, buttons, shiftKey, ctrlKey, altKey, metaKey} = event
-            @on_pointer_up {x, y, delta_x, delta_y, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport}
+            @on_pointer_up {x, y, delta_x, delta_y, button, buttons,
+                shiftKey, ctrlKey, altKey, metaKey, viewport}
             if @on_object_pointer_up?
                 {object, point, normal} = @pick_object x, y, viewport
                 if object?
                     @on_object_pointer_up {
-                        x, y, delta_x: 0, delta_y: 0, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport
+                        x, y, delta_x: 0, delta_y: 0, button, buttons,
+                        shiftKey, ctrlKey, altKey, metaKey, viewport,
                         object, point, normal
                     }
         return
 
     _on_pointer_move: (event) =>
-        # TODO: Use pointer IDs, both for deltas and for viewport/object over/out
+        # TODO: Use pointerIDs, both for deltas and for viewport/object over/out
         x = event.clientX - @context.root_rect.left - pageXOffset
         y = event.clientY - @context.root_rect.top - pageYOffset
         prev = @_prev_events['mouse']
@@ -231,33 +238,39 @@ class Behaviour
             {x, y} = viewport.get_viewport_coordinates x, y
         else
             if event.type != 'pointerout'
-                {x, y, viewport} = @context.canvas_screen.get_viewport_coordinates x, y
+                {canvas_screen} = @context
+                {x, y, viewport} = canvas_screen.get_viewport_coordinates x, y
                 if @_pick_on_move and viewport?
                     # we rely in these being hoisted to the top as "undefined"
                     {object, point, normal} = @pick_object x, y, viewport
         if @_over_object? and @_over_object != object
             @on_object_pointer_out? {
-                x, y, delta_x: 0, delta_y: 0, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport
+                x, y, delta_x: 0, delta_y: 0, button, buttons,
+                shiftKey, ctrlKey, altKey, metaKey, viewport,
                 object: @_over_object, point, normal
             }
         if @_over_viewport? and @_over_viewport != viewport
-            @on_pointer_out? {x, y, delta_x, delta_y, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport: @_over_viewport}
+            @on_pointer_out? {x, y, delta_x, delta_y, button, buttons, \
+                shiftKey, ctrlKey, altKey, metaKey, viewport: @_over_viewport}
             @_over_viewport = null
         if viewport in @_real_viewports
             if object? and @_over_object != object
                 @on_object_pointer_over? {
-                    x, y, delta_x: 0, delta_y: 0, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport
+                    x, y, delta_x: 0, delta_y: 0, button, buttons,
+                    shiftKey, ctrlKey, altKey, metaKey, viewport,
                     object, point, normal
                 }
                 @_over_object = object
-            out_event = {x, y, delta_x, delta_y, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport}
+            out_event = {x, y, delta_x, delta_y, button, buttons,
+                shiftKey, ctrlKey, altKey, metaKey, viewport}
             if not @_over_viewport?
                 @_over_viewport = viewport
                 @on_pointer_over? out_event
             if event.type != 'pointerout'
                 @on_pointer_move? out_event
                 object? and @on_object_pointer_move? {
-                    x, y, delta_x: 0, delta_y: 0, button, buttons, shiftKey, ctrlKey, altKey, metaKey, viewport
+                    x, y, delta_x: 0, delta_y: 0, button, buttons,
+                    shiftKey, ctrlKey, altKey, metaKey, viewport,
                     object, point, normal
                 }
         return
@@ -280,15 +293,18 @@ class Behaviour
             viewport = @_locked_viewport
             {x, y} = viewport.get_viewport_coordinates x, y
         else
-            {x, y, viewport} = @context.canvas_screen.get_viewport_coordinates x, y
+            {canvas_screen} = @context
+            {x, y, viewport} = canvas_screen.get_viewport_coordinates x, y
         if viewport in @_real_viewports
-            {deltaX: delta_x, deltaY: delta_y, shiftKey, ctrlKey, altKey, metaKey} = event
+            {deltaX: delta_x, deltaY: delta_y,
+                shiftKey, ctrlKey, altKey, metaKey} = event
             if event.deltaMode == 1
                 delta_x *= 18
                 delta_y *= 18
             steps_x = Math.round delta_x / (18*3)
             steps_y = Math.round delta_y / (18*3)
-            @on_wheel {delta_x, delta_y, steps_x, steps_y, x, y, shiftKey, ctrlKey, altKey, metaKey}
+            @on_wheel {delta_x, delta_y, steps_x, steps_y, x, y,
+                shiftKey, ctrlKey, altKey, metaKey}
 
     _create_events: ->
         root = @_root
@@ -299,7 +315,8 @@ class Behaviour
         if @on_pointer_up? or @on_object_pointer_up?
             addListener root, 'pointerup', @_on_pointer_up
         if @on_pointer_move? or @on_pointer_over? or @on_pointer_out? or\
-                @on_object_pointer_move? or @on_object_pointer_over? or @on_object_pointer_out?
+                @on_object_pointer_move? or @on_object_pointer_over? or \
+                @on_object_pointer_out?
             addListener window, 'pointermove', @_on_pointer_move
             addListener window, 'pointerout', @_on_pointer_move
         @_pick_on_move = @on_object_pointer_move? or @on_object_pointer_over?
@@ -310,8 +327,10 @@ class Behaviour
 
     _destroy_events: ->
         root = @_root
-        @on_pointer_over? and removeListener root, 'pointerover', @_on_pointer_over
-        @on_pointer_out? and removeListener root, 'pointerout', @_on_pointer_out
+        if @on_pointer_over?
+            removeListener root, 'pointerover', @_on_pointer_over
+        if @on_pointer_out?
+            removeListener root, 'pointerout', @_on_pointer_out
         if @on_pointer_down? or @on_object_pointer_down?
             removeListener root, 'pointerdown', @_on_pointer_down
         if @on_pointer_up? or @on_object_pointer_up?

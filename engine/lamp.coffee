@@ -28,7 +28,8 @@ class Lamp extends GameObject
         @use_shadow = false
         @shadow_fb = null
         @shadow_texture = null
-        # this option allows to stop rendering the shadow when stuff didn't change
+        # this option allows to stop rendering the shadow when
+        # stuff didn't change
         @render_shadow = true
         @color = color4.new 1,1,1,1
         @energy = 1
@@ -74,7 +75,8 @@ class Lamp extends GameObject
         {texture_size, frustum_size, clip_start, clip_end} = @shadow_options
         # This one has no depth because we're using common_shadow_fb,
         # then applying box blur and storing here
-        @shadow_fb = new Framebuffer @context, {size: [texture_size, texture_size], use_depth: false}
+        size = [texture_size, texture_size]
+        @shadow_fb = new Framebuffer @context, {size, use_depth: false}
         @shadow_texture = @shadow_fb.texture
 
         # If using half float buffers, add a little bit of extra bias
@@ -97,7 +99,9 @@ class Lamp extends GameObject
         if @context.is_webgl2
             fs = glsl100to300 fs
 
-        mat = new Material @context, @name+'_shadow', {fragment: fs, varyings, material_type: 'PLAIN_SHADER'}
+        mat = new Material @context, @name+'_shadow', {
+            fragment: fs, varyings, material_type: 'PLAIN_SHADER'
+        }
         mat.is_shadow_material = true
         @_shadow_material = mat
 

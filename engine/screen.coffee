@@ -50,7 +50,7 @@ class CanvasScreen extends Screen
 
     init: (@context) ->
         if @context.canvas_screen?
-            throw "There's a canvas screen already"
+            throw Error "There's a canvas screen already"
         @context.canvas_screen = this
         @viewports = []
         @canvas = @context.canvas

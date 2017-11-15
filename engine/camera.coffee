@@ -62,7 +62,8 @@ class Camera extends GameObject
         vec3.transformQuat out, out, @get_world_rotation()
         return out
 
-    get_ray_direction_local: (x, y)-> @get_ray_direction_local_into vec3.create(), x, y
+    get_ray_direction_local: (x, y)->
+        @get_ray_direction_local_into vec3.create(), x, y
 
     get_ray_direction_local_into: (out, x, y)->
         vec3.set out, x*2-1, 1-y*2, 1
@@ -83,7 +84,7 @@ class Camera extends GameObject
             when 'CONTAIN'
                 return @aspect_ratio > @target_aspect_ratio
             else
-                throw "Camera.sensor_fit must be
+                throw Error "Camera.sensor_fit must be
                     AUTO, HORIZONTAL, VERTICAL, COVER or CONTAIN."
 
     recalculate_projection: ->
@@ -97,7 +98,7 @@ class Camera extends GameObject
             else if @cam_type == 'ORTHO'
                 half_size = @ortho_scale/2
             else
-                throw "Camera.cam_type must be PERSP or ORTHO."
+                throw Error "Camera.cam_type must be PERSP or ORTHO."
 
             if @is_vertical_fit()
                 top = half_size
@@ -269,14 +270,16 @@ class Camera extends GameObject
             pm.m14 = c
             pm.m15 = 1
             mat4.invert @projection_matrix_inv, @projection_matrix
-            throw "TODO: frustum culling for ortho!"
+            throw Error "TODO: frustum culling for ortho!"
 
         rot_matrix = mat3.rotationFromMat4 mat3.create(), @get_world_matrix()
-        normal_left = vec3.transformMat3 vec3.create(), cull_left_local, rot_matrix
+        normal_left =
+            vec3.transformMat3 vec3.create(), cull_left_local, rot_matrix
         normal_right = v = vec3.copy vec3.create(), cull_left_local
         v.x = -v.x
         vec3.transformMat3 v, v, rot_matrix
-        normal_bottom = vec3.transformMat3 vec3.create(), cull_bottom_local, rot_matrix
+        normal_bottom =
+            ec3.transformMat3 vec3.create(), cull_bottom_local, rot_matrix
         normal_top = v = vec3.copy vec3.create(), cull_bottom_local
         v.y = -v.y
         vec3.transformMat3 v, v, rot_matrix

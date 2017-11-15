@@ -233,7 +233,7 @@ class Body
                 tmp_Vector3.setValue scale.x, scale.y, scale.z
                 @btshape.setLocalScaling tmp_Vector3
             else
-                throw "Unknown shape:" + @shape
+                throw Error "Unknown shape:" + @shape
 
         @btshape.setMargin @margin
 
@@ -309,7 +309,7 @@ class Body
                 @world.auto_update_bodies.push @
                 @world.character_bodies.push @
             else
-                throw "Type not handled:" + @physics_type
+                throw Error "Type not handled:" + @physics_type
 
         if @btchar?
             @btworld.addCollisionObject(@btbody, @group, @mask)
@@ -425,31 +425,31 @@ class Body
 
     # TODO: REVISE API
     set_character_velocity: (v)->
-        throw "Object '#{@owner.name}' is not a character body" if not @btchar?
+        throw Error "Object '#{@owner.name}' is not a character body" if not @btchar?
         {tmp_Vector3} = @world
         tmp_Vector3.setValue(v.x * 0.016666666666666666, v.y * 0.016666666666666666, v.z * 0.016666666666666666)
         @btchar.setWalkDirection(tmp_Vector3)
 
     set_jump_force: (f)->
-        throw "Object '#{@owner.name}' is not a character body" if not @btchar?
+        throw Error "Object '#{@owner.name}' is not a character body" if not @btchar?
         @jump_force = f
         @btchar.setJumpSpeed(f)
 
     jump: ->
-        throw "Object '#{@owner.name}' is not a character body" if not @btchar?
+        throw Error "Object '#{@owner.name}' is not a character body" if not @btchar?
         @btchar.jump()
 
     on_ground: ->
-        throw "Object '#{@owner.name}' is not a character body" if not @btchar?
+        throw Error "Object '#{@owner.name}' is not a character body" if not @btchar?
         return @btchar.onGround()
 
     set_max_fall_speed: (f)->
-        throw "Object '#{@owner.name}' is not a character body" if not @btchar?
+        throw Error "Object '#{@owner.name}' is not a character body" if not @btchar?
         @max_fall_speed = f
         @btchar.setFallSpeed(f)
 
     set_angular_velocity: (v)->
-        throw "Object '#{@owner.name}' is not a character body" if not @btchar?
+        throw Error "Object '#{@owner.name}' is not a character body" if not @btchar?
         {tmp_Vector3} = @world
         tmp_Vector3.setValue(v.x, v.y, v.z)
         @btbody.setAngularVelocity(tmp_Vector3)

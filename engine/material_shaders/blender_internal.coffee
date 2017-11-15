@@ -85,7 +85,7 @@ class BlenderInternalMaterial
                 when 13, GPU_DYNAMIC_SAMPLER_2DIMAGE, GPU_DYNAMIC_SAMPLER_2DBUFFER # 2D image
                     tex = scene?.textures[u.image]
                     if not tex?
-                        throw "Texture #{u.image} not found (in material #{@material.name})."
+                        throw Error "Texture #{u.image} not found (in material #{@material.name})."
                     @material._texture_list[texture_count++].value = tex
         return
 

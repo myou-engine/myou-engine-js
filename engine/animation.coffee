@@ -177,7 +177,7 @@ class Animation
     set_frame: (@pos) -> @
 
     init: ->
-        throw "Abstract class"
+        throw Error "Abstract class"
 
     step: (frame_delta) ->
         @pos += frame_delta * @speed
@@ -188,16 +188,17 @@ class Animation
             # TODO: optimize
             affected_channels = {}
             for strip in ob.animation_strips when strip in @strips
-                {frame_start, frame_end, action_frame_start, action_frame_end} = strip
+                {frame_start, frame_end, action_frame_start, action_frame_end} \
+                    = strip
                 strip_pos = @pos - frame_start
-                strip_pos_reverse = frame_end - @pos
+                strip_pos_rev = frame_end - @pos
                 blend_factor = 1
                 if strip.blend_in != 0
                     blend_factor *= clamp(strip_pos/strip.blend_in, 0, 1)
                 if strip.blend_out != 0
-                    blend_factor *= clamp(strip_pos_reverse/strip.blend_out, 0, 1)
+                    blend_factor *= clamp(strip_pos_rev/strip.blend_out, 0, 1)
                 if strip.reversed
-                    [strip_pos, strip_pos_reverse] = [strip_pos_reverse, strip_pos]
+                    [strip_pos, strip_pos_rev] = [strip_pos_rev, strip_pos]
                 switch strip.extrapolation
                     when 'HOLD_FORWARD'
                         if @pos < frame_start
@@ -208,12 +209,14 @@ class Animation
                 action = actions[strip.action]
                 scaled_pos = strip_pos/strip.scale
                 # we're ignoring strip.repeat, instead we're only checking that
-                # we're not exactly at the end or past it (or at the start for reversed)
-                # since the repeat is implicit in the other 5 playback attributes we use
+                # we're not exactly at the end or past it (or at the start for
+                # reversed) since the repeat is implicit in the other 5 playback
+                # attributes we use
                 if @pos < frame_end and @pos > frame_start
                     # TODO: check we're not off by one when repeating
                     scaled_pos %= action_frame_end - action_frame_start
-                pos = clamp(scaled_pos + action_frame_start, action_frame_start, action_frame_end)
+                pos = clamp(scaled_pos + action_frame_start,
+                    action_frame_start, action_frame_end)
                 for path of action.channels
                     ac = affected_channels[path] = affected_channels[path] or []
                     ac.push {strip, action, pos, blend_factor}
@@ -222,8 +225,8 @@ class Animation
                 # First, iterate through all animations
                 # to accumulate the result for this channel
                 blend = null
-                # TODO: blender seems to behave as if the influence of the first strip
-                # is always 1 or 0, independently of other strips.
+                # TODO: blender seems to behave as if the influence of the
+                # first strip is always 1 or 0, independently of other strips.
                 # we're doing this (with blend_factor = 1 below)
                 # but we want it to work across different animations
                 # (including copies of the same animation)
@@ -237,14 +240,15 @@ class Animation
                     if not blend?
                         {type, name, prop, data_type} = orig_chan
                         blend = v[...]
-                        initial_value = +(prop=='scale') # 1 if scale, 0 otherwise
+                        # 1 if scale, 0 otherwise
+                        initial_value = +(prop=='scale')
                         for i in [0...blend.length] by 1
                             blend[i] = initial_value
                         blend_factor = 1
                     switch strip.blend_type
                         when 'REPLACE'
                             for i in [0...blend.length]
-                                blend[i] = blend[i] + blend_factor*(v[i]-blend[i])
+                                blend[i] = blend[i]+blend_factor*(v[i]-blend[i])
                         when 'ADD'
                             for i in [0...blend.length]
                                 blend[i] += v[i] * blend_factor

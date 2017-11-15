@@ -1,7 +1,7 @@
 
 class BaseEffect
     constructor: (@context) ->
-        throw "Abstract class"
+        throw Error "Abstract class"
 
     on_viewport_update: (@viewport) ->
         # Called after it's added and when viewport changes size.

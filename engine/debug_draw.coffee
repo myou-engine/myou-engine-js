@@ -45,7 +45,8 @@ class DebugDraw
                         # TODO: Load meshes?
                         if not ob.visible and ob.data?
                             if not ob.properties._invisible_mesh?
-                                ob.properties._invisible_mesh = @_shapes.make_debug_mesh_from(ob)
+                                ob.properties._invisible_mesh =
+                                    @_shapes.make_debug_mesh_from(ob)
                             @_draw_empty gl, render_manager, ob, mm4
                     else
                         @_draw_empty gl, render_manager, ob, mm4
@@ -73,13 +74,16 @@ class DebugDraw
                     {x,y,z} = ob.body.half_extents
                     radius = Math.max(x,y)
                     height = z*2
-                    dob = body.debug_mesh = @_shapes.get_capsule {radius, height}
+                    dob = body.debug_mesh =
+                        @_shapes.get_capsule {radius, height}
                     body.debug_mesh_has_transform = true
                 when 'CONVEX_HULL'
-                    dob = body.debug_mesh = @_shapes.make_convex_hull_from(ob.body.get_physics_mesh())
+                    phy_m = ob.body.get_physics_mesh()
+                    dob = body.debug_mesh = @_shapes.make_convex_hull_from phy_m
                     ob.body.debug_mesh_has_transform = true
                 when 'TRIANGLE_MESH'
-                    dob = body.debug_mesh = @_shapes.make_debug_mesh_from(ob.body.get_physics_mesh())
+                    phy_m = ob.body.get_physics_mesh()
+                    dob = body.debug_mesh = @_shapes.make_debug_mesh_from phy_m
                     ob.body.debug_mesh_has_transform = true
         ob.get_world_position_rotation_into dob.position, dob.rotation
         if body.debug_mesh_has_transform
@@ -218,7 +222,8 @@ class Vector extends DebugShape
         vec2.set shapes.discontinuity, 1, 1
         vec3.copy dob.position, position
         v3 = vector
-        v2 = vec3.cross vec3.create(), vec3.sub(vec3.create(), camera_position, position), v3
+        v2 = vec3.sub(vec3.create(), camera_position, position)
+        vec3.cross v2, v2, v3
         v1 = vec3.normalize vec3.create(), vec3.cross(vec3.create(),v2,v3)
         v2 = vec3.normalize vec3.create(), vec3.cross(v2,v3,v1)
         s = vec3.len v3
@@ -297,7 +302,8 @@ class Plane extends DebugShape
         {position, normal} = this
         # determine what side the camera is to draw one color or the other
         normal = vec3.normalize vec3.create(), normal
-        if vec3.dot(vec3.sub(vec3.create(), camera_position, position), normal) >= 0
+        p = vec3.sub(vec3.create(), camera_position, position)
+        if vec3.dot(p, normal) >= 0
             color4.copy shapes.color, @color_front
         else
             color4.copy shapes.color, @color_back

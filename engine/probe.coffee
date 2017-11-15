@@ -49,7 +49,7 @@ class Probe
                     clear_bits: 16384|256
                     units_to_pixels: 1
             else
-                throw "Inavlid probe type: " + @type
+                throw Error "Inavlid probe type: " + @type
         @position = vec3.create()
         @rotation = quat.create()
         @normal = vec3.create()

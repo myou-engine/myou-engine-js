@@ -6,6 +6,7 @@
 #
 # It's the base for mesh objects, cameras, lamps, armatures, etc.
 # It can also be used by itself (a.k.a. Empty).
+
 class GameObject
     constructor: (@context)->
         @debug=false
@@ -97,7 +98,7 @@ class GameObject
         if order != 'Q'
             f = quat['to_euler_'+order]
             if not f?
-                throw "Invalid rotation order.
+                throw Error "Invalid rotation order.
                     Should be one of: Q XYZ XZY YXZ YZX ZXY ZYX."
         q = @rotation
         if @rotation_order != 'Q'
@@ -167,18 +168,23 @@ class GameObject
         vec3.add @position, @position, vector
         return this
 
-    translate_x: (x, relative_object) -> @translate vec3.new(x, 0, 0), relative_object
+    translate_x: (x, relative_object) ->
+        @translate vec3.new(x, 0, 0), relative_object
 
-    translate_y: (y, relative_object) -> @translate vec3.new(0, y, 0), relative_object
+    translate_y: (y, relative_object) ->
+        @translate vec3.new(0, y, 0), relative_object
 
-    translate_z: (z, relative_object) -> @translate vec3.new(0, 0, z), relative_object
+    translate_z: (z, relative_object) ->
+        @translate vec3.new(0, 0, z), relative_object
 
     rotate_euler: (vector, order, relative_object) ->
-        @rotate_quat quat.fromEulerOrder(quat.create(), vector, order), relative_object
+        q = quat.fromEulerOrder(quat.create(), vector, order)
+        @rotate_quat q, relative_object
 
     rotate_euler_deg: (vector, order, relative_object) ->
         v = vec3.scale vec3.create(), vector, 0.017453292519943295 # PI*2 / 360
-        @rotate_quat quat.fromEulerOrder(quat.create(), v, order), relative_object
+        q = quat.fromEulerOrder(quat.create(), v, order)
+        @rotate_quat q, relative_object
 
     rotate_quat: (q, relative_object) ->
         # TODO: optimize
@@ -222,15 +228,18 @@ class GameObject
 
     rotate_x_deg: (angle, relative_object) ->
         q = quat.create()
-        @rotate_quat(quat.rotateX(q, q, angle*0.017453292519943295), relative_object)
+        angle *= 0.017453292519943295
+        @rotate_quat(quat.rotateX(q, q, angle), relative_object)
 
     rotate_y_deg: (angle, relative_object) ->
         q = quat.create()
-        @rotate_quat(quat.rotateY(q, q, angle*0.017453292519943295), relative_object)
+        angle *= 0.017453292519943295
+        @rotate_quat(quat.rotateY(q, q, angle), relative_object)
 
     rotate_z_deg: (angle, relative_object) ->
         q = quat.create()
-        @rotate_quat(quat.rotateZ(q, q, angle*0.017453292519943295), relative_object)
+        angle *= 0.017453292519943295
+        @rotate_quat(quat.rotateZ(q, q, angle), relative_object)
 
     add_behaviour: (behaviour)->
         behaviour.assign @
@@ -318,7 +327,9 @@ class GameObject
                 ob = @scene.objects[probe_options.object]
                 if not ob?
                     if probe_options.object != ''
-                        console.error "Object '#{@name}' tries to use probe object '#{probe_options.object}' which doesn't exist."
+                        console.error "Object '#{@name}' tries to use
+                            probe object '#{probe_options.object}'
+                            which doesn't exist."
                     return @probe = @scene.background_probe
                 return @probe = ob.probe or ob.instance_probe()
             @probe = new Probe @, probe_options

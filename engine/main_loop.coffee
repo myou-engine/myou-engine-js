@@ -116,9 +116,10 @@ class MainLoop
 
         for scene_name in @context.loaded_scenes
             scene = @context.scenes[scene_name]
-            i = scene.pre_draw_callbacks.length+1
+            pdc = scene.pre_draw_callbacks
+            i = pdc.length+1
             while --i != 0
-                scene.pre_draw_callbacks[scene.pre_draw_callbacks.length-i] scene, frame_duration
+                pdc[pdc.length-i] scene, frame_duration
 
         time2 = performance.now()
 
@@ -132,7 +133,6 @@ class MainLoop
         time4 = performance.now()
 
         for name, video_texture of @context.video_textures
-            #TODO: Optimize updating only the video_textures whose video is being played
             video_texture.update_texture?()
 
         @context.render_manager.draw_all()
@@ -141,9 +141,10 @@ class MainLoop
 
         for scene_name in @context.loaded_scenes
             scene = @context.scenes[scene_name]
-            i = scene.post_draw_callbacks.length+1
+            pdc = scene.post_draw_callbacks
+            i = pdc.length+1
             while --i != 0
-                scene.post_draw_callbacks[scene.post_draw_callbacks.length-i] scene, frame_duration
+                pdc[pdc.length-i] scene, frame_duration
 
         @context.input_manager.reset_buttons()
 

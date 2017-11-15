@@ -65,12 +65,13 @@ class Cubemap
     set_data: (data=[null,null,null,null,null,null]) ->
         {gl} = @context.render_manager
         i = gl.TEXTURE_CUBE_MAP_POSITIVE_X
-        gl.texImage2D(i++, 0, @gl_internal_format, @size, @size, 0, @gl_format, @gl_type, data[0])
-        gl.texImage2D(i++, 0, @gl_internal_format, @size, @size, 0, @gl_format, @gl_type, data[1])
-        gl.texImage2D(i++, 0, @gl_internal_format, @size, @size, 0, @gl_format, @gl_type, data[2])
-        gl.texImage2D(i++, 0, @gl_internal_format, @size, @size, 0, @gl_format, @gl_type, data[3])
-        gl.texImage2D(i++, 0, @gl_internal_format, @size, @size, 0, @gl_format, @gl_type, data[4])
-        gl.texImage2D(i++, 0, @gl_internal_format, @size, @size, 0, @gl_format, @gl_type, data[5])
+        {gl_internal_format: ifmt, size, gl_format, gl_type} = this
+        gl.texImage2D(i++, 0, ifmt, size, size, 0, gl_format, gl_type, data[0])
+        gl.texImage2D(i++, 0, ifmt, size, size, 0, gl_format, gl_type, data[1])
+        gl.texImage2D(i++, 0, ifmt, size, size, 0, gl_format, gl_type, data[2])
+        gl.texImage2D(i++, 0, ifmt, size, size, 0, gl_format, gl_type, data[3])
+        gl.texImage2D(i++, 0, ifmt, size, size, 0, gl_format, gl_type, data[4])
+        gl.texImage2D(i++, 0, ifmt, size, size, 0, gl_format, gl_type, data[5])
         if @use_mipmap?
             gl.generateMipmap gl.TEXTURE_CUBE_MAP
         return @
@@ -100,7 +101,8 @@ class Cubemap
         gl.generateMipmap gl.TEXTURE_CUBE_MAP
         return @
 
-    # Render all cubemap faces to a framebuffer with a size of at least 3*size by 2*size.
+    # Render all cubemap faces to a framebuffer with a size of at least
+    # 3*size by 2*size.
     #
     # The format is six faces in a 3*2 mosaic like this:
     #
@@ -131,7 +133,8 @@ class Cubemap
         gl.drawArrays gl.TRIANGLE_STRIP, 0, 4
         # Test this with:
         # $myou.scenes.Scene.post_draw_callbacks.push(function({
-        #     $myou.objects.Cube.probe.cubemap.render_to_framebuffer($myou.render_manager.main_fb)
+        #     $myou.objects.Cube.probe.cubemap.render_to_framebuffer(
+        #     $myou.render_manager.main_fb)
         # })
         return @
 
@@ -141,13 +144,13 @@ class Cubemap
         {gl} = @context.render_manager
         fb = _temp_framebuffers[size]
         if not fb?
-            fb = new @context.Framebuffer size: [size*4, size*2], color_type: 'UNSIGNED_BYTE'
+            fb = new @context.ByteFramebuffer size: [size*4, size*2]
             _temp_framebuffers[size] = fb
         @render_to_framebuffer fb, size
-        for face_pixels,i in faces
+        for pixels,i in faces
             x = size * (i%3)
             y = size * ((i>=3)|0)
-            gl.readPixels(x, y, size, size, gl.RGBA, gl.UNSIGNED_BYTE, face_pixels)
+            gl.readPixels(x, y, size, size, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
         return
 
     # Generate spherical harmonics for diffuse shading

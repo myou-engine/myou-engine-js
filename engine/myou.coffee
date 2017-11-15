@@ -62,9 +62,9 @@ class Myou
 
     constructor: (root, options)->
         if not root?
-            throw "Missing root DOM element, got null or undefined"
+            throw Error "Missing root DOM element, got null or undefined"
         if not options?
-            throw "Missing options"
+            throw Error "Missing options"
         @screens = []
         @behaviours = @behaviors = []
         @canvas_screen = null

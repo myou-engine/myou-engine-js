@@ -28,7 +28,7 @@ class BlenderCyclesPBRMaterial
                 when 'IMAGE'
                     tex = scene?.textures[u.image]
                     if not tex?
-                        throw "Texture #{u.image} not found (in material #{@material.name})."
+                        throw Error "Texture #{u.image} not found (in material #{@material.name})."
                     _texture_list[texture_count++].value = tex
                 when 'LAMP_SHADOW_MAP'
                     tex = render_scene.objects[u.lamp].shadow_texture

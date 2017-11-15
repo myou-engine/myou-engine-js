@@ -40,5 +40,13 @@
     "blender"
   ],
   "author": "Alberto Torres Ruiz <kungfoobar@gmail.com> and Julio Manuel López <julio@pixelements.net> (http://pixelements.net)",
-  "license": "SEE LICENSE IN <LICENSE>"
+  "license": "MIT",
+  "coffeelintConfig": {
+    "indentation": {
+      "value": 4
+    },
+    "no_interpolation_in_single_quotes": {
+      "level": "warn"
+    }
+  }
 }

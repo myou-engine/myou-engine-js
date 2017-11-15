@@ -1,14 +1,14 @@
 
 _active_program = null
 
-GL_BYTE = 0x1400
-GL_UNSIGNED_BYTE = 0x1401
-GL_SHORT = 0x1402
-GL_UNSIGNED_SHORT = 0x1403
-GL_INT = 0x1404
-GL_UNSIGNED_INT = 0x1405
-GL_FLOAT = 0x1406
-attr_types = {'f': GL_FLOAT, 'b': GL_BYTE, 'B': GL_UNSIGNED_BYTE, 'H': GL_UNSIGNED_SHORT,}
+BYTE = 0x1400
+UNSIGNED_BYTE = 0x1401
+SHORT = 0x1402
+UNSIGNED_SHORT = 0x1403
+INT = 0x1404
+UNSIGNED_INT = 0x1405
+FLOAT = 0x1406
+attr_types = {'f': FLOAT, 'b': BYTE, 'B': UNSIGNED_BYTE, 'H': UNSIGNED_SHORT,}
 
 {BlenderInternalMaterial} = require('./material_shaders/blender_internal')
 {BlenderCyclesPBRMaterial} = require('./material_shaders/blender_cycles_pbr')
@@ -24,10 +24,12 @@ class Material
         @shaders = {}
         @users = []
         @scene?.materials[@name] = this
-        @render_scene = @scene # Materials can be used in other scenes when cloning
+        # Materials can be used in other scenes when cloning
+        @render_scene = @scene
         @_has_texture_list_checked = false
         @set_data @data
-        @last_shader = null # TODO: workaround for short term compatibility problems
+        # TODO: workaround for short term compatibility problems; remove
+        @last_shader = null
         # Store it in context.all_materials with unique name
         @_global_name = (@scene?.name or 'no_scene') + '.' + @name
         dedup = 0
@@ -41,7 +43,7 @@ class Material
         shader = @shaders[mesh._signature]
         if not shader? and @generator?
             @get_texture_list()
-            shader = @shaders[mesh._signature] = new Shader(@context, @data, this,
+            shader = @shaders[mesh._signature] = new Shader(@context, @data, @,
                 mesh.layout, mesh.vertex_modifiers, mesh.material_defines)
             shader.material = this
             @last_shader = shader
@@ -56,7 +58,8 @@ class Material
         if @data?
             generator_class = material_types[@data.material_type]
             if not generator_class?
-                return console.error "Material #{@name} has invalid material type: #{@data.material_type}"
+                return console.error "Material #{@name} has invalid
+                    material type: #{@data.material_type}"
             # The constructor of the generator populates inputs and _input_list
             @generator = new generator_class(this)
         return

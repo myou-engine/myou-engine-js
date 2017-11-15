@@ -99,7 +99,7 @@ class RenderManager
 
         if not gl
             @context.MYOU_PARAMS.on_webgl_failed?()
-            throw "Error: Can't start WebGL"
+            throw Error "Error: Can't start WebGL"
 
         @gl = gl
         if @breaking_on_any_gl_error
@@ -400,7 +400,7 @@ class RenderManager
                     last = effects[effects.length-1]
                     result = last.apply source, screen.framebuffer, viewport.rect_pix
                     if result.destination != screen.framebuffer
-                        throw "The last effect is not allowed to be pass-through
+                        throw Error "The last effect is not allowed to be pass-through
                             (second argument of effect.apply must be destination)."
                 else
                     @draw_viewport viewport, viewport.rect_pix, screen.framebuffer, [0, 1]
@@ -1019,14 +1019,14 @@ class RenderManager
             gl['_'+p] = gl[p]
             gl[p] = do (p) => (l,v)->
                 if not v.byteLength?
-                    throw "wrong type"
+                    throw Error "wrong type"
                 return gl["_"+p](l,v)
 
         for p in ['uniformMatrix3fv', 'uniformMatrix4fv']
             gl['_'+p] = gl[p]
             gl[p] = do (p) => (l,t,v)->
                 if v.byteLength?
-                    throw "wrong type"
+                    throw Error "wrong type"
                 return gl["_"+p](l,t,v)
         return
 
