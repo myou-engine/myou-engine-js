@@ -1,6 +1,6 @@
 require './engine/init'
 {Myou, create_canvas, create_full_window_canvas} = require './engine/myou'
-{Behaviour, SceneBehaviour} = require './engine/behaviour'
+{Behaviour} = require './engine/behaviour'
 
 # geometry utils
 gmath =
@@ -13,12 +13,9 @@ vmath = require './engine/math_utils/vmath_extra'
 # math utils
 math = require './engine/math_utils/math_extra'
 
-Behavior = Behaviour
-SceneBehavior = SceneBehaviour
-
 module.exports = {
     #myou engine
-    Myou, Behaviour, SceneBehaviour, Behavior, SceneBehavior,
+    Myou, Behaviour, Behavior: Behaviour,
     #Utils
     create_canvas, create_full_window_canvas, gmath, vmath, math,
 }
