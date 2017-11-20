@@ -91,13 +91,6 @@ class RenderManager
             gl = window.WebGL
 
         if not gl
-            # Try disabling multisampling
-            # (Chrome is not following the specification by rejecting to create the context)
-            @recreate_gl_canvas()
-            glflags.antialias = false
-            gl = @canvas.getContext("webgl", glflags)
-
-        if not gl
             @context.MYOU_PARAMS.on_webgl_failed?()
             throw Error "Error: Can't start WebGL"
 
