@@ -15,19 +15,16 @@
     "vmath": "^1.4.5",
     "whatwg-fetch": "^1.0.0"
   },
-  "optionalDependencies": {
-    "url-loader": "^0.5.7",
-    "source-map-loader": "^0.1.5",
-    "get-pixels": "^3.3.0",
-    "json-loader": "^0.5.4",
-    "webpack": "^1.12.11"
-  },
   "devDependencies": {
     "coffee-loader": "^0.7.2",
     "coffee-script": "^1.10.0",
     "file-loader": "^0.8.5",
+    "json-loader": "^0.5.4",
     "raw-loader": "^0.5.1",
-    "timsort": "^0.2.1"
+    "source-map-loader": "^0.1.5",
+    "timsort": "^0.2.1",
+    "url-loader": "^0.5.7",
+    "webpack": "^1.12.11"
   },
   "repository": {
     "type": "git",

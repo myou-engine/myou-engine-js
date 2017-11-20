@@ -138,50 +138,23 @@ class Texture
                 return @promise
             @promised_data = data
             @promise = new Promise (resolve, reject) =>
-                if getPixels?
-                    type = 'image/png'
-                    if jpeg
-                        type = 'image/jpeg'
-                    f = data.file_name+(new Error).stack.split('\n')[1]
-                    # TODO Move out of here
-                    if readFileForGetPixels? and not data.data_uri and base[0] != '/'
-                        data.data_uri = readFileForGetPixels(base + data.file_name)
-                    # get-pixels expects a file uri, an url, a data uri or a node buffer
-                    getPixels data.data_uri or (base + data.file_name), type, (err, pixels) =>
-                        if err?
-                            return reject "Image not found: " + (data.file_name or @name)
-                        @buffers = [pixels.data.buffer]
-                        [@width, @height] = pixels.shape
-                        @texture_type = 'buffers'
-                        @gl_format = @gl_internal_format = gl.RGBA
-                        @gl_type = gl.UNSIGNED_BYTE
-                        # flip vertically
-                        pixels = new Uint32Array(@buffers[0])
-                        line = new Uint32Array(@width)
-                        for i in [0...@height>>1]
-                            line1 = pixels.subarray @width*i, @width*(i+1)
-                            line2 = pixels.subarray @width*(@height-i-1), @width*(@height-i)
-                            line.set line1
-                            line1.set line2
-                            line2.set line
+                @image = new Image
+                @image.onload = =>
+                    @context.main_loop.add_frame_callback =>
+                        {@width, @height} = @image
+                        if not @is_power_of_two()
+                            @loaded = false
+                            reject "Texture #{@name} has non-power-of-two size
+                                #{@width}x#{@height}"
+                        @texture_type = 'image'
                         @upload()
                         resolve @
-                else
-                    @image = new Image
-                    @image.onload = =>
-                        @context.main_loop.add_frame_callback =>
-                            {@width, @height} = @image
-                            if not @is_power_of_two()
-                                @loaded = false
-                                reject "Texture #{@name} has non-power-of-two size #{@width}x#{@height}"
-                            @texture_type = 'image'
-                            @upload()
-                            resolve @
-                    @image.onerror = =>
-                        # TODO: Distinguish between not found, timeout and malformed?
-                        @promised_data = null
-                        reject "Image not found: " + (data.file_name or @name)
-                    @image.src = data.data_uri or (base + data.file_name)
+                @image.onerror = =>
+                    # TODO: Distinguish between not found,
+                    # timeout and malformed?
+                    @promised_data = null
+                    reject "Image not found: " + (data.file_name or @name)
+                @image.src = data.data_uri or (base + data.file_name)
         else if rgb565?
             # TODO: Test this part, or remove
             data = @select_closest_format rgb565, size_ratio
