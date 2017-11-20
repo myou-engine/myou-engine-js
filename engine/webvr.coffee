@@ -33,7 +33,8 @@ class VRScreen extends CanvasScreen
         @resize(Math.max(leftEye.renderWidth, rightEye.renderWidth) * 2,
                 Math.max(leftEye.renderHeight, rightEye.renderHeight))
         # TODO: fix frustum culling in VR
-        @was_using_frustrum_culling = @context.render_manager.use_frustum_culling
+        @was_using_frustrum_culling =
+            @context.render_manager.use_frustum_culling
         @context.render_manager.use_frustum_culling = false
         @context.canvas_screen.enabled = false
 
@@ -41,7 +42,8 @@ class VRScreen extends CanvasScreen
         @context.vr_screen = null
         @context.screens.splice @context.screens.indexOf(this), 1
         @context.canvas_screen.resize_to_canvas()
-        @context.render_manager.use_frustum_culling = @was_using_frustrum_culling
+        @context.render_manager.use_frustum_culling =
+            @was_using_frustrum_culling
         @context.canvas_screen.enabled = true
         return
 
@@ -52,9 +54,15 @@ class VRScreen extends CanvasScreen
         # Read pose
         HMD.getFrameData @frame_data
         # Set position of VR cameras, etc
-        {pose: {position, orientation}, leftProjectionMatrix, rightProjectionMatrix} = @frame_data
-        {position: p0, rotation: r0, projection_matrix: pm0} = @viewports[0].camera
-        {position: p1, rotation: r1, projection_matrix: pm1} = @viewports[1].camera
+        {
+            pose: {position, orientation},
+            leftProjectionMatrix,
+            rightProjectionMatrix,
+        } = @frame_data
+        {position: p0, rotation: r0, projection_matrix: pm0} =
+            @viewports[0].camera
+        {position: p1, rotation: r1, projection_matrix: pm1} =
+            @viewports[1].camera
         if position?
             vec3.copyArray p0, position
             vec3.copyArray p1, position
@@ -77,14 +85,16 @@ exports.has_HMD = ->
     new Promise (resolve, reject) ->
         if not navigator.getVRDisplays
             if navigator.getVRDevices
-                return reject "This browser only supports an old version of WebVR.
-                Use a browser with WebVR 1.1 support"
-            return reject "This browser doesn't support WebVR or is not enabled."
+                return reject "This browser only supports an old version
+                    of WebVR. Use a browser with WebVR 1.1 support"
+            return reject "This browser doesn't support WebVR
+                or is not enabled."
         navigator.getVRDisplays().then (_displays) ->
             displays = _displays
             HMD = null
             for display in displays
-                if display instanceof VRDisplay and display.capabilities.canPresent
+                if display instanceof VRDisplay and
+                        display.capabilities.canPresent
                     HMD = display
                     break
             if not HMD?
@@ -104,9 +114,10 @@ exports.init = (scene, options={}) ->
     # Detect API support
     if not navigator.getVRDisplays
         if navigator.getVRDevices
-            return Promise.reject "This browser only supports an old version of WebVR.
-            Use a browser with WebVR 1.1 support"
-        return Promise.reject "This browser doesn't support WebVR or is not enabled."
+            return Promise.reject "This browser only supports an old version
+                of WebVR. Use a browser with WebVR 1.1 support"
+        return Promise.reject "This browser doesn't support WebVR
+                or is not enabled."
     # Find HMD
     ctx = scene.context
     if ctx.vr_screen?.HMD.isPresenting
@@ -117,7 +128,8 @@ exports.init = (scene, options={}) ->
             HMD = display
             break
     if not HMD?
-        return Promise.reject "No HMDs detected. Conect an HMD, turn it on and try again."
+        return Promise.reject "No HMDs detected. Conect an HMD,
+            turn it on and try again."
 
     ctx._vrscene = scene
     # Request present
@@ -126,7 +138,6 @@ exports.init = (scene, options={}) ->
             try
                 HMD.requestPresent [{source: ctx.canvas}]
             catch e
-                debugger
                 throw e
     else
         # TODO: support non-presenting VR displays?
@@ -135,19 +146,21 @@ exports.init = (scene, options={}) ->
     # Prepare scene after is presenting
     window.removeEventListener 'vrdisplaypresentchange', vrdisplaypresentchange
     new Promise (resolve, reject) ->
-        window.addEventListener 'vrdisplaypresentchange', vrdisplaypresentchange = ->
-            if HMD.isPresenting
-                try
-                    if options.use_VR_position?
-                        ctx.use_VR_position = options.use_VR_position
-                    if options.neck_model?
-                        set_neck_model ctx, options.neck_model
-                    if not ctx.vr_screen?
-                        new VRScreen ctx, HMD, scene
-                    resolve()
-                catch e
-                    reject(e)
-            else
-                window.removeEventListener 'vrdisplaypresentchange', vrdisplaypresentchange
-                ctx.vr_screen?.destroy()
+        window.addEventListener 'vrdisplaypresentchange',
+            vrdisplaypresentchange = ->
+                if HMD.isPresenting
+                    try
+                        if options.use_VR_position?
+                            ctx.use_VR_position = options.use_VR_position
+                        if options.neck_model?
+                            set_neck_model ctx, options.neck_model
+                        if not ctx.vr_screen?
+                            new VRScreen ctx, HMD, scene
+                        resolve()
+                    catch e
+                        reject(e)
+                else
+                    window.removeEventListener 'vrdisplaypresentchange',
+                        vrdisplaypresentchange
+                    ctx.vr_screen?.destroy()
         return

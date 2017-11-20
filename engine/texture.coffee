@@ -10,7 +10,7 @@
 #   {width, height, file_size, file_name, data_uri, pixels}
 # - `file_name` is the file name relative to data_dir/textures/
 # - `data_uri` is a "data:" URI containing the whole image
-# - `pixels` is an array or typed array with the pixels in unsigned byte RGBA format.
+# - `pixels` is an array or typed array with the pixels in byte RGBA format.
 # - `file_name`, `data_uri` or `pixels` must be present, but not more than one.
 #
 # Example:
@@ -29,9 +29,12 @@
 # @param scene [Scene]
 # @option options [String] name
 # @option options [Object] formats See above.
-# @option options [String] wrap One of 'C', 'R' or 'M', for Clamp, Repeat or Mirrored, respectively.
+# @option options [String]
+#   wrap One of 'C', 'R' or 'M', for Clamp, Repeat or Mirrored, respectively.
 # @option options [Boolean] filter Whether to enable bilinear filtering
-# @option options [Boolean] use_mipmap Whether to enable mipmapping. If the loaded format doesn't have mipmaps, they will be generated.
+# @option options [Boolean]
+#   use_mipmap Whether to enable mipmapping. If the loaded format doesn't have
+#   mipmaps, they will be generated.
 class Texture
     constructor: (@scene, options) ->
         @type = 'TEXTURE'
@@ -118,7 +121,8 @@ class Texture
             if @promise
                 return @promise
             @promise = new Promise (resolve, reject) =>
-                fetch(base+astc[0].file_name).then((data)->data.arrayBuffer()).then (buffer) =>
+                fetch(base+astc[0].file_name).then (data)->data.arrayBuffer()
+                .then (buffer) =>
                     console.log "Loading astc texture #{@name}"
                     @context.main_loop.add_frame_callback =>
                         {@width, @height} = astc[0]
@@ -162,7 +166,8 @@ class Texture
                 return @promise
             @promised_data = data
             @promise = new Promise (resolve, reject) =>
-                fetch(base+data.file_name).then((data)->data.arrayBuffer()).then (buffer) =>
+                fetch(base+data.file_name).then (data)->data.arrayBuffer()
+                .then (buffer) =>
                     @context.main_loop.add_frame_callback =>
                         # If there's no width or height, assume it's square
                         {@width, @height} = data
@@ -190,8 +195,8 @@ class Texture
                 # then you can play, pause, etc..
                 @context.video_textures[@name] = @video
 
-                # This will be executed when enough of the video data has been buffered
-                # that it can be played without interruption
+                # This will be executed when enough of the video data has been
+                # buffered that it can be played without interruption
                 @video.addEventListener 'canplaythrough', =>
                     # The video has width and height, but they're 0
                     # since it was not added to the document.
@@ -202,17 +207,21 @@ class Texture
                         if @width and @height
                             @use_mipmap = false
                             @wrap = 'C'
-                            console.warn "Video texture '#{@name}' wrap has been forced
-                                to 'clamp' and disabled mipmaps because the size is not power of two."
-                            console.warn "Resize it, or set it to 'clamp' and disable mipmaps to silence this warning."
+                            console.warn "Video texture '#{@name}' wrap has been
+                                forced to 'clamp' and disabled mipmaps because
+                                the size is not power of two."
+                            console.warn "Resize it, or set it to 'clamp' and
+                                disable mipmaps to silence this warning."
                         else
                             console.warn "Video texture '#{@name}' may not work
                                 correctly if the size is not power of two."
-                            console.warn "Specify the size, or set to 'clamp' and disable mipmaps to silence this warning."
+                            console.warn "Specify the size, or set to 'clamp'
+                                and disable mipmaps to silence this warning."
                     @upload()
 
-                    # update_texture will be called on each game engine frame (in main_loop)
-                    # but it only will update the texture if video.currentTime has been changed.
+                    # update_texture will be called on each game engine frame
+                    # (in main_loop) but it only will update the texture if
+                    # video.currentTime has been changed.
                     update_texture = =>
                         if @video.currentTime != @video.lastTime
                             @video.lastTime = @video.currentTime
@@ -220,10 +229,12 @@ class Texture
                     @video.update_texture = update_texture
                     resolve @
                 @video.onerror = =>
-                    # TODO: Distinguish between not found, timeout and malformed?
+                    # TODO: Distinguish between not found,
+                    # timeout and malformed?
                     reject "Video not found: " + (data.file_name or @name)
         else
-            @promise = Promise.reject("Texture #{@name} has no supported formats")
+            @promise = Promise.reject "Texture #{@name}
+                                    has no supported formats"
         return @promise
 
     # @private
@@ -254,20 +265,25 @@ class Texture
                     when gl.FLOAT
                         T = Float32Array
                 for buffer, i in @buffers
-                    gl.texImage2D(gl.TEXTURE_2D, i, @gl_internal_format, @width>>i, @height>>i, 0,
-                        @gl_format, @gl_type, new T(buffer))
+                    gl.texImage2D(gl.TEXTURE_2D, i, @gl_internal_format,
+                        @width>>i, @height>>i, 0, @gl_format, @gl_type,
+                        new T(buffer))
                 if @buffers.length == 1 and @use_mipmap
                     gl.generateMipmap gl.TEXTURE_2D
             when 'compressed'
                 for buffer, i in @buffers
-                    gl.compressedTexImage2D(gl.TEXTURE_2D, i, @gl_internal_format,
-                        @width>>i, @height>>i, 0, new Uint8Array(buffer, @offset))
+                    gl.compressedTexImage2D(gl.TEXTURE_2D, i,
+                        @gl_internal_format, @width>>i, @height>>i, 0,
+                        new Uint8Array(buffer, @offset))
                 if @buffers.length == 1 and @use_mipmap
-                    console.error "Compressed texture #{@name} doesn't have requested mipmaps."
+                    console.error "Compressed texture #{@name}
+                        doesn't have requested mipmaps."
             when 'image'
                 gl.pixelStorei gl.UNPACK_FLIP_Y_WEBGL, true
-                # TODO: Use gl.RGB when there's no alpha? Would other format be better?
-                gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, @image
+                # TODO: Use gl.RGB when there's no alpha?
+                # Would other format be better?
+                gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,
+                    gl.UNSIGNED_BYTE, @image
                 if @use_mipmap
                     gl.generateMipmap gl.TEXTURE_2D
             when 'video'
@@ -275,7 +291,8 @@ class Texture
                 # Should UVs be inverted instead?
                 gl.pixelStorei gl.UNPACK_FLIP_Y_WEBGL, true
                 # TODO: Use gl.RGB?
-                gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, @video
+                gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,
+                    gl.UNSIGNED_BYTE, @video
                 if @use_mipmap
                     gl.generateMipmap gl.TEXTURE_2D
         return
@@ -306,17 +323,24 @@ class Texture
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl_linear_nearest
         # TODO: add mipmap options to the GUI
         if @use_mipmap
-            gl_linear_nearest_mipmap = if @filter then gl.LINEAR_MIPMAP_LINEAR else gl.NEAREST_MIPMAP_NEAREST
-            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl_linear_nearest_mipmap
+            gl_linear_nearest_mipmap = if @filter then gl.LINEAR_MIPMAP_LINEAR
+            else gl.NEAREST_MIPMAP_NEAREST
+            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER,
+                gl_linear_nearest_mipmap
         else
-            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl_linear_nearest
+            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER,
+                gl_linear_nearest
         # TODO: detect which textures need this (mostly walls, floors...)
         # and add a global switch
         ext = extensions.texture_filter_anisotropic
         if @context.MYOU_PARAMS.anisotropic_filter and ext
             # TODO: detect max anisotropy, make configurable
-            gl.texParameterf gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT or 0x84FE, 4
-        wrap_const = {'C': gl.CLAMP_TO_EDGE, 'R': gl.REPEAT, 'M': gl.MIRRORED_REPEAT}[@wrap[0]]
+            # ext.TEXTURE_MAX_ANISOTROPY_EXT == 0x84FE
+            gl.texParameterf gl.TEXTURE_2D, 0x84FE, 4
+        wrap_const = switch @wrap[0]
+            when 'C' then gl.CLAMP_TO_EDGE
+            when 'R' then gl.REPEAT
+            when 'M' then gl.MIRRORED_REPEAT
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap_const
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap_const
         return @

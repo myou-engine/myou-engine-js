@@ -34,7 +34,8 @@ class Probe
                 @cubemap = new @context.Cubemap {@size}
                 @cubemap.loaded = false
             when 'PLANE'
-                @planar = new @context.ByteFramebuffer size: [@size,@size], use_depth: true
+                @planar = new @context.ByteFramebuffer size: [@size,@size], \
+                                                        use_depth: true
                 # TODO: Detect actual viewport camera
                 cam = @scene.active_camera
                 # we're not using clone because
@@ -68,7 +69,7 @@ class Probe
         {bsdf_samples} = @scene
         if not @context.is_webgl2
             bsdf_samples = 1
-        @lodfactor = 0.5 * Math.log( ( @size*@size / bsdf_samples ) ) / Math.log(2)
+        @lodfactor = 0.5 * Math.log((@size*@size / bsdf_samples)) / Math.log(2)
         @lodfactor -= @scene.lod_bias
 
     render: ->
@@ -106,11 +107,11 @@ class Probe
             wm.m10 = -wm.m10
             wm.m14 = -wm.m14
             mat4.mul wm, @object.world_matrix, wm
-            mat4.copy rcam.projection_matrix, cam.projection_matrix
+            proj = mat4.copy rcam.projection_matrix, cam.projection_matrix
 
             # set planarreflectmat (range_mat * projection * view of reflection)
             mat4.invert @planarreflectmat, rcam.world_matrix
-            mat4.mul @planarreflectmat, rcam.projection_matrix, @planarreflectmat
+            mat4.mul @planarreflectmat, proj, @planarreflectmat
             mat4.mul @planarreflectmat, range_mat, @planarreflectmat
 
             # get view position and normal to calculate clipping plane
@@ -133,9 +134,10 @@ class Probe
             rm.flip_normals = false
 
     destroy: ->
-        @scene.probes.splice _,1 if (_ = @scene.probes.indexOf @)!=-1
+        @scene.probes.splice _,1 if (_ = @scene.probes.indexOf @) != -1
         if @auto_refresh
-            @context.render_manager.probes.splice _,1 if (_ = @context.render_manager.probes.indexOf @)!=-1
+            if (index = @context.render_manager.probes.indexOf @) != -1
+                @context.render_manager.probes.splice index,1
         @cubemap?.destroy()
         @planar?.destroy()
         @cubemap = @planar = null

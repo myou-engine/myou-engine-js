@@ -46,4 +46,7 @@ v_dist_point_to_rect = (out, p, rp, dir)->
     vec3.cross out, vec3.sub(v2,p,rp), vec3.normalize v1, dir
     return out
 
-module.exports = {planes_intersection, plane_from_norm_point, rect_from_dir_point, v_dist_point_to_rect}
+module.exports = {
+    planes_intersection, plane_from_norm_point,
+    rect_from_dir_point, v_dist_point_to_rect
+}

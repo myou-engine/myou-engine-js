@@ -5,7 +5,8 @@
 class BloomEffect
     constructor: (@context, @steps=4, @intensity=1.2, @threshold=0.8) ->
         @highlight = new @context.ExprFilter 1,
-            window.f1 or "(a.r*0.2126+a.g*0.7152+a.b*0.0722 > #{@threshold.toFixed 7})?a:vec3(0.0)"
+            window.f1 or "(a.r*0.2126+a.g*0.7152+a.b*0.0722 >
+                #{@threshold.toFixed 7})?a:vec3(0.0)"
         @blur = new @context.RadialBlurFilter
         # expression is "screen" mix function * emission
         @screen_mix = new @context.ExprFilter 2,

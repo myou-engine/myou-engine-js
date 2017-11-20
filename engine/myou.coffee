@@ -4,7 +4,9 @@ loader = require './loader'
 vr = require './webvr'
 {MeshFactory} = require './mesh_factory'
 {fetch_objects} = require './fetch_assets'
-{Action, Animation, LoopedAnimation, FiniteAnimation, PingPongAnimation} = require './animation'
+{
+    Action, Animation, LoopedAnimation, FiniteAnimation, PingPongAnimation,
+} = require './animation'
 {Viewport} = require './viewport'
 {Texture} = require './texture'
 {Armature} = require './armature'
@@ -30,17 +32,12 @@ context_dependent_modules = {
     Button, Axis, Axes2, InputSource,
 }
 
-# Using objects as dicts by disabling hidden object optimization
-# @nodoc
-dict = ->
-    d = {}
-    delete d.x
-    d
-
-# This is the main engine class. You need to instance it to start using the engine.
+# This is the main engine class.
+# You need to instance it to start using the engine.
 # The engine instance is frequently referred internally as `context`.
 #
-# It instances and contains several singletons like `render_manager` and `main_loop`.
+# It instances and contains several singletons like `render_manager` and
+# `main_loop`.
 class Myou
     # @nodoc
     fetch_objects: fetch_objects
@@ -51,13 +48,15 @@ class Myou
     PingPongAnimation: PingPongAnimation
     Viewport: Viewport
     Texture: Texture
-    # @property [Object<GameObject>] Object with all game objects in memory. The key is the name.
+    # @property [Object<GameObject>]
+    #           Object with all game objects in memory. The key is the name.
     objects: null
     # @property [MainLoop] Main loop singleton.
     main_loop: null
     # @property [RenderManager] Render manager singleton.
     render_manager: null
-    # @property [number] Minimum length of the average poligon for LoD calculation, in pixels.
+    # @property [number]
+    # Minimum length of the average poligon for LoD calculation, in pixels.
     mesh_lod_min_length_px: 13
 
     constructor: (root, options)->
@@ -102,12 +101,13 @@ class Myou
         for name,cls of effects
             @[name] = cls.bind cls, @
 
-        # The root element needs to be positioned, so the mouse events (layerX/Y) are
-        # registered correctly, and the canvas is scaled inside
+        # The root element needs to be positioned, so the mouse events
+        # (layerX/Y) are registered correctly, and the canvas is scaled inside
         if getComputedStyle?(root).position == 'static'
             root.style.position = 'relative'
 
-        #The canvas could be inside other element (root) used to get the mouse events
+        # The canvas could be inside other element (root)
+        # used to get the mouse events
         canvas = @canvas = if root.tagName == 'CANVAS'
             root
         else
@@ -145,9 +145,11 @@ class Myou
     # Makes a screenshot and returns a blob containing it
     # @param width [number] Width of the desired screenshot in pixels
     # @param height [number] Height of the desired screenshot in pixels
-    # @option options supersampling [number] Amount of samples per pixel for antialiasing
+    # @option options supersampling [number]
+    #       Amount of samples per pixel for antialiasing
     # @option options format [string] Image format such as "png" or "jpeg"
-    # @option options jpeg_quality [number] Quality for compressed formats like jpeg and webp. Between 0 and 1.
+    # @option options jpeg_quality [number]
+    #       Quality for compressed formats like jpeg and webp. Between 0 and 1.
     # @return [Promise] Promise resolving a [Blob]
     screenshot_as_blob: (width, height, options={}) ->
         @render_manager.screenshot_as_blob width, height, options
@@ -158,7 +160,8 @@ class Myou
     change_gl_flags: (gl_flags) ->
         @render_manager.instance_gl_context gl_flags, true
 
-# Convenience function for creating an HTML canvas element and adding it to another element.
+# Convenience function for creating an HTML canvas element
+# and adding it to another element.
 #
 # @param root [HTMLElement] HTML element to insert the canvas into.
 # @param id [string] Element ID attribute to assign.
@@ -175,7 +178,8 @@ create_canvas = (root, id, className='MyouEngineCanvas')->
         canvas.className = className
     return canvas
 
-# Convenience function for creating an HTML canvas element that fills the whole viewport.
+# Convenience function for creating an HTML canvas element
+# that fills the whole viewport.
 #
 # Ideal for a HTML file with no elements in the body.
 #
@@ -186,5 +190,12 @@ create_full_window_canvas = ->
     canvas = create_canvas document.body, 'canvas'
     canvas.style.marginBottom = '-100px'
     return canvas
+
+# Using objects as dicts by disabling hidden object optimization
+# @nodoc
+dict = ->
+    d = {}
+    delete d.x
+    d
 
 module.exports = {Myou, create_canvas, create_full_window_canvas}

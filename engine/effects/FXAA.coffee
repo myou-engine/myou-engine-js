@@ -5,6 +5,8 @@
 # - WebGL port by @supereggbert
 # http://www.glge.org/demos/fxaa/
 
+# TODO: separate GLSL code into files to avoid linter errors, etc
+
 library = ''' #line 8 /**/
     #define FXAA_REDUCE_MIN   (1.0/128.0)
     #define FXAA_REDUCE_MUL   (1.0/8.0)

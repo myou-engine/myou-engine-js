@@ -196,13 +196,13 @@ vmath.mat3.rotationFromMat4 = (out, m) ->
     return vmath.mat3.fromColumns out, x,y,z
 
 vmath.quat.setAxisAngle = (out, axis, rad) ->
-  rad = rad * 0.5
-  s = Math.sin(rad)
-  out.x = s * axis.x
-  out.y = s * axis.y
-  out.z = s * axis.z
-  out.w = Math.cos(rad)
-  return out
+    rad = rad * 0.5
+    s = Math.sin(rad)
+    out.x = s * axis.x
+    out.y = s * axis.y
+    out.z = s * axis.z
+    out.w = Math.cos(rad)
+    return out
 
 {rotateX, rotateY, rotateZ} = vmath.quat
 vmath.quat.fromEulerOrder = (out, v, order) ->

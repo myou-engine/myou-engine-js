@@ -28,7 +28,8 @@ load_scene = (name, filter, options, context) ->
     url = "#{scene.data_dir}/scenes/#{original_scene_name}/all.json"
     return fetch(url).then (response) ->
         if not response.ok
-            return Promise.reject "Scene '#{name}' could not be loaded from URL '#{url}' with error '#{response.status} #{response.statusText}'"
+            return Promise.reject "Scene '#{name}' could not be loaded from URL
+                '#{url}' with error '#{response.status} #{response.statusText}'"
         return response.json()
     .then (data) ->
         if filter
@@ -71,7 +72,8 @@ load_datablock = (scene, data, context) ->
         if data.world_material?
             scene.world_material = new Material(context, \
                 data.world_material.name, data.world_material, scene)
-            data.background_probe.auto_refresh = false # TODO: Remove this when it makes sense
+            # TODO: Remove next line when it makes sense
+            data.background_probe.auto_refresh = false
             data.background_probe.background_only = true
             scene.background_probe_data = data.background_probe
         scene.bsdf_samples = data.bsdf_samples if data.bsdf_samples?
@@ -111,11 +113,14 @@ load_datablock = (scene, data, context) ->
             params = {}
             for p in data.params or []
                 params[p.name] = p
-            input_names = ['', 'diffuse_color', 'diffuse_intensity', 'specular_color', 'specular_intensity', 'specular_hardness', 'emit', 'ambient', 'alpha', 'mir']
+            input_names = ['', 'diffuse_color', 'diffuse_intensity',
+                'specular_color', 'specular_intensity', 'specular_hardness',
+                'emit', 'ambient', 'alpha', 'mir']
             input_types = [1, 3, 1, 3, 1, 1, 1, 1, 1, 3]
             for u in data.uniforms
                 # We don't check "u.material" so buggy versions of blender with
-                # undefined material are interpreted as having the material named "undefined"
+                # undefined material are interpreted as having the material
+                # named "undefined"
                 if (u.type>>16) == 7 # GPU_DYNAMIC_GROUP_MAT
                     is_blender278 = true
                     prefix = ''
@@ -220,7 +225,7 @@ load_object = (data, scene) ->
             scene.add_object ob, data.name, data.parent, data.parent_bone
 
         color4.copyArray ob.color, data.color
-        load_mesh_properties = (ob, data)=>
+        load_mesh_properties = (ob, data) ->
             # NOTE: This condition was used in live mode, but many of these
             # things should be updated regardless
             if ob.hash != data.hash

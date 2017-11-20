@@ -115,6 +115,8 @@ class GameObject
         return @world_matrix
 
     get_world_position: () ->
+        if not @parent?
+            return vec3.clone @position
         wm = @get_world_matrix()
         return vec3.set vec3.create(), wm.m12, wm.m13, wm.m14
 
@@ -125,6 +127,8 @@ class GameObject
         quat.fromMat3 quat.create(), rot_matrix
 
     get_world_position_into: (out) ->
+        if not @parent?
+            return vec3.copy out, @position
         wm = @get_world_matrix()
         return vec3.set out, wm.m12, wm.m13, wm.m14
 

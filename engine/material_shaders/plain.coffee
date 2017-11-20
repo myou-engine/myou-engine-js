@@ -33,24 +33,30 @@ class PlainShaderMaterial
             code.push if value.type == 'TEXTURE'
                 "gl.uniform1i(locations[#{loc_idx}], #{value_code}.bound_unit);"
             else if value.length?
-                "gl.uniform#{value.length}fv(locations[#{loc_idx}], #{value_code});"
+                "gl.uniform#{value.length}fv(locations[#{loc_idx}],
+                    #{value_code});"
             else if value.w?
-                "v=#{value_code};gl.uniform4f(locations[#{loc_idx}], v.x, v.y, v.z, v.w);"
+                "v=#{value_code};gl.uniform4f(locations[#{loc_idx}],
+                    v.x, v.y, v.z, v.w);"
             else if value.z?
-                "v=#{value_code};gl.uniform3f(locations[#{loc_idx}], v.x, v.y, v.z);"
+                "v=#{value_code};gl.uniform3f(locations[#{loc_idx}],
+                    v.x, v.y, v.z);"
             else if value.y?
                 "v=#{value_code};gl.uniform2f(locations[#{loc_idx}], v.x, v.y);"
             else if value.a?
-                "v=#{value_code};gl.uniform4f(locations[#{loc_idx}], v.r, v.g, v.b, v.a);"
+                "v=#{value_code};gl.uniform4f(locations[#{loc_idx}],
+                    v.r, v.g, v.b, v.a);"
             else if value.b?
-                "v=#{value_code};gl.uniform3f(locations[#{loc_idx}], v.r, v.g, v.b);"
+                "v=#{value_code};gl.uniform3f(locations[#{loc_idx}],
+                    v.r, v.g, v.b);"
             else
                 "gl.uniform1f(locations[#{loc_idx}], #{value_code});"
             locations.push uloc
         if code.length
             preamble = 'var locations=shader.uniform_locations,
             inputs=shader.material._input_list, v;\n'
-            uniform_assign_func = new Function 'gl', 'shader', 'ob', 'render', 'mat4', preamble+code.join '\n'
+            uniform_assign_func = new Function 'gl', 'shader', 'ob', 'render',
+                'mat4', preamble+code.join '\n'
         else
             uniform_assign_func = ->
         {

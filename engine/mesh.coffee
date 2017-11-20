@@ -22,8 +22,6 @@
 #
 #   Indices: Indices relative to each submesh, concatenated together.
 #
-#   The following attributes are used only when loading to populate attrib_pointers.
-#
 #   Elements: an array specifying the element order and name if it applies:
 #   (first element of each list is the type (normal, uv, shape, bone)
 #   [['normal'],
@@ -101,7 +99,8 @@ class MeshData
         d.users = []
         if (va = d.varray)?
             d.varray = new Float32Array va
-            d.varray_byte = new Uint8Array va.buffer, va.byteOffset, va.byteLength
+            d.varray_byte =
+                new Uint8Array va.buffer, va.byteOffset, va.byteLength
         d.iarray = new Uint16Array d.iarray if d.iarray?
         d.vertex_buffers = d.vertex_buffers[...]
         d.index_buffers = d.index_buffers[...]
@@ -113,9 +112,11 @@ class MeshData
 
 # Mesh object class.
 #
-# For information on using a Blender mesh go [here](../extra/Tutorials/Using a Blender mesh.md)
+# For information on using a Blender mesh go
+# [here](../extra/Tutorials/Using a Blender mesh.md)
 #
-# To learn how to create a mesh from code go [here](../extra/Advanced tutorials/Creating a mesh from code.md)
+# To learn how to create a mesh from code go
+# [here](../extra/Advanced tutorials/Creating a mesh from code.md)
 class Mesh extends GameObject
 
     constructor: (context)->
@@ -178,8 +179,10 @@ class Mesh extends GameObject
         data.users.push @
         data.varray = va
         data.iarray = ia
-        data.varray_byte = bytes = new Uint8Array va.buffer, va.byteOffset, va.byteLength
-        # If mesh has a mesh_id, we'll assign it to the 4th byte of the normal (usually 0)
+        data.varray_byte = bytes =
+            new Uint8Array va.buffer, va.byteOffset, va.byteLength
+        # If mesh has a mesh_id, we'll assign it to the 4th byte of the normal
+        # (usually both mesh_id and that byte are 0)
         if @mesh_id
             mesh_id = @mesh_id|0
             if bytes[15] != mesh_id
@@ -195,12 +198,14 @@ class Mesh extends GameObject
             i2 = i*2
             vb = gl.createBuffer()
             gl.bindBuffer gl.ARRAY_BUFFER, vb
-            gl.bufferData gl.ARRAY_BUFFER, va.subarray(offsets[i2], offsets[i2+2]), gl.STATIC_DRAW
+            gl.bufferData gl.ARRAY_BUFFER,
+                va.subarray(offsets[i2], offsets[i2+2]), gl.STATIC_DRAW
             data.vertex_buffers.push vb
             ib = gl.createBuffer()
             if offsets[i2+1] != offsets[i2+3]
                 gl.bindBuffer gl.ELEMENT_ARRAY_BUFFER, ib
-                gl.bufferData gl.ELEMENT_ARRAY_BUFFER, ia.subarray(offsets[i2+1], offsets[i2+3]), gl.STATIC_DRAW
+                gl.bufferData gl.ELEMENT_ARRAY_BUFFER,
+                    ia.subarray(offsets[i2+1], offsets[i2+3]), gl.STATIC_DRAW
             # else
                 # If it's empty it means it will assigned from the parent mesh
                 # pass #TODO
@@ -228,7 +233,8 @@ class Mesh extends GameObject
         for i in [0...num_submeshes]
             i2 = i*2
             gl.bindBuffer gl.ELEMENT_ARRAY_BUFFER, @data.index_buffers[i]
-            gl.bufferData gl.ELEMENT_ARRAY_BUFFER, ia.subarray(offsets[i2+1], offsets[i2+3]), gl.STATIC_DRAW
+            gl.bufferData gl.ELEMENT_ARRAY_BUFFER, ia.subarray(offsets[i2+1],
+                offsets[i2+3]), gl.STATIC_DRAW
         return
 
     # @private
@@ -247,43 +253,54 @@ class Mesh extends GameObject
             etype = e[0]
             switch etype
                 when 'normal'
-                    layout.push name: 'vnormal', type: 'b', count: 3, offset: stride
+                    layout.push {name: 'vnormal', type: 'b', count: 3, \
+                                offset: stride}
                     stride += 4
                 when 'shape'
                     num = @_shape_names.length
-                    layout.push name: 'shape'+num, type: 'f', count: 3, offset: stride
-                    layout.push name: 'shapenor'+num, type: 'b', count: 3, offset: stride + 12
+                    layout.push {name: 'shape'+num, type: 'f', count: 3, \
+                                offset: stride}
+                    layout.push {name: 'shapenor'+num, type: 'b', count: 3, \
+                                offset: stride + 12}
                     @_shape_names.push e[1]
                     shape_type = 'f'
                     stride += 4 * 4
                 when 'shape_b'
                     num = @_shape_names.length
-                    layout.push name: 'shape'+num, type: 'b', count: 3, offset: stride
-                    layout.push name: 'shapenor'+num, type: 'b', count: 3, offset: stride + 4
+                    layout.push {name: 'shape'+num, type: 'b', count: 3, \
+                                offset: stride}
+                    layout.push {name: 'shapenor'+num, type: 'b', count: 3, \
+                                offset: stride + 4}
                     @_shape_names.push e[1]
                     shape_type = 'b'
                     stride += 2 * 4
                 when 'tangent'
-                    layout.push name: 'tangent', type: 'b', count: 4, offset: stride
+                    layout.push {name: 'tangent', type: 'b', count: 4, \
+                                offset: stride}
                     stride += 4
                 when 'uv'
                     # NOTE: invalid characters will be replaced when
                     # this is implemented on export.
                     # The only allowed characters are [_A-Za-z0-9]
-                    layout.push name: 'uv_'+e[1].replace(/[^_A-Za-z0-9]/g, ''), type: 'f', count: 2, offset: stride
+                    name = 'uv_'+e[1].replace(/[^_A-Za-z0-9]/g, '')
+                    layout.push {name, type: 'f', count: 2, offset: stride}
                     stride += 2 * 4
                 when 'uv_s'
-                    layout.push name: 'uv_'+e[1], type: 'H', count: 2, offset: stride
+                    layout.push {name: 'uv_'+e[1], type: 'H', count: 2, \
+                                offset: stride}
                     #o_uvs_s.push [e[1], stride]
                     stride += 2 * 2
                 when 'color'
-                    layout.push name: 'vc_'+e[1].replace(/[^_A-Za-z0-9]/g, ''), type: 'B', count: 4, offset: stride
+                    name = 'vc_'+e[1].replace(/[^_A-Za-z0-9]/g, '')
+                    layout.push {name, type: 'B', count: 4, offset: stride}
                     stride += 4
                 when 'weights'
                     @armature = @parent
-                    layout.push name: 'weights', type: 'f', count: 4, offset: stride
+                    layout.push {name: 'weights', type: 'f', count: 4, \
+                                offset: stride}
                     stride += 4 * 4
-                    layout.push name: 'b_indices', type: 'B', count: 4, offset: stride
+                    layout.push {name: 'b_indices', type: 'B', count: 4, \
+                                offset: stride}
                     stride += 4  # 4 byte indices
                 else
                     console.log "Unknown element" + etype
@@ -311,9 +328,11 @@ class Mesh extends GameObject
             @_signature += "#{i}:#{vm.signature},"
         return
 
-    # Returns a LoD version of the mesh that has enough detail for its visual size.
+    # Returns a LoD version of the mesh that has enough detail for its visual
+    # size.
     # @param [Viewport] viewport
-    # @param [number] min_length_px: The minimum length of the average polygon, in screen pixels
+    # @param [number] min_length_px:
+    #       The minimum length of the average polygon, in screen pixels
     get_lod_mesh: (viewport, min_length_px) ->
         amesh = @
         if @altmeshes.length
@@ -354,16 +373,20 @@ class Mesh extends GameObject
             world_scale = Math.sqrt m00*m00 + m01*m01 + m02*m02
 
             # number that converts a length to screen pixels
-            poly_length_to_visual_size = (viewport.units_to_pixels/distance_to_camera) * world_scale
+            poly_length_to_visual_size =
+                (viewport.units_to_pixels/distance_to_camera) * world_scale
 
-            # we'll going to find the biggest length that is small enough on screen
+            # we'll going to find the biggest length
+            # that is small enough on screen
             biggest_length = @avg_poly_length
             @last_lod_object = amesh = @
 
             for lod in @lod_objects by -1 # from highest to lowest
                 ob = lod.object
                 visual_size_px = ob.avg_poly_length * poly_length_to_visual_size
-                if not amesh.data? or (ob.avg_poly_length > biggest_length and visual_size_px < min_length_px)
+                if not amesh.data? or \
+                        (ob.avg_poly_length > biggest_length \
+                        and visual_size_px < min_length_px)
                     biggest_length = ob.avg_poly_length
                     @last_lod_object = amesh = ob
 

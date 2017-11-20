@@ -6,7 +6,8 @@ if is_browser
     # for loading ammo.js relative to the output .js
     # TODO: Make abstraction of this mechanism to load other optional libraries
     scripts = document.querySelectorAll 'script'
-    current_script_path = scripts[scripts.length-1].src?.split('/')[...-1].join('/') or ''
+    current_script_path =
+        scripts[scripts.length-1].src?.split('/')[...-1].join('/') or ''
 
 Ammo = null
 
@@ -33,15 +34,18 @@ class World
         @dispatcher = new Ammo.btCollisionDispatcher @configuration
         @broadphase = new Ammo.btDbvtBroadphase
         @ghost_pair_callback = new Ammo.btGhostPairCallback
-        @broadphase.getOverlappingPairCache().setInternalGhostPairCallback(@ghost_pair_callback)
+        @broadphase.getOverlappingPairCache()
+            .setInternalGhostPairCallback(@ghost_pair_callback)
         @solver = new Ammo.btSequentialImpulseConstraintSolver
-        @btworld = new Ammo.btDiscreteDynamicsWorld @dispatcher, @broadphase, @solver, @configuration
+        @btworld = new Ammo.btDiscreteDynamicsWorld @dispatcher, @broadphase,
+            @solver, @configuration
         @tmp_Vector3 = new Ammo.btVector3 0, 0, 0
         @tmp_Vector3b = new Ammo.btVector3 0, 0, 0
         @tmp_Vector3c = new Ammo.btVector3 0, 0, 0
         @tmp_Quaternion = new Ammo.btQuaternion 0, 0, 0, 0
         @tmp_Transform = new Ammo.btTransform
-        @tmp_ClosestRayResultCallback = new Ammo.ClosestRayResultCallback new Ammo.btVector3(0, 0, 0), new Ammo.btVector3(0, 0, 0)
+        @tmp_ClosestRayResultCallback = new Ammo.ClosestRayResultCallback \
+            new Ammo.btVector3(0, 0, 0), new Ammo.btVector3(0, 0, 0)
         @set_gravity @gravity
         for ob in @scene.children
             ob.body.instance()
@@ -79,7 +83,8 @@ class World
         for {btbody, last_position} in @character_bodies
             origin = btbody.getWorldTransform().getOrigin()
             vec3.set last_position, origin.x(), origin.y(), origin.z()
-        @btworld.stepSimulation frame_duration * 0.001, @max_substeps, 1/@physics_fps
+        @btworld.stepSimulation frame_duration * 0.001,
+            @max_substeps, 1/@physics_fps
         # Copy physics back to objects
         {tmp_Transform} = this
         for {btbody, owner} in @auto_update_bodies
@@ -114,7 +119,8 @@ class World
             point = vec3.lerp vec3.create(), ray_from, ray_to, f
             n = callback.get_m_hitNormalWorld()
             normal = vec3.new n.x(), n.y(), n.z()
-            # TODO optim: check if the pointers of members of callback are always the same
+            # TODO optim: check if the pointers of members of callback
+            # are always the same
             cob = callback.get_m_collisionObject()
             object = @pointer_to_body[cob.ptr]?.owner
             distance = vec3.dist(point, ray_from)
@@ -237,7 +243,8 @@ class Body
 
         @btshape.setMargin @margin
 
-        #TODO: changing compunds live don't work well unless they're reinstanced in order
+        # TODO: changing compunds live don't work well
+        # unless they're reinstanced in order
         if @is_compound
             pos = vec3.create()
             rot = quat.create()
@@ -278,20 +285,23 @@ class Body
             when 'RIGID_BODY'
                 @owner.rotation_order = 'Q'
                 quat.copy @owner.rotation, rot
-                @btbody = @_rigid_body @mass, actual_shape, pos, rot, @friction, @elasticity, @form_factor
+                @btbody = @_rigid_body @mass, actual_shape, pos, rot, @friction,
+                    @elasticity, @form_factor
                 @set_linear_factor @linear_factor
                 @set_angular_factor @angular_factor
                 @world.auto_update_bodies.push @
             when 'DYNAMIC'
                 @owner.rotation_order = 'Q'
                 quat.copy @owner.rotation, rot
-                @btbody = @_rigid_body @mass, actual_shape, pos, rot, @friction, @elasticity, @form_factor
+                @btbody = @_rigid_body @mass, actual_shape, pos, rot, @friction,
+                    @elasticity, @form_factor
                 @set_linear_factor @linear_factor
                 @set_angular_factor {x: 0, y:0, z:0}
                 @world.auto_update_bodies.push @
             when 'STATIC', 'SENSOR'
                 # TODO: use ghost?
-                @btbody = @_rigid_body 0, actual_shape, pos, rot, @friction, @elasticity, 0
+                @btbody = @_rigid_body 0, actual_shape, pos, rot, @friction,
+                    @elasticity, 0
             when 'CHARACTER'
                 @owner.rotation_order = 'Q'
                 quat.copy @owner.rotation, rot
@@ -323,7 +333,8 @@ class Body
         @update_transform()
 
     get_physics_mesh: (use_visual_mesh=@_use_visual_mesh) ->
-        if @type == 'NO_COLLISION' or not /CONVEX_HULL|TRIANGLE_MESH/.test(@shape)
+        if @type == 'NO_COLLISION' or
+                not /CONVEX_HULL|TRIANGLE_MESH/.test(@shape)
             return null
         if @physics_mesh and not use_visual_mesh
             return @physics_mesh
@@ -425,31 +436,38 @@ class Body
 
     # TODO: REVISE API
     set_character_velocity: (v)->
-        throw Error "Object '#{@owner.name}' is not a character body" if not @btchar?
+        if not @btchar?
+            throw Error "Object '#{@owner.name}' is not a character body"
         {tmp_Vector3} = @world
-        tmp_Vector3.setValue(v.x * 0.016666666666666666, v.y * 0.016666666666666666, v.z * 0.016666666666666666)
+        tmp_Vector3.setValue(v.x * 0.016666666666666666,
+            v.y * 0.016666666666666666, v.z * 0.016666666666666666)
         @btchar.setWalkDirection(tmp_Vector3)
 
     set_jump_force: (f)->
-        throw Error "Object '#{@owner.name}' is not a character body" if not @btchar?
+        if not @btchar?
+            throw Error "Object '#{@owner.name}' is not a character body"
         @jump_force = f
         @btchar.setJumpSpeed(f)
 
     jump: ->
-        throw Error "Object '#{@owner.name}' is not a character body" if not @btchar?
+        if not @btchar?
+            throw Error "Object '#{@owner.name}' is not a character body"
         @btchar.jump()
 
     on_ground: ->
-        throw Error "Object '#{@owner.name}' is not a character body" if not @btchar?
+        if not @btchar?
+            throw Error "Object '#{@owner.name}' is not a character body"
         return @btchar.onGround()
 
     set_max_fall_speed: (f)->
-        throw Error "Object '#{@owner.name}' is not a character body" if not @btchar?
+        if not @btchar?
+            throw Error "Object '#{@owner.name}' is not a character body"
         @max_fall_speed = f
         @btchar.setFallSpeed(f)
 
     set_angular_velocity: (v)->
-        throw Error "Object '#{@owner.name}' is not a character body" if not @btchar?
+        if not @btchar?
+            throw Error "Object '#{@owner.name}' is not a character body"
         {tmp_Vector3} = @world
         tmp_Vector3.setValue(v.x, v.y, v.z)
         @btbody.setAngularVelocity(tmp_Vector3)
@@ -463,7 +481,8 @@ class Body
         if btbody.getOverlappingPairCache?
             # TODO: Should we move this code to C++?
             manifoldArray = new Ammo.btManifoldArray
-            pairArray = btbody.getOverlappingPairCache().getOverlappingPairArray()
+            pairArray = btbody.getOverlappingPairCache()
+                .getOverlappingPairArray()
             for i in [0...pairArray.size()]
                 manifoldArray.clear()
                 pair = pairArray.at(i)
@@ -487,15 +506,17 @@ class Body
                             n = point.get_m_normalWorldOnB()
                             if isFirstBody
                                 normal = vec3.new -n.x(), -n.y(), -n.z()
-                                ret.push {point_on_body: a, point_on_other: b, normal}
+                                ret.push {point_on_body: a, \
+                                    point_on_other: b, normal}
                             else
                                 normal = vec3.new n.x(), n.y(), n.z()
-                                ret.push {point_on_body: b, point_on_other: a, normal}
+                                ret.push {point_on_body: b, \
+                                    point_on_other: a, normal}
 
             Ammo.destroy manifoldArray
         else
-            # This is faster than the above when there's less than ~30 rigid bodies
-            # (downside is that it gets duplicates)
+            # This is faster than the above when there's less than
+            # ~30 rigid bodies (downside is that it gets duplicates)
             # Should we choose it automatically?
             # TODO: Should we add btPairCachingGhostObject to every rigid body
             # that needs collision checking?
@@ -517,10 +538,12 @@ class Body
                                 n = point.get_m_normalWorldOnB()
                                 if b1 == p
                                     normal = vec3.new n.x(), n.y(), n.z()
-                                    ret.push {point_on_body: b, point_on_other: a, normal}
+                                    ret.push {point_on_body: b, \
+                                        point_on_other: a, normal}
                                 else
                                     normal = vec3.new -n.x(), -n.y(), -n.z()
-                                    ret.push {point_on_body: a, point_on_other: b, normal}
+                                    ret.push {point_on_body: a, \
+                                        point_on_other: b, normal}
         return ret
 
     _clone_to: (owner) ->
@@ -579,8 +602,8 @@ class Body
             for v in [0...vlen]
                 verts.set vertices.subarray(v*vstride,v*vstride+3), offset
                 offset += 3
-            @btmesh = new Ammo.btTriangleIndexVertexArray(indices.length/3, inds.buffer, 3*4,
-                                                    vlen, verts.buffer, 3*4)
+            @btmesh = new Ammo.btTriangleIndexVertexArray \
+                indices.length/3, inds.buffer, 3*4, vlen, verts.buffer, 3*4
             @btmesh.things = [inds, verts] # avoid deleting those
             # crashes because wrapbtBvhTriangleMeshShape::calculateLocalInertia
             # is being called for some reason
@@ -588,11 +611,14 @@ class Body
             ## another failed attempt below
             # mesh = new Ammo.btTriangleMesh(true, true)
             # for i in [0...indices.length] by 3
-            #     v = vertices.subarray(indices[i]*vstride, indices[i]*vstride + 3)
+            #     v = vertices.subarray(indices[i]*vstride,
+            #                           indices[i]*vstride + 3)
             #     tmp_Vector3.setValue v[0], v[1], v[2]
-            #     v = vertices.subarray(indices[i+1]*vstride, indices[i+1]*vstride + 3)
+            #     v = vertices.subarray(indices[i+1]*vstride,
+            #                           indices[i+1]*vstride + 3)
             #     tmp_Vector3b.setValue v[0], v[1], v[2]
-            #     v = vertices.subarray(indices[i+2]*vstride, indices[i+2]*vstride + 3)
+            #     v = vertices.subarray(indices[i+2]*vstride,
+            #                           indices[i+2]*vstride + 3)
             #     tmp_Vector3c.setValue v[0], v[1], v[2]
             #     mesh.addTriangle tmp_Vector3, tmp_Vector3b, tmp_Vector3c
         else
@@ -604,8 +630,8 @@ class Body
             for v in [0...vlen]
                 HEAPF32.set vertices.subarray(v*vstride,v*vstride+3), offset
                 offset += 3
-            @btmesh = new Ammo.btTriangleIndexVertexArray(indices.length/3, inds, 3*4,
-                                                    vlen, verts, 3*4)
+            @btmesh = new Ammo.btTriangleIndexVertexArray \
+                indices.length/3, inds, 3*4, vlen, verts, 3*4
         shape =  new Ammo.btBvhTriangleMeshShape @btmesh, true, true
         mesh_data.phy_mesh = shape
         shape.users = [this]
@@ -632,7 +658,8 @@ class Body
                 Ammo.destroy @btshape
         return
 
-    _rigid_body: (mass, shape, position, rotation, friction, elasticity, form_factor) ->
+    _rigid_body: (mass, shape, position, rotation,
+        friction, elasticity, form_factor) ->
         {tmp_Vector3, tmp_Quaternion} = @world
         localInertia =  new Ammo.btVector3 0, 0, 0
         if mass
@@ -643,7 +670,8 @@ class Body
         tmp_Quaternion.setValue rotation.x, rotation.y, rotation.z, rotation.w
         startTransform.setRotation tmp_Quaternion
         myMotionState =  new Ammo.btDefaultMotionState startTransform
-        rbInfo =  new Ammo.btRigidBodyConstructionInfo mass, myMotionState, shape, localInertia
+        rbInfo = new Ammo.btRigidBodyConstructionInfo \
+            mass, myMotionState, shape, localInertia
         rbInfo.set_m_friction friction
         rbInfo.set_m_restitution elasticity
         body =  new Ammo.btRigidBody rbInfo
@@ -651,12 +679,14 @@ class Body
         @world.pointer_to_body[body.ptr] = body
         return body
 
-    _character_body: (shape, position, rotation, step_height, axis, gravity, jump_speed, fall_speed, max_slope)->
+    _character_body: (shape, position, rotation, step_height, axis, gravity,
+        jump_speed, fall_speed, max_slope)->
         {tmp_Vector3, tmp_Quaternion} = @world
         body = new Ammo.btPairCachingGhostObject
         body.setCollisionFlags 16 # CF_CHARACTER_OBJECT
         body.setCollisionShape shape
-        char = @btchar = new Ammo.btKinematicCharacterController body, shape, step_height, axis
+        char = @btchar = new Ammo.btKinematicCharacterController \
+            body, shape, step_height, axis
         char.setGravity gravity
         char.setJumpSpeed jump_speed
         char.setFallSpeed fall_speed
@@ -676,7 +706,8 @@ class Body
             if @btchar?
                 @btworld.removeAction(@btchar)
                 @btworld.removeCollisionObject(@btbody)
-                @world.character_bodies.splice _,1 if (_ = @world.character_bodies.indexOf @)!=-1
+                if (index = @world.character_bodies.indexOf @) != -1
+                    @world.character_bodies.splice index,1
                 Ammo.destroy @btchar
             else
                 @btworld.removeRigidBody(@btbody)
@@ -684,8 +715,10 @@ class Body
             Ammo.destroy @btbody
             for p in @btbody.pointers
                 Ammo.destroy p
-            @world.auto_update_bodies.splice _,1 if (_ = @world.auto_update_bodies.indexOf @)!=-1
-            @world.static_ghosts.splice _,1 if (_ = @world.static_ghosts.indexOf @)!=-1
+            if (index = @world.auto_update_bodies.indexOf @) != -1
+                @world.auto_update_bodies.splice index,1
+            if (index = @world.static_ghosts.indexOf @) != -1
+                @world.static_ghosts.splice index,1
             @btbody = @btchar = null
 
 
@@ -713,7 +746,8 @@ load_physics_engine = ->
             script.async = true
 
             if is_browser
-                physics_engine_url = current_script_path + '/' + require("file-loader?name=/libs/ammo.asm.js!../libs/ammo.asm.js")
+                physics_engine_url = current_script_path + '/' + require \
+                    "file-loader?name=/libs/ammo.asm.js!../libs/ammo.asm.js"
             else
                 dirname =  __dirname.replace(/\\/g, '/')   #/)
                 physics_engine_url = 'file://' + dirname + "/libs/ammo.asm.js"

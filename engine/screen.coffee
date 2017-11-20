@@ -20,7 +20,8 @@ class Screen
 
     # Change the aspect ratio of viewports. Useful for very quick changes
     # of the size of the canvas or framebuffer, such as with a CSS animation.
-    # Much cheaper than a regular resize, because it doesn't change the resolution.
+    # Much cheaper than a regular resize, because it doesn't change the
+    # resolution.
     resize_soft: (width, height)->
         for v in @viewports
             v.recalc_aspect(true)

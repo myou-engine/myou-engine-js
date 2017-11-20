@@ -138,7 +138,8 @@ class Framebuffer
 
     # Sets the framebuffer as the active one for further rendering operations.
     # Lower left corner is (0,0)
-    # @param rect [Array<number>] Viewport rect in pixels: X position, Y position, width, height.
+    # @param rect [Array<number>]
+    #       Viewport rect in pixels: X position, Y position, width, height.
     enable: (rect=null)->
         {gl} = @context.render_manager
         @has_mipmap = false

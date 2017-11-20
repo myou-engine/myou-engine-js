@@ -74,8 +74,10 @@ class Material
 
     # Initiates loading of the material and its textures,
     # returning a promise for when all has loaded
-    # @option options fetch_textures [boolean] Whether to fetch textures when they're not loaded already.
-    # @option options texture_size_ratio [number] Quality of textures specified in ratio of number of pixels.
+    # @option options fetch_textures [boolean]
+    #       Whether to fetch textures when they're not loaded already.
+    # @option options texture_size_ratio [number]
+    #       Quality of textures specified in ratio of number of pixels.
     # @return [Promise]
     load: (options={}) ->
         {
@@ -138,7 +140,7 @@ class Shader
     #   }
     #   Data type of each uniform is inferred from the type or the custom value.
     # * varyings: list of varyings, TODO. See loader.coffee:93
-    constructor: (@context, @data, @material, @layout, @vertex_modifiers, @defines) ->
+    constructor: (@context, @data, @material, @layout, modifiers, @defines) ->
         @id = id++
         {@name, varyings} = @data
         @shading_params_dict = {}
@@ -151,6 +153,7 @@ class Shader
         {@name} = @material if @material?
         generator = @material?.generator or new PlainShaderMaterial({@data})
         {fragment, glsl_version} = generator.get_code(@defines)
+        @vertex_modifiers = modifiers
 
         if @data.vertex
             vs = @data.vertex
@@ -196,28 +199,33 @@ class Shader
                 switch v.type
                     when 'UNUSED'
                         varyings_decl.push "varying #{v.gltype} #{varname};"
-                        val = if v.gltype == 'float' then '0.0' else v.gltype+'(0.0)'
+                        val = v.gltype+'(0.0)'
                         varyings_assign.push "#{varname} = #{val};"
-                    when 'VIEW_POSITION' # Position relative to the camera
+                    when 'VIEW_POSITION'
+                        # Position relative to the camera
                         varyings_decl.push "varying vec3 #{varname};"
                         varyings_assign.push "#{varname} = view_co.xyz;"
-                    when 'PROJ_POSITION' # Position relative to screen with 4th component
+                    when 'PROJ_POSITION'
+                        # Position relative to screen with 4th component
                         varyings_decl.push "varying vec4 #{varname};"
                         varyings_assign.push "#{varname} = proj_co;"
-                    when 'VIEW_NORMAL' # Normal relative to the camera
+                    when 'VIEW_NORMAL'
+                        # Normal relative to the camera
                         varyings_decl.push "varying vec3 #{varname};"
-                        varyings_assign.push "#{varname} = normalize(normal_matrix * normal);"
+                        varyings_assign.push "#{varname} =
+                            normalize(normal_matrix * normal);"
                     when 'UV' # UV layer
                         uv_name = 'uv_' + v.attname
                         if uv_name not in attribute_names
-                            # When the UV doesn't exist or is empty, we just use the first
-                            # layer in the list or a null vector
+                            # When the UV doesn't exist or is empty, we just use
+                            # the first layer in the list or a null vector
                             uv_name = 'vec2(0.0)'
                             for aname in attribute_names when /^uv_/.test aname
                                 uv_name = aname
                                 break
                         varyings_decl.push "varying vec2 #{varname};"
-                        varyings_assign.push "#{varname} = #{uv_name} * uv_rect.zw + uv_rect.xy;"
+                        varyings_assign.push "#{varname} =
+                                    #{uv_name} * uv_rect.zw + uv_rect.xy;"
                     when 'VCOL' # Vertex color
                         vc_name = 'vc_' + v.attname
                         if vc_name not in attribute_names
@@ -229,21 +237,29 @@ class Shader
                         if v.multiplier
                             multiplier = "*#{v.multiplier.toFixed(8)}"
                         varyings_decl.push "varying vec4 #{varname};"
-                        varyings_assign.push "#{varname} = #{vc_name}#{multiplier};"
+                        varyings_assign.push "#{varname} =
+                                    #{vc_name}#{multiplier};"
                     when 'TANGENT' # tangent vectors
                         varyings_decl.push "varying vec4 #{varname};"
                         if 'tangent' in attribute_names
-                            varyings_assign.push "#{varname}.xyz = normalize((#{var_model_view_matrix}*vec4(tangent.xyz,0)).xyz);"
+                            varyings_assign.push "#{varname}.xyz =
+                                normalize((#{var_model_view_matrix}
+                                    * vec4(tangent.xyz,0)).xyz);"
                             varyings_assign.push "#{varname}.w = tangent.w;"
                         else
-                            console.error "Material #{@name} expects tangents, mesh doesn't have any"
-                            varyings_assign.push "#{varname}.xyz = normalize(vnormal);"
+                            console.error "Material #{@name} expects tangents,
+                                mesh doesn't have any"
+                            varyings_assign.push "#{varname}.xyz =
+                                normalize(vnormal);"
                             varyings_assign.push "#{varname}.w = 1.0;"
 
                     when 'ORCO'
-                        # original coordinates or "generated", relative to the bounding box of the mesh
-                        modifiers_uniforms.push "uniform vec3 mesh_center, mesh_inv_dimensions;"
-                        modifiers_bodies.unshift "vec3 orco = (co.xyz - mesh_center) * mesh_inv_dimensions;"
+                        # original coordinates or "generated",
+                        # relative to the bounding box of the mesh
+                        modifiers_uniforms.push \
+                            "uniform vec3 mesh_center, mesh_inv_dimensions;"
+                        modifiers_bodies.unshift "vec3 orco =
+                                (co.xyz - mesh_center) * mesh_inv_dimensions;"
                         varyings_decl.push "varying vec3 #{varname};"
                         varyings_assign.push "#{varname} = orco.xyz;"
                     else
@@ -255,13 +271,17 @@ class Shader
                 "vec3 normal = vnormal;"
                 modifiers_bodies...
                 (if @data.fixed_z?
-                    # TODO: This is a bit too hacky! Shared uniforms should be handled better.
+                    # TODO: This is a bit too hacky!
+                    # Shared uniforms should be handled better.
                     # This is used with the background mesh, it calculates the
-                    # final position in screen, then the view coordinate from that
-                    projection_matrix_inverse = generator.get_projection_matrix_inverse_name()
-                    modifiers_uniforms.push "uniform mat4 #{projection_matrix_inverse};"
+                    # final position in screen, then the view coord from that
+                    projection_matrix_inverse =
+                        generator.get_projection_matrix_inverse_name()
+                    modifiers_uniforms.push \
+                        "uniform mat4 #{projection_matrix_inverse};"
                     [
-                        "vec4 proj_co = vec4(co.xy, #{@data.fixed_z.toFixed(7)}, 1.0);"
+                        "vec4 proj_co = vec4(co.xy,
+                                    #{@data.fixed_z.toFixed(7)}, 1.0);"
                         "vec4 view_co = #{projection_matrix_inverse} * proj_co;"
                     ]
                 else [
@@ -285,15 +305,16 @@ class Shader
         vertex_shader = gl.createShader gl.VERTEX_SHADER
         gl.shaderSource vertex_shader, vs
         gl.compileShader vertex_shader
-
-        if not gl.getShaderParameter(vertex_shader, gl.COMPILE_STATUS) and not gl.isContextLost()
+        failed = not gl.getShaderParameter(vertex_shader, gl.COMPILE_STATUS)
+        if failed and not gl.isContextLost()
             i=0
             console.log vs.replace(/^/mg, (d)->++i+' ')
             error_msg = """Error compiling vertex shader of material #{@name}
             #{gl.getShaderInfoLog vertex_shader}"""
             # ext = gl.getExtension "WEBGL_debug_shaders"
             # if ext
-            #     console.log  '\n' + ext.getTranslatedShaderSource(vertex_shader)).split('\n')
+            #     translated = ext.getTranslatedShaderSource(vertex_shader))
+            #     console.log  '\n' + translated.split('\n')
             gl.deleteShader vertex_shader
             @context.MYOU_PARAMS.on_shader_failed?()
             console.error error_msg
@@ -305,15 +326,17 @@ class Shader
             fragment = @debugger.patch fragment
         gl.shaderSource fragment_shader, fragment
         gl.compileShader fragment_shader
-
-        if not gl.getShaderParameter(fragment_shader, gl.COMPILE_STATUS) and not gl.isContextLost()
+        failed = not gl.getShaderParameter(fragment_shader, gl.COMPILE_STATUS)
+        if failed and not gl.isContextLost()
             gl_log = gl.getShaderInfoLog fragment_shader
-            error_msg = "Error compiling fragment shader of material #{@name}\n#{gl_log}"
+            error_msg = "Error compiling fragment shader of material #{@name}
+                \n#{gl_log}"
             # console.log fragment
             lines = fragment.split('\n')
             # ext = gl.getExtension "WEBGL_debug_shaders"
             # if ext
-            #     console.log  '\n' + ext.getTranslatedShaderSource(fragment_shader)).split('\n')
+            #     translated = ext.getTranslatedShaderSource(fragment_shader))
+            #     console.log  '\n' + translated.split('\n')
             gl.deleteShader fragment_shader
 
             if /ERROR: 0:/.test error_msg
@@ -323,8 +346,7 @@ class Shader
                     console.log "#{i} #{lines[i-1]}"
             console.error error_msg
             @context.MYOU_PARAMS.on_shader_failed?()
-            # console.error error_msg
-            debugger
+            # debugger
             return
 
 
@@ -333,13 +355,15 @@ class Shader
         gl.attachShader prog, fragment_shader
         gl.bindAttribLocation prog, 0, 'vertex'  # Ensure vertex is attrib 0
         gl.linkProgram prog
-
-        if not gl.getProgramParameter(prog, gl.LINK_STATUS) and not gl.isContextLost()
+        failed = not gl.getProgramParameter(prog, gl.LINK_STATUS)
+        if failed and not gl.isContextLost()
             error_msg = """Error linking shader of material #{@name}
             #{JSON.stringify varyings}
             #{gl.getProgramInfoLog prog}"""
-            ext = gl.getExtension "WEBGL_debug_shaders"
-            if ext then console.log ext.getTranslatedShaderSource fragment_shader
+            # ext = gl.getExtension "WEBGL_debug_shaders"
+            # if ext
+            #     translated = ext.getTranslatedShaderSource(fragment_shader))
+            #     console.log  '\n' + translated.split('\n')
             console.log 'VS ============='
             console.log vs
             # console.log 'FS ============='
@@ -361,14 +385,16 @@ class Shader
         @u_uv_rect? and gl.uniform4f @u_uv_rect, 0, 0, 1, 1
 
         @u_mesh_center = gl.getUniformLocation prog, "mesh_center"
-        @u_mesh_inv_dimensions = gl.getUniformLocation prog, "mesh_inv_dimensions"
+        @u_mesh_inv_dimensions = \
+            gl.getUniformLocation prog, "mesh_inv_dimensions"
         @u_fb_size = gl.getUniformLocation prog, "fb_size"
 
         @modifier_data_store = for m in @vertex_modifiers
             m.get_data_store gl, prog
 
         # TODO: move textures to @material,
-        # create ramps in loader, assign them there as dict, make _texture_list or something
+        # create ramps in loader, assign them there as dict,
+        # make _texture_list or something
         {@uniform_assign_func, @uniform_locations, @lamps} = \
             generator.get_uniform_assign(gl, prog)
 
@@ -395,7 +421,7 @@ class Shader
                 # TODO: Let the user select the pixel,
                 # sample the pixel at the screen center for now
                 {width, height} = @context.canvas_screen
-                rm.render_and_read_screen_pixels width>>1, height>>1, 1, 1, pixel
+                rm.render_and_read_screen_pixels width>>1, height>>1, 1,1,pixel
 
     use: ->
         prog = @_program
@@ -404,7 +430,8 @@ class Shader
         return prog
 
     reupload: ->
-        @constructor(@context, @data, @material, @layout, @vertex_modifiers, @defines)
+        @constructor(@context, @data, @material, @layout,
+            @vertex_modifiers, @defines)
 
     destroy: ->
         @context.render_manager.gl.deleteProgram @_program
@@ -424,8 +451,9 @@ class Shader
 
 glsl100to300 = (fragment) ->
     '#version 300 es\n'+fragment\
-        .replace(/#extension\s+GL_(EXT|OES)_(standard_derivatives|frag_depth|draw_buffers|shader_texture_lod)\b/g, \
-            '//')\
+        .replace(///
+            \#extension\s+GL_(EXT|OES)_(standard_derivatives|
+            frag_depth|draw_buffers|shader_texture_lod)\b///g, '//')\
         .replace(/\bvarying\b/g, 'in')\
         .replace(/\bsample\b/g, 'sample_')\
         .replace(/\b(texture2D|textureCube)(Proj|Lod)?\b/g, 'texture$2')\

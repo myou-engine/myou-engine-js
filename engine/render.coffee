@@ -6,7 +6,8 @@ timsort = require 'timsort'
 VECTOR_MINUS_Z = vec3.new 0,0,-1
 canvas = undefined # avoid bugs where the global id "canvas" is read
 
-# Render manager singleton. Performs all operations related to rendering to screen or to a buffer.
+# Render manager singleton. Performs all operations related to rendering to
+# screen or to a buffer.
 #
 # Access it as `render_manager` member of the {Myou} instance.
 class RenderManager
@@ -76,14 +77,16 @@ class RenderManager
             @clear_context()
             @recreate_gl_canvas()
         else if @gl?
-            console.warn "There's already a GL context. Set reinstance to true to change GL flags."
+            console.warn "There's already a GL context. Set reinstance to true
+                        to change GL flags."
 
         if location?.hash != '#webgl1'
             gl = @canvas.getContext("webgl2", glflags)
         @context.is_webgl2 = @is_webgl2 = gl?
         if not gl
             try
-                gl = @canvas.getContext("webgl", glflags) or @canvas.getContext("experimental-webgl", glflags)
+                gl = @canvas.getContext("webgl", glflags) \
+                    or @canvas.getContext("experimental-webgl", glflags)
             catch e
                 console.error e
 
@@ -107,7 +110,8 @@ class RenderManager
             @clear_context()
         restored = (event) =>
             @restore_context()
-            @context.MYOU_PARAMS.on_context_restored? and requestAnimationFrame(@context.MYOU_PARAMS.on_context_restored)
+            if @context.MYOU_PARAMS.on_context_restored?
+                requestAnimationFrame(@context.MYOU_PARAMS.on_context_restored)
         @canvas.addEventListener "webglcontextlost", lost, false
         @canvas.addEventListener "webglcontextrestored", restored, false
         return
@@ -124,44 +128,56 @@ class RenderManager
 
         webgl2_ext = if @is_webgl2 then true else null
         @extensions =
-            standard_derivatives: webgl2_ext or gl.getExtension 'OES_standard_derivatives'
+            standard_derivatives:
+                webgl2_ext or gl.getExtension 'OES_standard_derivatives'
             color_buffer_float: gl.getExtension 'EXT_color_buffer_float'
             texture_float: gl.getExtension 'OES_texture_float'
             texture_float_linear: gl.getExtension 'OES_texture_float_linear'
             texture_half_float: gl.getExtension 'OES_texture_half_float'
-            texture_half_float_linear: gl.getExtension 'OES_texture_half_float_linear'
-            compressed_texture_s3tc: gl.getExtension 'WEBGL_compressed_texture_s3tc'
-            compressed_texture_astc: gl.getExtension 'KHR_texture_compression_astc_ldr' or 'WEBGL_compressed_texture_astc'
-            texture_filter_anisotropic: gl.getExtension("EXT_texture_filter_anisotropic") or
-                                    gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic") or
-                                    gl.getExtension("MOZ_EXT_texture_filter_anisotropic")
+            texture_half_float_linear:
+                gl.getExtension 'OES_texture_half_float_linear'
+            compressed_texture_s3tc:
+                gl.getExtension 'WEBGL_compressed_texture_s3tc'
+            compressed_texture_astc:
+                gl.getExtension 'KHR_texture_compression_astc_ldr' or
+                'WEBGL_compressed_texture_astc'
+            texture_filter_anisotropic:
+                gl.getExtension("EXT_texture_filter_anisotropic") or
+                gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic") or
+                gl.getExtension("MOZ_EXT_texture_filter_anisotropic")
             lose_context: gl.getExtension "WEBGL_lose_context"
             depth_texture: webgl2_ext or gl.getExtension "WEBGL_depth_texture"
-            shader_texture_lod: webgl2_ext or gl.getExtension "EXT_shader_texture_lod"
+            shader_texture_lod:
+                webgl2_ext or gl.getExtension "EXT_shader_texture_lod"
         if @no_s3tc
             @extensions['compressed_texture_s3tc'] = null
 
-        @has_float_texture_support = @extensions.texture_float? or @extensions.color_buffer_float?
+        @has_float_texture_support =
+            @extensions.texture_float? or @extensions.color_buffer_float?
         @has_float_fb_support = false
         if @has_float_texture_support
             @has_float_fb_support = true
             # TODO: use_depth is probably unnecessary
             # TODO: should we test available depth types?
-            fb = new Framebuffer @context, {size: [4, 4], color_type: 'FLOAT', use_depth: true}
+            fb = new Framebuffer @context,
+                {size: [4, 4], color_type: 'FLOAT', use_depth: true}
             @has_float_fb_support = fb.is_complete
             fb.destroy()
 
         @has_half_float_fb_support = false
         if @extensions.texture_half_float?
             @has_half_float_fb_support = true
-            fb = new Framebuffer @context, {size: [4, 4], color_type: 'HALF_FLOAT', use_depth: true}
+            fb = new Framebuffer @context,
+                {size: [4, 4], color_type: 'HALF_FLOAT', use_depth: true}
             @has_half_float_fb_support = fb.is_complete
             fb.destroy()
 
-        # By default, shadows will be enabled depending on
-        # support for linear interpolation in float textures and float framebuffers
-        @enable_shadows = (@extensions.texture_float_linear? and @has_float_fb_support) or \
-            (@extensions.texture_half_float_linear? and @has_half_float_fb_support)
+        # By default, shadows will be enabled depending on support for linear
+        # interpolation in float textures and float framebuffers
+        @enable_shadows =
+            (@extensions.texture_float_linear? and @has_float_fb_support) or
+            (@extensions.texture_half_float_linear? and
+            @has_half_float_fb_support)
         @_shadows_were_enabled = @enable_shadows
 
         @filters =
@@ -198,7 +214,8 @@ class RenderManager
             }
         @white_texture.load()
 
-        @blank_cube_texture = new @context.Cubemap size: 16, color: {r: 0, g:0, b:0, a:0}
+        @blank_cube_texture =
+            new @context.Cubemap size: 16, color: {r: 0, g:0, b:0, a:0}
 
         @blank_textures = []
         @blank_textures[gl.TEXTURE_2D] = @blank_texture
@@ -206,7 +223,8 @@ class RenderManager
 
         @quad = gl.createBuffer()
         gl.bindBuffer gl.ARRAY_BUFFER, @quad
-        gl.bufferData gl.ARRAY_BUFFER, new(Float32Array)([0,1,0,0,0,0,1,1,0,1,0,0]), gl.STATIC_DRAW
+        gl.bufferData gl.ARRAY_BUFFER,
+            new(Float32Array)([0,1,0,0,0,0,1,1,0,1,0,0]), gl.STATIC_DRAW
         gl.bindBuffer gl.ARRAY_BUFFER, null
 
         @bg_mesh = new @context.Mesh
@@ -266,9 +284,9 @@ class RenderManager
         for _,scene of @context.scenes
             # for lamp in scene.lamps when lamp.shadow_fb?
             #     lamp.init_shadow()
-            for ob in scene.children when ob.probe?
-                if ob.probe_options?.type != 'OBJECT' and not ob.probe.auto_refresh
-                    ob.probe.render()
+            for {probe, probe_options} in scene.children when probe?
+                if probe_options?.type != 'OBJECT' and not probe.auto_refresh
+                    probe.render()
         return
 
     # @private
@@ -281,7 +299,8 @@ class RenderManager
 
 
     # Requests full screen status of the canvas. Note that browsers require
-    # this function to be called from a user initiated event such as `click` or `keypress`.
+    # this function to be called from a user initiated event such as `click` or
+    # `keypress`.
     request_fullscreen: ->
         #https://dvcs.w3.org/hg/fullscreen/raw-file/tip/Overview.html#api
         c = @canvas
@@ -333,7 +352,8 @@ class RenderManager
             if texture.loaded
                 gl.bindTexture texture.gl_target, texture.gl_tex
             else
-                gl.bindTexture texture.gl_target, @blank_textures[texture.gl_target].gl_tex
+                gl.bindTexture texture.gl_target,
+                    @blank_textures[texture.gl_target].gl_tex
             bound_textures[bound_unit] = texture
             @next_texture = (next_texture+1) % max_textures
         else
@@ -367,9 +387,9 @@ class RenderManager
 
         # calculate all matrices first
         for screen in @context.screens when screen.enabled
-            for {camera: {scene}} in screen.viewports \
-                when scene.enabled and scene.last_update_matrices_tick < @render_tick
-                    scene.update_all_matrices()
+            for {camera: {scene}} in screen.viewports when scene.enabled \
+                    and scene.last_update_matrices_tick < @render_tick
+                scene.update_all_matrices()
 
         # TODO: have a list of objects instead of probes?
         for probe in @probes
@@ -381,22 +401,25 @@ class RenderManager
                 {effects} = viewport
                 if effects.length != 0
                     {width, height} = viewport
+                    rect = [0, 0, width, height]
                     @ensure_post_processing_framebuffers(width, height)
-                    @draw_viewport viewport, [0, 0, width, height], @tmp_fb0, [0, 1]
+                    @draw_viewport viewport, rect, @tmp_fb0, [0, 1]
                     source = @tmp_fb0
                     dest = @tmp_fb1
-                    rect = [0, 0, width, height]
                     for i in [0...effects.length-1] by 1
                         result = effects[i].apply source, dest, rect
                         source = result.destination
                         dest = result.temporary
                     last = effects[effects.length-1]
-                    result = last.apply source, screen.framebuffer, viewport.rect_pix
+                    result =
+                        last.apply source, screen.framebuffer, viewport.rect_pix
                     if result.destination != screen.framebuffer
-                        throw Error "The last effect is not allowed to be pass-through
-                            (second argument of effect.apply must be destination)."
+                        throw Error "The last effect is not allowed to be
+                            pass-through (second argument of effect.apply
+                            must be destination)."
                 else
-                    @draw_viewport viewport, viewport.rect_pix, screen.framebuffer, [0, 1]
+                    @draw_viewport \
+                        viewport, viewport.rect_pix, screen.framebuffer, [0, 1]
             screen.post_draw()
 
         #@gl.flush()
@@ -416,11 +439,13 @@ class RenderManager
 
     # @private
     # Draws a mesh.
-    draw_mesh: (mesh, mesh2world, pass_=-1, material_override, world2cam_override, projection_override)->
+    draw_mesh: (mesh, mesh2world, pass_=-1, material_override,
+        world2cam_override, projection_override)->
         # TODO: Put all camera matrices into a single argument:
         # world2cam, cam2world, world2cam3, cam2world3
         # projection, projection inverse
-        # TODO: check epsilon, probably better to check sum of absolutes instead of sqrLen
+        # TODO: check epsilon, probably better to check sum of absolutes
+        # instead of sqrLen
         if @_sqscale < 0.000001
             mesh.culled_in_last_frame = true
             return
@@ -431,7 +456,8 @@ class RenderManager
 
         if @use_frustum_culling
             # Cull object if it's outside camera frustum
-            parented_pos = if mesh.parent then  mesh.get_world_position() else mesh.position
+            parented_pos = if mesh.parent then mesh.get_world_position()
+            else mesh.position
             pos = vec3.copy @_v, parented_pos
             vec3.sub pos, pos, cam.position
             r = mesh.radius
@@ -491,11 +517,11 @@ class RenderManager
 
             # Assigning uniforms of the 3 main matrices:
             # model_view_matrix, normal_matrix and projection_matrix
-            model_view_matrix = @_model_view_matrix
-            mat4.multiply model_view_matrix, world2cam_override or @_world2cam, mesh2world
-            gl.uniformMatrix4fv shader.u_model_view_matrix, false, model_view_matrix.toJSON()
+            mvm = @_model_view_matrix
+            mat4.multiply mvm, world2cam_override or @_world2cam, mesh2world
+            gl.uniformMatrix4fv shader.u_model_view_matrix, false, mvm.toJSON()
             if shader.u_normal_matrix?
-                mat3.normalFromMat4 m3, model_view_matrix
+                mat3.normalFromMat4 m3, mvm
                 gl.uniformMatrix3fv shader.u_normal_matrix, false, m3.toJSON()
             proj = projection_override or cam.projection_matrix
             gl.uniformMatrix4fv shader.u_projection_matrix, false, proj.toJSON()
@@ -508,7 +534,9 @@ class RenderManager
                 # TODO: Simplify this
                 if tex_input.is_probe
                     # this means it's the probe cube texture
-                    tex = mesh.probe?.cubemap or mesh.scene?.background_probe?.cubemap or @blank_cube_texture
+                    tex = mesh.probe?.cubemap or
+                        mesh.scene?.background_probe?.cubemap or
+                        @blank_cube_texture
                     tex_input.value = tex
                     tex.last_used_material = mat
                 else if tex_input.is_reflect
@@ -540,7 +568,8 @@ class RenderManager
             if shader.u_mesh_center?
                 {x,y,z} = mesh.center
                 gl.uniform3f shader.u_mesh_center, x, y, z
-                gl.uniform3f shader.u_mesh_inv_dimensions, inv_radius_x, inv_radius_y, inv_radius_z
+                gl.uniform3f shader.u_mesh_inv_dimensions,
+                    inv_radius_x, inv_radius_y, inv_radius_z
 
             # Bind vertex buffer, assign attribute pointers
             data = amesh.data
@@ -552,10 +581,12 @@ class RenderManager
             @change_enabled_attributes shader.attrib_bitmask
             for attr in shader.attrib_pointers
                 # [location, number of components, type, offset]
-                gl.vertexAttribPointer attr[0], attr[1], attr[2], false, stride, attr[3]
+                gl.vertexAttribPointer \
+                    attr[0], attr[1], attr[2], false, stride, attr[3]
 
             # Bind index buffer, draw
-            gl.bindBuffer gl.ELEMENT_ARRAY_BUFFER, data.index_buffers[submesh_idx]
+            # ELEMENT_ARRAY_BUFFER = 0x8893
+            gl.bindBuffer 0x8893, data.index_buffers[submesh_idx]
             num_indices = data.num_indices[submesh_idx] # * @_polygon_ratio)|0
             gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
 
@@ -568,8 +599,8 @@ class RenderManager
             #         '1282': 'INVALID_OPERATION',
             #         '1205': 'OUT_OF_MEMORY'
             #     }
-            #     console.error ('GL Error ' + errcodes[error] + ' when drawing ' + mesh.name +
-            #             ' (' + mesh.mesh_name + ') with ' + mat.name)
+            #     console.error ("GL Error #{errcodes[error]} when drawing
+            #             #{mesh.name} (#{mesh.mesh_name}) with #{mat.name}")
 
             # @meshes_drawn += 1
             # @triangles_drawn += num_indices * 0.33333333333333333
@@ -580,7 +611,8 @@ class RenderManager
     # Draws the scene background in a quad,
     # usually after opaque pass and before transparent pass
     draw_background: (scene, world2cam, cam2world, projection_matrix) ->
-        @draw_mesh(@bg_mesh, cam2world, -1, scene.world_material, world2cam, projection_matrix)
+        @draw_mesh(@bg_mesh, cam2world, -1, scene.world_material,
+            world2cam, projection_matrix)
 
     # @private
     # Draws a viewport. Usually called from `draw_all`.
@@ -676,7 +708,8 @@ class RenderManager
                     lamp.init_shadow()
                 size = lamp.shadow_fb.size_x * 2
                 if not @common_shadow_fb?
-                    @common_shadow_fb = new Framebuffer @context, {size: [size,size], use_depth: true}
+                    @common_shadow_fb = new Framebuffer @context,
+                        {size: [size,size], use_depth: true}
 
                 @common_shadow_fb.enable [0, 0, size, size]
                 gl.clearColor 1,1,1,1  # TODO: which color should we use?
@@ -684,9 +717,11 @@ class RenderManager
                 mat = lamp._shadow_material
 
                 for ob in scene.mesh_passes[0]
-                    data = ob.get_lod_mesh(viewport, mesh_lod_min_length_px).data
+                    data =
+                        ob.get_lod_mesh(viewport, mesh_lod_min_length_px).data
                     if ob.visible and data and not ob.culled_in_last_frame
-                        @draw_mesh ob, ob.world_matrix, -1, mat, world2light, lamp._projection_matrix
+                        @draw_mesh ob, ob.world_matrix, -1, mat, world2light,
+                            lamp._projection_matrix
 
                 lamp.shadow_fb.enable()
                 @common_shadow_fb.draw_with_filter @filters.shadow_box_blur
@@ -709,7 +744,8 @@ class RenderManager
 
         # TODO: Think better about how to manage passes
         # Add a function for moving objects between passes freely?
-        # Use a dynamic number of passes where each pass have a list of pre/post operations?
+        # Use a dynamic number of passes where each pass have
+        # a list of pre/post operations?
         # And a sort option
 
         # PASS -1  (background)
@@ -737,11 +773,11 @@ class RenderManager
             gl.enable gl.BLEND
             # Sort by distence to camera
             z = @camera_z
+            v = vec3.create()
             for ob in scene.mesh_passes[1]
-                v = if ob.parent then ob.get_world_position() else ob.position
-                x = v.x
-                ob._sqdist = - (x*z.x + v.y*z.y + v.z*z.z) - (ob.zindex * (ob.dimensions.x+ob.dimensions.y+ob.dimensions.z)*0.166666)
-                # ob._sqdist = -vec3.dot(s,z) - (ob.zindex * (ob.dimensions.x+ob.dimensions.y+ob.dimensions.z)*0.166666)
+                ob.get_world_position_into(v)
+                ob._sqdist = -vec3.dot(v,z) - (ob.zindex * \
+                    (ob.dimensions.x+ob.dimensions.y+ob.dimensions.z)*0.166666)
             timsort.sort scene.mesh_passes[1], (a,b)-> a._sqdist - b._sqdist
 
             for ob in scene.mesh_passes[1]
@@ -784,16 +820,15 @@ class RenderManager
 
         fb = @temporary_framebuffers[cubemap.size]
         if not fb
-            fb = @temporary_framebuffers[cubemap.size] = new Framebuffer @context,
-                {size: [cubemap.size,cubemap.size], use_depth: true, \
-                 color_type: 'UNSIGNED_BYTE'}
+            fb = @temporary_framebuffers[cubemap.size] =
+                new ByteFramebuffer @context,
+                    {size: [cubemap.size,cubemap.size], use_depth: true}
         fb.enable()
+        dir = vec3.create()
         for side in [0...6]
             fb.bind_to_cubemap_side cubemap, side
-            dir = [{x:1.0, y:0.0, z:0.0},{x:-1.0, y:0.0, z:0.0},{x:0.0, y:1.0, z:0.0},
-                {x:0.0, y:-1.0, z:0.0},{x:0.0, y:0.0, z:1.0},{x:0.0, y:0.0, z:-1.0}][side]
-            up = [{x:0.0, y:-1.0, z:0.0},{x:0.0, y:-1.0, z:0.0},{x:0.0, y:0.0, z:1.0},
-                {x:0.0, y:0.0, z:-1.0},{x:0.0, y:-1.0, z:0.0},{x:0.0, y:-1.0, z:0.0}][side]
+            vec3.copy dir, CUBEMAP_DIRECTIONS[side]
+            up = CUBEMAP_UP_VECTORS[side]
             dir.x += position.x
             dir.y += position.y
             dir.z += position.z
@@ -812,8 +847,9 @@ class RenderManager
             if not background_only
                 for ob in scene.mesh_passes[0] when ob.probe?.cubemap != cubemap
                     if ob.visible and ob.data
-                        @draw_mesh ob, ob.world_matrix, -1, null, world2cam, proj
-            scene.world_material? and @draw_background(scene, world2cam, @_cam2world, proj)
+                        @draw_mesh ob, ob.world_matrix, 0, null, world2cam, proj
+            if scene.world_material?
+                @draw_background(scene, world2cam, @_cam2world, proj)
             if @do_log
                 @do_log = false
                 console.log @debug_uniform_logging_get_log()
@@ -829,7 +865,8 @@ class RenderManager
     # See myou.screenshot_as_blob()
     screenshot_as_blob: (width, height, options={}) ->
         ## Use this to test:
-        # $myou.screenshot_as_blob(1024, 768).then((blob)=>{document.body.innerHTML=`<img src="${URL.createObjectURL(blob)}">`})
+        # $myou.screenshot_as_blob(1024, 768).then((blob)=>{
+        #   document.body.innerHTML=`<img src="${URL.createObjectURL(blob)}">`})
         new Promise (resolve, reject) =>
             {
                 supersampling=2
@@ -842,11 +879,11 @@ class RenderManager
             # create framebuffers
             supersampling = Math.sqrt supersampling
             console.log supersampling
-            size = [next_POT(width*supersampling), next_POT(height*supersampling)]
+            size = [next_POT(width*supersampling),
+                    next_POT(height*supersampling)]
             x_ratio_render = width*supersampling/size[0]
             y_ratio_render = height*supersampling/size[1]
-            color_type = 'UNSIGNED_BYTE'
-            render_buffer = new @context.Framebuffer {size, use_depth: true, color_type}
+            render_buffer = new @context.ByteFramebuffer {size, use_depth: true}
             size = [next_POT(width), next_POT(height)]
             x_ratio_output = width/size[0]
             y_ratio_output = height/size[1]
@@ -854,7 +891,7 @@ class RenderManager
                 y_ratio_render,
                 x_ratio_output,
                 y_ratio_output)
-            out_buffer = new @context.Framebuffer {size, use_depth: false, color_type}
+            out_buffer = new @context.ByteFramebuffer {size, use_depth: false}
             # create canvas
             canvas = document.createElement 'canvas'
             canvas.style.display = 'none'
@@ -890,12 +927,14 @@ class RenderManager
                 v.rect = rect
                 v.recalc_aspect()
             # resize/flip
-            render_buffer.enable [0,0,width*supersampling,height*supersampling] # sets the current_size_x/y
+            # sets the current_size_x/y
+            render_buffer.enable [0,0,width*supersampling,height*supersampling]
             out_buffer.enable [0,0,width,height]
             render_buffer.draw_with_filter @filters.flip
             # get pixels, draw onto canvas, conver to blob
             {gl} = @
-            gl.readPixels 0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(image_data.data.buffer)
+            gl.readPixels 0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE,
+                new Uint8Array(image_data.data.buffer)
             ctx.putImageData image_data, 0, 0
             canvas.toBlob (blob) ->
                 document.body.removeChild canvas
@@ -913,8 +952,7 @@ class RenderManager
         size = [next_POT(scr.width), next_POT(scr.height)]
         x_ratio_render = scr.width/size[0]
         y_ratio_render = scr.height/size[1]
-        color_type = 'UNSIGNED_BYTE'
-        render_buffer = new @context.Framebuffer {size, use_depth: true, color_type}
+        render_buffer = new @context.ByteFramebuffer {size, use_depth: true}
         old_w = scr.width
         old_h = scr.height
         old_fb = scr.framebuffer
@@ -1010,14 +1048,14 @@ class RenderManager
         gl = @gl
         for p in ['uniform1fv', 'uniform2fv', 'uniform3fv', 'uniform4fv']
             gl['_'+p] = gl[p]
-            gl[p] = do (p) => (l,v)->
+            gl[p] = do (p) -> (l,v)->
                 if not v.byteLength?
                     throw Error "wrong type"
                 return gl["_"+p](l,v)
 
         for p in ['uniformMatrix3fv', 'uniformMatrix4fv']
             gl['_'+p] = gl[p]
-            gl[p] = do (p) => (l,t,v)->
+            gl[p] = do (p) -> (l,t,v)->
                 if v.byteLength?
                     throw Error "wrong type"
                 return gl["_"+p](l,t,v)
@@ -1029,7 +1067,7 @@ class RenderManager
         gl = @gl
         for p in ['uniform1f', 'uniform2f', 'uniform3f', 'uniform4f']
             gl['_'+p] = gl[p]
-            gl[p] = do (p) => (l,v...)->
+            gl[p] = do (p) -> (l,v...)->
                 for i in v
                     if not i? or i!=i
                         debugger
@@ -1037,7 +1075,7 @@ class RenderManager
 
         for p in ['uniformMatrix3fv', 'uniformMatrix4fv']
             gl['_'+p] = gl[p]
-            gl[p] = do (p) => (l,t,v...)->
+            gl[p] = do (p) -> (l,t,v...)->
                 for i in v
                     if not i? or i!=i
                         debugger
@@ -1052,7 +1090,7 @@ class RenderManager
         @breaking_on_any_gl_error = true
         for k,v of gl when typeof v == 'function' and k != 'getError'
             gl['_'+k] = gl[k]
-            gl[k] = do (k, gl) => (args...)->
+            gl[k] = do (k, gl) -> (args...)->
                 r = gl["_"+k](args...)
                 if gl.getError()
                     debugger
@@ -1096,7 +1134,12 @@ class RenderManager
             ob.visible = true
         return
 
-
+CUBEMAP_DIRECTIONS = [{x:1.0, y:0.0, z:0.0},{x:-1.0, y:0.0, z:0.0},
+    {x:0.0, y:1.0, z:0.0}, {x:0.0, y:-1.0, z:0.0},
+    {x:0.0, y:0.0, z:1.0},{x:0.0, y:0.0, z:-1.0}]
+CUBEMAP_UP_VECTORS = [{x:0.0, y:-1.0, z:0.0},{x:0.0, y:-1.0, z:0.0},
+    {x:0.0, y:0.0, z:1.0},{x:0.0, y:0.0, z:-1.0},
+    {x:0.0, y:-1.0, z:0.0},{x:0.0, y:-1.0, z:0.0}]
 
 # @nodoc
 sort_by_mat_id = (a,b) ->

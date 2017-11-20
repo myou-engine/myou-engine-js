@@ -19,11 +19,11 @@ class Scene
         @mesh_passes = [[], [], []]
         @lamps = []
         @armatures = []
-        @objects = {}
+        @objects = dict()
         # Just like objects but used for parenting (no global name collision)
-        @parents = {}
-        @materials = {}
-        @textures = {}
+        @parents = dict()
+        @materials = dict()
+        @textures = dict()
         @active_camera = null
         @physics_enabled = false
         @world = new World this
@@ -45,7 +45,7 @@ class Scene
         @frame_end = 0
         @anim_fps = 30
         @markers = []
-        @markers_by_name = {}
+        @markers_by_name = dict()
         @extra_data = null
         @data_dir = ''
         @original_scene_name = ''
@@ -88,14 +88,15 @@ class Scene
         return
 
     remove_object: (ob, recursive=true)->
-        @children.splice _,1 if (_ = @children.indexOf ob)!=-1
+        @children.splice _,1 if (_ = @children.indexOf ob) != -1
         if not ob.static
-            @auto_updated_children.splice _,1 if (_ = @auto_updated_children.indexOf ob)!=-1
+            if (index = @auto_updated_children.indexOf ob) != -1
+                @auto_updated_children.splice index,1
         delete @objects[ob.name]
         delete @parents[ob.original_name]
         if ob.type=='MESH'
             # TODO: remake this when remaking the pass system
-            # NOTE: not removing from translucent pass because we're not using it
+            # NOTE: not removing from translucent pass because it's unused
             @mesh_passes[0].splice _,1 if (_ = @mesh_passes[0].indexOf ob)!=-1
             @mesh_passes[1].splice _,1 if (_ = @mesh_passes[1].indexOf ob)!=-1
             @fg_pass and @fg_pass.splice _,1 if (_ = @fg_pass.indexOf ob)!=-1
@@ -134,7 +135,10 @@ class Scene
             child.set_rotation_order rotation_order
         child.parent = parent
         parent.children.push child
-        if @auto_updated_children.indexOf(parent) > @auto_updated_children.indexOf(child)
+        auchildren = @auto_updated_children
+        # TODO: should we store the index in the objects
+        # to make this check faster?
+        if auchildren.indexOf(parent) > auchildren.indexOf(child)
             # When this is set to false, reorder_children() is called
             # in render_manager.draw_viewport
             @_children_are_ordered = false
@@ -148,12 +152,13 @@ class Scene
                 quat.copy child.rotation, child.get_world_rotation()
                 child.rotation_order = 'Q'
                 child.set_rotation_order rotation_order
-            parent.children.splice _,1 if (_ = parent.children.indexOf child)!=-1
+            if (index = parent.children.indexOf child) != -1
+                parent.children.splice index,1
 
         child.parent = null
 
+    # Makes sure all scene children are in order for correct matrix calculations
     reorder_children: ->
-        '''Makes sure all scene children are in order for correct matrix calculations'''
         # TODO: Only the objects marked as unordered need to be resolved here!
         #       (make a new list and append to children)
         children = @auto_updated_children
@@ -211,18 +216,24 @@ class Scene
         @load()
 
     # Loads objects that are visible from any point of view, returns a promise
-    # @option options fetch_textures [boolean] Whether to fetch textures when they're not loaded already.
-    # @option options texture_size_ratio [number] Quality of textures specified in ratio of number of pixels.
-    # @option options max_mesh_lod [number] Quality of meshes specified in LoD polycount ratio.
+    # @option options [boolean] fetch_textures
+    #       Whether to fetch textures when they're not loaded already.
+    # @option options [number] texture_size_ratio
+    #       Quality of textures specified in ratio of number of pixels.
+    # @option options [number] max_mesh_lod
+    #       Quality of meshes specified in LoD polycount ratio.
     # @return [Promise]
     load_visible_objects: (options) ->
         visible_objects = for ob in @children when ob.visible then ob
         return fetch_objects(visible_objects, options).then(=>@)
 
     # Loads the mesh of objects with physic meshes, returns a promise
-    # @option options fetch_textures [boolean] Whether to fetch textures when they're not loaded already.
-    # @option options texture_size_ratio [number] Quality of textures specified in ratio of number of pixels.
-    # @option options max_mesh_lod [number] Quality of meshes specified in LoD polycount ratio.
+    # @option options [boolean] fetch_textures
+    #       Whether to fetch textures when they're not loaded already.
+    # @option options [number] texture_size_ratio
+    #       Quality of textures specified in ratio of number of pixels.
+    # @option options [number] max_mesh_lod
+    #       Quality of meshes specified in LoD polycount ratio.
     # @return [Promise]
     load_physics_objects: (options) ->
         physics_objects = []
@@ -233,10 +244,14 @@ class Scene
 
         return fetch_objects(physics_objects, options).then(=>@)
 
-    # Loads objects that are visible from any point of view, and meshes with physics, returns a promise
-    # @option options fetch_textures [boolean] Whether to fetch textures when they're not loaded already.
-    # @option options texture_size_ratio [number] Quality of textures specified in ratio of number of pixels.
-    # @option options max_mesh_lod [number] Quality of meshes specified in LoD polycount ratio.
+    # Loads objects that are visible from any point of view, and meshes with
+    # physics, returns a promise
+    # @option options [boolean] fetch_textures
+    #       Whether to fetch textures when they're not loaded already.
+    # @option options [number] texture_size_ratio
+    #       Quality of textures specified in ratio of number of pixels.
+    # @option options [number] max_mesh_lod
+    #       Quality of meshes specified in LoD polycount ratio.
     # @return [Promise]
     load_visible_and_physics_objects: (options) ->
         objects = []
@@ -251,9 +266,12 @@ class Scene
         return fetch_objects(objects, options).then(=>@)
 
     # Loads all objects of the scene, returns a promise
-    # @option options fetch_textures [boolean] Whether to fetch textures when they're not loaded already.
-    # @option options texture_size_ratio [number] Quality of textures specified in ratio of number of pixels.
-    # @option options max_mesh_lod [number] Quality of meshes specified in LoD polycount ratio.
+    # @option options [boolean] fetch_textures
+    #       Whether to fetch textures when they're not loaded already.
+    # @option options [number] texture_size_ratio
+    #       Quality of textures specified in ratio of number of pixels.
+    # @option options [number] max_mesh_lod
+    #       Quality of meshes specified in LoD polycount ratio.
     # @return [Promise]
     load_all_objects: (options) ->
         # TODO: This may not work the second time is not called.
@@ -264,19 +282,24 @@ class Scene
 
     # Loads a list of objects, returns a promise
     # @param list [array] List of objects to load.
-    # @option options fetch_textures [boolean] Whether to fetch textures when they're not loaded already.
-    # @option options texture_size_ratio [number] Quality of textures specified in ratio of number of pixels.
-    # @option options max_mesh_lod [number] Quality of meshes specified in LoD polycount ratio.
+    # @option options [boolean] fetch_textures
+    #       Whether to fetch textures when they're not loaded already.
+    # @option options [number] texture_size_ratio
+    #       Quality of textures specified in ratio of number of pixels.
+    # @option options [number] max_mesh_lod
+    #       Quality of meshes specified in LoD polycount ratio.
     # @return [Promise]
     load_objects: (list, options={})->
         if not list?.length?
-            throw Error "Invalid arguments, expects (list, options). Did you mean 'load_all_objects()'?"
+            throw Error "Invalid arguments, expects (list, options). Did you
+                        mean 'load_all_objects()'?"
         # TODO: This may not work the second time is not called.
         # Meshes should always return data's promises
         return fetch_objects(list, options).then(=>@)
 
     unload_invisible_objects: (options) ->
-        invisible_objects = for ob in @children when not ob.visible and ob.data then ob
+        invisible_objects = for ob in @children when not ob.visible and ob.data
+            ob
         @unload_objects invisible_objects, options
 
     unload_objects: (list, options={}) ->
@@ -323,7 +346,8 @@ class Scene
 
     enable_render: ->
         if not @active_camera?
-            console.warn "Scene '#{@name}' has no active camera, nothing will be rendered."
+            console.warn "Scene '#{@name}' has no active camera,
+                        nothing will be rendered."
         @enabled = true
         return @
 
@@ -333,9 +357,11 @@ class Scene
 
     enable_physics: ->
         if not @context.use_physics
-            console.warn "enable_physics: Ineffective because options.disable_physics is set to true"
+            console.warn "enable_physics: Ineffective because
+                        options.disable_physics is set to true"
         else if not @use_physics
-            console.warn "enable_physics: Ineffective because load_scene() was called with load_physics: false"
+            console.warn "enable_physics: Ineffective because load_scene() was
+                        called with load_physics: false"
         @use_physics = @physics_enabled = true
         return @
 
@@ -368,11 +394,19 @@ class Scene
     remove_debug_draw: ->
         if @_debug_draw?
             if @_debug_draw.shape_instances.length != 0
-                console.warn "There are debug shape instances in debug draw of #{@name}."
-                console.warn "The debug draw instance will be deleted nevertheless."
+                console.warn "There are debug shape instances in debug draw of
+                            #{@name}. The debug draw instance will be deleted
+                            nevertheless."
             delete @_debug_draw
             @_debug_draw = null
         return
 
+
+# Using objects as dicts by disabling hidden object optimization
+# @nodoc
+dict = ->
+    d = {}
+    delete d.x
+    d
 
 module.exports = {Scene}

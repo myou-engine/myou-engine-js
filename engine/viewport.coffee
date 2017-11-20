@@ -1,7 +1,9 @@
 {vec2, vec3} = require 'vmath'
 {DebugCamera} = require './debug_camera'
 
-# A viewport is part of the screen/canvas associated with a camera, with a specific size.
+# A viewport is a portion of the screen/canvas associated with a camera,
+# with a specific size. Usually there's only one viewport covering the whole
+# screen/canvas.
 #
 # Typically there's only a single viewport occupying the whole canvas.
 #
@@ -53,7 +55,8 @@ class Viewport
 
     # Sets whether color and depth buffers will be cleared
     # before rendering.
-    # @param color [Boolean] Whether to clear color with `scene.background_color`.
+    # @param color [Boolean]
+    #       Whether to clear color with `scene.background_color`.
     # @param depth [Boolean] Whether to clear depth buffer.
     set_clear: (color, depth)->
         c = if color then 16384 else 0 # GL_COLOR_BUFFER_BIT
@@ -75,7 +78,8 @@ class Viewport
             v.effects_by_id = Object.create @effects_by_id
         if copy_behaviours
             for behaviour in @context.behaviours
-                if this in behaviour.viewports and behaviour != @debug_camera_behaviour
+                if this in behaviour.viewports and
+                        behaviour != @debug_camera_behaviour
                     # TODO: should we add and use behaviour.add_viewport()?
                     behaviour.viewports.push v
                     if behaviour._real_viewports != behaviour.viewports
