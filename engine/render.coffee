@@ -80,7 +80,7 @@ class RenderManager
             console.warn "There's already a GL context. Set reinstance to true
                         to change GL flags."
 
-        if location?.hash != '#webgl1'
+        if not location?.hash.toString().match /(#|\?|&)webgl1\b/
             gl = @canvas.getContext("webgl2", glflags)
         @context.is_webgl2 = @is_webgl2 = gl?
         if not gl
