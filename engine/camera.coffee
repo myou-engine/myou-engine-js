@@ -186,7 +186,6 @@ class Camera extends GameObject
         normal = vec3.create()
         q = quat.create()
         i = 0
-        dbg = @context.scenes.Scene.get_debug_draw()
         for axis in [0...3]
             for side in [-1,1]
                 # We calculate 3 points in the untransformed plane,
