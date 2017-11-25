@@ -1,12 +1,12 @@
 {
   "name": "myou-engine",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Myou is a game engine for web, it features an editor based on Blender.",
   "main": "./dist/myou.js",
   "scripts": {
     "build": "webpack",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prepublish": "node ./node_modules/webpack/bin/webpack.js"
+    "prepare": "node ./node_modules/webpack/bin/webpack.js"
   },
   "dependencies": {
     "cubemap-sh": "^0.2.1",
@@ -14,7 +14,6 @@
     "quickhull3d": "^2.0.1",
     "spur-events": "^0.1.8",
     "vmath": "^1.4.7",
-    "webpack": "^3.8.1",
     "whatwg-fetch": "^1.0.0"
   },
   "devDependencies": {
@@ -25,7 +24,8 @@
     "raw-loader": "^0.5.1",
     "source-map-loader": "^0.1.5",
     "timsort": "^0.2.1",
-    "url-loader": "^0.5.7"
+    "url-loader": "^0.5.7",
+    "webpack": "^3.8.1"
   },
   "repository": {
     "type": "git",
