@@ -39,13 +39,13 @@ class Viewport
         @height = size_y * h
         # TODO: Warn if several viewports with different ratios have same camera
         @camera.aspect_ratio = @width/@height
-        @camera.recalculate_projection()
+        @camera.update_projection()
         if @debug_camera?
             @debug_camera.aspect_ratio = @width/@height
-            @debug_camera.recalculate_projection()
+            @debug_camera.update_projection()
         @rect_pix = [@left, @bottom, @width, @height]
         v = vec3.set @_v, 1,0,-1
-        vec3.transformMat4(v, v, @camera.projection_matrix)
+        vec3.transformMat4 v, v, (@debug_camera ? @camera).projection_matrix
         @units_to_pixels = v.x * @width
         @pixels_to_units = 1/@units_to_pixels
         if not is_soft

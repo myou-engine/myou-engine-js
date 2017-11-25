@@ -2,6 +2,7 @@
 timsort = require 'timsort'
 {Framebuffer} = require './framebuffer'
 {next_POT} = require './math_utils/math_extra'
+{plane_from_norm_point} = require './math_utils/g3'
 
 VECTOR_MINUS_Z = vec3.new 0,0,-1
 canvas = undefined # avoid bugs where the global id "canvas" is read
@@ -25,6 +26,7 @@ class RenderManager
         @background_alpha = if ba? then ba else 1
         @compiled_shaders_this_frame = 0
         @use_frustum_culling = true
+        @show_debug_frustum_culling = false
         @unbind_textures_on_draw_viewport = true
         @probes = []
         # to simulate glClipPlane
@@ -46,10 +48,7 @@ class RenderManager
         @_v = vec3.create()
         @_cam = null
         @_vp = null
-        @_cull_left = vec3.create()
-        @_cull_right = vec3.create()
-        @_cull_top = vec3.create()
-        @_cull_bottom = vec3.create()
+        @_cull_planes = (vec4.create() for [0...6])
         @_polygon_ratio = 1
         @_right_eye_factor = 0
         @triangles_drawn = 0
@@ -458,16 +457,10 @@ class RenderManager
             # Cull object if it's outside camera frustum
             parented_pos = if mesh.parent then mesh.get_world_position()
             else mesh.position
-            pos = vec3.copy @_v, parented_pos
-            vec3.sub pos, pos, cam.position
-            r = mesh.radius
-            distance_to_camera = vec3.dot pos, @camera_z
-
-            if ((distance_to_camera+r) *
-                (vec3.dot(pos, @_cull_top)+r) *
-                (vec3.dot(pos, @_cull_left)+r) *
-                (vec3.dot(pos, @_cull_right)+r) *
-                (vec3.dot(pos, @_cull_bottom)+r)) < 0
+            pos4 = vec4.new parented_pos.x, parented_pos.y, parented_pos.z, 1
+            r = -mesh.radius
+            for plane in @_cull_planes
+                if vec4.dot(plane, pos4) < r
                     mesh.culled_in_last_frame = true
                     return
             mesh.culled_in_last_frame = false
@@ -668,15 +661,25 @@ class RenderManager
         world2cam_mx.z = -world2cam_mx.z
         mat3.fromMat4 world2cam3_mx, world2cam_mx
         vec3.transformMat3 @camera_z, VECTOR_MINUS_Z, cam_rm
-        # Set plane vectors that will be used for culling objects in perspective
-        vec3.transformMat3 @_cull_left, cam.cull_left, cam_rm
-        v = vec3.copy @_cull_right, cam.cull_left
-        v.x = -v.x
-        vec3.transformMat3 v, v, cam_rm
-        vec3.transformMat3 @_cull_bottom, cam.cull_bottom, cam_rm
-        v = vec3.copy @_cull_top, cam.cull_bottom
-        v.y = -v.y
-        vec3.transformMat3 v, v, cam_rm
+        # Set plane vectors that will be used for culling objects
+        plane_matrix = cam2world
+        {cull_planes} = cam
+        if @show_debug_frustum_culling
+            # NOTE: This only works properly if world scale = 1,1,1
+            plane_matrix = viewport.camera.world_matrix
+            {cull_planes} = viewport.camera
+        p4 = vec4.create()
+        n4 = vec4.create()
+        for plane,i in cull_planes
+            # use this line to test with debug camera on non-debug camera
+            # plane_matrix = viewport.camera.world_matrix
+            vec4.copy n4, plane
+            n4.w = 0
+            vec4.scale p4, n4, -plane.w
+            p4.w = 1
+            vec4.transformMat4 p4, p4, plane_matrix
+            vec4.transformMat4 n4, n4, plane_matrix
+            plane_from_norm_point @_cull_planes[i], n4, p4
 
         mat4.invert @projection_matrix_inverse, cam.projection_matrix
 

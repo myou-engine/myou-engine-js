@@ -118,17 +118,19 @@ class DebugDraw
         return
 
     _draw_frustum: (gl, rm, ob, mm4) ->
+        {use_frustum_culling} = @context.render_manager
+        @context.render_manager.use_frustum_culling = false
         {color} = @_shapes
         dob = @_shapes.box
         # Draw camera with frustum of far=1
         {near_plane, far_plane} = ob
         ob.near_plane = 1e-4
         ob.far_plane = 1
-        ob.recalculate_projection()
+        ob._calculate_projection()
         mat4.mul mm4, ob.world_matrix, ob.projection_matrix_inv
         ob.near_plane = near_plane
         ob.far_plane = far_plane
-        ob.recalculate_projection()
+        ob._calculate_projection()
 
         # occluded pass
         color4.set color, 1, 1, 1, @hidden_alpha
@@ -156,6 +158,8 @@ class DebugDraw
         color4.set color, 1, 1, 1, .5
         rm.draw_mesh dob, mm4
         gl.disable gl.BLEND
+
+        @context.render_manager.use_frustum_culling = use_frustum_culling
 
     _draw_empty: (gl, rm, ob, mm4) ->
         {color, material} = @_shapes

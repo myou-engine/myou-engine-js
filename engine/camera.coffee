@@ -1,5 +1,6 @@
 {GameObject} = require './gameobject'
-{mat3, mat4, vec3} = require 'vmath'
+{mat3, mat4, vec3, vec4, quat} = require 'vmath'
+{plane_from_norm_point} = require './math_utils/g3'
 
 VECTOR_X = vec3.new 1,0,0
 VECTOR_Y = vec3.new 0,1,0
@@ -25,9 +26,8 @@ class Camera extends GameObject
         @projection_matrix = mat4.create()
         @projection_matrix_inv = mat4.create()
         @world_to_screen_matrix = mat4.create()
-        @cull_left = vec3.create()
-        @cull_bottom = vec3.create()
-        @recalculate_projection()
+        @cull_planes = (vec4.create() for [0...6])
+        @update_projection()
 
     clone: ->
         clone = super()
@@ -42,8 +42,7 @@ class Camera extends GameObject
         clone.target_aspect_ratio = @target_aspect_ratio
         clone.cam_type = @cam_type
         clone.sensor_fit = @sensor_fit
-        clone.cull_left = vec3.create()
-        clone.cull_bottom = vec3.create()
+        clone.cull_planes = (vec4.clone v for v in @cull_planes)
         return clone
 
     # @nodoc
@@ -87,8 +86,12 @@ class Camera extends GameObject
                 throw Error "Camera.sensor_fit must be
                     AUTO, HORIZONTAL, VERTICAL, COVER or CONTAIN."
 
-    recalculate_projection: ->
+    update_projection: ->
+        @_calculate_projection()
+        @_calculate_culling_planes()
 
+    # @nodoc
+    _calculate_projection: ->
         near_plane = @near_plane
         far_plane = @far_plane
         if @fov_4[0] == 0
@@ -148,20 +151,6 @@ class Camera extends GameObject
             pm.m14 = d
             pm.m15 = 0
             mat4.invert @projection_matrix_inv, @projection_matrix
-            v = @cull_left
-            v.x = -1
-            v.y = 0
-            v.z = 1
-            vec3.transformMat4 v, v, @projection_matrix_inv
-            vec3.cross v, v, VECTOR_Y
-            vec3.normalize v, v
-            v = @cull_bottom
-            v.x = 0
-            v.y = -1
-            v.z = 1
-            vec3.transformMat4 v, v, @projection_matrix_inv
-            vec3.cross v, VECTOR_X, v
-            vec3.normalize v, v
         else
             d = -2 / (far_plane - near_plane)
             x = 2 / (right - left)
@@ -187,103 +176,44 @@ class Camera extends GameObject
             pm.m14 = c
             pm.m15 = 1
             mat4.invert @projection_matrix_inv, @projection_matrix
-            console.error "TODO: frustum culling for ortho!"
 
-    get_frustum_normals: (horizontal_fov=0, vertical_fov=0) ->
-        near_plane = @near_plane
-        far_plane = @far_plane
-        top = near_plane * Math.tan(vertical_fov * 0.5)
-        right = near_plane * Math.tan(horizontal_fov * 0.5)
-        if top == 0
-            top = right / @aspect_ratio
-        else if right == 0
-            right = top * @aspect_ratio
-        bottom = -top
-        left = -right
+    # @nodoc
+    # Calculate frustum culling planes from projection_matrix_inv
+    _calculate_culling_planes: ->
+        a = vec3.create()
+        b = vec3.create()
+        c = vec3.create()
+        normal = vec3.create()
+        q = quat.create()
+        i = 0
+        dbg = @context.scenes.Scene.get_debug_draw()
+        for axis in [0...3]
+            for side in [-1,1]
+                # We calculate 3 points in the untransformed plane,
+                # in screen space (-1 to 1 box)
+                vec3.set a, side, 0, 0
+                vec3.set b, side, .5, 0
+                vec3.set c, side, 0, .5*side
+                for [0...axis] by 1
+                    _shift a
+                    _shift b
+                    _shift c
+                # Then we transform them to world space
+                vec3.transformMat4 a, a, @projection_matrix_inv
+                vec3.transformMat4 b, b, @projection_matrix_inv
+                vec3.transformMat4 c, c, @projection_matrix_inv
+                # make b and c relative to a, to calculate the normal
+                vec3.sub b, b, a
+                vec3.sub c, c, a
+                vec3.cross normal, b, c
+                vec3.normalize normal, normal
+                plane_from_norm_point @cull_planes[i++], normal, a
+        return
 
-        pm = mat4.create()
-        a = (right + left) / (right - left)
-        b = (top + bottom) / (top - bottom)
-        c = -(far_plane + near_plane) / (far_plane - near_plane)
-        if @cam_type == 'PERSP'
-            d = -(2 * far_plane * near_plane) / (far_plane - near_plane)
-            x = (2 * near_plane) / (right - left)
-            y = (2 * near_plane) / (top - bottom)
-            # x, 0, 0, 0,
-            # 0, y, 0, 0,
-            # a, b, c, -1,
-            # 0, 0, d, 0
-            pm.m00 = x
-            pm.m01 = 0
-            pm.m02 = 0
-            pm.m03 = 0
-            pm.m04 = 0
-            pm.m05 = y
-            pm.m06 = 0
-            pm.m07 = 0
-            pm.m08 = a
-            pm.m09 = b
-            pm.m10 = c
-            pm.m11 = -1
-            pm.m12 = 0
-            pm.m13 = 0
-            pm.m14 = d
-            pm.m15 = 0
-            projection_matrix_inv = mat4.invert mat4.create(), pm
-            v = cull_left_local = vec3.create()
-            v.x = -1
-            v.y = 0
-            v.z = 1
-            vec3.transformMat4 v, v, projection_matrix_inv
-            vec3.cross v, v, VECTOR_Y
-            vec3.normalize v, v
-            v = cull_bottom_local = vec3.create()
-            v.x = 0
-            v.y = -1
-            v.z = 1
-            vec3.transformMat4 v, v, projection_matrix_inv
-            vec3.cross v, VECTOR_X, v
-            vec3.normalize v, v
-        else
-            d = -2 / (far_plane - near_plane)
-            x = 2 / (right - left)
-            y = 2 / (top - bottom)
-            #  x, 0, 0, 0,
-            #  0, y, 0, 0,
-            #  0, 0, d, 0,
-            # -a,-b, c, 1
-            mat4.identity pm
-            pm.m00 = x
-            pm.m01 = 0
-            pm.m02 = 0
-            pm.m03 = 0
-            pm.m04 = 0
-            pm.m05 = y
-            pm.m06 = 0
-            pm.m07 = 0
-            pm.m08 = 0
-            pm.m09 = 0
-            pm.m10 = d
-            pm.m11 = 0
-            pm.m12 = -a
-            pm.m13 = -b
-            pm.m14 = c
-            pm.m15 = 1
-            mat4.invert @projection_matrix_inv, @projection_matrix
-            throw Error "TODO: frustum culling for ortho!"
-
-        rot_matrix = mat3.rotationFromMat4 mat3.create(), @get_world_matrix()
-        normal_left =
-            vec3.transformMat3 vec3.create(), cull_left_local, rot_matrix
-        normal_right = v = vec3.copy vec3.create(), cull_left_local
-        v.x = -v.x
-        vec3.transformMat3 v, v, rot_matrix
-        normal_bottom =
-            ec3.transformMat3 vec3.create(), cull_bottom_local, rot_matrix
-        normal_top = v = vec3.copy vec3.create(), cull_bottom_local
-        v.y = -v.y
-        vec3.transformMat3 v, v, rot_matrix
-        return {normal_top, normal_bottom, normal_right, normal_left}
-
+_shift = (v) ->
+    {x,y,z} = v
+    v.x = z
+    v.y = x
+    v.z = y
 
 module.exports = {Camera}

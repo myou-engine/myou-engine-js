@@ -10,6 +10,7 @@ class VRScreen extends CanvasScreen
         @canvas = @context.canvas
         {@framebuffer} = @context.canvas_screen
         @frame_data = new VRFrameData
+        old_pm0 = mat4.create()
         # left eye viewport
         camera = @scene.active_camera.clone()
         camera.rotation_order = 'Q'
@@ -32,18 +33,12 @@ class VRScreen extends CanvasScreen
         rightEye = @HMD.getEyeParameters("right")
         @resize(Math.max(leftEye.renderWidth, rightEye.renderWidth) * 2,
                 Math.max(leftEye.renderHeight, rightEye.renderHeight))
-        # TODO: fix frustum culling in VR
-        @was_using_frustrum_culling =
-            @context.render_manager.use_frustum_culling
-        @context.render_manager.use_frustum_culling = false
         @context.canvas_screen.enabled = false
 
     destroy: ->
         @context.vr_screen = null
         @context.screens.splice @context.screens.indexOf(this), 1
         @context.canvas_screen.resize_to_canvas()
-        @context.render_manager.use_frustum_culling =
-            @was_using_frustrum_culling
         @context.canvas_screen.enabled = true
         return
 
@@ -71,6 +66,15 @@ class VRScreen extends CanvasScreen
             vec3.copyArray r1, orientation
         mat4.copyArray pm0, leftProjectionMatrix
         mat4.copyArray pm1, rightProjectionMatrix
+        # TODO: untested
+        if not mat4.equals pm0, old_pm0
+            # culling planes need to be updated
+            mat4.invert @viewports[0].camera.projection_matrix_inv, pm0
+            @viewports[0].camera._calculate_culling_planes()
+            mat4.invert @viewports[1].camera.projection_matrix_inv, pm1
+            @viewports[1].camera._calculate_culling_planes()
+            mat4.copy old_pm0, pm0
+        return
 
     post_draw: ->
         @HMD.submitFrame()

@@ -126,9 +126,6 @@ class Probe
             rm = @context.render_manager
             rm.flip_normals = true
             plane_from_norm_point rm.clipping_plane, view_nor, view_pos
-            # NOTE: plane_from_norm_point gives a ABC=D plane,
-            # while glClipPlane expects an ABCD=0 plane
-            rm.clipping_plane.w = -rm.clipping_plane.w
             rm.draw_viewport @fake_vp, [0,0,@size,@size], @planar, [0,1]
             vec4.set rm.clipping_plane, 0,0,-1,999990
             rm.flip_normals = false

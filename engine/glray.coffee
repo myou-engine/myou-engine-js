@@ -195,7 +195,7 @@ class GLRay
             # if @pick_object(0.5,0.5)?.distance < 0.01
             #     old_near = camera.near_plane
             #     camera.near_plane = 0.00001
-            #     camera.recalculate_projection()
+            #     camera.update_projection()
             #     camera.near_plane = old_near
             #     restore_near = true
             gl.clearColor(1, 1, 1, 1)
@@ -213,7 +213,7 @@ class GLRay
 
         gl.uniformMatrix4fv(mat.u_projection_matrix, false, camera.projection_matrix.toJSON())
         if restore_near
-            camera.recalculate_projection()
+            camera.update_projection()
 
         # Enable vertex+normal
         @context.render_manager.change_enabled_attributes(mat.attrib_bitmask)
