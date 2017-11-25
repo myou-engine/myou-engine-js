@@ -18,7 +18,6 @@ load_scene = (name, filter, options, context) ->
     if scene
         return Promise.resolve(scene)
     {
-        load_physics
         data_dir=context.MYOU_PARAMS.data_dir
         original_scene_name=name
     } = options
@@ -35,22 +34,13 @@ load_scene = (name, filter, options, context) ->
         if filter
             data = filter(data)
 
-        load_physics = load_physics and context.use_physics
-        scene.use_physics = load_physics
         # Parse all the actual scene data
         for d in data
             load_datablock scene, d, context
 
         context.loaded_scenes.push name
         scene.instance_probe()
-
-        if load_physics
-
-            load_physics_engine().then ->
-                scene.world.instance()
-                return Promise.resolve(scene)
-        else
-            return Promise.resolve(scene)
+        Promise.resolve(scene)
 
 blender_attr_types =
     '-1': 'UNUSED'
@@ -404,28 +394,27 @@ load_object = (data, scene) ->
     ob.animation_strips = data.animation_strips or []
     if not /^(CAMERA|LAMP)$/.test ob.type
         ob.body.type = data.phy_type
-    if context.use_physics
-        {body} = ob
-        body.radius = data.radius
-        body.use_anisotropic_friction = data.use_anisotropic_friction
-        body.friction_coefficients = data.friction_coefficients
-        body.group = data.collision_group
-        body.mask = data.collision_mask
-        body.shape = data.collision_bounds_type
-        body.margin = data.collision_margin
-        body.is_compound = data.collision_compound
-        body.mass = data.mass
-        body.no_sleeping = data.no_sleeping
-        body.is_ghost = data.is_ghost
-        vec3.copyArray body.linear_factor, data.linear_factor
-        vec3.copyArray body.angular_factor, data.angular_factor
-        body.form_factor = data.form_factor
-        body.friction = data.friction
-        body.elasticity = data.elasticity
-        body.step_height = data.step_height
-        body.jump_force = data.jump_force
-        body.max_fall_speed = data.max_fall_speed
-        body.instance()
+    {body} = ob
+    body.radius = data.radius
+    body.use_anisotropic_friction = data.use_anisotropic_friction
+    body.friction_coefficients = data.friction_coefficients
+    body.group = data.collision_group
+    body.mask = data.collision_mask
+    body.shape = data.collision_bounds_type
+    body.margin = data.collision_margin
+    body.is_compound = data.collision_compound
+    body.mass = data.mass
+    body.no_sleeping = data.no_sleeping
+    body.is_ghost = data.is_ghost
+    vec3.copyArray body.linear_factor, data.linear_factor
+    vec3.copyArray body.angular_factor, data.angular_factor
+    body.form_factor = data.form_factor
+    body.friction = data.friction
+    body.elasticity = data.elasticity
+    body.step_height = data.step_height
+    body.jump_force = data.jump_force
+    body.max_fall_speed = data.max_fall_speed
+    body.instance()
     ob._update_matrices()
 
     ob.dupli_group = data.dupli_group

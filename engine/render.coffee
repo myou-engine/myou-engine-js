@@ -12,7 +12,7 @@ canvas = undefined # avoid bugs where the global id "canvas" is read
 #
 # Access it as `render_manager` member of the {Myou} instance.
 class RenderManager
-    constructor: (@context, @canvas, glflags)->
+    constructor: (@context, @canvas, @gl_flags)->
         @context.render_manager = @
         @gl = null
 
@@ -55,37 +55,53 @@ class RenderManager
         @meshes_drawn = 0
         @breaking_on_any_gl_error = false
 
-        @instance_gl_context glflags, false
+        @instance_gl_context @gl_flags
         @initialize()
 
     recreate_gl_canvas: ->
         new_canvas = @canvas.cloneNode()
         @canvas.parentNode.replaceChild new_canvas, @canvas
-        # recreate events of root element if it's the canvas
-        if @context.root == @canvas
-            @context.root = new_canvas
-            for b in @context.behaviours
-                b._destroy_events()
-                b._create_events()
-        @canvas = @context.canvas_screen.canvas = new_canvas
-        @context.vr_screen?.canvas = new_canvas
+        @_set_canvas new_canvas
         return
 
-    instance_gl_context: (glflags, reinstance=false) ->
-        if reinstance
+    set_canvas: (new_canvas) ->
+        @_set_canvas new_canvas
+        @instance_gl_context @gl_flags, clear: @gl?, restore: true
+
+    _set_canvas: (new_canvas) ->
+        if new_canvas != @canvas
+            # recreate events of root element if it's the canvas
+            if @context.root == @canvas
+                @context.root = new_canvas
+                for b in @context.behaviours
+                    b._destroy_events()
+                    b._create_events()
+            @canvas = @context.canvas_screen.canvas = new_canvas
+            @context.vr_screen?.canvas = new_canvas
+        return
+
+    instance_gl_context: (@gl_flags, options={}) ->
+        {
+            reinstance_all=false
+            clear=false
+            recreate_canvas=false
+            restore=false
+        } = options
+        if clear or reinstance_all
             @clear_context()
+        if restore or reinstance_all
             @recreate_gl_canvas()
         else if @gl?
-            console.warn "There's already a GL context. Set reinstance to true
-                        to change GL flags."
+            console.warn "There's already a GL context. Set reinstance_all
+                to true to change GL flags."
 
         if not location?.hash.toString().match /(#|\?|&)webgl1\b/
-            gl = @canvas.getContext("webgl2", glflags)
+            gl = @canvas.getContext("webgl2", @gl_flags)
         @context.is_webgl2 = @is_webgl2 = gl?
         if not gl
             try
-                gl = @canvas.getContext("webgl", glflags) \
-                    or @canvas.getContext("experimental-webgl", glflags)
+                gl = @canvas.getContext("webgl", @gl_flags) \
+                    or @canvas.getContext("experimental-webgl", @gl_flags)
             catch e
                 console.error e
 
@@ -100,7 +116,7 @@ class RenderManager
         if @breaking_on_any_gl_error
             @breaking_on_any_gl_error = false
             @debug_break_on_any_gl_error()
-        if reinstance
+        if restore or reinstance_all
             @restore_context()
         lost = (event) =>
             @context_lost_count += 1
@@ -754,7 +770,7 @@ class RenderManager
         # PASS -1  (background)
         if scene.bg_pass and scene.bg_pass.length
             for ob in scene.bg_pass
-                if ob.visible == true and ob.render
+                if ob.visible == true
                     @draw_mesh(ob, ob.world_matrix, 0)
             gl.clear gl.DEPTH_BUFFER_BIT
 
@@ -763,7 +779,7 @@ class RenderManager
             # TODO: profile with timsort, etc
             # scene.mesh_passes[0].sort sort_by_mat_id
             for ob in scene.mesh_passes[0]
-                if ob.visible == true and not ob.bg and not ob.fg and ob.render
+                if ob.visible == true and not ob.bg and not ob.fg
                     @draw_mesh(ob, ob.world_matrix, 0)
 
         # Scene background
@@ -784,7 +800,7 @@ class RenderManager
             timsort.sort scene.mesh_passes[1], (a,b)-> a._sqdist - b._sqdist
 
             for ob in scene.mesh_passes[1]
-                if ob.visible == true and ob.render
+                if ob.visible == true
                     @draw_mesh(ob, ob.world_matrix, 1)
 
             gl.disable gl.BLEND
@@ -793,14 +809,14 @@ class RenderManager
         if scene.fg_pass and scene.fg_pass.length
             gl.clear gl.DEPTH_BUFFER_BIT
             for ob in scene.fg_pass
-                if ob.visible == true and ob.render
+                if ob.visible == true
                     @draw_mesh(ob, ob.world_matrix, 0)
 
         # PASS 2  (translucent)
         # Currently it uses the filter FB, so this has to be drawn unfiltered
         if passes.indexOf(2)>=0
             for ob in scene.mesh_passes[2]
-                if ob.visible == true and ob.render
+                if ob.visible == true
                     @draw_mesh ob, ob.world_matrix, 2
 
         scene._debug_draw?._draw gl, cam
@@ -1107,7 +1123,7 @@ class RenderManager
     polycount_debug: (ratio=1)->
         total_polys = 0
         for ob in scene.children
-            if ob.type == 'MESH' and ob.visible and ob.data and ob.render
+            if ob.type == 'MESH' and ob.visible and ob.data
                 for n in ob.data.num_indices
                     total_polys += n
         inv_ratio = 1-ratio
@@ -1116,7 +1132,7 @@ class RenderManager
         for ob in scene.children
             if removed_polys/total_polys > inv_ratio
                 return
-            if ob.type == 'MESH' and ob.visible and ob.data and ob.render
+            if ob.type == 'MESH' and ob.visible and ob.data
                 for n in ob.data.num_indices
                     removed_polys += n
                 ob.visible = false

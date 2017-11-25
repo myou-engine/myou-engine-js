@@ -1,7 +1,7 @@
 {vec3, quat, color4} = require 'vmath'
 {fetch_objects} = require './fetch_assets'
 {Probe} = require './probe'
-{World} = require './physics/bullet'
+{World, load_physics_engine} = require './physics/bullet'
 
 _collision_seq = 0
 
@@ -40,7 +40,6 @@ class Scene
         @last_update_matrices_tick = 0
         @pre_draw_callbacks = []
         @post_draw_callbacks = []
-        @use_physics = true
         @frame_start = 0
         @frame_end = 0
         @anim_fps = 30
@@ -180,14 +179,14 @@ class Scene
         #       (also, this is used in LookAt and other nodes)
         for ob in @armatures
             for c in ob.children
-                if c.visible and c.render
+                if c.visible
                     ob.recalculate_bone_matrices()
                     break
         for ob in @auto_updated_children
             ob._update_matrices()
         return
 
-    unload: ->
+    destroy: ->
         for ob in @children[...]
             @remove_object ob, false
             delete @context.objects[ob.name]
@@ -211,11 +210,13 @@ class Scene
                     screen.viewports.splice i, 1
         return
 
-    reload: ->
-        @unload()
-        @load()
-
-    # Loads objects that are visible from any point of view, returns a promise
+    # Loads data required to use the scene. The things that can be loaded are:
+    #
+    # * visible: Loads visible meshes and the textures of their materials.
+    # * physics: Loads the physics engine and meshes used for physics.
+    #
+    # @param items... [Array<String>] List of elements to load. Each one must be
+    #       one of: 'visible', 'physics', 'all'
     # @option options [boolean] fetch_textures
     #       Whether to fetch textures when they're not loaded already.
     # @option options [number] texture_size_ratio
@@ -223,62 +224,36 @@ class Scene
     # @option options [number] max_mesh_lod
     #       Quality of meshes specified in LoD polycount ratio.
     # @return [Promise]
-    load_visible_objects: (options) ->
-        visible_objects = for ob in @children when ob.visible then ob
-        return fetch_objects(visible_objects, options).then(=>@)
+    load: (items...) ->
+        options = {}
+        if typeof items[items.length-1] == 'object'
+            options = items.pop()
+        {visible, physics, all} =
+            @_ensure_items items, ['visible', 'physics', 'all']
 
-    # Loads the mesh of objects with physic meshes, returns a promise
-    # @option options [boolean] fetch_textures
-    #       Whether to fetch textures when they're not loaded already.
-    # @option options [number] texture_size_ratio
-    #       Quality of textures specified in ratio of number of pixels.
-    # @option options [number] max_mesh_lod
-    #       Quality of meshes specified in LoD polycount ratio.
-    # @return [Promise]
-    load_physics_objects: (options) ->
-        physics_objects = []
-        for ob in @children
-            phy_mesh = ob.body.get_physics_mesh()
-            if phy_mesh? and not phy_mesh.data?
-                physics_objects.push phy_mesh
-
-        return fetch_objects(physics_objects, options).then(=>@)
-
-    # Loads objects that are visible from any point of view, and meshes with
-    # physics, returns a promise
-    # @option options [boolean] fetch_textures
-    #       Whether to fetch textures when they're not loaded already.
-    # @option options [number] texture_size_ratio
-    #       Quality of textures specified in ratio of number of pixels.
-    # @option options [number] max_mesh_lod
-    #       Quality of meshes specified in LoD polycount ratio.
-    # @return [Promise]
-    load_visible_and_physics_objects: (options) ->
         objects = []
         for ob in @children
             ob_being_loaded = null
-            if ob.visible
+            if all or (visible and ob.visible)
                 ob_being_loaded = ob
                 objects.push ob
-            phy_mesh = ob.body.get_physics_mesh()
-            if phy_mesh? and phy_mesh != ob_being_loaded and not phy_mesh.data?
-                objects.push phy_mesh
-        return fetch_objects(objects, options).then(=>@)
-
-    # Loads all objects of the scene, returns a promise
-    # @option options [boolean] fetch_textures
-    #       Whether to fetch textures when they're not loaded already.
-    # @option options [number] texture_size_ratio
-    #       Quality of textures specified in ratio of number of pixels.
-    # @option options [number] max_mesh_lod
-    #       Quality of meshes specified in LoD polycount ratio.
-    # @return [Promise]
-    load_all_objects: (options) ->
-        # TODO: This may not work the second time is not called.
-        # Meshes should always return data's promises
-        # TODO: Are modifier-based physics objects being loaded with this?
-        return fetch_objects(@children, options).then(=>@)
-
+            if physics
+                phy_mesh = ob.body.get_physics_mesh()
+                if phy_mesh? and phy_mesh != ob_being_loaded \
+                        and not phy_mesh.data?
+                    objects.push phy_mesh
+        promise = fetch_objects(objects, options).then(=>@)
+        if physics
+            # TODO: Handle case without webpack
+            if @context.webpack_flags?.include_bullet
+                phy_promise = load_physics_engine()
+                promise = Promise.all([promise, phy_promise]).then =>
+                    @world.instance()
+            else
+                throw Error "Bullet has not been included in this build.
+                    Enable the flag 'include_bullet' in webpack.config.js,
+                    or don't load/enable physics."
+        return promise.then(=>this)
 
     # Loads a list of objects, returns a promise
     # @param list [array] List of objects to load.
@@ -334,40 +309,35 @@ class Scene
     unload_all: ->
         @unload_objects @children
 
-    enable_objects_render: (list)->
-        for ob in list
-            ob.render = true
+    # Enables features of the scene. The things that can be enabled are:
+    #
+    # * render: Enables rendering of visual elements (meshes, background, etc).
+    # * physics: Enables physics movement. Note that some features of physics
+    #            can still be used without this (e.g. ray test).
+    #
+    # @param items... [Array<String>] List of features to enable.
+    #       Each one must be one of: 'render', 'physics', 'all'
+    # @option options [boolean] fetch_textures
+    #       Whether to fetch textures when they're not loaded already.
+    # @option options [number] texture_size_ratio
+    #       Quality of textures specified in ratio of number of pixels.
+    # @option options [number] max_mesh_lod
+    #       Quality of meshes specified in LoD polycount ratio.
+    # @return [Promise]
+    enable: (items...) ->
+        {render, physics, all} =
+            @_ensure_items items, ['render', 'physics', 'all']
+        if render or all
+            if not @active_camera?
+                console.warn "Scene '#{@name}' has no active camera,
+                    nothing will be rendered."
+            @enabled = true
+        if physics or all
+            if not @world.btworld?
+                console.warn "Scene '#{@name}' has no working physics world.
+                    Make sure the physics engine has loaded."
+            @physics_enabled = true
         return
-
-    disable_objects_render: (list)->
-        for ob in list
-            ob.render = false
-        return
-
-    enable_render: ->
-        if not @active_camera?
-            console.warn "Scene '#{@name}' has no active camera,
-                        nothing will be rendered."
-        @enabled = true
-        return @
-
-    disable_render: ->
-        @enabled = false
-        return @
-
-    enable_physics: ->
-        if not @context.use_physics
-            console.warn "enable_physics: Ineffective because
-                        options.disable_physics is set to true"
-        else if not @use_physics
-            console.warn "enable_physics: Ineffective because load_scene() was
-                        called with load_physics: false"
-        @use_physics = @physics_enabled = true
-        return @
-
-    disable_physics: ->
-        @physics_enabled = false
-        return @
 
     instance_probe: ->
         if @background_probe
@@ -382,12 +352,14 @@ class Scene
         return
 
     # Returns a DebugDraw instance for this scene, creating it if necessary.
+    # @return [DebugDraw]
     get_debug_draw: ->
         if not @_debug_draw?
             @_debug_draw = new @context.DebugDraw this
         return @_debug_draw
 
     # Returns whether it has a DebugDraw instance
+    # @return [boolean]
     has_debug_draw: -> @_debug_draw?
 
     # Destroys the DebugDraw instance of this scene, if any
@@ -400,6 +372,24 @@ class Scene
             delete @_debug_draw
             @_debug_draw = null
         return
+
+    ### private methods ###
+
+    # @nodoc
+    _ensure_items: (items, possible) ->
+        if items.length == 0
+            throw Error "No items supplied. Supply one or more of:
+                '#{possible.join "', '"}'"
+        if Array.isArray items[0]
+            throw Error "Remove the [ ] of the array, pass the elements as
+                individual arguments."
+        r = {}
+        for item in items
+            if item not in possible
+                throw Error "Item '#{item}' is not allowed.
+                    Must be one of: '#{possible.join "', '"}'"
+            r[item] = true
+        return r
 
 
 # Using objects as dicts by disabling hidden object optimization

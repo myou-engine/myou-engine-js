@@ -101,14 +101,11 @@ fetch_mesh = (mesh_object, options={}) ->
 # (meshes, textures, materials)
 # See scene.load_objects etc
 fetch_objects = (object_list, options={}) ->
-    {render} = options
     if not object_list.length
         return Promise.resolve()
 
     promises = []
     for ob in object_list
-        if render?
-            ob.render = render
         if ob.type == 'MESH'
             if not ob.data
                 promises.push fetch_mesh(ob, options)

@@ -24,7 +24,6 @@ class GameObject
         @original_scene = null
         @dupli_group = null
         @visible = true
-        @render = true
         @_sqdist = 0  # Squared distance to camera
         @_flip = false
         @_sqscale = 1 # Globally squared scale, to avoid rendering zero scale
@@ -282,9 +281,7 @@ class GameObject
         n.avg_poly_area = @avg_poly_area
         n.avg_poly_length = @avg_poly_length
         n.behaviours = []
-
-        if @context.use_physics
-            @body._clone_to(n)
+        @body._clone_to(n)
 
         # Warning! This only works reliably
         # if the target scene have the same type of lamps!
@@ -303,10 +300,9 @@ class GameObject
                 child = child.clone(scene, {recursive: true})
                 child.parent = n
                 children.push child
-        if @context.use_physics
-            n.body.instance()
-            for child in n.children
-                child.body.instance()
+        n.body.instance()
+        for child in n.children
+            child.body.instance()
         return n
 
     parent_to: (parent, keep_transform=true) ->

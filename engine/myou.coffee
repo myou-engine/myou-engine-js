@@ -84,10 +84,10 @@ class Myou
         @all_framebuffers = []
         @root = root
         @options = @MYOU_PARAMS = options
-        @use_physics = not options.disable_physics
         @hash = Math.random()
         @initial_scene_loaded = false
         @is_webgl2 = false
+        @webpack_flags = global_myou_engine_webpack_flags ? null
 
         # VR
         @_HMD = @_vrscene = null
@@ -133,9 +133,7 @@ class Myou
         @main_loop.run()
 
 
-    load_scene: (name, options={load_physics: true}) ->
-        if typeof options != 'object'
-            options = {load_physics: options}
+    load_scene: (name, options={}) ->
         return loader.load_scene(name, null, options, @)
 
     hasVR: vr.has_HMD
