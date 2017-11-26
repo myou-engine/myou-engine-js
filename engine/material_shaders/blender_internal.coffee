@@ -261,9 +261,9 @@ class BlenderInternalMaterial
                         u.type>>16, u.type&0xffff, "of data type", \
                         ['0','1i','1f','2f','3f','4f',
                         'm3','m4','4ub'][u.datatype]
-        preamble = 'var locations=shader.uniform_locations, lamps=shader.lamps,
-            material=shader.material, inputs=material._input_list,
-            tex_list=material._texture_list;\n'
+        preamble = 'var v, locations=shader.uniform_locations,
+            lamps=shader.lamps, material=shader.material,
+            inputs=material._input_list, tex_list=material._texture_list;\n'
         func = new Function 'gl', 'shader', 'ob', 'render', 'mat4',
             preamble+code.join '\n'
         {uniform_assign_func: func, uniform_locations: locations, lamps}
