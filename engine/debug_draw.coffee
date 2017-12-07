@@ -93,6 +93,7 @@ class DebugDraw
         else
             vec3.copy dob.scale, ob.body.half_extents
         dob._update_matrices()
+        dob.radius = ob.radius
 
         # occluded pass
         color4.set color, 1, 1, 1, @hidden_alpha
