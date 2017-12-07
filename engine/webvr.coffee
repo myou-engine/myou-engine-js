@@ -81,11 +81,11 @@ class VRScreen extends CanvasScreen
 
 
 displays = []
-navigator.getVRDisplays?().then (_displays) ->
-    displays = _displays
 vrdisplaypresentchange = null
 
 exports.has_HMD = ->
+    # NOTE: Firefox gets stuck all the time after calling this,
+    # call it only if you're sure you have an HMD or it's not Firefox
     new Promise (resolve, reject) ->
         if not navigator.getVRDisplays
             if navigator.getVRDevices
