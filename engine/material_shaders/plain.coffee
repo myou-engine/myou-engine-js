@@ -5,7 +5,7 @@ class PlainShaderMaterial
         {data, _input_list, inputs, _texture_list} = @material
         for u in data.uniforms or []
             {varname, value} = u
-            _input_list.push inputs[varname] = {value, type: value.length or 1}
+            _input_list.push inputs[varname] = {value}
             if value.type == 'TEXTURE'
                 _texture_list.push inputs[varname]
 
@@ -49,6 +49,12 @@ class PlainShaderMaterial
             else if value.b?
                 "v=#{value_code};gl.uniform3f(locations[#{loc_idx}],
                     v.r, v.g, v.b);"
+            else if value.m15?
+                "gl.uniformMatrix4fv(locations[#{loc_idx}], false,
+                    #{value_code}.toJSON());"
+            else if value.m08?
+                "gl.uniformMatrix3fv(locations[#{loc_idx}], false,
+                    #{value_code}.toJSON());"
             else
                 "gl.uniform1f(locations[#{loc_idx}], #{value_code});"
             locations.push uloc
