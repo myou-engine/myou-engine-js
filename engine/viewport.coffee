@@ -172,13 +172,15 @@ class Viewport
         if not @debug_camera_behaviour?
             @debug_camera_behaviour = new DebugCamera @camera.scene,
                 viewports: [this]
-        return
+            return true
+        return false
 
     disable_debug_camera: ->
         if @debug_camera_behaviour?
             @debug_camera_behaviour.disable()
             @debug_camera_behaviour = null
-        return
+            return true
+        return false
 
     get_viewport_coordinates: (x, y) ->
         x -= @left

@@ -130,6 +130,7 @@ class Myou
 
         @mesh_factory = new MeshFactory @
         @input_manager = new InputManager @
+        @has_created_debug_view = false
         @main_loop.run()
 
 
@@ -157,6 +158,18 @@ class Myou
     # a while to re-upload all GPU data.
     change_gl_flags: (gl_flags) ->
         @render_manager.instance_gl_context gl_flags, true
+
+    enable_debug_camera: (viewport_number=0)->
+        viewport = @canvas_screen.viewports[viewport_number]
+        if viewport.enable_debug_camera()
+            @has_created_debug_view = not viewport.camera.scene.has_debug_draw()
+
+    disable_debug_camera: (viewport_number=0)->
+        if @canvas_screen.viewports[viewport_number].disable_debug_camera()
+            if @has_created_debug_view
+                viewport.camera.scene.remove_debug_draw()
+
+
 
 # Convenience function for creating an HTML canvas element
 # and adding it to another element.
