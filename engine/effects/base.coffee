@@ -1,8 +1,9 @@
 
 class BaseEffect
     constructor: (@context) ->
-        throw Error "Abstract class"
-
+        @requires_float_source = false
+        @requires_float_destination = false
+    
     on_viewport_update: (@viewport) ->
         # Called after it's added and when viewport changes size.
         # All buffers should be created here

@@ -94,7 +94,8 @@ class Lamp extends GameObject
             depth = depth * 0.5 + 0.5;
             float dx = dFdx(depth);
             float dy = dFdy(depth);
-            gl_FragColor = vec4(depth #{extra_bias}, pow(depth, 2.0) + 0.25*(dx*dx + dy*dy), 0.0, 1.0);
+            gl_FragColor = vec4(depth #{extra_bias},
+                pow(depth, 2.0) + 0.25*(dx*dx + dy*dy), 0.0, 1.0);
         }"""
         if @context.is_webgl2
             fs = glsl100to300 fs

@@ -24,6 +24,7 @@ class Viewport
         @debug_camera = null
         @units_to_pixels = 100
         @_v = vec3.create()
+        @requires_float_buffers = false
         @set_clear true, true
         @recalc_aspect()
 
@@ -107,6 +108,7 @@ class Viewport
         effect.on_viewport_update this
         @effects.push effect
         @effects_by_id[effect.id] = effect
+        @_check_requires_float_buffers()
         return effect
 
     # Insert an effect at the specified index of the stack
@@ -114,6 +116,7 @@ class Viewport
         effect.on_viewport_update this
         @effects.splice index, 0, effect
         @effects_by_id[effect.id] = effect
+        @_check_requires_float_buffers()
         return effect
 
     replace_effect: (before, after) ->
@@ -130,11 +133,13 @@ class Viewport
             index = @effects.indexOf index_or_effect
         if index != -1
             @effects.splice(index, 1)[0].on_viewport_remove?()
+        @_check_requires_float_buffers()
         return index
 
     clear_effects: ->
         for effect in @effects
             effect.on_viewport_remove?()
+        @_check_requires_float_buffers()
         @effects.splice 0
 
     ensure_shared_effect: (effect_class, a, b, c, d) ->
@@ -180,6 +185,14 @@ class Viewport
         y = @screen.height - y
         y = @screen.height - (y - @bottom)
         return {x, y}
+
+    _check_requires_float_buffers: ->
+        @requires_float_buffers = false
+        for effect in @effects
+            if effect.requires_float_source or effect.requires_float_destination
+                @requires_float_buffers = true
+                return
+        return
 
 
 module.exports = {Viewport}

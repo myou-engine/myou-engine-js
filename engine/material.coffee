@@ -342,7 +342,7 @@ class Shader
             if /ERROR: 0:/.test error_msg
                 # Show context for first error
                 line = error_msg.split(':')[2]|0
-                for i in [Math.max(0,line-30)...Math.min(line+4, lines.length)]
+                for i in [Math.max(1,line-30)...Math.min(line+4, lines.length)]
                     console.log "#{i} #{lines[i-1]}"
             console.error error_msg
             @context.MYOU_PARAMS.on_shader_failed?()

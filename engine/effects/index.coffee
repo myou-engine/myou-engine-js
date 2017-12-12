@@ -4,4 +4,5 @@ module.exports = Object.assign(
     require './bloom'
     require './FXAA'
     require './SSAO'
+    require './graph'
 )

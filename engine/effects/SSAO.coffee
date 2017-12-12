@@ -3,7 +3,7 @@
 library = ''' \n\n /**/
 precision highp float;
 uniform sampler2D source;
-uniform sampler2D source_depth;
+uniform sampler2D depth_sampler;
 uniform sampler2D bgl_LuminanceTexture; // luminance texture needed to discard ao on highlighted areas
 uniform vec2 source_size;
 varying vec2 source_coord;
@@ -26,7 +26,7 @@ vec2 rand(in vec2 coord) //generating random noise
 
 float readDepth(in vec2 coord)
 {
-    return (2.0 * near) / (far + near - texture2D(source_depth, coord ).x * (far-near));
+    return (2.0 * near) / (far + near - texture2D(depth_sampler, coord ).x * (far-near));
 }
 
 float compareDepths( in float depth1, in float depth2 )
@@ -94,8 +94,8 @@ class SSAOFilter extends BaseFilter
             {varname: 'radius', value: @radius}
             {varname: 'strength', value: @strength}
             {varname: 'zrange', value: @zrange}
-            {varname: 'source_depth', value: @context.render_manager.blank_texture}
         ]
+        @add_depth()
 
 class SSAOEffect extends FilterEffect
     constructor: (context, @radius=10, @zrange=2, @strength=100) ->

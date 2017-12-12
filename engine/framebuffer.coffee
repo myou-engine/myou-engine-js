@@ -40,6 +40,7 @@ class Framebuffer
         [@size_x, @size_y] = size
         if not @size_x or not @size_y
             throw Error "Invalid framebuffer size"
+        @color_type = color_type
         @use_mipmap = use_mipmap # TODO: coffee-loader bug adding @ above?
         # We're using the existing texture if available so when we're restoring
         # the GL context, references to the texture that already exist in
@@ -50,7 +51,6 @@ class Framebuffer
         min_filter = mag_filter = gl.LINEAR
         if @use_mipmap
             min_filter = gl.LINEAR_MIPMAP_NEAREST
-            gl.generateMipmap gl.TEXTURE_2D
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, mag_filter
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, min_filter
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE
@@ -122,6 +122,9 @@ class Framebuffer
         @is_complete =
             gl.checkFramebufferStatus(gl.FRAMEBUFFER) == gl.FRAMEBUFFER_COMPLETE
         @has_mipmap = false
+        # Quick and dirty way to get the inverse projection matrix
+        # used to get the original depth
+        @last_viewport = null
 
         @context.render_manager.unbind_texture @texture
         @context.render_manager.unbind_texture @depth_texture if @depth_texture?
@@ -187,21 +190,89 @@ class Framebuffer
         Framebuffer.active_buffer = null
 
     draw_with_filter: (filter, inputs={}) ->
+        {render_manager} = @context
+        {bg_mesh, gl, tmp_fb0} = render_manager
         material = filter.get_material()
         material.inputs.source.value = @texture
-        # TODO: Allow null textures?
-        material.inputs.source_depth?.value = @depth_texture
         # We're assuming offsets are always 0,0, since the final position of the
         # viewport is only drawn elsewhere in a buffer
         # or screen that is not read back.
         # Also we're assuming it's only one viewport what we've drawn.
         vec2.set material.inputs.source_size.value, @size_x, @size_y
+        vec2.set material.inputs.source_size_inverse.value, 1/@size_x, 1/@size_y
         vec2.set material.inputs.source_scale.value,
             @current_size_x/@size_x, @current_size_y/@size_y
+        if (depth_sampler = material.inputs.depth_sampler)? and \
+                (depth_texture = tmp_fb0?.depth_texture)?
+            {size_x: sx, size_y: sy, \
+                current_size_x: csx, current_size_y: csy} = tmp_fb0
+            if depth_sampler? and depth_texture?
+                depth_sampler.value = depth_texture
+                vec2.set material.inputs.depth_scale.value,
+                    @current_size_x/@size_x, @current_size_y/@size_y
         for name, value of inputs
             material.inputs[name].value = value
-        {render_manager, render_manager: {bg_mesh}} = @context
+        material.inputs.projection_matrix_inverse?.value =
+            @last_viewport.camera.projection_matrix_inv
+        gl.depthMask false
+        gl.depthFunc gl.ALWAYS
+        {use_frustum_culling} = render_manager
+        render_manager.use_frustum_culling = false
         render_manager.draw_mesh(bg_mesh, unused_mat4, -1, material)
+        render_manager.use_frustum_culling = use_frustum_culling
+        gl.depthFunc gl.LEQUAL
+        gl.depthMask true
+
+    blit_to: (dest, src_rect, dst_rect, options) ->
+        {
+            components=['color']
+            use_filter=false
+        } = options ? {}
+        {gl, is_webgl2} = @context.render_manager
+        mask = 0
+        for c in components
+            mask |= {
+                color: gl.COLOR_BUFFER_BIT
+                depth: gl.DEPTH_BUFFER_BIT
+                stencil: gl.STENCIL_BUFFER_BIT
+            }[c]
+        [srcX, srcY, srcW, srcH] = src_rect
+        [dstX, dstY, dstW, dstH] = dst_rect
+        # write used width/height for use in filters
+        dest.current_size_x = dstW
+        dest.current_size_y = dstH
+        # TODO: add condition? or separate function?
+        if 0
+            # blitting, available in webgl 2,
+            # required for copying framebuffers with multisampling
+            # automatically converts types
+            # and resizes (with or without filtering)
+            if not is_webgl2
+                throw Error "WebGL 1.0 doesn't support blitting"
+            filter = if use_filter then gl.LINEAR else gl.NEAREST
+            @disable()
+            gl.bindFramebuffer gl.READ_FRAMEBUFFER, @framebuffer
+            gl.bindFramebuffer gl.DRAW_FRAMEBUFFER, dest.framebuffer
+            gl.readBuffer gl.COLOR_ATTACHMENT0
+            gl.blitFramebuffer srcX, srcY, srcX+srcW, srcY+srcH,
+                                dstX, dstY, dstX+dstW, dstY+dstH,
+                                mask, filter
+            gl.bindFramebuffer gl.FRAMEBUFFER, null
+        else
+            # copyTexSubImage2D is available in webgl 1
+            # can't copy framebuffers with multisampling
+            # can't convert types
+            # can't resize
+            {current_size_x, current_size_y} = this
+            @enable src_rect
+            gl.readBuffer gl.COLOR_ATTACHMENT0
+            @context.render_manager.bind_texture dest.texture
+            gl.copyTexSubImage2D gl.TEXTURE_2D, 0, dstX, dstY, srcX, srcY,
+                srcW, srcH
+            @current_size_x = current_size_x
+            @current_size_y = current_size_y
+
+
 
     bind_to_cubemap_side: (cubemap, side) ->
         # NOTE: It has to be enabled

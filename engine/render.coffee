@@ -413,14 +413,15 @@ class RenderManager
         for screen in @context.screens when screen.enabled
             screen.pre_draw()
             for viewport in screen.viewports when viewport.camera.scene.enabled
-                {effects} = viewport
+                {effects, requires_float_buffers: usefloat} = viewport
                 if effects.length != 0
                     {width, height} = viewport
                     rect = [0, 0, width, height]
-                    @ensure_post_processing_framebuffers(width, height)
+                    @ensure_post_processing_framebuffers width, height, usefloat
                     @draw_viewport viewport, rect, @tmp_fb0, [0, 1]
                     source = @tmp_fb0
                     dest = @tmp_fb1
+                    source.last_viewport = dest.last_viewport = viewport
                     for i in [0...effects.length-1] by 1
                         result = effects[i].apply source, dest, rect
                         source = result.destination
@@ -440,16 +441,18 @@ class RenderManager
         #@gl.flush()
         @compiled_shaders_this_frame = 0
 
-    ensure_post_processing_framebuffers: (width, height) ->
+    ensure_post_processing_framebuffers: (width, height, use_float) ->
         # TODO: Check all viewports to avoid several resizes
-        if not @tmp_fb0? or @tmp_fb0.size_x < width or @tmp_fb0.size_y < height
+        color_type = if use_float then 'FLOAT' else 'UNSIGNED_BYTE'
+        if not @tmp_fb0? or @tmp_fb0.size_x < width or @tmp_fb0.size_y < height\
+                or @tmp_fb0.color_type != color_type
             size = [next_POT(width), next_POT(height)]
             @tmp_fb0?.destroy()
             @tmp_fb1?.destroy()
-            @tmp_fb0 = new @context.Framebuffer {
-                size, use_depth: true, color_type: 'UNSIGNED_BYTE'}
-            @tmp_fb1 = new @context.Framebuffer {
-                size, use_depth: true, color_type: 'UNSIGNED_BYTE'}
+            @tmp_fb0 = new @context.Framebuffer \
+                {size, color_type, use_depth: true}
+            @tmp_fb1 = new @context.Framebuffer \
+                {size, color_type, use_depth: true}
         return
 
     # @private
@@ -766,6 +769,9 @@ class RenderManager
         # Use a dynamic number of passes where each pass have
         # a list of pre/post operations?
         # And a sort option
+
+        gl.disable gl.BLEND
+        gl.depthMask true
 
         # PASS -1  (background)
         if scene.bg_pass and scene.bg_pass.length
