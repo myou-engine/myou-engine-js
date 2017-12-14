@@ -1,6 +1,6 @@
 {mat3, mat4, vec3, vec4} = require 'vmath'
 timsort = require 'timsort'
-{Framebuffer} = require './framebuffer'
+{Framebuffer, ByteFramebuffer} = require './framebuffer'
 {next_POT} = require './math_utils/math_extra'
 {plane_from_norm_point} = require './math_utils/g3'
 
