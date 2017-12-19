@@ -339,7 +339,9 @@ load_object = (data, scene) ->
                     frustum_size: data.frustum_size
                     clip_start: data.clip_start
                     clip_end: data.clip_end
-                    bias: data.shadow_bias
+                    # arbitrary conversions performed in blender code
+                    # (gpu_lamp_from_blender() in gpu_material.c)
+                    bias: data.shadow_bias * 0.02 * 0.25
                     bleed_bias: data.bleed_bias
                 if context.render_manager.enable_shadows
                     ob.init_shadow()
