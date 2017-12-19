@@ -205,6 +205,7 @@ class BlenderCyclesPBRMaterial
                 # NOTE: If there's probe, there's ALWAYS a background probe
                 'var cubemap = probe.cubemap||scene.background_probe.cubemap;',
                 'if(cubemap!=null){',
+                'var coefs = cubemap.coefficients;',
                 coeff_code...,
                 '}'
 
