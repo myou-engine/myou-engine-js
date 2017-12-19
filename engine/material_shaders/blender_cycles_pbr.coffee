@@ -189,23 +189,24 @@ class BlenderCyclesPBRMaterial
         # PBR uniforms are not given as parameters,
         # so we have to figure out if they're present
         # by getting their locations
-        has_probe = has_coefs = 0
-        var_probe = 'var probe = ob.probe||scene.background_probe;'
+        probe_code = []
+        coeff_code = []
 
         for i in [0..8]
             unf = 'unfsh'+i
             loc = gl.getUniformLocation program, unf
             if loc?
-                if not has_probe++
-                    code.push var_probe
-                if not has_coefs++
-                    code.push 'if(probe){'
-                    code.push 'var coefs = probe.cubemap.coefficients;'
-                code.push "gl.uniform3fv(locations[#{locations.length}],
+                coeff_code.push "gl.uniform3fv(locations[#{locations.length}],
                     coefs[#{i}]);"
                 locations.push loc
-        if has_coefs
-            code.push '}' # if(probe)
+
+        if coeff_code.length != 0
+            probe_code.push \
+                # NOTE: If there's probe, there's ALWAYS a background probe
+                'var cubemap = probe.cubemap||scene.background_probe.cubemap;',
+                'if(cubemap!=null){',
+                coeff_code...,
+                '}'
 
         if (loc = gl.getUniformLocation program, 'unfbsdfsamples')?
             code.push "var samples = scene.bsdf_samples;"
@@ -214,9 +215,7 @@ class BlenderCyclesPBRMaterial
             locations.push loc
 
         if (loc = gl.getUniformLocation program, 'unflodfactor')?
-            if not has_probe++
-                code.push var_probe
-            code.push "gl.uniform1f(locations[#{locations.length}],
+            probe_code.push "gl.uniform1f(locations[#{locations.length}],
                 probe&&probe.lodfactor);"
             locations.push loc
 
@@ -241,19 +240,15 @@ class BlenderCyclesPBRMaterial
             locations.push loc
 
         if (loc = gl.getUniformLocation program, 'unfplanarvec')?
-            if not has_probe++
-                code.push var_probe
-            code.push """if(probe){
+            probe_code.push """
                 v=probe.normal;
-                gl.uniform3f(locations[#{locations.length}], v.x, v.y, v.z);}"""
+                gl.uniform3f(locations[#{locations.length}], v.x, v.y, v.z);"""
             locations.push loc
 
         if (loc = gl.getUniformLocation program, 'unfplanarreflectmat')?
-            if not has_probe++
-                code.push var_probe
-            code.push """if(probe){
+            probe_code.push """
                 gl.uniformMatrix4fv(locations[#{locations.length}], false,
-                probe.planarreflectmat.toJSON());}"""
+                probe.planarreflectmat.toJSON());"""
             locations.push loc
 
         if (loc = gl.getUniformLocation program, 'unf_clipping_plane')?
@@ -261,6 +256,13 @@ class BlenderCyclesPBRMaterial
                 gl.uniform4f(locations[#{locations.length}],
                 v.x, v.y, v.z, v.w);"
             locations.push loc
+
+        if probe_code.length != 0
+            code.push \
+                'var probe = ob.probe||scene.background_probe;',
+                'if(probe){',
+                probe_code...,
+                '}'
 
         # detect presence of any of all the unhandled uniforms in the shader
         @unfs = {}
