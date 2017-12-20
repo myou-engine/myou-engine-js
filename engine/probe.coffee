@@ -28,6 +28,7 @@ class Probe
         } = options
         @size = nearest_POT @size
         @target_object = object
+        @parallax_object = @scene.parents[@parallax_volume] ? @object
         @cubemap = @planar = @reflection_camera = null
         switch @type
             when 'CUBEMAP', 'CUBE'
@@ -101,13 +102,16 @@ class Probe
             # with a plane equation, but this was done and it works)
             inv_obj = mat4.invert mat4.create(), @object.world_matrix
             mat4.mul wm, inv_obj, wm
-            # handness is inverted
-            wm.m02 = -wm.m02
+            # invert column X and row Z
+            wm.m00 = -wm.m00
+            wm.m01 = -wm.m01
+            # wm.m03 = -wm.m03
             wm.m06 = -wm.m06
             wm.m10 = -wm.m10
             wm.m14 = -wm.m14
             mat4.mul wm, @object.world_matrix, wm
             proj = mat4.copy rcam.projection_matrix, cam.projection_matrix
+            # mat4.copy $myou.objects.cam_view.world_matrix, wm
 
             # set planarreflectmat (range_mat * projection * view of reflection)
             mat4.invert @planarreflectmat, rcam.world_matrix
@@ -123,12 +127,15 @@ class Probe
             vec4.transformMat4 view_nor, view_nor, wmi
 
             # render camera
+            {visible} = @object
+            @object.visible = false
             rm = @context.render_manager
-            rm.flip_normals = true
+            # rm.flip_normals = true
             plane_from_norm_point rm.clipping_plane, view_nor, view_pos
             rm.draw_viewport @fake_vp, [0,0,@size,@size], @planar, [0,1]
             vec4.set rm.clipping_plane, 0,0,-1,999990
-            rm.flip_normals = false
+            # rm.flip_normals = false
+            @object.visible = visible
 
     destroy: ->
         @scene.probes.splice _,1 if (_ = @scene.probes.indexOf @) != -1

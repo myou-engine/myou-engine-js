@@ -224,8 +224,9 @@ class Shader
                                 uv_name = aname
                                 break
                         varyings_decl.push "varying vec2 #{varname};"
-                        varyings_assign.push "#{varname} =
-                                    #{uv_name} * uv_rect.zw + uv_rect.xy;"
+                        varyings_assign.push "#{varname} = #{uv_name};"
+                        # varyings_assign.push "#{varname} =
+                        #             #{uv_name} * uv_rect.zw + uv_rect.xy;"
                     when 'VCOL' # Vertex color
                         vc_name = 'vc_' + v.attname
                         if vc_name not in attribute_names

@@ -252,6 +252,21 @@ class BlenderCyclesPBRMaterial
                 probe.planarreflectmat.toJSON());"""
             locations.push loc
 
+        ## TODO: update/store these two in probe even when not auto rendering
+        if (loc = gl.getUniformLocation program, 'unfprobepos')?
+            probe_code.push """
+                v = probe.object.position;
+                gl.uniform3f(locations[#{locations.length}], v.x, v.y, v.z);"""
+            locations.push loc
+
+        if (loc = gl.getUniformLocation program, 'unfprobecorrectionmat')?
+            probe_code.push """
+                m4 = mat4.invert(render._m4,
+                    probe.parallax_object.world_matrix);
+                gl.uniformMatrix4fv(locations[#{locations.length}], false,
+                m4.toJSON());"""
+            locations.push loc
+
         if (loc = gl.getUniformLocation program, 'unf_clipping_plane')?
             code.push "v=render.clipping_plane;
                 gl.uniform4f(locations[#{locations.length}],
@@ -268,12 +283,12 @@ class BlenderCyclesPBRMaterial
         # detect presence of any of all the unhandled uniforms in the shader
         @unfs = {}
         for unf in 'unfrefract unfltcmat unfltcmag unfscenebuf unfdepthbuf
-                unfbackfacebuf unfprobepos unfssrparam unfssaoparam unfclip
-                unfprobecorrectionmat unfpixelprojmat'.split ' '
+                unfbackfacebuf unfssrparam unfssaoparam unfclip
+                unfpixelprojmat'.split ' '
             if gl.getUniformLocation(program, unf)?
                 console.warn "Unhandled uniform:", unf
 
-        preamble = 'var v, locations=shader.uniform_locations,
+        preamble = 'var v, m4, locations=shader.uniform_locations,
             lamps=shader.lamps, scene=ob.scene, material=shader.material,
             inputs=material._input_list, tex_list=material._texture_list;\n'
         func = new Function 'gl', 'shader', 'ob', 'render', 'mat4',

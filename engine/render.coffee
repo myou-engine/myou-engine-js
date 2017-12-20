@@ -247,6 +247,7 @@ class RenderManager
         @bg_mesh.stride = 3*4
         @bg_mesh.radius = 1e999
         @bg_mesh.materials = [null]
+        @bg_mesh.material_defines = {CORRECTION_NONE: 1}
         return
 
     # @private
@@ -658,8 +659,10 @@ class RenderManager
         world2cam3_mx = @_world2cam3_mx
         world2light = @_world2light
         # Create cam2world from camera world matrix but ignoring scale/skew
-        cam_rm = mat3.rotationFromMat4 @_cam2world3, cam.get_world_matrix()
+        # NOTE: How am I ignoring scale/skew?
+        # And if I'm not ignoring it, why do the lights not change with scale?
         cam_wm = cam.world_matrix
+        cam_rm = mat3.rotationFromMat4 @_cam2world3, cam_wm
         cam_zvec = vec3.new cam_wm.m08, cam_wm.m09, cam_wm.m10
         cam_pos = vec3.new cam_wm.m12, cam_wm.m13, cam_wm.m14
         mat4.fromMat3 cam2world, cam_rm
