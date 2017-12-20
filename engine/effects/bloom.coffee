@@ -42,7 +42,7 @@ class BloomEffect
         vector = @blur.get_material().inputs.vector.value
         # extend a couple of pixels outwards to avoid bleeding
         # (TODO: benchmark against clearing whole buffer)
-        bleed = 1
+        bleed = 0
         drect = [0, 0, @width+bleed, @height+bleed]
         for [0...@steps] by 1
             drect[2]=((drect[2]-bleed)>>1)+bleed
@@ -50,6 +50,10 @@ class BloomEffect
             # this is downscaling by a factor of 2, so
             # the blur vector needs to be 2 pixels relative to the source
             vec2.set vector, 2/@buffer.size_x, 0
+            @blur.apply @buffer, @buffer2, drect, {}, clear: true
+            vec2.set vector, 0, 1/@buffer2.size_y
+            @blur.apply @buffer2, @buffer, drect, {}, clear: true
+            vec2.set vector, 1/@buffer.size_x, 0
             @blur.apply @buffer, @buffer2, drect#, {}, clear: true
             vec2.set vector, 0, 1/@buffer2.size_y
             @blur.apply @buffer2, @buffer, drect#, {}, clear: true

@@ -59,7 +59,8 @@ class FXAAFilter extends BaseFilter
             precision highp float;
             #{library}
             uniform sampler2D source;
-            varying vec2 source_coord, source_size_inverse;
+            uniform vec2 source_size_inverse;
+            varying vec2 source_coord;
             void main() {
                 gl_FragColor = FXAA(source, source_size_inverse);
             }
