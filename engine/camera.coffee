@@ -29,8 +29,8 @@ class Camera extends GameObject
         @cull_planes = (vec4.create() for [0...6])
         @update_projection()
 
-    clone: ->
-        clone = super()
+    clone: (scene, options) ->
+        clone = super scene, options
         clone.near_plane = @near_plane
         clone.far_plane = @far_plane
         clone.field_of_view = @field_of_view

@@ -18,6 +18,7 @@ class Viewport
         @left = @bottom = @width = @height = 0
         @effects = []
         @effects_by_id = {}
+        @clear_bits = 0
         @eye_shift = vec3.create()
         @right_eye_factor = 0
         @custom_fov = null

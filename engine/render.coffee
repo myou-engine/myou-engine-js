@@ -572,11 +572,11 @@ class RenderManager
             shader.uniform_assign_func(gl, shader, mesh, this, mat4)
 
             # TODO: move this elsewhere
-            if shader.u_uv_rect?
-                [x,y,w,h] = mesh.uv_rect
-                x += mesh.uv_right_eye_offset[0] * @_right_eye_factor
-                y += mesh.uv_right_eye_offset[1] * @_right_eye_factor
-                gl.uniform4f shader.u_uv_rect, x, y, w, h
+            # if shader.u_uv_rect?
+            #     [x,y,w,h] = mesh.uv_rect
+            #     x += mesh.uv_right_eye_offset[0] * @_right_eye_factor
+            #     y += mesh.uv_right_eye_offset[1] * @_right_eye_factor
+            #     gl.uniform4f shader.u_uv_rect, x, y, w, h
             if shader.u_mesh_center?
                 {x,y,z} = mesh.center
                 gl.uniform3f shader.u_mesh_center, x, y, z

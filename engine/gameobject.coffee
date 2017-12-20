@@ -259,7 +259,7 @@ class GameObject
     # Returns a clone of the object
     # @param [Scene] scene: Destination scene
     # @param [bool] recursive: Whether to clone its children
-    clone: (scene=this.scene, options={}) ->
+    clone: (scene=@scene, options={}) ->
         {
             recursive=false
             behaviours=true

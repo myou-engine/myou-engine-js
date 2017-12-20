@@ -10,8 +10,8 @@ class DebugCamera extends Behaviour
         @debug_camera.cam_type = 'PERSP'
         @debug_camera.update_projection()
         @pivot = new @context.GameObject
+        @scene.add_object @pivot
         @pivot.set_rotation_order 'XYZ'
-        @debug = @scene.get_debug_draw()
         # we use @active instead of enabling/disabling the behaviour,
         # to be able to re-enable with a key
         @active = false
