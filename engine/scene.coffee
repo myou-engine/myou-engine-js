@@ -122,6 +122,17 @@ class Scene
     make_parent: (parent, child, keep_transform=true)->
         if child.parent
             @clear_parent child, keep_transform
+        auchildren = @auto_updated_children
+        # TODO: should we store the index in the objects
+        # to make this check faster?
+        parent_index = auchildren.indexOf(parent)
+        child_index = auchildren.indexOf(child)
+        if parent_index == -1
+            throw Error "Object '#{parent.name}' is not part of scene
+                '#{@name}'. Both parent and child must belong to it."
+        if child_index == -1
+            throw Error "Object '#{parent.name}' is not part of scene
+                '#{@name}'. Both parent and child must belong to it."
         if keep_transform
             {rotation_order} = child
             child.set_rotation_order 'Q'
@@ -134,12 +145,9 @@ class Scene
             child.set_rotation_order rotation_order
         child.parent = parent
         parent.children.push child
-        auchildren = @auto_updated_children
-        # TODO: should we store the index in the objects
-        # to make this check faster?
-        if auchildren.indexOf(parent) > auchildren.indexOf(child)
+        if parent_index > child_index
             # When this is set to false, reorder_children() is called
-            # in render_manager.draw_viewport
+            # in update_all_matrices()
             @_children_are_ordered = false
 
     clear_parent: (child, keep_transform=true)->
