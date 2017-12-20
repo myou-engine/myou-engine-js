@@ -547,14 +547,16 @@ class RenderManager
                 # TODO: Simplify this
                 if tex_input.is_probe
                     # this means it's the probe cube texture
-                    tex = mesh.probe?.cubemap or
-                        mesh.scene?.background_probe?.cubemap or
-                        @blank_cube_texture
+                    tex = mesh.probe_cube?.cubemap or @blank_cube_texture
                     tex_input.value = tex
+                    if tex.is_framebuffer_active
+                        tex_input.value = tex =
+                            mesh.scene?.background_probe?.cubemap or
+                            @blank_cube_texture
                     tex.last_used_material = mat
                 else if tex_input.is_reflect
                     # this means it's the probe planar reflection texture
-                    tex = mesh.probe?.planar?.texture or @blank_texture
+                    tex = mesh.probe_planar?.planar.texture or @blank_texture
                     tex_input.value = tex
                     if tex.is_framebuffer_active
                         tex_input.value = tex = @blank_texture
@@ -873,7 +875,10 @@ class RenderManager
                 world2light = mat4.invert @_world2light, lamp.world_matrix
                 lamp.recalculate_render_data world2cam, @_cam2world, world2light
             if not background_only
-                for ob in scene.mesh_passes[0] when ob.probe?.cubemap != cubemap
+                for ob in scene.mesh_passes[0]
+                    if (probe = ob.probe_cube)?
+                        if probe.object == ob and probe.cubemap == cubemap
+                            continue
                     if ob.visible and ob.data
                         @draw_mesh ob, ob.world_matrix, 0, null, world2cam, proj
             if scene.world_material?
@@ -882,7 +887,7 @@ class RenderManager
                 @do_log = false
                 console.log @debug_uniform_logging_get_log()
 
-        fb.unbind_cubemap()
+        fb.unbind_cubemap cubemap
         fb.disable()
         cubemap.generate_mipmap()
         @use_frustum_culling = use_frustum_culling
@@ -1124,6 +1129,19 @@ class RenderManager
                     debugger
                 return r
         return
+
+    debug_mesh_render_time: ->
+        if not @_orig_draw_mesh?
+            @_orig_draw_mesh = @draw_mesh
+            render_tick = -1
+            @draw_mesh = (ob, args...) ->
+                if render_tick != @render_tick
+                    render_tick = @render_tick
+                    @draw_times = []
+                t1 = performance.now()
+                @_orig_draw_mesh ob, args...
+                t2 = performance.now()
+                @draw_times.push ob: ob.name, time: t2-t1
 
 
     # @nodoc

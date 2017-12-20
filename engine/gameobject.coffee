@@ -31,7 +31,8 @@ class GameObject
         @children = []
         @static = false
         @world_matrix = mat4.create()
-        @probe = null
+        @probe_cube = null
+        @probe_planar = null
         @properties = {}
         @animation_strips = []
         @animations = {}
@@ -318,21 +319,34 @@ class GameObject
             @probe?.destroy()
         @scene.remove_object @, recursive
 
-    instance_probe: ->
-        if @probe
-            return @probe
+    instance_probes: ->
+        if @probe_cube?
+            return
         {probe_options} = @properties
+        # @probe_cube = @scene.background_probe
         if probe_options?
-            if probe_options.type == 'OBJECT'
-                ob = @scene.objects[probe_options.object]
+            ob = @scene.objects[probe_options.object]
+            if probe_options.type in ['OBJECT', 'PLANE']
                 if not ob?
                     if probe_options.object != ''
                         console.error "Object '#{@name}' tries to use
                             probe object '#{probe_options.object}'
                             which doesn't exist."
-                    return @probe = @scene.background_probe
-                return @probe = ob.probe or ob.instance_probe()
-            @probe = new Probe @, probe_options
-        return @probe
+                else
+                    ob.probe_cube ? ob.instance_probes()
+                    @probe_cube = ob.probe_cube
+                    # this will be overwritten below if probe is planar
+                    @probe_planar = ob.probe_planar
+            switch probe_options.type
+                when 'CUBEMAP', 'CUBE'
+                    @probe_cube = new Probe @, probe_options
+                when 'PLANE'
+                    @probe_planar = new Probe @, probe_options
+                when 'OBJECT' then # handled before
+                else
+                    throw Error "Inavlid probe type: " + probe_options.type
+        else
+            @probe_cube = @scene.background_probe
+        return
 
 module.exports = {GameObject}

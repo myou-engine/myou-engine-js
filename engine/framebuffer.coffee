@@ -279,11 +279,13 @@ class Framebuffer
         {gl} = @context.render_manager
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
             gl.TEXTURE_CUBE_MAP_POSITIVE_X+side, cubemap.gl_tex, 0)
+        cubemap.is_framebuffer_active = true
 
-    unbind_cubemap: ->
+    unbind_cubemap: (cubemap) ->
         {gl} = @context.render_manager
         gl.framebufferTexture2D gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
             gl.TEXTURE_2D, @texture.gl_tex, 0
+        cubemap.is_framebuffer_active = false
 
     get_framebuffer_status: ->
         {gl} = @context.render_manager

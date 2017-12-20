@@ -27,8 +27,9 @@ class Probe
             @background_only = false
         } = options
         @size = nearest_POT @size
-        @target_object = object
-        @parallax_object = @scene.parents[@parallax_volume] ? @object
+        @target_object =
+            @scene.parents[object] ? @object ? new @context.GameObject
+        @parallax_object = @scene.parents[@parallax_volume] ? @target_object
         @cubemap = @planar = @reflection_camera = null
         switch @type
             when 'CUBEMAP', 'CUBE'
@@ -50,8 +51,6 @@ class Probe
                     eye_shift: vec3.new 0,0,0
                     clear_bits: 16384|256
                     units_to_pixels: 1
-            else
-                throw Error "Inavlid probe type: " + @type
         @position = vec3.create()
         @rotation = quat.create()
         @normal = vec3.create()

@@ -133,7 +133,7 @@ class Cubemap
         gl.drawArrays gl.TRIANGLE_STRIP, 0, 4
         # Test this with:
         # $myou.scenes.Scene.post_draw_callbacks.push(function({
-        #     $myou.objects.Cube.probe.cubemap.render_to_framebuffer(
+        #     $myou.objects.Cube.probe_cube.cubemap.render_to_framebuffer(
         #     $myou.render_manager.main_fb)
         # })
         return @

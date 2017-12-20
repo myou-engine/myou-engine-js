@@ -203,7 +203,7 @@ class BlenderCyclesPBRMaterial
         if coeff_code.length != 0
             probe_code.push \
                 # NOTE: If there's probe, there's ALWAYS a background probe
-                'var cubemap = probe.cubemap||scene.background_probe.cubemap;',
+                'var cubemap = probe.cubemap;',
                 'if(cubemap!=null){',
                 'var coefs = cubemap.coefficients;',
                 coeff_code...,
@@ -242,20 +242,20 @@ class BlenderCyclesPBRMaterial
 
         if (loc = gl.getUniformLocation program, 'unfplanarvec')?
             probe_code.push """
-                v=probe.normal;
+                v=ob.probe_planar.normal;
                 gl.uniform3f(locations[#{locations.length}], v.x, v.y, v.z);"""
             locations.push loc
 
         if (loc = gl.getUniformLocation program, 'unfplanarreflectmat')?
             probe_code.push """
                 gl.uniformMatrix4fv(locations[#{locations.length}], false,
-                probe.planarreflectmat.toJSON());"""
+                ob.probe_planar.planarreflectmat.toJSON());"""
             locations.push loc
 
         ## TODO: update/store these two in probe even when not auto rendering
         if (loc = gl.getUniformLocation program, 'unfprobepos')?
             probe_code.push """
-                v = probe.object.position;
+                v = probe.target_object.position;
                 gl.uniform3f(locations[#{locations.length}], v.x, v.y, v.z);"""
             locations.push loc
 
@@ -275,7 +275,7 @@ class BlenderCyclesPBRMaterial
 
         if probe_code.length != 0
             code.push \
-                'var probe = ob.probe||scene.background_probe;',
+                'var probe = ob.probe_cube;',
                 'if(probe){',
                 probe_code...,
                 '}'
