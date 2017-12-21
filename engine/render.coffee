@@ -196,6 +196,7 @@ class RenderManager
         @_shadows_were_enabled = @enable_shadows
 
         @filters =
+            copy: new @context.CopyFilter
             flip: new @context.FlipFilter
             shadow_box_blur: new @context.BoxBlurFilter
 
@@ -415,11 +416,14 @@ class RenderManager
             screen.pre_draw()
             for viewport in screen.viewports when viewport.camera.scene.enabled
                 {effects, requires_float_buffers: usefloat} = viewport
-                if effects.length != 0
-                    {width, height} = viewport
-                    rect = [0, 0, width, height]
+                {width, height} = viewport
+                # screen space refraction
+                use_pass2 = viewport.camera.scene.mesh_passes[2].length != 0
+                if effects.length != 0 or use_pass2
                     @ensure_post_processing_framebuffers width, height, usefloat
-                    @draw_viewport viewport, rect, @tmp_fb0, [0, 1]
+                if effects.length != 0
+                    rect = [0, 0, width, height]
+                    @draw_viewport viewport, rect, @tmp_fb0, [0, 1, 2]
                     source = @tmp_fb0
                     dest = @tmp_fb1
                     source.last_viewport = dest.last_viewport = viewport
@@ -434,6 +438,13 @@ class RenderManager
                         throw Error "The last effect is not allowed to be
                             pass-through (second argument of effect.apply
                             must be destination)."
+                else if use_pass2
+                    rect = [0, 0, width, height]
+                    @draw_viewport \
+                        viewport, rect, @tmp_fb0, [0, 1, 2]
+                    screen.framebuffer.enable viewport.rect_pix
+                    # TODO: Use blitting instead (when available)
+                    @tmp_fb0.draw_with_filter @filters.copy, {}
                 else
                     @draw_viewport \
                         viewport, viewport.rect_pix, screen.framebuffer, [0, 1]
@@ -561,6 +572,10 @@ class RenderManager
                     tex_input.value = tex
                     if tex.is_framebuffer_active
                         tex_input.value = tex = @blank_texture
+                    tex.last_used_material = mat
+                else if tex_input.is_refract
+                    tex = @tmp_fb1?.texture or @blank_texture
+                    tex_input.value = tex
                     tex.last_used_material = mat
                 else
                     tex = tex_input.value
@@ -833,9 +848,10 @@ class RenderManager
                 if ob.visible == true
                     @draw_mesh(ob, ob.world_matrix, 0)
 
-        # PASS 2  (translucent)
-        # Currently it uses the filter FB, so this has to be drawn unfiltered
-        if passes.indexOf(2)>=0
+        # PASS 2  (refraction, formerly known as translucent)
+        if passes.indexOf(2)>=0 and scene.mesh_passes[2].length != 0
+            transp_rect = [0, 0, rect[2], rect[3]]
+            dest_buffer.blit_to @tmp_fb1, rect, transp_rect
             for ob in scene.mesh_passes[2]
                 if ob.visible == true
                     @draw_mesh ob, ob.world_matrix, 2

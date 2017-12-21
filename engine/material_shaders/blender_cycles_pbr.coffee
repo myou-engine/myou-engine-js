@@ -15,10 +15,13 @@ class BlenderCyclesPBRMaterial
         _texture_list.push {value: get_jitter_texture(scene)}
         @unflutsamples_index = _texture_list.length
         _texture_list.push {value: get_lutsamples_texture(scene)}
+        # TODO: Add these after the shader has been compiled
         @unfprobe_index = _texture_list.length
-        _texture_list.push {value: {}, is_probe: true}
+        _texture_list.push {value: {}, is_probe: true, skip_load: true}
         @unfreflect_index = _texture_list.length
-        _texture_list.push {value: {}, is_reflect: true}
+        _texture_list.push {value: {}, is_reflect: true, skip_load: true}
+        @unfrefract_index = _texture_list.length
+        _texture_list.push {value: {}, is_refract: true, skip_load: true}
         return
 
     assign_textures: ->
@@ -273,6 +276,24 @@ class BlenderCyclesPBRMaterial
                 v.x, v.y, v.z, v.w);"
             locations.push loc
 
+        if (loc = gl.getUniformLocation program, 'unfrefract')?
+            code.push "gl.uniform1i(locations[#{locations.length}],
+                tex_list[#{@unfrefract_index}].value.bound_unit);"
+            locations.push loc
+
+        # TODO: Force use of post processing buffers when using refraction
+        if (loc = gl.getUniformLocation program, 'unfrefract_size_px')?
+            code.push "b = render.tmp_fb1;
+                gl.uniform2f(locations[#{locations.length}],
+                    b.current_size_x, b.current_size_y);"
+            locations.push loc
+
+        if (loc = gl.getUniformLocation program, 'unfrefract_px_size')?
+            code.push "b = render.tmp_fb1;
+                gl.uniform2f(locations[#{locations.length}],
+                    1/b.size_x, 1/b.size_y);"
+            locations.push loc
+
         if probe_code.length != 0
             code.push \
                 'var probe = ob.probe_cube;',
@@ -282,13 +303,13 @@ class BlenderCyclesPBRMaterial
 
         # detect presence of any of all the unhandled uniforms in the shader
         @unfs = {}
-        for unf in 'unfrefract unfltcmat unfltcmag unfscenebuf unfdepthbuf
+        for unf in 'unfltcmat unfltcmag unfscenebuf unfdepthbuf
                 unfbackfacebuf unfssrparam unfssaoparam unfclip
                 unfpixelprojmat'.split ' '
             if gl.getUniformLocation(program, unf)?
                 console.warn "Unhandled uniform:", unf
 
-        preamble = 'var v, m4, locations=shader.uniform_locations,
+        preamble = 'var v, m4, b, locations=shader.uniform_locations,
             lamps=shader.lamps, scene=ob.scene, material=shader.material,
             inputs=material._input_list, tex_list=material._texture_list;\n'
         func = new Function 'gl', 'shader', 'ob', 'render', 'mat4',

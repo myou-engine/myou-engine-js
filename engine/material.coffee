@@ -92,8 +92,8 @@ class Material
         # * Fulfill promise after this.
         promises = []
         if fetch_textures
-            for {value, is_probe, is_reflect} in @get_texture_list()
-                if not is_probe and not is_reflect
+            for {value, skip_load} in @get_texture_list()
+                if not skip_load
                     promises.push value.load {size_ratio: texture_size_ratio}
         return Promise.all(promises)
 
