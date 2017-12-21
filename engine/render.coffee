@@ -483,6 +483,7 @@ class RenderManager
                 if vec4.dot(plane, pos4) < r
                     mesh.culled_in_last_frame = true
                     return
+            # TODO: Also check with @clipping_plane!
             mesh.culled_in_last_frame = false
 
         # Select alternative mesh / LoD
@@ -789,6 +790,15 @@ class RenderManager
         if passes.indexOf(0) >= 0
             # TODO: profile with timsort, etc
             # scene.mesh_passes[0].sort sort_by_mat_id
+            # Sort by distence to camera
+            z = @camera_z
+            v = vec3.create()
+            for ob in scene.mesh_passes[0]
+                wm = ob.world_matrix
+                vec3.set v, wm.m12, wm.m13, wm.m14
+                ob._sqdist = -vec3.dot(v,z) - (ob.zindex * \
+                    (ob.dimensions.x+ob.dimensions.y+ob.dimensions.z)*0.166666)
+            timsort.sort scene.mesh_passes[0], (a,b)-> b._sqdist - a._sqdist
             for ob in scene.mesh_passes[0]
                 if ob.visible == true and not ob.bg and not ob.fg
                     @draw_mesh(ob, ob.world_matrix, 0)
