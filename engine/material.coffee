@@ -450,8 +450,11 @@ class Shader
         @reupload()
         return @debugger
 
-glsl100to300 = (fragment) ->
-    '#version 300 es\n'+fragment\
+glsl100to300 = (fragment, defines={}) ->
+    head = ['#version 300 es']
+    for def,val of defines
+        head.push "#define #{def} #{val}"
+    head.join('\n')+'\n'+fragment\
         .replace(///
             \#extension\s+GL_(EXT|OES)_(standard_derivatives|
             frag_depth|draw_buffers|shader_texture_lod)\b///g, '//')\
