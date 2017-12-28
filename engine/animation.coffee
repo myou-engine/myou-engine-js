@@ -291,7 +291,7 @@ class Animation
                     when 6
                         color4.set target[prop], v[0], v[1], v[2], v[3]
                     when 7
-                        quat.set target[prop], v[0], v[1], v[2], v[3]
+                        p = quat.set target[prop], v[0], v[1], v[2], v[3]
                         quat.normalize p, p
             # TODO: physics with eulers and with scale
             # also avoid doing it several times for children
