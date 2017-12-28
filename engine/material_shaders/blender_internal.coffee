@@ -173,8 +173,7 @@ class BlenderInternalMaterial
                 when 4, GPU_DYNAMIC_OBJECT_IMAT # inverse object_matrix
                     # NOTE: Objects with zero scale are not drawn,
                     # otherwise m4 could be null
-                    code.push "m4 =
-                        mat4.invert(render._m4, ob.world_matrix.toJSON());"
+                    code.push "m4 = mat4.invert(render._m4, ob.world_matrix);"
                     code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false,
                         m4.toJSON());"
                 when 5, GPU_DYNAMIC_OBJECT_COLOR # object color
