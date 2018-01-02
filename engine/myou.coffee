@@ -114,7 +114,13 @@ class Myou
             root.querySelector 'canvas'
 
         @update_root_rect = =>
-            @root_rect = @root.getClientRects()[0]
+            rect = @root.getClientRects()[0]
+            console.log @root_rect
+            @root_rect = {
+                top: rect.top + pageYOffset
+                left: rect.left + pageXOffset
+            }
+
         window.addEventListener 'resize', @update_root_rect
         @update_root_rect()
 
@@ -133,6 +139,9 @@ class Myou
         @has_created_debug_view = false
         @main_loop.run()
 
+    update_layout: ->
+        @canvas_screen.resize_to_canvas()
+        @update_root_rect()
 
     load_scene: (name, options={}) ->
         return loader.load_scene(name, null, options, @)

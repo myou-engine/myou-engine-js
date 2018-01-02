@@ -168,8 +168,8 @@ class Behaviour
         @_objects_frame_callback = _frame_callback = null
 
     _on_pointer_down: (event) =>
-        x = event.clientX - @context.root_rect.left - pageXOffset
-        y = event.clientY - @context.root_rect.top - pageYOffset
+        x = event.pageX - @context.root_rect.left
+        y = event.pageY - @context.root_rect.top
         prev = @_prev_events['mouse']
         if not prev?
             prev = @_prev_events['mouse'] = {x, y}
@@ -191,8 +191,8 @@ class Behaviour
         return
 
     _on_pointer_up: (event) =>
-        x = event.clientX - @context.root_rect.left - pageXOffset
-        y = event.clientY - @context.root_rect.top - pageYOffset
+        x = event.pageX - @context.root_rect.left
+        y = event.pageY - @context.root_rect.top
         prev = @_prev_events['mouse']
         if not prev?
             prev = @_prev_events['mouse'] = {x, y}
@@ -223,8 +223,8 @@ class Behaviour
 
     _on_pointer_move: (event) =>
         # TODO: Use pointerIDs, both for deltas and for viewport/object over/out
-        x = event.clientX - @context.root_rect.left - pageXOffset
-        y = event.clientY - @context.root_rect.top - pageYOffset
+        x = event.pageX - @context.root_rect.left
+        y = event.pageY - @context.root_rect.top
         prev = @_prev_events['mouse']
         if not prev?
             prev = @_prev_events['mouse'] = {x, y}
@@ -287,8 +287,8 @@ class Behaviour
         @on_key_up({key, location, shiftKey, ctrlKey, altKey, metaKey})
 
     _on_wheel_listener: (event) =>
-        x = event.clientX - @context.root_rect.left - pageXOffset
-        y = event.clientY - @context.root_rect.top - pageYOffset
+        x = event.pageX - @context.root_rect.left
+        y = event.pageY - @context.root_rect.top
         if @_locked_viewport?
             viewport = @_locked_viewport
             {x, y} = viewport.get_viewport_coordinates x, y

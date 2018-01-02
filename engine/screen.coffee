@@ -63,7 +63,10 @@ class CanvasScreen extends Screen
                 @resize_to_canvas()
 
     resize_to_canvas: ->
-        @resize(@canvas.clientWidth, @canvas.clientHeight)
+        {clientWidth, clientHeight} = @canvas
+        if clientWidth == @width and clientHeight == @height
+            return
+        @resize(clientWidth, clientHeight)
 
     # Changes the resolution of the canvas and aspect ratio of viewports.
     # It doesn't handle the final size (that's done through HTML styles).
