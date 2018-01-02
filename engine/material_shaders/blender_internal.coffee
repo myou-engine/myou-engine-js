@@ -84,7 +84,8 @@ class BlenderInternalMaterial
             switch u.type
                 when 14, GPU_DYNAMIC_SAMPLER_2DSHADOW
                     tex = render_scene.objects[u.lamp].shadow_texture
-                    @material._texture_list[texture_count++].value = tex
+                    if tex
+                        @material._texture_list[texture_count++].value = tex
                 when 13, GPU_DYNAMIC_SAMPLER_2DIMAGE, \
                         GPU_DYNAMIC_SAMPLER_2DBUFFER, \
                         14, GPU_DYNAMIC_SAMPLER_2DSHADOW # 2D image

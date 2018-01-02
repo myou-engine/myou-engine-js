@@ -36,21 +36,28 @@ class Framebuffer
             use_depth=false
             color_type='FLOAT'
             use_mipmap=false
+            use_filter=true
         } = @options
         [@size_x, @size_y] = size
         if not @size_x or not @size_y
             throw Error "Invalid framebuffer size"
         @color_type = color_type
         @use_mipmap = use_mipmap # TODO: coffee-loader bug adding @ above?
+        @use_filter = use_filter
         # We're using the existing texture if available so when we're restoring
         # the GL context, references to the texture that already exist in
         # material inputs are still valid
         @texture = @texture or new FbTexture
         @texture.set gl.createTexture(), gl.TEXTURE_2D
         @context.render_manager.bind_texture @texture
-        min_filter = mag_filter = gl.LINEAR
-        if @use_mipmap
-            min_filter = gl.LINEAR_MIPMAP_NEAREST
+        if use_filter
+            min_filter = mag_filter = gl.LINEAR
+            if @use_mipmap
+                min_filter = gl.LINEAR_MIPMAP_NEAREST
+        else
+            min_filter = mag_filter = gl.NEAREST
+            if @use_mipmap
+                min_filter = gl.NEAREST_MIPMAP_NEAREST
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, mag_filter
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, min_filter
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE
@@ -61,13 +68,19 @@ class Framebuffer
         if @tex_type == component_types.FLOAT
             if is_webgl2
                 internal_format = gl.RGBA32F
-            if not (has_float_texture_support and has_float_fb_support)
+            if use_filter
+                supports_float =
+                    extensions.texture_float_linear? and has_float_fb_support
+            else
+                supports_float =
+                    has_float_texture_support and has_float_fb_support
+            if not supports_float
                 # Fall back to half_float_linear, then to byte
-                # NOTE: we're assuming we need linear interpolation
-                # (because we're using them for variance shadow maps)
-                # but that may not be the case at some point
-                if extensions.texture_half_float_linear \
-                        and has_half_float_fb_support
+                supports_half_float = has_half_float_fb_support
+                if use_filter
+                    supports_half_float = supports_half_float and \
+                        extensions.texture_half_float_linear
+                if supports_half_float
                     @tex_type = component_types.HALF_FLOAT
                 else
                     @tex_type = component_types.UNSIGNED_BYTE
