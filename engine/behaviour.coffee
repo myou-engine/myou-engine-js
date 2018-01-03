@@ -1,7 +1,12 @@
 
 {vec3} = require 'vmath'
+# Force usage of spur-events' polyfill even when there is pointer event support
+# to avoid some problems in Chrome
+window.PointerEvent = undefined
 {addListener, removeListener} = require 'spur-events'
 {set_immediate} = require './main_loop'
+
+supports_passive_events = false # changed at the end
 
 class Behaviour
     id = ''
@@ -308,20 +313,22 @@ class Behaviour
 
     _create_events: ->
         root = @_root
-        @on_pointer_over? and addListener root, 'pointerover', @_on_pointer_over
+        options = if supports_passive_events then {passive: false} else false
+        if @on_pointer_over?
+            addListener root, 'pointerover', @_on_pointer_over, options
         if @on_pointer_down? or @on_object_pointer_down?
-            addListener root, 'pointerdown', @_on_pointer_down
+            addListener root, 'pointerdown', @_on_pointer_down, options
         if @on_pointer_up? or @on_object_pointer_up?
             # TODO: Do we need to set it every time? E.g. when we want
             # buttons over the canvas not to trigger this
             # Alternatively we can detect the target,
             # or to detect if it was down
-            addListener window, 'pointerup', @_on_pointer_up
+            addListener window, 'pointerup', @_on_pointer_up, options
         if @on_pointer_move? or @on_pointer_over? or @on_pointer_out? or\
                 @on_object_pointer_move? or @on_object_pointer_over? or \
                 @on_object_pointer_out?
-            addListener window, 'pointermove', @_on_pointer_move
-            addListener window, 'pointerout', @_on_pointer_move
+            addListener window, 'pointermove', @_on_pointer_move, options
+            addListener window, 'pointerout', @_on_pointer_move, options
         @_pick_on_move = @on_object_pointer_move? or @on_object_pointer_over?
         @on_key_down? and window.addEventListener 'keydown', @_on_key_down
         @on_key_up? and window.addEventListener 'keyup', @_on_key_up
@@ -330,21 +337,26 @@ class Behaviour
 
     _destroy_events: ->
         root = @_root
+        options = if supports_passive_events then {passive: false} else false
         if @on_pointer_over?
-            removeListener root, 'pointerover', @_on_pointer_over
+            removeListener root, 'pointerover', @_on_pointer_over, options
         if @on_pointer_down? or @on_object_pointer_down?
-            removeListener root, 'pointerdown', @_on_pointer_down
+            removeListener root, 'pointerdown', @_on_pointer_down, options
         if @on_pointer_up? or @on_object_pointer_up?
-            removeListener window, 'pointerup', @_on_pointer_up
+            removeListener window, 'pointerup', @_on_pointer_up, options
         if @on_pointer_move? or @on_pointer_over? or @on_pointer_out? or\
                 @on_object_pointer_over? or @on_object_pointer_out?
-            removeListener window, 'pointermove', @_on_pointer_move
-            removeListener window, 'pointerout', @_on_pointer_move
+            removeListener window, 'pointermove', @_on_pointer_move, options
+            removeListener window, 'pointerout', @_on_pointer_move, options
         @on_key_down? and window.removeEventListener 'keydown', @_on_key_down
         @on_key_up? and window.removeEventListener 'keyup', @_on_key_up
         @on_wheel? and root.removeEventListener 'wheel', @_on_wheel_listener
         # @on_click? and removeListener root, 'click', @on_click
 
-
+options = Object.defineProperty {}, 'passive', get: ->
+    supports_passive_events = true
+noop = ->
+window.addEventListener 'testPassiveEventSupport', noop, options
+window.removeEventListener 'testPassiveEventSupport', noop, options
 
 module.exports = {Behaviour}
