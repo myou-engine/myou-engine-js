@@ -147,6 +147,7 @@ class Mesh extends GameObject
         @stride = 0
         @mesh_id = 0
         @all_f = false
+        @bone_index_maps = []
 
         @mesh_name = '' # only for debug purposes
 
@@ -318,9 +319,15 @@ class Mesh extends GameObject
                 keys: keys
             }
         if @armature and @parent_bone_index == -1
+            bone_count = 0
+            for map in @bone_index_maps
+                bone_count = Math.max bone_count, map.length
+            if bone_count == 0
+                bone_count = @armature.deform_bones.length
             vertex_modifiers.push new ArmatureModifier {
                 armature: @armature
                 data_type: 'f'
+                bone_count: bone_count
             }
         @layout = layout
         @vertex_modifiers = vertex_modifiers.concat @vertex_modifiers

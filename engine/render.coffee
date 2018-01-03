@@ -585,7 +585,7 @@ class RenderManager
             # Assigning uniforms of vertex modifiers
             mds = shader.modifier_data_store
             for modifier,i in mesh.vertex_modifiers
-                modifier.update_uniforms gl, mds[i]
+                modifier.update_uniforms gl, mds[i], amesh, submesh_idx
 
             # Assigning the rest of the uniforms (except
             shader.uniform_assign_func(gl, shader, mesh, this, mat4)

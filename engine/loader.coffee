@@ -245,6 +245,8 @@ load_object = (data, scene) ->
                 ob.avg_poly_length = Math.pow(ob.avg_poly_area,0.5)
                 if data.center?
                     vec3.copyArray ob.center, data.center
+                if data.bone_index_maps?
+                    ob.bone_index_maps = data.bone_index_maps
 
         load_mesh_properties ob, data
 

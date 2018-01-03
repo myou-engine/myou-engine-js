@@ -70,7 +70,7 @@ class ShapeKeyModifier
             gl.getUniformLocation prog, "shapef[#{i}]"
 
     # update_uniforms is called for every rendered mesh
-    update_uniforms: (gl, store) ->
+    update_uniforms: (gl, store, mesh, submesh_index) ->
         for {value},i in @ordered_keys
             gl.uniform1f store[i], value
         return
@@ -79,15 +79,14 @@ class ShapeKeyModifier
 class ArmatureModifier
     constructor: (options) ->
         @type = 'ARMATURE'
-        {@armature, @data_type} = options
+        {@armature, @data_type, @bone_count} = options
         @attributes_needed = ['weights', 'b_indices']
         # TODO: Document this or get from code instead
-        @signature = 'armature'+@armature.deform_bones.length
+        @signature = 'armature'+@bone_count
 
     get_code: ->
         weight_multiplier = if @data_type == 'B' then "* 0.00392156886" else ""
-        count = @armature.deform_bones.length
-        uniform_lines = ["uniform mat4 bones[#{count}];"]
+        uniform_lines = ["uniform mat4 bones[#{@bone_count}];"]
         body_lines = [
             'vec4 blendco = vec4(0.0);'
             'vec3 blendnor = vec3(0.0);'
@@ -104,14 +103,20 @@ class ArmatureModifier
         return {uniform_lines, body_lines}
 
     get_data_store: (gl, prog) ->
-        for i in [0...@armature.deform_bones.length]
+        for i in [0...@bone_count]
             gl.getUniformLocation prog, "bones[#{i}]"
 
-    update_uniforms: (gl, store) ->
+    update_uniforms: (gl, store, mesh, submesh_index) ->
         {deform_bones} = @armature
-        for i in [0...deform_bones.length]
-            gl.uniformMatrix4fv store[i], false,
-                deform_bones[i].ol_matrix.toJSON()
+        map = mesh.bone_index_maps[submesh_index]
+        if map?
+            for bone_idx,i in map
+                gl.uniformMatrix4fv store[i], false,
+                    deform_bones[bone_idx].ol_matrix.toJSON()
+        else
+            for i in [0...@bone_count] by 1
+                gl.uniformMatrix4fv store[i], false,
+                    deform_bones[i].ol_matrix.toJSON()
         return
 
 
