@@ -309,7 +309,6 @@ class Behaviour
     _create_events: ->
         root = @_root
         @on_pointer_over? and addListener root, 'pointerover', @_on_pointer_over
-        @on_pointer_out? and addListener root, 'pointerout', @_on_pointer_out
         if @on_pointer_down? or @on_object_pointer_down?
             addListener root, 'pointerdown', @_on_pointer_down
         if @on_pointer_up? or @on_object_pointer_up?
@@ -329,8 +328,6 @@ class Behaviour
         root = @_root
         if @on_pointer_over?
             removeListener root, 'pointerover', @_on_pointer_over
-        if @on_pointer_out?
-            removeListener root, 'pointerout', @_on_pointer_out
         if @on_pointer_down? or @on_object_pointer_down?
             removeListener root, 'pointerdown', @_on_pointer_down
         if @on_pointer_up? or @on_object_pointer_up?
