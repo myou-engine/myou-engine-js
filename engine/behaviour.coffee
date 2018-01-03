@@ -312,7 +312,11 @@ class Behaviour
         if @on_pointer_down? or @on_object_pointer_down?
             addListener root, 'pointerdown', @_on_pointer_down
         if @on_pointer_up? or @on_object_pointer_up?
-            addListener root, 'pointerup', @_on_pointer_up
+            # TODO: Do we need to set it every time? E.g. when we want
+            # buttons over the canvas not to trigger this
+            # Alternatively we can detect the target,
+            # or to detect if it was down
+            addListener window, 'pointerup', @_on_pointer_up
         if @on_pointer_move? or @on_pointer_over? or @on_pointer_out? or\
                 @on_object_pointer_move? or @on_object_pointer_over? or \
                 @on_object_pointer_out?
@@ -331,7 +335,7 @@ class Behaviour
         if @on_pointer_down? or @on_object_pointer_down?
             removeListener root, 'pointerdown', @_on_pointer_down
         if @on_pointer_up? or @on_object_pointer_up?
-            removeListener root, 'pointerup', @_on_pointer_up
+            removeListener window, 'pointerup', @_on_pointer_up
         if @on_pointer_move? or @on_pointer_over? or @on_pointer_out? or\
                 @on_object_pointer_over? or @on_object_pointer_out?
             removeListener window, 'pointermove', @_on_pointer_move
