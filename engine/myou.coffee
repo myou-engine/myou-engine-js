@@ -115,7 +115,6 @@ class Myou
 
         @update_root_rect = =>
             rect = @root.getClientRects()[0]
-            console.log @root_rect
             @root_rect = {
                 top: rect.top + pageYOffset
                 left: rect.left + pageXOffset
