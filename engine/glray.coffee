@@ -118,10 +118,6 @@ class GLRay
             if ob.type == 'MESH'
                 id = asign_group_and_mesh_id(ob)
                 @mesh_by_id[id] = ob
-                if ob.altmeshes?.length
-                    for alt in ob.altmeshes when alt.mesh_id?
-                        id = asign_group_and_mesh_id(alt)
-                        @mesh_by_id[id] = alt
 
     debug_xy: (x, y) ->
         x = (x*@width)|0

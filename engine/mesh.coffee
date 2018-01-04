@@ -129,8 +129,6 @@ class Mesh extends GameObject
         @armature = null
         @uv_rect = [0, 0, 1, 1] # x, y, w, h
         @uv_right_eye_offset = [0, 0]
-        @active_mesh_index = 0
-        @altmeshes = []
         @last_lod_object = null
         @last_lod_tick = -1
         @culled_in_last_frame = false
@@ -210,9 +208,6 @@ class Mesh extends GameObject
             # else
                 # If it's empty it means it will assigned from the parent mesh
                 # pass #TODO
-            # for m in @altmeshes
-            #     # TODO: set the ib of the altmeshes without it
-            #     pass #TODO
             data.index_buffers.push ib
             data.num_indices.push offsets[i2+3] - offsets[i2+1]
         data.stride = @stride
@@ -342,9 +337,7 @@ class Mesh extends GameObject
     #       The minimum length of the average polygon, in screen pixels
     get_lod_mesh: (viewport, min_length_px) ->
         amesh = @
-        if @altmeshes.length
-            amesh = @altmeshes[@active_mesh_index] or @
-        else if @lod_objects.length != 0
+        if @lod_objects.length != 0
             {camera} = viewport
             cwm = camera.world_matrix
             cam_pos = vec3.new(cwm.m12,cwm.m13,cwm.m14)

@@ -20,10 +20,6 @@ fetch_mesh = (mesh_object, options={}) ->
         {context} = mesh_object
         file_name = mesh_object.packed_file or mesh_object.hash
 
-        for alt in mesh_object.altmeshes
-            if alt != mesh_object
-                fetch_mesh alt
-
         # Load LoD
         lod_promises = []
         lod_objects = mesh_object.lod_objects

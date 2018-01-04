@@ -250,20 +250,6 @@ load_object = (data, scene) ->
 
         load_mesh_properties ob, data
 
-        if 'alternative_meshes' of data
-            alm = data.alternative_meshes
-            ob.altmeshes.splice 0
-            for d in alm
-                d.visible = data.visible
-                d.materials = data.materials
-                m = new Mesh context
-                m.name = ob.name
-                m.scene = ob.scene
-                ob.altmeshes.push m
-                load_mesh_properties m,d
-
-            ob.active_mesh_index = data.active_mesh_index
-
         if data.phy_mesh?
             m = ob.physics_mesh = new Mesh context
             m.visible_mesh = ob
