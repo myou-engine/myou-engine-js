@@ -129,11 +129,10 @@ class Mesh extends GameObject
         @armature = null
         @uv_rect = [0, 0, 1, 1] # x, y, w, h
         @uv_right_eye_offset = [0, 0]
-        @last_lod_object = null
-        @last_lod_tick = -1
         @culled_in_last_frame = false
         @center = vec3.create()
         @sort_vector = vec3.create()
+        @last_lod = {}
 
         # Populated when loading, used in load_from_va_ia()
         # Not used on render.
@@ -332,13 +331,29 @@ class Mesh extends GameObject
 
     # Returns a LoD version of the mesh that has enough detail for its visual
     # size.
-    # @param [Viewport] viewport
+    # @param [Viewport] Viewport
     # @param [number] min_length_px:
     #       The minimum length of the average polygon, in screen pixels
-    get_lod_mesh: (viewport, min_length_px) ->
+    # @param [number] render_tick
+    #       Frame number, so the same frame is not calculated twice.
+    get_lod_mesh: (viewport, min_length_px, render_tick) ->
+        # TODO: put min_length_px and render_tick in camera?
         amesh = @
         if @lod_objects.length != 0
             {camera} = viewport
+            camera = viewport.debug_camera ? camera
+            # remember previous mesh and
+            # avoid doing the same calculation several times
+            last_lod_data = @last_lod[camera.name]
+            if not last_lod_data?
+                @last_lod[camera.name] = last_lod_data =
+                    mesh: null
+                    render_tick: -1
+            previous_mesh = last_lod_data.mesh
+            if last_lod_data.render_tick == render_tick
+                return previous_mesh
+            last_lod_data.render_tick = render_tick
+
             cwm = camera.world_matrix
             cam_pos = vec3.new(cwm.m12,cwm.m13,cwm.m14)
             # Approximation to nearest point to the surface:
@@ -379,17 +394,24 @@ class Mesh extends GameObject
             # we'll going to find the biggest length
             # that is small enough on screen
             biggest_length = @avg_poly_length
-            @last_lod_object = amesh = @
+            amesh = @
 
             for lod in @lod_objects by -1 # from highest to lowest
+                h_ratio = 1
+                if amesh == previous_mesh
+                    # hysteresis: ratio of distance the mesh can go
+                    # further away before popping back to a lower LoD
+                    h_ratio += lod.hysteresis
                 ob = lod.object
-                visual_size_px = ob.avg_poly_length * poly_length_to_visual_size
+                ob_apl = ob.avg_poly_length
+                visual_size_px = ob_apl * poly_length_to_visual_size * h_ratio
                 if not amesh.data? or \
-                        (ob.avg_poly_length > biggest_length \
+                        (ob_apl > biggest_length \
                         and visual_size_px < min_length_px)
-                    biggest_length = ob.avg_poly_length
-                    @last_lod_object = amesh = ob
+                    biggest_length = ob_apl
+                    amesh = ob
 
+            last_lod_data.mesh = amesh
         return amesh
 
     # Returns a clone of the object

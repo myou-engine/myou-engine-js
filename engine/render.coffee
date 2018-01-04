@@ -499,12 +499,10 @@ class RenderManager
 
         # Select alternative mesh / LoD
         if @_vp?.camera?
-            amesh = mesh.last_lod_object
-            if not amesh? or @render_tick != mesh.last_lod_tick
-                amesh = mesh.get_lod_mesh(@_vp, @context.mesh_lod_min_length_px)
-                if not amesh.data
-                    return
-                mesh.last_lod_tick = @render_tick
+            amesh = mesh.get_lod_mesh(@_vp,
+                @context.mesh_lod_min_length_px, @render_tick)
+            if not amesh.data
+                return
         else
             amesh = mesh
             if not amesh.data
@@ -760,8 +758,8 @@ class RenderManager
                 mat = lamp._shadow_material
 
                 for ob in scene.mesh_passes[0]
-                    data =
-                        ob.get_lod_mesh(viewport, mesh_lod_min_length_px).data
+                    data = ob.get_lod_mesh(viewport, mesh_lod_min_length_px,
+                        @render_tick).data
                     if ob.visible and data and not ob.culled_in_last_frame
                         @draw_mesh ob, ob.world_matrix, -1, mat, world2light,
                             lamp._projection_matrix

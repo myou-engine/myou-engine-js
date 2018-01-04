@@ -219,7 +219,7 @@ class GLRay
         part = (@meshes.length / @render_steps | 0) + 1
         if @step < @render_steps
             for mesh in @meshes[@step * part ... (@step + 1) * part]
-                data = mesh.last_lod_object?.data or mesh.data
+                data = mesh.last_lod[camera.name]?.mesh?.data or mesh.data
                 if data and (mesh.culled_in_last_frame ^ mesh.visible)
                     # We're doing the same render commands as the engine,
                     # except that we only set the attribute and uniforms we use
@@ -230,7 +230,7 @@ class GLRay
                         mat.mesh_id = mesh.mesh_id
                         gl.uniform1f(mat.u_mesh_id, mat.mesh_id)
                     mesh2world = mesh.world_matrix
-                    data = mesh.last_lod_object?.data or mesh.data
+                    data = mesh.last_lod[camera.name]?.mesh?.data or mesh.data
                     for submesh_idx in [0...data.vertex_buffers.length]
                         gl.bindBuffer(gl.ARRAY_BUFFER, data.vertex_buffers[submesh_idx])
                         # vertex attribute

@@ -276,7 +276,9 @@ load_object = (data, scene) ->
                 load_mesh_properties lod_ob, lod_data
                 ob.lod_objects.push
                     factor: lod_data.factor,
-                    object: lod_ob
+                    object: lod_ob,
+                    # TODO: make configurable, both globally and per LoD
+                    hysteresis: .1,
 
         if data.zindex?
             ob.zindex = data.zindex
