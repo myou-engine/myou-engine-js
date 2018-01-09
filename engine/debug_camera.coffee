@@ -17,7 +17,7 @@ class DebugCamera extends Behaviour
         @active = false
         @rotating = false
         @panning = false
-        @distance = @pan_distance = 5
+        @distance = @pan_distance = vec3.len @debug_camera.position
         @debug = @scene.get_debug_draw()
         @pivot_vis = new @debug.Point
         @pivot_vis.position = @pivot.position
