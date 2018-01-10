@@ -631,8 +631,8 @@ class RenderManager
             #     console.error ("GL Error #{errcodes[error]} when drawing
             #             #{mesh.name} (#{mesh.mesh_name}) with #{mat.name}")
 
-            # @meshes_drawn += 1
-            # @triangles_drawn += num_indices * 0.33333333333333333
+            @meshes_drawn += 1
+            @triangles_drawn += num_indices * 0.33333333333333333
 
         return
 

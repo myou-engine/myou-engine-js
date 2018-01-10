@@ -53,7 +53,7 @@ class CanvasScreen extends Screen
         if @context.canvas_screen?
             throw Error "There's a canvas screen already"
         @context.canvas_screen = this
-        @viewports = []
+        @viewports = @context.viewports = []
         @canvas = @context.canvas
         @framebuffer = new MainFramebuffer @context
         @resize(@canvas.clientWidth, @canvas.clientHeight)

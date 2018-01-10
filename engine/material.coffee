@@ -123,24 +123,10 @@ class Material
 id = 0
 
 class Shader
-    # TODO: These comments are obsolete, but still somewhat useful.
-    # data is an object with:
-    # * vertex: string with vertex shader code
-    #       (optional, auto generated here for blender materials)
-    # * fragment: string with vertex shader code,
-    #       or list of strings (concatenated here)
-    # * uniforms: list of uniforms, each have this format:
-    #   {
-    #       varname: name of GLSL variable
-    #       type: (optional) supply a GPU_DYNAMIC_* constant
-    #             to have it assigned to some scene parameter
-    #             Otherwise, mesh.custom_uniform_values will be used instead.
-    #       image: If type is GPU_DYNAMIC_SAMPLER_2DIMAGE, put the texture name
-    #             here, it must be defined in scene.textures
-    #   }
-    #   Data type of each uniform is inferred from the type or the custom value.
-    # * varyings: list of varyings, TODO. See loader.coffee:93
-    constructor: (@context, @data, @material, @layout, modifiers, @defines) ->
+    constructor: (args...) ->
+        @init args...
+
+    init: (@context, @data, @material, @layout, modifiers, @defines) ->
         @id = id++
         {@name, varyings} = @data
         @shading_params_dict = {}
@@ -431,7 +417,7 @@ class Shader
         return prog
 
     reupload: ->
-        @constructor(@context, @data, @material, @layout,
+        @init(@context, @data, @material, @layout,
             @vertex_modifiers, @defines)
 
     destroy: ->

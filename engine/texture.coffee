@@ -337,10 +337,11 @@ class Texture
             # TODO: detect max anisotropy, make configurable
             # ext.TEXTURE_MAX_ANISOTROPY_EXT == 0x84FE
             gl.texParameterf gl.TEXTURE_2D, 0x84FE, 4
-        wrap_const = switch @wrap[0]
+        wrap_const = switch @wrap
             when 'C' then gl.CLAMP_TO_EDGE
             when 'R' then gl.REPEAT
             when 'M' then gl.MIRRORED_REPEAT
+            else gl.REPEAT
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap_const
         gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap_const
         return @

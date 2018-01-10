@@ -150,7 +150,7 @@ class Framebuffer
     # Remakes the framebuffer after a lost context
     recreate: ->
         if @options
-            @constructor @context, @options
+            @init @context, @options
 
     # Sets the framebuffer as the active one for further rendering operations.
     # Lower left corner is (0,0)

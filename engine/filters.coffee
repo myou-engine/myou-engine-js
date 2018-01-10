@@ -7,12 +7,30 @@ class BaseFilter
         @uniforms = []
         @material = null
         @use_derivatives = false
+        @use_depth = false
         @library = []
+        @defines = {}
 
     get_material: ->
         if @material?
             return @material
         {blank_texture} = @context.render_manager
+        if @use_depth
+            # Make sure add_depth was called correctly
+            has_sampler = false
+            for {varname} in @uniforms when varname == 'depth_sampler'
+                has_sampler = true
+                break
+            if not has_sampler
+                throw Error "Cannot find depth sampler. Make sure you called
+                    add_depth() after assigning uniforms and before inserting
+                    this.library in the shader."
+        header = []
+        for k,v of @defines
+            header.push "#define #{k} #{v}\n"
+        {fragment} = this
+        if header.length != 0
+            fragment = header.join('') + fragment
         return @material = new @context.Material '_filter_'+@name, {
             material_type: 'PLAIN_SHADER',
             vertex: '''
@@ -25,9 +43,9 @@ class BaseFilter
                     coord = vertex.xy;
                     gl_Position = vec4(vertex.xy*2.0-1.0, 0.0, 1.0); }''',
             fragment: if @use_derivatives and @context.is_webgl2
-                glsl100to300 @fragment
+                glsl100to300 fragment
             else
-                @fragment
+                fragment
             uniforms: [
                 {varname: 'source', value: blank_texture},
                 # Add this input explicitely when needed
@@ -55,6 +73,7 @@ class BaseFilter
                 return get_depth_no_scale(co*depth_scale);
             }
         '''
+        @use_depth = true
 
     set_input: (name, value) ->
         if not value?
@@ -74,6 +93,10 @@ class BaseFilter
         destination.enable rect
         destination.last_viewport = source.last_viewport
         source.draw_with_filter this, inputs
+
+    set_debugger: (dbg) ->
+        {bg_mesh} = @context.render_manager
+        @get_material().get_shader(bg_mesh).set_debugger(dbg)
 
 class CopyFilter extends BaseFilter
     constructor: (context) ->

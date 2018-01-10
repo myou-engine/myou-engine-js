@@ -58,6 +58,10 @@ class Myou
     # @property [number]
     # Minimum length of the average poligon for LoD calculation, in pixels.
     mesh_lod_min_length_px: 13
+    # @property [Array<Viewport>] viewports
+    # List of viewports of the canvas screen. Convenience reference to
+    # myou.canvas_screen.viewports (use myou.canvas_screen to operate on these).
+    viewports: []
 
     constructor: (root, options)->
         if not root?

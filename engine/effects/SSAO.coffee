@@ -1,110 +1,188 @@
-# /* This line allows us to set the editor to "GLSL"
-
-library = ''' \n\n /**/
-precision highp float;
-uniform sampler2D source;
-uniform sampler2D depth_sampler;
-uniform sampler2D bgl_LuminanceTexture; // luminance texture needed to discard ao on highlighted areas
-uniform vec2 source_size;
-varying vec2 source_coord;
-uniform float radius, strength, zrange;
-
-#define PI    3.14159265
-
-float near = 1.0; //Z-near
-float far = 100.0; //Z-far
-
-const float samples = 8.0; //samples on the first ring
-const float rings = 6.0; //ring count
-
-vec2 rand(in vec2 coord) //generating random noise
-{
-    float noiseX = (fract(sin(dot(coord ,vec2(12.9898,78.233))) * 43758.5453));
-    float noiseY = (fract(sin(dot(coord ,vec2(12.9898,78.233)*2.0)) * 43758.5453));
-    return vec2(noiseX,noiseY)*0.004;
-}
-
-float readDepth(in vec2 coord)
-{
-    return (2.0 * near) / (far + near - texture2D(depth_sampler, coord ).x * (far-near));
-}
-
-float compareDepths( in float depth1, in float depth2 )
-{
-    float aoCap = 1.0;
-    float depthTolerance = 0.0000;
-    float diff = sqrt(clamp(1.0-(depth1-depth2) / (zrange/(far-near)),0.0,1.0));
-    float ao = min(aoCap,max(0.0,depth1-depth2-depthTolerance) * strength) * diff;
-    return ao;
-}
-
-void main(void)
-{
-    float depth = readDepth(source_coord);
-    float d;
-
-    float aspect = source_size.x/source_size.y;
-    vec2 noise = rand(source_coord);
-
-    float w = (radius / source_size.x)/clamp(depth,0.05,1.0)+(noise.x*(1.0-noise.x));
-    float h = (radius / source_size.y)/clamp(depth,0.05,1.0)+(noise.y*(1.0-noise.y));
-
-    float pw;
-    float ph;
-
-    float ao;
-    float s;
-    float fade = 1.0;
-
-    for (float i = 0.0 ; i < rings; i += 1.0)
-    {
-    	fade *= 0.5;
-        // NOTE: "samples" was "samples*i" but it's not allowed
-        for (float j = 0.0 ; j < samples; j += 1.0)
-        {
-            float step = PI*2.0 / (samples);
-            pw = (cos(j*step)*i);
-            ph = (sin(j*step)*i)*aspect;
-            d = readDepth( vec2(source_coord.s+pw*w,source_coord.t+ph*h));
-            ao += compareDepths(depth,d)*fade;
-            s += 1.0*fade;
-        }
-    }
-
-    ao /= s;
-    ao = 1.0-ao;
-
-    vec3 color = texture2D(source, source_coord).rgb;
-    float luminance = color.r*0.2126+color.g*0.7152+color.b*0.0722 > 0.8 ? 1.0 : 0.0;
-
-    luminance = clamp(max(0.0,luminance-0.2)+max(0.0,luminance-0.2)+max(0.0,luminance-0.2),0.0,1.0);
-
-    gl_FragColor = vec4(color*mix(vec3(ao),vec3(1.0),luminance),1.0);
-}
-'''
 
 {BaseFilter} = require '../filters'
 {FilterEffect} = require './base'
+{vec2} = require 'vmath'
+MersenneTwister = require 'mersennetwister'
+{next_POT} = require '../math_utils/math_extra'
+{GLSLDebugger} = require '../../../myou-glsl-debugger/main.coffee'
+
+NOISE_SIZE = 32
 
 class SSAOFilter extends BaseFilter
     constructor: (context, @radius, @zrange, @strength) ->
         super context, 'ssao'
-        @fragment = library
+        @samples = 32
+        @disk_texture_uniform = {varname: 'disk_texture', value: null}
+        @noise_texture_uniform = {varname: 'noise_texture', value: null}
+        @make_textures()
         @uniforms = [
             {varname: 'radius', value: @radius}
+            {varname: 'iradius4', value: 4/@radius}
             {varname: 'strength', value: @strength}
-            {varname: 'zrange', value: @zrange}
+            {varname: 'zrange', value: 1/@zrange}
+            @disk_texture_uniform
+            @noise_texture_uniform
         ]
+        @defines = {
+            SAMPLES: @samples
+            ISAMPLES: 1/@samples
+            NOISE_ISIZE: 1/NOISE_SIZE
+        }
+        # TODO!! Optimize depth reads!
+        # original was:
+        # (2.0 * near) / (far + near - texture2D(...).x * (far-near));
         @add_depth()
+        @fragment = require('raw-loader!./SSAO.glsl').replace \
+            '/*library goes here*/', @library
+
+    make_textures: (seed_=59066, seed_r=886577) ->
+        # seed_r=1679174 is good for 16x16
+        # disk kernel texture
+        seed = seed_ ? ((Math.random()*10000000)|0)
+        mt = new MersenneTwister seed
+        v = vec2.create()
+        pixels = new Uint8Array @samples*4
+        # vsum = vec2.create()
+        for i in [0...@samples] by 1
+            r = Math.pow((i+1)/@samples, 1.5)
+            th = mt.random() * Math.PI * 2
+            v.x = Math.cos(th) * r
+            v.y = Math.sin(th) * r
+            # vec2.add vsum, vsum, v
+            pixels[i*4] = (v.x+1)*127.5
+            pixels[i*4+1] = (v.y+1)*127.5
+            pixels[i*4+2] = r*r*255
+        # TODO: Sort and benchmark
+
+        # find the sum of the smallest distance between any two points
+        # (this is only for finding a good seed, do not use)
+        # if vec2.len(vsum) < 2.15
+        #     sum = 0
+        #     for a in [0...@samples-1] by 1
+        #         pa = {x: pixels[a*4], y: pixels[a*4+1], }
+        #         dist_to_a = Infinity
+        #         for b in [a+1...@samples] by 1
+        #             pb = {x: pixels[b*4], y: pixels[b*4+1], }
+        #             dist_to_a = Math.min(dist_to_a, vec2.sqrDist(pa, pb))
+        #             sum += dist_to_a
+        #     (@attempts = @attempts ? []).push {seed, sum}
+
+        # random rotation texture
+        seed = seed_r ? ((Math.random()*10000000)|0)
+        # console.log seed
+        mt = new MersenneTwister seed
+        noise_size = NOISE_SIZE
+        rot_pixels = new Uint8Array noise_size * noise_size * 4
+        for i in [0...noise_size*noise_size] by 1
+            th = mt.random() * Math.PI * 2
+            x = Math.cos(th)
+            y = Math.sin(th)
+            rot_pixels[i*4] = (x+1)*127.5
+            rot_pixels[i*4+1] = (-y+1)*127.5
+            rot_pixels[i*4+2] = (y+1)*127.5
+            rot_pixels[i*4+3] = (x+1)*127.5
+
+        # find the sum between consecutive pixels (must be as high as possible)
+        # (this is only for finding a good seed, do not use)
+        # min_dist = 0
+        # sum_dist = 0
+        # arrlen = rot_pixels.length
+        # for x in [0...noise_size] by 1
+        #     for y in [0...noise_size] by 1
+        #         i1 = (x+(y*noise_size))*4
+        #         x = rot_pixels[((x+(y*noise_size))*4)%arrlen]
+        #         x2 = rot_pixels[((x+1+(y*noise_size))*4)%arrlen]
+        #         y = rot_pixels[((x+((y+1)*noise_size))*4 + 1)%arrlen]
+        #         y2 = rot_pixels[((x+((y+1)*noise_size))*4 + 1)%arrlen]
+        #         dist = Math.sqrt(Math.pow(x2-x,2)+Math.pow(y2-y,2))
+        #         sum_dist += dist
+        #         min_dist = Math.max(min_dist, dist)
+        # if min_dist > 350
+        #     (@attempts = @attempts ? []).push {seed, min_dist, sum_dist}
+
+        if seed_r? or not @material?
+            tex = @disk_texture_uniform.value = new @context.Texture {@context},
+                formats: raw_pixels: {
+                    width: @samples, height: 1, pixels: pixels,
+                }
+            tex.load()
+            if @material?
+                @set_input 'disk_texture', tex
+            tex = @noise_texture_uniform.value = new @context.Texture {@context},
+                formats: raw_pixels: {
+                    width: noise_size, height: noise_size, pixels: rot_pixels,
+                }
+            tex.load()
+            if @material?
+                @set_input 'noise_texture', tex
+
+class SSAOBlur extends BaseFilter
+    constructor: (context) ->
+        super context, 'copy'
+        @uniforms = [
+            {varname: 'ssao', value: {type: 'TEXTURE'}}
+            {varname: 'ssao_iscale', value: vec2.create()}
+        ]
+        @fragment = '''
+            precision highp float;
+            uniform sampler2D source, ssao;
+            uniform vec2 ssao_iscale;
+            varying vec2 source_coord;
+            void main() {
+                vec4 color = texture2D(source, source_coord);
+                float luminance = color.r*0.2126+color.g*0.7152+color.b*0.0722;
+                luminance = max(0., luminance-.8) * 5.;
+                vec2 uv = gl_FragCoord.xy * ssao_iscale;
+                // half pixel
+                float hpx = ssao_iscale.x * .5;
+                float hpy = ssao_iscale.y * .5;
+                float ao =
+                    min(texture2D(ssao, uv+vec2(-hpx, -hpy)).r,
+                    min(texture2D(ssao, uv+vec2(-hpx, hpy)).r,
+                    min(texture2D(ssao, uv+vec2(hpx, -hpy)).r,
+                    texture2D(ssao, uv+vec2(hpx, hpy)).r)));
+                gl_FragColor = vec4(color.rgb * mix(ao,1., luminance), color.a);
+            }
+        '''
+
+
+
+
 
 class SSAOEffect extends FilterEffect
-    constructor: (context, @radius=10, @zrange=2, @strength=100) ->
+    constructor: (context, @radius=2.5, @zrange=2, @strength=1) ->
         super context
         @filter = new SSAOFilter(@context, @radius, @zrange, @strength)
+        # @filter.set_debugger(window.dbg = new GLSLDebugger)
+        @blur = new SSAOBlur @context
+
+    set_radius: (@radius) ->
+        @filter.set_input 'radius', @radius
+        @filter.set_input 'iradius4', 4/@radius
+
+    set_strength: (@strength) ->
+        @filter.set_input 'strength', @strength
+
+    set_zrange: (@zrange) ->
+        @filter.set_input 'zrange', 1/@zrange
+
+    on_viewport_update: (@viewport) ->
+        {width, height} = @viewport
+        width = next_POT width
+        height = next_POT height
+        @buffer?.destroy()
+        @buffer = new @context.ByteFramebuffer {size: [width, height]}
+        @blur.set_input 'ssao', @buffer.texture
+        @blur.set_input 'ssao_iscale', vec2.new(1/width, 1/height)
+
 
     apply: (source, temporary, rect) ->
+        r = [0, 0, rect[2], rect[3]]
         destination = temporary
-        @filter.apply source, destination, rect
+        @filter.apply source, @buffer, r
+        @blur.apply source, destination, rect
+        # test filter only
+        # @filter.apply source, destination, r
         return {destination, temporary: source}
 
 
