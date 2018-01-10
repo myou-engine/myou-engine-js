@@ -314,10 +314,21 @@ class GameObject
     clear_parent: (keep_transform) ->
         @scene.clear_parent this, keep_transform
 
+    # Removes the object from the scene. It does NOT delete the object itself.
     remove: (recursive) ->
         if @properties.probe_options?
             @probe?.destroy()
         @scene.remove_object @, recursive
+
+    # Removes the object from the scene and destroys (deletes) the object.
+    # Use this when deleting clones (it doesn't delete mesh data, etc.)
+    destroy: (recursive=true) ->
+        @body.destroy()
+        @remove recursive
+        if recursive
+            for child in @children
+                child.destroy true
+        delete @context.objects[@name]
 
     instance_probes: ->
         if @probe_cube?
