@@ -4,7 +4,6 @@
 {vec2} = require 'vmath'
 MersenneTwister = require 'mersennetwister'
 {next_POT} = require '../math_utils/math_extra'
-{GLSLDebugger} = require '../../../myou-glsl-debugger/main.coffee'
 
 NOISE_SIZE = 32
 
@@ -153,7 +152,6 @@ class SSAOEffect extends FilterEffect
     constructor: (context, @radius=2.5, @zrange=2, @strength=1) ->
         super context
         @filter = new SSAOFilter(@context, @radius, @zrange, @strength)
-        # @filter.set_debugger(window.dbg = new GLSLDebugger)
         @blur = new SSAOBlur @context
 
     set_radius: (@radius) ->
