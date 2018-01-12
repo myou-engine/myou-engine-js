@@ -20,6 +20,7 @@ class Behaviour
             #TODO: destroy or improve when we have GLRay
             @ray_int_mask=-1
         } = options
+        @options = options
         if not @id
             @id = (Math.random()+'')[2...]
 
