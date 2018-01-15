@@ -438,10 +438,14 @@ class Body
     set_character_velocity: (v)->
         if not @btchar?
             throw Error "Object '#{@owner.name}' is not a character body"
+        inv_fps = 1/@world.physics_fps
         {tmp_Vector3} = @world
-        tmp_Vector3.setValue(v.x * 0.016666666666666666,
-            v.y * 0.016666666666666666, v.z * 0.016666666666666666)
+        tmp_Vector3.setValue(v.x * inv_fps, v.y * inv_fps, v.z * inv_fps)
         @btchar.setWalkDirection(tmp_Vector3)
+
+    set_character_gravity: (v)->
+        {tmp_Vector3} = @world
+        @btchar.setGravity(-v.z)
 
     set_jump_force: (f)->
         if not @btchar?
