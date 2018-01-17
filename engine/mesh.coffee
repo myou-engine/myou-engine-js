@@ -421,6 +421,7 @@ class Mesh extends GameObject
         clone = super scene, recursive
         clone.uv_rect = @uv_rect[...]
         clone.uv_right_eye_offset = @uv_right_eye_offset[...]
+        clone.last_lod = {}
         return clone
 
 module.exports = {Mesh}
