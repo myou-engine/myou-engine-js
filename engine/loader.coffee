@@ -55,7 +55,8 @@ load_datablock = (scene, data, context) ->
     if data.type=='SCENE'
         [gx,gy,gz] = data.gravity
         scene.world.set_gravity vec3.new gx,gy,gz
-        vec3.copyArray(scene.background_color, data.background_color)
+        [r,g,b,a=1] = data.background_color
+        color4.set scene.background_color, r, g, b, a
         if data.ambient_color
             vec3.copyArray(scene.ambient_color, data.ambient_color)
         scene.active_camera_name = data.active_camera
