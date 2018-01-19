@@ -1,29 +1,53 @@
 
-{vec3, quat, mat4} = require 'vmath'
+{vec3, quat, mat4, mat3} = require 'vmath'
 {CanvasScreen} = require './screen'
 
 class VRScreen extends CanvasScreen
-    init: (@context, @HMD, @scene) ->
+    init: (@context, @HMD, @scene, options={}) ->
         if @context.vr_screen?
             throw Error "There's a VR screen already"
+        {
+            use_room_scale_parent=true
+            use_unpredict=true
+        } = options
+        if use_room_scale_parent and not @scene.active_camera.parent?
+            throw Error "use_room_scale_parent requires the camera to have a
+                parent. Add a parent or set use_room_scale_parent to false
+                for a seated experience controller by the original camera."
+        if use_room_scale_parent \
+            and not @HMD.stageParameters?.sittingToStandingTransform?
+                use_room_scale_parent = false
         @context.vr_screen = this
         @canvas = @context.canvas
         {@framebuffer} = @context.canvas_screen
         @frame_data = new VRFrameData
-        old_pm0 = mat4.create()
+        @old_pm0 = mat4.create()
+        @left_orientation = quat.create()
+        @right_orientation = quat.create()
+        @last_time = performance.now()
+        @use_unpredict = use_unpredict and @HMD.displayName == 'OpenVR HMD'
+        @sst = mat4.create()
+        if use_room_scale_parent
+            mat4.copyArray @sst, @HMD.stageParameters.sittingToStandingTransform
+            mat4.invert @sst, @sst
+        # @to_Z_up = mat4.new 1,0,0,0, 0,0,1,0, 0,-1,0,0, 0,0,0,1
         # left eye viewport
         camera = @scene.active_camera.clone()
         camera.rotation_order = 'Q'
+        mat4.identity camera.matrix_parent_inverse
         quat.identity camera.rotation
-        @scene.make_parent @scene.active_camera, camera
+        if not use_room_scale_parent
+            @scene.make_parent @scene.active_camera, camera
         v = @add_viewport camera
         # v.set_clear false, false
         v.rect = [0, 0, 0.5, 1]
         # right eye viewport
         camera = @scene.active_camera.clone()
         camera.rotation_order = 'Q'
+        mat4.identity camera.matrix_parent_inverse
         quat.identity camera.rotation
-        @scene.make_parent @scene.active_camera, camera
+        if not use_room_scale_parent
+            @scene.make_parent @scene.active_camera, camera
         v = @add_viewport camera
         v.set_clear false, false
         v.rect = [0.5, 0, 0.5, 1]
@@ -53,34 +77,71 @@ class VRScreen extends CanvasScreen
             pose: {position, orientation},
             leftProjectionMatrix,
             rightProjectionMatrix,
+            leftViewMatrix,
+            rightViewMatrix,
         } = @frame_data
-        {position: p0, rotation: r0, projection_matrix: pm0} =
+        window.pose = @frame_data.pose
+        {position: p0, rotation: r0, world_matrix: m0, projection_matrix: pm0} =
             @viewports[0].camera
-        {position: p1, rotation: r1, projection_matrix: pm1} =
+        {position: p1, rotation: r1, world_matrix: m1, projection_matrix: pm1} =
             @viewports[1].camera
-        if position?
-            vec3.copyArray p0, position
-            vec3.copyArray p1, position
-        if orientation?
-            vec3.copyArray r0, orientation
-            vec3.copyArray r1, orientation
+        # if position?
+        #     vec3.copyArray p0, position
+        #     vec3.copyArray p1, position
+        # if orientation?
+        #     vec3.copyArray r0, orientation
+        #     vec3.copyArray r1, orientation
+
+        if leftViewMatrix?
+            m4 = mat4.create()
+            m3 = mat3.create()
+            {sst} = this
+            time = performance.now()
+            delta_frames = Math.min 10, (time - @last_time)/11.11111111
+            # it tries to predict one frame ahead using the difference between
+            # the last two frames, so we substract the prediction
+            unpredict = 1-(1/(delta_frames+1))
+
+            mat4.copyArray m4, leftViewMatrix
+            mat4.mul m4, m4, sst
+            mat4.invert m4, m4
+            mat3.fromMat4 m3, m4
+            quat.fromMat3 r0, m3
+            if @use_unpredict
+                quat.slerp r0, @left_orientation, r0, unpredict
+            quat.copy @left_orientation, r0
+            vec3.set p0, m4.m12, m4.m13, m4.m14
+
+            mat4.copyArray m4, rightViewMatrix
+            mat4.mul m4, m4, sst
+            mat4.invert m4, m4
+            mat3.fromMat4 m3, m4
+            quat.fromMat3 r1, m3
+            if @use_unpredict
+                quat.slerp r1, @right_orientation, r1, unpredict
+            quat.copy @right_orientation, r1
+            vec3.set p1, m4.m12, m4.m13, m4.m14
+
+            @last_time = time
+
+        @viewports[0].camera._update_matrices()
+        @viewports[1].camera._update_matrices()
         mat4.copyArray pm0, leftProjectionMatrix
         mat4.copyArray pm1, rightProjectionMatrix
-        # TODO: untested
-        if not mat4.equals pm0, old_pm0
+        if not mat4.equals pm0, @old_pm0
             # culling planes need to be updated
             mat4.invert @viewports[0].camera.projection_matrix_inv, pm0
             @viewports[0].camera._calculate_culling_planes()
             mat4.invert @viewports[1].camera.projection_matrix_inv, pm1
             @viewports[1].camera._calculate_culling_planes()
-            mat4.copy old_pm0, pm0
+            mat4.copy @old_pm0, pm0
         return
 
     post_draw: ->
         @HMD.submitFrame()
 
 
-displays = []
+displays = null
 vrdisplaypresentchange = null
 
 exports.has_HMD = ->
@@ -127,6 +188,8 @@ exports.init = (scene, options={}) ->
     if ctx.vr_screen?.HMD.isPresenting
         return Promise.resolve()
     HMD = null
+    if not displays?
+        return Promise.reject "Call hasVR first."
     for display in displays
         if display instanceof VRDisplay and display.capabilities.canPresent
             HMD = display
@@ -159,7 +222,7 @@ exports.init = (scene, options={}) ->
                         if options.neck_model?
                             set_neck_model ctx, options.neck_model
                         if not ctx.vr_screen?
-                            new VRScreen ctx, HMD, scene
+                            new VRScreen ctx, HMD, scene, options
                         resolve()
                     catch e
                         reject(e)
