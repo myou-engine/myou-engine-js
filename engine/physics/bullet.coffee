@@ -596,7 +596,7 @@ class Body
             return mesh_data.phy_mesh
         vertices = mesh_data.varray
         # TODO: use all submeshes
-        indices = mesh_data.iarray.subarray(0, mesh_data.offsets[2])
+        indices = mesh_data.iarray.subarray(0, mesh_data.offsets[3])
         vstride = mesh_data.stride/4
         vlen = vertices.length/vstride
         if not Ammo._malloc
