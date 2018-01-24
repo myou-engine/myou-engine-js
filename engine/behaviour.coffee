@@ -48,11 +48,13 @@ class Behaviour
         @_menu_prevent_default = null
         @_object_picking_method = ''
         @_pick_on_move = false
-        # We use set_immediate to be able to use pre-bound methods in on_init()
-        # e.g. when doing button.on_press = @some_method
+
         set_immediate =>
             @enable()
-            @on_init?()
+            if @on_init
+                console.warn "Behaviour.on_init() is deprecated.
+                    Use the constructor instead."
+                @on_init()
             if @_object_picking_method == '' and \
                 (@on_object_pointer_down? or @on_object_pointer_up? \
                 or @on_object_pointer_move? or @on_object_pointer_over? or
@@ -62,11 +64,15 @@ class Behaviour
                         but object picking is disabled."
                     console.warn 'Add "this.enable_object_picking()"
                         to on_init()'
+        if @on_enter_vr? and @context.vr_screen?
+            [vp1, vp2] = @context.vr_screen.viewports
+            @on_enter_vr vp1.camera, vp2.camera
 
     enable: ->
         if not @_enabled
             @_create_events()
             @scene.post_draw_callbacks.push @_add_callbacks
+            @context.enabled_behaviours.push this
             if @_menu_prevent_default?
                 @_root.addEventListener 'contextmenu', @_menu_prevent_default
             @_enabled = true
@@ -75,6 +81,8 @@ class Behaviour
         if @_enabled
             @_destroy_events()
             @scene.post_draw_callbacks.push @_remove_callbacks
+            if (idx = @context.enabled_behaviours.indexOf this) != -1
+                @context.enabled_behaviours.splice idx, 1
             if @_menu_prevent_default?
                 @_root.removeEventListener 'contextmenu', @_menu_prevent_default
             @_enabled = false

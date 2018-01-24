@@ -86,6 +86,7 @@ class Myou
         @active_animations = dict()
         @all_cubemaps = []
         @all_framebuffers = []
+        @enabled_behaviours = []
         @root = root
         @options = @MYOU_PARAMS = options
         @hash = Math.random()

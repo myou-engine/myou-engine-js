@@ -27,12 +27,15 @@ class VRScreen extends CanvasScreen
         @last_time = performance.now()
         @use_unpredict = use_unpredict and @HMD.displayName == 'OpenVR HMD'
         @sst = mat4.create()
+        @sst_inverse = mat4.create()
+        @sst3 = mat3.create()
         if use_room_scale_parent
             mat4.copyArray @sst, @HMD.stageParameters.sittingToStandingTransform
-            mat4.invert @sst, @sst
+            mat4.invert @sst_inverse, @sst
+            mat3.fromMat4 @sst3, @sst
         # @to_Z_up = mat4.new 1,0,0,0, 0,0,1,0, 0,-1,0,0, 0,0,0,1
         # left eye viewport
-        camera = @scene.active_camera.clone()
+        camera = left_cam = @scene.active_camera.clone()
         camera.rotation_order = 'Q'
         mat4.identity camera.matrix_parent_inverse
         quat.identity camera.rotation
@@ -42,7 +45,7 @@ class VRScreen extends CanvasScreen
         # v.set_clear false, false
         v.rect = [0, 0, 0.5, 1]
         # right eye viewport
-        camera = @scene.active_camera.clone()
+        camera = right_cam = @scene.active_camera.clone()
         camera.rotation_order = 'Q'
         mat4.identity camera.matrix_parent_inverse
         quat.identity camera.rotation
@@ -58,12 +61,16 @@ class VRScreen extends CanvasScreen
         @resize(Math.max(leftEye.renderWidth, rightEye.renderWidth) * 2,
                 Math.max(leftEye.renderHeight, rightEye.renderHeight))
         @context.canvas_screen.enabled = false
+        for behaviour in @context.enabled_behaviours
+            behaviour.on_enter_vr? left_cam, right_cam
 
     destroy: ->
         @context.vr_screen = null
         @context.screens.splice @context.screens.indexOf(this), 1
         @context.canvas_screen.resize_to_canvas()
         @context.canvas_screen.enabled = true
+        for behaviour in @context.enabled_behaviours
+            behaviour.on_exit_vr?()
         return
 
     exit: -> @destroy()
@@ -95,7 +102,7 @@ class VRScreen extends CanvasScreen
         if leftViewMatrix?
             m4 = mat4.create()
             m3 = mat3.create()
-            {sst} = this
+            {sst_inverse} = this
             time = performance.now()
             delta_frames = Math.min 10, (time - @last_time)/11.11111111
             # it tries to predict one frame ahead using the difference between
@@ -103,7 +110,7 @@ class VRScreen extends CanvasScreen
             unpredict = 1-(1/(delta_frames+1))
 
             mat4.copyArray m4, leftViewMatrix
-            mat4.mul m4, m4, sst
+            mat4.mul m4, m4, sst_inverse
             mat4.invert m4, m4
             mat3.fromMat4 m3, m4
             quat.fromMat3 r0, m3
@@ -113,7 +120,7 @@ class VRScreen extends CanvasScreen
             vec3.set p0, m4.m12, m4.m13, m4.m14
 
             mat4.copyArray m4, rightViewMatrix
-            mat4.mul m4, m4, sst
+            mat4.mul m4, m4, sst_inverse
             mat4.invert m4, m4
             mat3.fromMat4 m3, m4
             quat.fromMat3 r1, m3

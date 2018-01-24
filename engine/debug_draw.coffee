@@ -119,6 +119,9 @@ class DebugDraw
         return
 
     _draw_frustum: (gl, rm, ob, mm4) ->
+        # Do not try in VR
+        if @context.vr_screen?
+            return
         {use_frustum_culling} = @context.render_manager
         @context.render_manager.use_frustum_culling = false
         {color} = @_shapes
