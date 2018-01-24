@@ -393,6 +393,23 @@ class Body
         tmp_Transform.setRotation(tmp_Quaternion)
         @btbody.setWorldTransform(tmp_Transform)
 
+    update_rotation: ->
+        return if not @btbody?
+        ob = @owner
+        {tmp_Vector3, tmp_Quaternion, tmp_Transform} = @world
+        if @btbody.getMotionState
+            transform = tmp_Transform
+            @btbody.getMotionState().getWorldTransform(transform)
+        else
+            transform = @btbody.getWorldTransform()
+        if ob.parent or ob.rotation_order != 'Q'
+            {position, rotation} = ob.get_world_position_rotation()
+        else
+            {position, rotation} = ob
+        tmp_Quaternion.setValue(rotation.x, rotation.y, rotation.z, rotation.w)
+        transform.setRotation(tmp_Quaternion)
+        @btbody.setWorldTransform(tmp_Transform)
+
     get_linear_velocity: (local=false)->
         v = @btbody.getLinearVelocity()
         new_v = vec3.new v.x(), v.y(), v.z()
@@ -431,6 +448,12 @@ class Body
         {tmp_Vector3} = @world
         tmp_Vector3.setValue(force.x, force.y, force.z)
         @btbody.applyCentralImpulse(tmp_Vector3)
+
+    set_friction: (friction) ->
+        if Math.abs(@friction-friction) < 0.01
+            return
+        @friction = friction
+        @instance()
 
     # Character
 
