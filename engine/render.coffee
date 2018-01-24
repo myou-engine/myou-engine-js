@@ -780,7 +780,7 @@ class RenderManager
             clear_bits &= ~gl.COLOR_BUFFER_BIT
         else if clear_bits & gl.COLOR_BUFFER_BIT
             c = scene.background_color
-            gl.clearColor c.x,c.y,c.z,@background_alpha
+            gl.clearColor c.r,c.g,c.b,@background_alpha
         clear_bits and gl.clear clear_bits
 
         # TODO: Think better about how to manage passes

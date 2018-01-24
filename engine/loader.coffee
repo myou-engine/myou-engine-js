@@ -58,7 +58,8 @@ load_datablock = (scene, data, context) ->
         [r,g,b,a=1] = data.background_color
         color4.set scene.background_color, r, g, b, a
         if data.ambient_color
-            vec3.copyArray(scene.ambient_color, data.ambient_color)
+            [r,g,b,a=1] = data.ambient_color
+            color4.set scene.ambient_color, r, g, b, a
         scene.active_camera_name = data.active_camera
         if data.world_material?
             scene.world_material = new Material(context, \
