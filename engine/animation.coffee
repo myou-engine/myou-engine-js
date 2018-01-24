@@ -295,7 +295,7 @@ class Animation
                         quat.normalize p, p
             # TODO: physics with eulers and with scale
             # also avoid doing it several times for children
-            # ob.body.update_transform()
+            ob.body.update_rotation()
         return @
 
 class LoopedAnimation extends Animation
@@ -329,11 +329,15 @@ class FiniteAnimation extends Animation
 
     step: (frame_delta) ->
         @pos += frame_delta * @speed
-        if @pos > @end_frame
+        if @speed > 0 and @pos > @end_frame
             @pos = @end_frame
             # even though we're calling pause,
             # it's being evaluated on this frame
             @pause()
+        else if @speed < 0 and @pos < @start_frame
+            @pos = @start_frame
+            @pause()
+
 
 
 evaluate_all_animations = (context, frame_duration_ms)->
