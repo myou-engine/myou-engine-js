@@ -298,10 +298,12 @@ class Body
                 @set_linear_factor @linear_factor
                 @set_angular_factor {x: 0, y:0, z:0}
                 @world.auto_update_bodies.push @
-            when 'STATIC', 'SENSOR'
+            when 'STATIC'
                 # TODO: use ghost?
                 @btbody = @_rigid_body 0, actual_shape, pos, rot, @friction,
                     @elasticity, 0
+            when 'SENSOR'
+                @btbody = @_sensor_body actual_shape, pos, rot
             when 'CHARACTER'
                 @owner.rotation_order = 'Q'
                 quat.copy @owner.rotation, rot
@@ -328,9 +330,10 @@ class Body
             @btworld.addRigidBody(@btbody, @group, @mask)
         if @no_sleeping
             @disallow_sleeping()
-        if @is_ghost or @physics_type == 'SENSOR'
+        if @is_ghost or @type == 'SENSOR'
             @make_ghost()
         @update_transform()
+        @world.pointer_to_body[@btbody.ptr] = this
 
     get_physics_mesh: (use_visual_mesh=@_use_visual_mesh) ->
         if @type == 'NO_COLLISION' or
@@ -373,10 +376,12 @@ class Body
 
     make_ghost: ->
         @is_ghost = true
+        # CF_NO_CONTACT_RESPONSE
         @btbody?.setCollisionFlags(@btbody.getCollisionFlags() | 4)
 
     clear_ghost: ->
         @is_ghost = false
+        # ~CF_NO_CONTACT_RESPONSE
         @btbody?.setCollisionFlags(@btbody.getCollisionFlags() & -5)
 
     update_transform: ->
@@ -504,6 +509,7 @@ class Body
         {btbody, btworld} = this
         if not btbody?
             return ret
+        {pointer_to_body} = @world
         p = btbody.ptr
         if btbody.getOverlappingPairCache?
             # TODO: Should we move this code to C++?
@@ -522,7 +528,9 @@ class Body
 
                 for j in [0...manifoldArray.size()]
                     manifold = manifoldArray.at(j)
-                    isFirstBody = manifold.getBody0().ptr == p
+                    b0 = manifold.getBody0().ptr
+                    b1 = manifold.getBody1().ptr
+                    isFirstBody = b0 == p
                     for j in [0...manifold.getNumContacts()]
                         point = manifold.getContactPoint(j)
                         if point.getDistance() < margin
@@ -533,12 +541,14 @@ class Body
                             n = point.get_m_normalWorldOnB()
                             if isFirstBody
                                 normal = vec3.new -n.x(), -n.y(), -n.z()
+                                other = pointer_to_body[b1]
                                 ret.push {point_on_body: a, \
-                                    point_on_other: b, normal}
+                                    point_on_other: b, normal, other}
                             else
                                 normal = vec3.new n.x(), n.y(), n.z()
+                                other = pointer_to_body[b0]
                                 ret.push {point_on_body: b, \
-                                    point_on_other: a, normal}
+                                    point_on_other: a, normal, other}
 
             Ammo.destroy manifoldArray
         else
@@ -565,12 +575,14 @@ class Body
                                 n = point.get_m_normalWorldOnB()
                                 if b1 == p
                                     normal = vec3.new n.x(), n.y(), n.z()
+                                    other = pointer_to_body[b0]
                                     ret.push {point_on_body: b, \
-                                        point_on_other: a, normal}
+                                        point_on_other: a, normal, other}
                                 else
                                     normal = vec3.new -n.x(), -n.y(), -n.z()
+                                    other = pointer_to_body[b1]
                                     ret.push {point_on_body: a, \
-                                        point_on_other: b, normal}
+                                        point_on_other: b, normal, other}
         return ret
 
     _clone_to: (owner) ->
@@ -703,7 +715,6 @@ class Body
         rbInfo.set_m_restitution elasticity
         body =  new Ammo.btRigidBody rbInfo
         body.pointers = [rbInfo, myMotionState, startTransform, localInertia]
-        @world.pointer_to_body[body.ptr] = body
         return body
 
     _character_body: (shape, position, rotation, step_height, axis, gravity,
@@ -725,7 +736,19 @@ class Body
         startTransform.setRotation tmp_Quaternion
         body.setWorldTransform startTransform
         body.pointers = [startTransform]
-        @world.pointer_to_body[body.ptr] = body
+        return body
+    
+    _sensor_body: (shape, position, rotation, is_ghost) ->
+        {tmp_Vector3, tmp_Quaternion} = @world
+        body = new Ammo.btPairCachingGhostObject
+        body.setCollisionShape shape
+        startTransform = new Ammo.btTransform
+        tmp_Vector3.setValue position.x, position.y, position.z
+        startTransform.setOrigin tmp_Vector3
+        tmp_Quaternion.setValue rotation.x, rotation.y, rotation.z, rotation.w
+        startTransform.setRotation tmp_Quaternion
+        body.setWorldTransform startTransform
+        body.pointers = [startTransform]
         return body
 
     _destroy_body: ->
