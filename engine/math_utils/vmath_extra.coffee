@@ -1,4 +1,5 @@
 vmath = require 'vmath'
+{ease_in_out} = require './math_extra'
 
 # http://stackoverflow.com/questions/1031005/is-there-an-algorithm-for-converting-quaternion-rotations-to-euler-angle-rotatio
 
@@ -182,6 +183,12 @@ vmath.vec3.fromMat4Scale = (out, m) ->
     z = vec3.new m.m08, m.m09, m.m10
     return vec3.set out, vec3.len(x), vec3.len(y), vec3.len(z)
 
+vmath.vec3.ease_in_out = (out, a, b, d=1, t) ->
+    out.x = ease_in_out a.x, b.x, d, t
+    out.y = ease_in_out a.y, b.y, d, t
+    out.z = ease_in_out a.z, b.z, d, t
+    return out
+
 vmath.mat3.rotationFromMat4 = (out, m) ->
     x = vec3.new m.m00, m.m01, m.m02
     y = vec3.new m.m04, m.m05, m.m06
@@ -235,8 +242,5 @@ vmath.quat.fromEulerOrder = (out, v, order) ->
             rotateY out, out, y
             rotateZ out, out, z
     return out
-
-# export function getAxisAngle(out_axis, q) {
-
 
 module.exports = vmath
