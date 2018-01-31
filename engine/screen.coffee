@@ -8,6 +8,7 @@ class Screen
         @viewports = []
         @framebuffer = null
         @width = @height = @diagonal = 0
+        @pixel_ratio_x = @pixel_ratio_y = 1
         @enabled = true
         @init @context, args...
 
@@ -36,7 +37,11 @@ class Screen
     get_viewport_coordinates: (x, y) ->
         y = @height - y
         for viewport in @viewports by -1
-            [left, bottom, width, height] = viewport.rect_pix
+            [left, bottom, width, height] = viewport.rect
+            left *= @width
+            width *= @width
+            bottom *= @height
+            height *= @height
             right = left+width
             top = bottom+height
             if left < x < right and bottom < y < top
@@ -62,7 +67,7 @@ class CanvasScreen extends Screen
             if not @context.vr_screen? and @auto_resize_to_canvas
                 @resize_to_canvas()
 
-    resize_to_canvas: ->
+    resize_to_canvas: (@pixel_ratio_x=1, @pixel_ratio_y=1) ->
         {clientWidth, clientHeight} = @canvas
         if clientWidth == @width and clientHeight == @height
             return
