@@ -49,12 +49,12 @@ class Behaviour
         @_object_picking_method = ''
         @_pick_on_move = false
 
+        if @on_init
+            console.warn "Behaviour.on_init() is deprecated.
+                Use the constructor instead."
         set_immediate =>
             @enable()
-            if @on_init
-                console.warn "Behaviour.on_init() is deprecated.
-                    Use the constructor instead."
-                @on_init()
+            @on_init?()
             if @_object_picking_method == '' and \
                 (@on_object_pointer_down? or @on_object_pointer_up? \
                 or @on_object_pointer_move? or @on_object_pointer_over? or

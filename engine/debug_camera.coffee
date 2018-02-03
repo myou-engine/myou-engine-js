@@ -2,7 +2,8 @@
 {Behaviour} = require './behaviour'
 
 class DebugCamera extends Behaviour
-    on_init: ->
+    constructor: (args...) ->
+        super args...
         @debug_camera = @viewports[0].camera.clone()
         @scene.clear_parent @debug_camera
         @debug_camera.set_rotation_order 'XYZ'
