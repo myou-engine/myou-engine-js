@@ -1,4 +1,4 @@
-{vec2, vec3} = require 'vmath'
+{vec2, vec3, quat} = require 'vmath'
 {DebugCamera} = require './debug_camera'
 
 # A viewport is a portion of the screen/canvas associated with a camera,
@@ -182,6 +182,20 @@ class Viewport
             @debug_camera_behaviour = null
             return true
         return false
+    
+    store_debug_camera: (name) ->
+        if not @debug_camera_behaviour?
+            throw Error "There is no debug camera."
+        if not name?
+            throw Error "Name argument is mandatory."
+        {position, rotation} = @debug_camera
+        localStorage[name] = JSON.stringify {position, rotation}
+    
+    load_debug_camera: (name) ->
+        @enable_debug_camera()
+        {position, rotation} = JSON.parse localStorage[name]
+        vec3.set @debug_camera.position, position...
+        quat.set @debug_camera.rotation, rotation...
 
     get_viewport_coordinates: (x, y) ->
         x -= @left
