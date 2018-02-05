@@ -334,7 +334,6 @@ class GameObject
         if @probe_cube?
             return
         {probe_options} = @properties
-        # @probe_cube = @scene.background_probe
         if probe_options?
             ob = @scene.objects[probe_options.object]
             if probe_options.type in ['OBJECT', 'PLANE']
@@ -357,7 +356,7 @@ class GameObject
                 else
                     throw Error "Inavlid probe type: " + probe_options.type
         else
-            @probe_cube = @scene.background_probe
+            @probe_cube = @scene.background_probe ? @scene.instance_probe()
         return
 
 module.exports = {GameObject}

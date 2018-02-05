@@ -263,6 +263,11 @@ class Scene
                 throw Error "Bullet has not been included in this build.
                     Enable the flag 'include_bullet' in webpack.config.js,
                     or don't load/enable physics."
+        if visible or all
+            promise = Promise.all([
+                promise
+                @world_material?.load() or Promise.resolve()
+            ])
         return promise.then(=>this)
 
     # Loads a list of objects, returns a promise
@@ -280,7 +285,10 @@ class Scene
                         mean 'load_all_objects()'?"
         # TODO: This may not work the second time is not called.
         # Meshes should always return data's promises
-        return fetch_objects(list, options).then(=>@)
+        return Promise.all([
+            fetch_objects(list, options)
+            @world_material?.load() or Promise.resolve()
+        ]).then(=>@)
 
     unload_invisible_objects: (options) ->
         invisible_objects = for ob in @children when not ob.visible and ob.data
@@ -342,6 +350,8 @@ class Scene
                 console.warn "Scene '#{@name}' has no active camera,
                     nothing will be rendered."
             @enabled = true
+            if @background_probe? and not @background_probe.auto_refresh
+                @background_probe.render()
         if physics or all
             if not @world.btworld?
                 console.warn "Scene '#{@name}' has no working physics world.
@@ -354,6 +364,8 @@ class Scene
             return @background_probe
         if @background_probe_data?
             @background_probe = new Probe @, @background_probe_data
+            if @enabled and not @background_probe.auto_refresh
+                @background_probe.render()
         return @background_probe
 
     set_samples: (@bsdf_samples) ->

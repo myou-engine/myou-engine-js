@@ -107,6 +107,8 @@ fetch_objects = (object_list, options={}) ->
                 promises.push fetch_mesh(ob, options)
             for mat in ob.materials
                 promises.push mat.load(options)
+        # TODO: Options to not instance some, or to reuse cube maps etc.
+        ob.instance_probes()
     Promise.all promises
 
 module.exports = {

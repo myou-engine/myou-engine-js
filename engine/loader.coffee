@@ -39,7 +39,6 @@ load_scene = (name, filter, options, context) ->
             load_datablock scene, d, context
 
         context.loaded_scenes.push name
-        scene.instance_probe()
         Promise.resolve(scene)
 
 blender_attr_types =
