@@ -363,9 +363,9 @@ class Scene
 
     # Returns a DebugDraw instance for this scene, creating it if necessary.
     # @return [DebugDraw]
-    get_debug_draw: ->
+    get_debug_draw: (options) ->
         if not @_debug_draw?
-            @_debug_draw = new @context.DebugDraw this
+            @_debug_draw = new @context.DebugDraw this, options
         return @_debug_draw
 
     # Returns whether it has a DebugDraw instance
