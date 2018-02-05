@@ -8,12 +8,17 @@ class PlainShaderMaterial
             _input_list.push inputs[varname] = {value}
             if value.type == 'TEXTURE'
                 _texture_list.push inputs[varname]
+        @use_projection_matrix_inverse = false
 
     assign_textures: ->
 
     get_model_view_matrix_name: -> 'model_view_matrix'
 
     get_projection_matrix_name: -> 'projection_matrix'
+    
+    get_projection_matrix_inverse_name: ->
+        @use_projection_matrix_inverse = true
+        return 'projection_matrix_inverse'
 
     get_code: ->
         {fragment} = @material.data
@@ -58,6 +63,12 @@ class PlainShaderMaterial
             else
                 "gl.uniform1f(locations[#{loc_idx}], #{value_code});"
             locations.push uloc
+        if @use_projection_matrix_inverse
+            if (uloc = gl.getUniformLocation(program, 'projection_matrix_inverse'))?
+                loc_idx = locations.length
+                code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false,
+                    render.projection_matrix_inverse.toJSON());"
+                locations.push uloc
         if code.length
             preamble = 'var locations=shader.uniform_locations,
             inputs=shader.material._input_list, v;\n'
