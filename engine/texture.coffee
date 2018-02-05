@@ -43,9 +43,11 @@ class Texture
             @name
             @formats # See above
             @wrap='R' # Clamp, Repeat or Mirrored
-            @filter=true # enable bilinear filtering
-            @use_mipmap=true # TODO: currently not exported!
+            @use_mipmap # TODO: currently not exported!
+            @filter # enable bilinear filtering
         } = options
+        @filter ?= true
+        @use_mipmap ?= true
         @gl_target = 3553 # gl.TEXTURE_2D
         @gl_tex = null
         @bound_unit = -1
