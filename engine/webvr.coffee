@@ -33,6 +33,7 @@ class VRScreen extends CanvasScreen
             mat4.copyArray @sst, @HMD.stageParameters.sittingToStandingTransform
             mat4.invert @sst_inverse, @sst
             mat3.fromMat4 @sst3, @sst
+        @head_is_tracking = false
         # @to_Z_up = mat4.new 1,0,0,0, 0,0,1,0, 0,-1,0,0, 0,0,0,1
         # left eye viewport
         camera = left_cam = @scene.active_camera.clone()
@@ -63,8 +64,27 @@ class VRScreen extends CanvasScreen
         @context.canvas_screen.enabled = false
         for behaviour in @context.enabled_behaviours
             behaviour.on_enter_vr? left_cam, right_cam
+        {position, width, height, left, top} = @canvas.style
+        @old_canvas_style = {position, width, height, left, top}
+        if @canvas.style.width == '100vw' and @canvas.style.height == '100vh'
+            @set_mirror_zoom 1.3
+
+    set_mirror_zoom: (zoom) ->
+        {renderWidth, renderHeight} = @HMD.getEyeParameters("left")
+        ratio = renderWidth/renderHeight
+        @canvas.style.position = 'fixed'
+        @canvas.style.width = 200*zoom+'vw'
+        @canvas.style.height = (100*zoom/ratio) + 'vw'
+        @canvas.style.left = "#{-50*zoom+50}vw"
+        @canvas.style.top = "calc( -#{50*zoom}vw + #{50*ratio}vh )"
 
     destroy: ->
+        {position, width, height, left, top} = @old_canvas_style
+        @canvas.style.position = position
+        @canvas.style.width = width
+        @canvas.style.height = height
+        @canvas.style.left = left
+        @canvas.style.top = top
         @context.vr_screen = null
         @context.screens.splice @context.screens.indexOf(this), 1
         @context.canvas_screen.resize_to_canvas()
@@ -73,7 +93,9 @@ class VRScreen extends CanvasScreen
             behaviour.on_exit_vr?()
         return
 
-    exit: -> @destroy()
+    exit: ->
+        @HMD.exitPresent()
+        @destroy()
 
     pre_draw: ->
         {HMD} = this
@@ -117,6 +139,9 @@ class VRScreen extends CanvasScreen
             if @use_unpredict
                 quat.slerp r0, @left_orientation, r0, unpredict
             quat.copy @left_orientation, r0
+            # TODO: Test with other headsets.
+            @head_is_tracking =
+                not (p0.x == m4.m12 and p0.y == m4.m13 and p0.z == m4.m14)
             vec3.set p0, m4.m12, m4.m13, m4.m14
 
             mat4.copyArray m4, rightViewMatrix
