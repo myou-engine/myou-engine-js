@@ -273,7 +273,7 @@ class Point extends DebugShape
     constructor: (debug_draw, options={}) ->
         super debug_draw
         {
-            @position=[vec3.create(),vec3.create()]
+            @position=vec3.create()
             @color=color4.new 1,1,1,1
             @size=.1
             @ttl_frames=0
