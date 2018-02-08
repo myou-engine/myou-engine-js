@@ -644,6 +644,12 @@ class RenderManager
             world2cam, projection_matrix)
 
     # @private
+    # Draws a quad occupying the whole viewport with the specified material.
+    draw_quad: (material, scene, world2cam, cam2world, projection_matrix) ->
+        @draw_mesh(@bg_mesh, cam2world, -1, material, world2cam,
+            projection_matrix)
+
+    # @private
     # Draws a viewport. Usually called from `draw_all`.
     draw_viewport: (viewport, rect, dest_buffer, passes)->
         gl = @gl
@@ -853,6 +859,21 @@ class RenderManager
             for ob in scene.mesh_passes[2]
                 if ob.visible == true
                     @draw_mesh ob, ob.world_matrix, 2
+
+        # FOREGROUND_PLANES
+        if scene.foreground_planes.length != 0
+            gl.depthMask false
+            blending = false
+            for fg_plane in scene.foreground_planes
+                {material, is_alpha} = fg_plane
+                if blending != is_alpha
+                    if is_alpha
+                        gl.enable gl.BLEND
+                    else
+                        gl.disable gl.BLEND
+                @draw_quad material, scene, world2cam, cam2world,
+                    cam.projection_matrix
+            gl.depthMask true
 
         scene._debug_draw?._draw gl, cam
         return

@@ -48,6 +48,7 @@ class Scene
         @extra_data = null
         @data_dir = ''
         @original_scene_name = ''
+        @foreground_planes = []
         @_debug_draw = null
 
     add_object: (ob, name='no_name', parent_name='', parent_bone)->
