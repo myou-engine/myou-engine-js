@@ -55,6 +55,7 @@ class Material
         @_texture_list = []
         @animation_strips = @data?.animation_strips
         @double_sided = Boolean @data?.double_sided
+        @alpha_texture = null
         if @data?
             generator_class = material_types[@data.material_type]
             if not generator_class?
@@ -69,6 +70,9 @@ class Material
     get_texture_list: ->
         if not @_has_texture_list_checked
             @generator.assign_textures()
+            for tex in @_texture_list when not tex.skip_load
+                @alpha_texture = tex.value
+                break
             @_has_texture_list_checked = true
         return @_texture_list
 

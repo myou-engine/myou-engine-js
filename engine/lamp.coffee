@@ -86,10 +86,17 @@ class Lamp extends GameObject
             extra_bias = '-0.0007'
 
         varyings = [{type: 'PROJ_POSITION', varname: 'proj_position'}]
-        fs = """#extension GL_OES_standard_derivatives : enable
+        fs = fs_tex = """#extension GL_OES_standard_derivatives : enable
         precision highp float;
+        #ifdef USE_TEXTURE
+        uniform sampler2D samp;
+        varying vec2 uv;
+        #endif
         varying vec4 proj_position;
         void main(){
+            #ifdef USE_TEXTURE
+            if(texture2D(samp, uv).a < 0.5) discard;
+            #endif
             float depth = proj_position.z/proj_position.w;
             depth = depth * 0.5 + 0.5;
             float dx = dFdx(depth);
@@ -99,12 +106,24 @@ class Lamp extends GameObject
         }"""
         if @context.is_webgl2
             fs = glsl100to300 fs
-
+            fs_tex = glsl100to300 fs_tex, USE_TEXTURE: 1
+        
+        # regular shadows
         mat = new Material @context, @name+'_shadow', {
-            fragment: fs, varyings, material_type: 'PLAIN_SHADER'
+            fragment: fs, varyings, material_type: 'PLAIN_SHADER',
         }
         mat.is_shadow_material = true
         @_shadow_material = mat
+        
+        # clip alpha shadows with texture
+        {blank_texture} = @context.render_manager
+        mat = new Material @context, @name+'_alpha_shadow', {
+            fragment: fs_tex, material_type: 'PLAIN_SHADER',
+            uniforms: [{varname: 'samp', value: blank_texture}],
+            varyings: varyings.concat [{varname: 'uv', type: 'UV'}]
+        }
+        mat.is_shadow_material = true
+        @_alpha_shadow_material = mat
 
         mat4.ortho(
             @_projection_matrix,

@@ -767,8 +767,20 @@ class RenderManager
                     data = ob.get_lod_mesh(viewport, mesh_lod_min_length_px,
                         @render_tick).data
                     if ob.visible and data and not ob.culled_in_last_frame
-                        @draw_mesh ob, ob.world_matrix, -1, mat, world2light,
+                        @draw_mesh ob, ob.world_matrix, 0, mat, world2light,
                             lamp._projection_matrix
+
+                mat = lamp._alpha_shadow_material
+                tex = mat.inputs.samp
+
+                for ob in scene.mesh_passes[1]
+                    if ob.materials[0].alpha_texture?
+                        data = ob.get_lod_mesh(viewport, mesh_lod_min_length_px,
+                            @render_tick).data
+                        if ob.visible and data and not ob.culled_in_last_frame
+                            tex.value = ob.materials[0].alpha_texture
+                            @draw_mesh ob, ob.world_matrix, 1, mat, world2light,
+                                lamp._projection_matrix
 
                 lamp.shadow_fb.enable()
                 @common_shadow_fb.draw_with_filter @filters.shadow_box_blur
