@@ -484,6 +484,7 @@ class RenderManager
         m3 = @_m3
         cam = @_cam
 
+        mesh.culled_in_last_frame = false
         if @use_frustum_culling
             # Cull object if it's outside camera frustum
             parented_pos = if mesh.parent then mesh.get_world_position()
@@ -495,7 +496,6 @@ class RenderManager
                     mesh.culled_in_last_frame = true
                     return
             # TODO: Also check with @clipping_plane!
-            mesh.culled_in_last_frame = false
 
         # Select alternative mesh / LoD
         if @_vp?.camera?
