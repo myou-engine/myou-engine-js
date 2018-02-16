@@ -2,7 +2,7 @@
 # This module allows fetch to load local files from file://
 # in node.js, electron and NW.js
 
-if window.process?.execPath
+if window.process?.execPath and process.execPath != '/'
 
     req = eval 'require'
     fs = req 'fs'
