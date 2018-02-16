@@ -45,9 +45,11 @@ class Texture
             @wrap='R' # Clamp, Repeat or Mirrored
             @use_mipmap # TODO: currently not exported!
             @filter # enable bilinear filtering
+            @use_alpha
         } = options
         @filter ?= true
         @use_mipmap ?= true
+        @use_alpha ?= false
         @gl_target = 3553 # gl.TEXTURE_2D
         @gl_tex = null
         @bound_unit = -1
@@ -284,8 +286,15 @@ class Texture
                 gl.pixelStorei gl.UNPACK_FLIP_Y_WEBGL, true
                 # TODO: Use gl.RGB when there's no alpha?
                 # Would other format be better?
-                gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,
-                    gl.UNSIGNED_BYTE, @image
+                if @use_alpha
+                    gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,
+                        gl.UNSIGNED_BYTE, @image
+                else if @context.is_webgl2
+                    gl.texImage2D gl.TEXTURE_2D, 0, gl.RGB565, gl.RGB,
+                        gl.UNSIGNED_SHORT_5_6_5, @image
+                else
+                    gl.texImage2D gl.TEXTURE_2D, 0, gl.RGB, gl.RGB,
+                        gl.UNSIGNED_BYTE, @image
                 if @use_mipmap
                     gl.generateMipmap gl.TEXTURE_2D
             when 'video'
