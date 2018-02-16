@@ -1,9 +1,9 @@
 
 {vec3} = require 'vmath'
-# Force usage of spur-events' polyfill even when there is pointer event support
-# to avoid some problems in Chrome
-window.PointerEvent = undefined
-{addListener, removeListener} = require 'spur-events'
+# To be able to use pointer events everywhere,
+# use this https://www.npmjs.com/package/pepjs
+addListener = (el, ev, f, opts) -> el.addEventListener ev, f, opts
+removeListener = (el, ev, f, opts) -> el.removeEventListener ev, f, opts
 {set_immediate} = require './main_loop'
 
 supports_passive_events = false # changed at the end
@@ -37,6 +37,8 @@ class Behaviour
         @_root = @context.root
         @context.behaviours.push @
         @init_time = performance.now()
+        @locked = false
+        @_prevent_defaults = false
         @_enabled = false
         @_object_under_pointer = {}
         @_last_hit = {}
@@ -76,6 +78,7 @@ class Behaviour
             if @_menu_prevent_default?
                 @_root.addEventListener 'contextmenu', @_menu_prevent_default
             @_enabled = true
+        return this
 
     disable: ->
         if @_enabled
@@ -86,6 +89,7 @@ class Behaviour
             if @_menu_prevent_default?
                 @_root.removeEventListener 'contextmenu', @_menu_prevent_default
             @_enabled = false
+        return this
 
     age: ->
         performance.now() - @init_time
@@ -102,6 +106,7 @@ class Behaviour
         object.behaviours[@id] = @
         @objects.push(object)
         @assignment_times[object.name] = performance.now()
+        return this
 
     unassign: (object)->
         i = object.behaviours.indexOf @
@@ -109,19 +114,28 @@ class Behaviour
 
         i = @objects.indexOf object
         if i > -1 then @objects.splice(i, 1)
+        return this
 
     disable_context_menu: ->
         if not @_menu_prevent_default?
             @_menu_prevent_default = (e) -> e.preventDefault()
             if @_enabled
                 @_root.addEventListener 'contextmenu', @_menu_prevent_default
-        return
+        return this
 
     enable_context_menu: ->
         if @_menu_prevent_default?
             @_root.removeEventListener 'contextmenu', @_menu_prevent_default
             @_menu_prevent_default = null
-        return
+        return this
+
+    enable_prevent_pointer_defaults: ->
+        @_prevent_defaults = true
+        return this
+
+    disable_prevent_pointer_defaults: ->
+        @_prevent_defaults = false
+        return this
 
     enable_object_picking: (options={}) ->
         {
@@ -159,6 +173,18 @@ class Behaviour
                 return @scene.world.ray_test pos, rayto, @int_mask
         return {}
 
+    lock_pointer: ->
+        if not @_enabled
+            throw Error "Can't lock pointer when behaviour is disabled"
+        if not @locked
+            @_root.requestPointerLock()
+        return this
+
+    unlock_pointer: ->
+        if @locked
+            document.exitPointerLock()
+        return this
+
     _add_callbacks: =>
         @_remove_callbacks()
         if @on_tick?
@@ -182,6 +208,8 @@ class Behaviour
         @_objects_frame_callback = _frame_callback = null
 
     _on_pointer_down: (event) =>
+        if @_prevent_defaults
+            event.preventDefault()
         x = event.pageX - @context.root_rect.left
         y = event.pageY - @context.root_rect.top
         prev = @_prev_events['mouse']
@@ -205,6 +233,8 @@ class Behaviour
         return
 
     _on_pointer_up: (event) =>
+        if @_prevent_defaults
+            event.preventDefault()
         x = event.pageX - @context.root_rect.left
         y = event.pageY - @context.root_rect.top
         prev = @_prev_events['mouse']
@@ -236,14 +266,20 @@ class Behaviour
         return
 
     _on_pointer_move: (event) =>
+        if @_prevent_defaults
+            event.preventDefault()
         # TODO: Use pointerIDs, both for deltas and for viewport/object over/out
         x = event.pageX - @context.root_rect.left
         y = event.pageY - @context.root_rect.top
         prev = @_prev_events['mouse']
         if not prev?
             prev = @_prev_events['mouse'] = {x, y}
-        delta_x = x - prev.x
-        delta_y = y - prev.y
+        if @locked
+            delta_x = event.movementX
+            delta_y = event.movementY
+        else
+            delta_x = x - prev.x
+            delta_y = y - prev.y
         prev.x = x; prev.y = y
         {button, buttons, shiftKey, ctrlKey, altKey, metaKey} = event
         # TODO: Should we only lock outside the window?
@@ -276,7 +312,7 @@ class Behaviour
                 }
                 @_over_object = object
             out_event = {x, y, delta_x, delta_y, button, buttons,
-                shiftKey, ctrlKey, altKey, metaKey, viewport}
+                shiftKey, ctrlKey, altKey, metaKey, viewport, event}
             if not @_over_viewport?
                 @_over_viewport = viewport
                 @on_pointer_over? out_event
@@ -343,9 +379,13 @@ class Behaviour
         @on_key_up? and window.addEventListener 'keyup', @_on_key_up
         @on_wheel? and root.addEventListener 'wheel', @_on_wheel_listener
         # @on_click? and addListener root, 'click', @on_click
+        document.addEventListener 'pointerlockchange', @_pointerlockchange, false
+
 
     _destroy_events: ->
         root = @_root
+        if @locked
+            @unlock_pointer()
         options = if supports_passive_events then {passive: false} else false
         if @on_pointer_over?
             removeListener root, 'pointerover', @_on_pointer_over, options
@@ -361,6 +401,39 @@ class Behaviour
         @on_key_up? and window.removeEventListener 'keyup', @_on_key_up
         @on_wheel? and root.removeEventListener 'wheel', @_on_wheel_listener
         # @on_click? and removeListener root, 'click', @on_click
+        document.removeEventListener 'pointerlockchange', @_pointerlockchange, false
+
+    _pointerlockchange: (event) =>
+        root = @_root
+        options = if supports_passive_events then {passive: false} else false
+        if document.pointerLockElement?
+            @locked = true
+            if @_on_pointer_move?
+                removeListener window, 'pointermove', @_on_pointer_move, options
+                removeListener window, 'pointerout', @_on_pointer_move, options
+                addListener root, 'mousemove', @_on_pointer_move, options
+                addListener root, 'mouseout', @_on_pointer_move, options
+            if @on_pointer_down?
+                removeListener root, 'pointerdown', @_on_pointer_down, options
+                addListener root, 'mouserdown', @_on_pointer_down, options
+            if @on_pointer_up?
+                removeListener window, 'pointerup', @_on_pointer_up, options
+                addListener root, 'mouseup', @_on_pointer_up, options
+            @on_lock?()
+        else
+            @locked = false
+            if @_on_pointer_move?
+                removeListener root, 'mousemove', @_on_pointer_move, options
+                removeListener root, 'mouseout', @_on_pointer_move, options
+                addListener window, 'pointermove', @_on_pointer_move, options
+                addListener window, 'pointerout', @_on_pointer_move, options
+            if @on_pointer_down?
+                removeListener root, 'mouserdown', @_on_pointer_down, options
+                addListener root, 'pointerdown', @_on_pointer_down, options
+            if @on_pointer_up?
+                removeListener root, 'mouseup', @_on_pointer_up, options
+                addListener window, 'pointerup', @_on_pointer_up, options
+            @on_unlock?()
 
 options = Object.defineProperty {}, 'passive', get: ->
     supports_passive_events = true
