@@ -1,4 +1,4 @@
-{vec3, quat, color4} = require 'vmath'
+{mat4, vec3, quat, color4} = require 'vmath'
 {fetch_objects} = require './fetch_assets'
 {Probe} = require './probe'
 {World, load_physics_engine} = require './physics/bullet'
@@ -52,6 +52,11 @@ class Scene
         @_debug_draw = null
 
     add_object: (ob, name='no_name', parent_name='', parent_bone)->
+        if ob.scene?
+            if ob.scene == this
+                return
+            else
+                ob.scene.remove_object ob
         ob.original_scene = ob.original_scene or ob.scene or @
         ob.scene = @
 
@@ -146,6 +151,7 @@ class Scene
             vec3.transformQuat pos, pos, p_rot
             quat.mul rot, p_rot, rot
             child.set_rotation_order rotation_order
+            mat4.identity child.matrix_parent_inverse
         child.parent = parent
         parent.children.push child
         if parent_index > child_index

@@ -415,10 +415,11 @@ class Mesh extends GameObject
         return amesh
 
     # Returns a clone of the object
-    # @param [Scene] scene: Destination scene
-    # @param [bool] recursive: Whether to clone its children
-    clone: (scene, recursive) ->
-        clone = super scene, recursive
+    # @option options scene [Scene] Destination scene
+    # @option options recursive [bool] Whether to clone its children
+    # @option options behaviours [bool] Whether to clone its behaviours
+    clone: (options) ->
+        clone = super options
         clone.uv_rect = @uv_rect[...]
         clone.uv_right_eye_offset = @uv_right_eye_offset[...]
         clone.last_lod = {}

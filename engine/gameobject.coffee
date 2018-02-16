@@ -258,13 +258,21 @@ class GameObject
         behaviour.unassign @
 
     # Returns a clone of the object
-    # @param [Scene] scene: Destination scene
-    # @param [bool] recursive: Whether to clone its children
-    clone: (scene=@scene, options={}) ->
+    # @option options scene [Scene] Destination scene
+    # @option options recursive [bool] Whether to clone its children
+    # @option options behaviours [bool] Whether to clone its behaviours
+    clone: (options, options2) ->
+        if options?.type == 'SCENE'
+            console.warn "DEPRECATED: clone(scene, options) is now
+                clone(options={scene})"
+            scene = options
+            options = options2 ? {}
+            options.scene = scene
         {
             recursive=false
             behaviours=true
-        } = options
+            scene = @scene
+        } = options ? {}
         # TODO: Is it better or more efficient to instance a new object
         # and then copy all the values? (i.e. "new GameObject")
         n = Object.create @
@@ -290,7 +298,8 @@ class GameObject
         if n.materials and scene != this.scene
             for i in [0...materials.length]
                 n.materials[i] = materials[i].clone_to_scene scene
-
+        
+        n.scene = null
         scene?.add_object n, @name
         if behaviours
             for b in @behaviours
@@ -298,7 +307,7 @@ class GameObject
         # Adding children after ensures objects don't need to be sorted
         if recursive
             for child in @children
-                child = child.clone(scene, {recursive: true})
+                child = child.clone(options)
                 child.parent = n
                 children.push child
         n.body.instance()
