@@ -5,7 +5,7 @@ class PlainShaderMaterial
         {data, _input_list, inputs, _texture_list} = @material
         for u in data.uniforms or []
             {varname, value} = u
-            _input_list.push inputs[varname] = {value}
+            _input_list.push inputs[varname] = u
             if value.type == 'TEXTURE'
                 _texture_list.push inputs[varname]
         @use_projection_matrix_inverse = false
@@ -15,7 +15,7 @@ class PlainShaderMaterial
     get_model_view_matrix_name: -> 'model_view_matrix'
 
     get_projection_matrix_name: -> 'projection_matrix'
-    
+
     get_projection_matrix_inverse_name: ->
         @use_projection_matrix_inverse = true
         return 'projection_matrix_inverse'
