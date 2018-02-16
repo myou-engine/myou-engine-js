@@ -451,8 +451,7 @@ class Body
 
     apply_central_force: (force)->
         {tmp_Vector3} = @world
-        f = Math.pow(1/frame_factor, 1.025)
-        tmp_Vector3.setValue(force.x * f, force.y * f, force.z * f)
+        tmp_Vector3.setValue(force.x, force.y, force.z)
         @btbody.applyCentralForce(tmp_Vector3)
 
     apply_central_impulse: (force)->
