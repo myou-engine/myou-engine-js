@@ -9,6 +9,7 @@ class VRScreen extends CanvasScreen
         {
             use_room_scale_parent=true
             use_unpredict=true
+            head
         } = options
         if use_room_scale_parent and not @scene.active_camera.parent?
             throw Error "use_room_scale_parent requires the camera to have a
@@ -20,6 +21,13 @@ class VRScreen extends CanvasScreen
         @context.vr_screen = this
         @canvas = @context.canvas
         {@framebuffer} = @context.canvas_screen
+        @head_is_tracking = false
+        @head = head ? new @context.GameObject
+        @head.set_rotation_order 'Q'
+        @scene.add_object @head
+        @head.parent_to @scene.active_camera, false
+        if use_room_scale_parent
+            @head.parent_to @scene.active_camera.parent, true
         @frame_data = new VRFrameData
         @old_pm0 = mat4.create()
         @left_orientation = quat.create()
@@ -33,7 +41,6 @@ class VRScreen extends CanvasScreen
             mat4.copyArray @sst, @HMD.stageParameters.sittingToStandingTransform
             mat4.invert @sst_inverse, @sst
             mat3.fromMat4 @sst3, @sst
-        @head_is_tracking = false
         # @to_Z_up = mat4.new 1,0,0,0, 0,0,1,0, 0,-1,0,0, 0,0,0,1
         # left eye viewport
         camera = left_cam = @scene.active_camera.clone()
@@ -57,10 +64,18 @@ class VRScreen extends CanvasScreen
         v.rect = [0.5, 0, 0.5, 1]
         v.right_eye_factor = 1
         # resize canvas and viewports
-        leftEye = @HMD.getEyeParameters("left")
-        rightEye = @HMD.getEyeParameters("right")
-        @resize(Math.max(leftEye.renderWidth, rightEye.renderWidth) * 2,
-                Math.max(leftEye.renderHeight, rightEye.renderHeight))
+        check_size = =>
+            if not @context.vr_screen
+                return
+            left_eye = @HMD.getEyeParameters("left")
+            right_eye = @HMD.getEyeParameters("right")
+            width = Math.max(left_eye.renderWidth, right_eye.renderWidth) * 2
+            height = Math.max(left_eye.renderHeight, right_eye.renderHeight)
+            if @width != width or @height != height
+                @resize width, height
+            # TODO: enable this line when it works somewhere.
+            # setTimeout check_size, 1000
+        check_size()
         @context.canvas_screen.enabled = false
         for behaviour in @context.enabled_behaviours
             behaviour.on_enter_vr? left_cam, right_cam
@@ -100,6 +115,7 @@ class VRScreen extends CanvasScreen
     pre_draw: ->
         {HMD} = this
         # Read pose
+        return if not @frame_data? # not sure when this happens
         HMD.getFrameData @frame_data
         # Set position of VR cameras, etc
         {
@@ -153,6 +169,9 @@ class VRScreen extends CanvasScreen
                 quat.slerp r1, @right_orientation, r1, unpredict
             quat.copy @right_orientation, r1
             vec3.set p1, m4.m12, m4.m13, m4.m14
+
+            vec3.lerp @head.position, p0, p1, .5
+            quat.slerp @head.rotation, r0, r1, .5
 
             @last_time = time
 
