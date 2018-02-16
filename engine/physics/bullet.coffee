@@ -133,7 +133,7 @@ class Body
         @world = null
         @type = 'NO_COLLISION' # read only, use set_type()
         @shape = 'BOX' # read only, use set_shape()
-        @radius = 1 # used only if object has no dimensions
+        @radius = 1 # used only if object has no bound_box
         @use_anisotropic_friction = false
         @friction_coefficients = vec3.new 1, 1, 1
         @group = 0x0001
@@ -180,13 +180,19 @@ class Body
 
         if @type == 'NO_COLLISION' or not @btworld?
             return
-
-        he = @half_extents
-        dim = @owner.dimensions
-        if dim.x == 0 and dim.y == 0 and dim.z == 0
-            vec3.scale he, @owner.scale, @radius
+        
+        if @owner.bound_box?
+            [a,b] = @owner.bound_box
+            he = vec3.sub @half_extents, b, a
+            vec3.scale he, he, .5
         else
-            vec3.scale he, dim, 0.5
+            he = vec3.set he, @radius, @radius, @radius
+        if @owner.parent?
+            # TODO: Avoid multiple calls to get_world_matrix()
+            scale = vec3.fromMat4Scale vec3.create(), @owner.get_world_matrix()
+        else
+            scale = @owner.scale
+        vec3.mul he, he, scale
 
         {tmp_Vector3} = @world
         if not @btshape? then switch @shape
@@ -221,13 +227,13 @@ class Body
                     return
 
                 @_use_visual_mesh = use_visual_mesh
-
+                
                 # Get "global" scale
                 # @half_extents is used as scale for debug objects, so we
                 # assign it here as regular scale instead of half-extents
                 if @owner.parent
                     # TODO: Avoid multiple calls to get_world_matrix()
-                    scale = vec3.fromMat4Scale he, @get_world_matrix()
+                    scale = vec3.fromMat4Scale he, @owner.get_world_matrix()
                 else
                     scale = vec3.copy he, @owner.scale
                 if @shape == 'CONVEX_HULL'
