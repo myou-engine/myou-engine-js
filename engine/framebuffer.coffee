@@ -1,6 +1,7 @@
 {vec2, vec4, mat4} = require 'vmath'
 
 class FbTexture
+    type: 'TEXTURE'
     set: (@gl_tex, @gl_target) ->
         @loaded = true
         @bound_unit = -1
