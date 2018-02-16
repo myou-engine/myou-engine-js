@@ -155,7 +155,8 @@ class MainLoop
         @logic_durations[@_fdi] = (time2 - time) + (time6 - time5)
         @physics_durations[@_fdi] = time3 - time2
         @animation_durations[@_fdi] = time4 - time3
-        @render_durations[@_fdi] = time5 - time4
+        @render_durations[@_fdi] =
+            Math.max @context.render_manager.last_time_ms, time5 - time4
         @_fdi = (@_fdi+1) % @last_frame_durations.length
         if @_fdi == 0 and @update_fps
             @update_fps {

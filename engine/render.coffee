@@ -19,7 +19,6 @@ class RenderManager
         @temporary_framebuffers = {}
         @render_tick = 0
         @context_lost_count = 0
-        @frame_start = performance.now()
         @camera_z = vec3.create()
         @no_s3tc = @context.MYOU_PARAMS.no_s3tc
         ba = @context.MYOU_PARAMS.background_alpha
@@ -164,6 +163,7 @@ class RenderManager
             depth_texture: webgl2_ext or gl.getExtension "WEBGL_depth_texture"
             shader_texture_lod:
                 webgl2_ext or gl.getExtension "EXT_shader_texture_lod"
+            disjoint_timer_query: gl.getExtension "EXT_disjoint_timer_query"
         if @no_s3tc
             @extensions['compressed_texture_s3tc'] = null
 
@@ -249,6 +249,14 @@ class RenderManager
         @bg_mesh.radius = 1e999
         @bg_mesh.materials = [null]
         @bg_mesh.material_defines = {CORRECTION_NONE: 1}
+        
+        @last_time_ms = @last_time_ns = 0
+        if (ext = @extensions.disjoint_timer_query)?
+            @time_queries = []
+            for [0...2]
+                @time_queries.push (q = ext.createQueryEXT())
+                ext.beginQueryEXT ext.TIME_ELAPSED_EXT, q
+                ext.endQueryEXT ext.TIME_ELAPSED_EXT
         return
 
     # @private
@@ -397,8 +405,7 @@ class RenderManager
     # Draws all enabled scenes of all the viewports of all screens
     # Usually called from {MainLoop}
     draw_all: ->
-        @frame_start = performance.now()
-        @render_tick += 1
+        render_tick = ++@render_tick
         @triangles_drawn = 0
         @meshes_drawn = 0
 
@@ -407,6 +414,14 @@ class RenderManager
             for {camera: {scene}} in screen.viewports when scene.enabled \
                     and scene.last_update_matrices_tick < @render_tick
                 scene.update_all_matrices()
+
+        if (ext = @extensions.disjoint_timer_query)? and render_tick%2
+            query = @time_queries[render_tick%2]
+            if ext.getQueryObjectEXT query, ext.QUERY_RESULT_AVAILABLE_EXT
+                @last_time_ns = ns = ext.getQueryObjectEXT query, ext.QUERY_RESULT_EXT
+                @last_time_ms = ns * 0.000001
+            ext.beginQueryEXT ext.TIME_ELAPSED_EXT, query
+            doing_query = true
 
         # TODO: have a list of objects instead of probes?
         for probe in @probes
@@ -450,7 +465,9 @@ class RenderManager
                         viewport, viewport.rect_pix, screen.framebuffer, [0, 1]
             screen.post_draw()
 
-        #@gl.flush()
+        if doing_query
+            ext.endQueryEXT ext.TIME_ELAPSED_EXT
+
         @compiled_shaders_this_frame = 0
 
     ensure_post_processing_framebuffers: (width, height, use_float) ->
