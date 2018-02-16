@@ -180,6 +180,9 @@ class BlenderInternalMaterial
                 when 5, GPU_DYNAMIC_OBJECT_COLOR # object color
                     code.push "v=ob.color;gl.uniform4f(locations[#{loc_idx}],
                         v.r, v.g, v.b, v.a);"
+                when GPU_DYNAMIC_OBJECT_LOCTOVIEWMAT
+                    code.push "gl.uniformMatrix4fv(locations[#{loc_idx}], false,
+                        render._model_view_matrix.toJSON());"
                 when 6, GPU_DYNAMIC_LAMP_DYNVEC # lamp direction in camera space
                     code.push "v=lamps[#{current_lamp}]._dir;
                         gl.uniform3f(locations[#{loc_idx}], v.x, v.y, v.z);"
