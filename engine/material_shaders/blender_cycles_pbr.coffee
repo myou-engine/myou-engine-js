@@ -243,17 +243,21 @@ class BlenderCyclesPBRMaterial
                 tex_list[#{@unfreflect_index}].value.bound_unit);"
             locations.push loc
 
+        planar_probe_code = []
         if (loc = gl.getUniformLocation program, 'unfplanarvec')?
-            probe_code.push """
+            planar_probe_code.push """
                 v=ob.probe_planar.normal;
                 gl.uniform3f(locations[#{locations.length}], v.x, v.y, v.z);"""
             locations.push loc
 
         if (loc = gl.getUniformLocation program, 'unfplanarreflectmat')?
-            probe_code.push """
+            planar_probe_code.push """
                 gl.uniformMatrix4fv(locations[#{locations.length}], false,
                 ob.probe_planar.planarreflectmat.toJSON());"""
             locations.push loc
+
+        if planar_probe_code.length != 0
+            probe_code.push "if(ob.probe_planar){"+planar_probe_code.join('\n')+'}'
 
         ## TODO: update/store these two in probe even when not auto rendering
         if (loc = gl.getUniformLocation program, 'unfprobepos')?
