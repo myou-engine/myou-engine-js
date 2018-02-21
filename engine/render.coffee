@@ -868,6 +868,15 @@ class RenderManager
                     (ob.dimensions.x+ob.dimensions.y+ob.dimensions.z)*0.166666)
             timsort.sort scene.mesh_passes[1], (a,b)-> a._sqdist - b._sqdist
 
+            # Sort some meshes, for now just one per frame, with more iterations
+            # for nearby meshes (TODO: Calculate which one has more divergence)
+            idx = @render_tick % ((scene.mesh_passes[1].length * 1.5)|0)
+            idx %= scene.mesh_passes[1].length
+            remaining_meshes = 1
+            cam_name = cam.name
+            ob = scene.mesh_passes[1][idx]
+            (ob.last_lod[cam_name]?.mesh ? ob).sort_faces(cam_pos)
+
             for ob in scene.mesh_passes[1]
                 if ob.visible == true
                     @draw_mesh(ob, ob.world_matrix, 1)

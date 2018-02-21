@@ -46,6 +46,10 @@
 # Safari 9 doesn't have the constants in WebGLRenderingContext
 GL_TRIANGLES = 4
 
+face_sort_array = new Float64Array 4
+face_sort_array32 = new Uint32Array face_sort_array.buffer
+iarray_temporary = new Uint32Array 4*3
+
 # MeshData contains all data of a mesh object that is loaded separately
 # from the object itself. Available as `mesh_object.data`.
 class MeshData
@@ -424,5 +428,72 @@ class Mesh extends GameObject
         clone.uv_right_eye_offset = @uv_right_eye_offset[...]
         clone.last_lod = {}
         return clone
+
+    sort_faces: (camera_position)->
+        return if not @data
+        BIG_ENDIAN = 0
+        offsets = @offsets
+        num_submeshes = (offsets.length/2) - 1
+        {varray, iarray, stride} = @data
+        stride >>= 2
+        v = vec3.create()
+        vt = vec3.create()
+        # we scale this vector so we avoid dividing triangle positions by 3
+        camera_position3 = vec3.clone camera_position
+        m4 = mat4.clone @world_matrix
+        mat4.invert m4, m4
+        vec3.transformMat4 camera_position3, camera_position3, m4
+        vec3.scale camera_position3, camera_position3, 3
+        cp3x = camera_position3.x
+        cp3y = camera_position3.y
+        cp3z = camera_position3.z
+        # # Find out the furthest possible distance we can find, so that's 2**16
+        # vec3
+        for i in [0...num_submeshes]
+            i2 = i<<1
+            va = varray.subarray offsets[i2], offsets[i2+2]
+            ia = iarray.subarray offsets[i2+1], offsets[i2+3]
+            num_triangles = (ia.length*.3333333333333333)|0
+            if face_sort_array.length < num_triangles
+                face_sort_array = new Float64Array num_triangles
+                face_sort_array32 = new Uint32Array face_sort_array.buffer
+                iarray_temporary = new Uint32Array ia.length
+            j2 = j3 = 0
+            for j in [0...num_triangles]
+                v0 = ia[j3] * stride
+                v1 = ia[j3+1] * stride
+                v2 = ia[j3+2] * stride
+                # vec3.set v, va[v0], va[v0+1], va[v0+2]
+                # vec3.set vt, va[v1], va[v1+1], va[v1+2]
+                # vec3.add v, v, vt
+                # vec3.set vt, va[v2], va[v2+1], va[v2+2]
+                # vec3.add v, v, vt
+                # sqr_dist = vec3.sqrDist v, camera_position3
+                x = va[v0]
+                y = va[v0+1]
+                z = va[v0+2]
+                x += va[v1]
+                y += va[v1+1]
+                z += va[v1+2]
+                x += va[v2] - cp3x
+                y += va[v2+1] - cp3y
+                z += va[v2+2] - cp3z
+                sqr_dist = x*x + y*y + z*z
+                face_sort_array[j] = -sqr_dist
+                face_sort_array32[j2+BIG_ENDIAN] = j
+                j2 += 2
+                j3 += 3
+            face_sort_array.subarray(0, num_triangles).sort()
+            iarray_temporary.set ia
+            j3 = 0
+            for j2 in [BIG_ENDIAN...num_triangles*2] by 2
+                t = face_sort_array32[j2]
+                t3 = t+(t<<1)
+                ia[j3] = iarray_temporary[t3]
+                ia[j3+1] = iarray_temporary[t3+1]
+                ia[j3+2] = iarray_temporary[t3+2]
+                j3 += 3
+        @update_iarray()
+        return
 
 module.exports = {Mesh}
