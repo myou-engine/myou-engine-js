@@ -791,7 +791,7 @@ class RenderManager
                 tex = mat.inputs.samp
 
                 for ob in scene.mesh_passes[1]
-                    if ob.materials[0].alpha_texture?
+                    if ob.materials[0].alpha_texture? and not ob.properties.no_shadow
                         data = ob.get_lod_mesh(viewport, mesh_lod_min_length_px,
                             @render_tick).data
                         if ob.visible and data and not ob.culled_in_last_frame
