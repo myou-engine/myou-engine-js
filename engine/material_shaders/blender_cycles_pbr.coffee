@@ -1,16 +1,18 @@
 
 
 # TODO: Should jitter be generated with a different random distrubition?
-
+{vec3} = require 'vmath'
 
 class BlenderCyclesPBRMaterial
     constructor: (@material) ->
-        {data, _texture_list, @context, scene} = @material
+        {data, _texture_list, _input_list, inputs, @context, scene} = @material
         {blank_texture} = @context.render_manager
         for u in data.uniforms
             switch u.type
                 when 'IMAGE', 'LAMP_SHADOW_MAP'
                     _texture_list.push {value: blank_texture}
+                when 'CUSTOM'
+                    _input_list.push inputs[u.name] = {value: vec3.create()}
         @unfjitter_index = _texture_list.length
         _texture_list.push {value: get_jitter_texture(scene)}
         @unflutsamples_index = _texture_list.length
@@ -94,7 +96,7 @@ class BlenderCyclesPBRMaterial
         locations = []
         texture_count = 0
         for u in @material.data.uniforms or []
-            if u.type == -1 # custom uniforms are material.inputs
+            if u.type == 'CUSTOM' # custom uniforms are material.inputs
                 current_input++
             uloc = gl.getUniformLocation(program, u.varname)
             if not uloc? or uloc == -1
@@ -185,6 +187,9 @@ class BlenderCyclesPBRMaterial
                 when 'LAMP_BLEED_BIAS'
                     code.push "gl.uniform1f(locations[#{loc_idx}],
                         lamps[#{current_lamp}].shadow_options.bleed_bias);"
+                when 'CUSTOM'
+                    code.push "v=inputs[#{current_input}].value;
+                        gl.uniform3f(locations[#{loc_idx}], v.x, v.y, v.z)"
                 else
                     console.log "Warning: unknown uniform", u.varname, \
                         u.type, "of data type", u.datatype
