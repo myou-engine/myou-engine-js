@@ -8,9 +8,8 @@ MersenneTwister = require 'mersennetwister'
 NOISE_SIZE = 32
 
 class SSAOFilter extends BaseFilter
-    constructor: (context, @radius, @zrange, @strength) ->
+    constructor: (context, @radius, @zrange, @strength, @samples) ->
         super context, 'ssao'
-        @samples = 32
         @disk_texture_uniform = {varname: 'disk_texture', value: null}
         @noise_texture_uniform = {varname: 'noise_texture', value: null}
         @make_textures()
@@ -149,9 +148,16 @@ class SSAOBlur extends BaseFilter
 
 
 class SSAOEffect extends FilterEffect
-    constructor: (context, @radius=2.5, @zrange=2, @strength=1) ->
+    constructor: (context, options={}) ->
         super context
-        @filter = new SSAOFilter(@context, @radius, @zrange, @strength)
+        {
+            @radius=2.5
+            @zrange=2
+            @strength=1
+            @samples=32
+        } = options
+        @filter = new SSAOFilter(@context,
+            @radius, @zrange, @strength, @samples)
         @blur = new SSAOBlur @context
 
     set_radius: (@radius) ->
