@@ -268,8 +268,9 @@ class GameObject
             scene = options
             options = options2 ? {}
             options.scene = scene
+            options.recursive = options.recursive ? false
         {
-            recursive=false
+            recursive=true
             behaviours=true
             scene = @scene
         } = options ? {}
