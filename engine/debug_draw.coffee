@@ -50,9 +50,10 @@ class DebugDraw
                             @_draw_empty gl, render_manager, ob, mm4
                     else
                         @_draw_empty gl, render_manager, ob, mm4
-        gl.disable gl.DEPTH_TEST
-        for ob in @scene.armatures
-            @_draw_armature gl, render_manager, ob, mm4
+        if @draw_invisibles
+            gl.disable gl.DEPTH_TEST
+            for ob in @scene.armatures
+                @_draw_armature gl, render_manager, ob, mm4
         gl.enable gl.DEPTH_TEST
         return
 
