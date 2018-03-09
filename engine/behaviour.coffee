@@ -418,7 +418,7 @@ class Behaviour
                 addListener root, 'mouserdown', @_on_pointer_down, options
             if @on_pointer_up?
                 removeListener window, 'pointerup', @_on_pointer_up, options
-                addListener root, 'mouseup', @_on_pointer_up, options
+                addListener window, 'mouseup', @_on_pointer_up, options
             @on_lock?()
         else
             @locked = false
@@ -431,7 +431,7 @@ class Behaviour
                 removeListener root, 'mouserdown', @_on_pointer_down, options
                 addListener root, 'pointerdown', @_on_pointer_down, options
             if @on_pointer_up?
-                removeListener root, 'mouseup', @_on_pointer_up, options
+                removeListener window, 'mouseup', @_on_pointer_up, options
                 addListener window, 'pointerup', @_on_pointer_up, options
             @on_unlock?()
 
