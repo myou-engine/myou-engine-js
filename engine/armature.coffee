@@ -28,7 +28,7 @@ class Bone
         @final_rotation = quat.create()
         @final_scale = vec3.new 1, 1, 1
         # which will be used to compute
-        @matrix = mat4.create() # World matrix
+        @matrix = mat4.create()
         # Object local matrix (relative to rest pose)
         @ol_matrix = mat4.create()
         # TODO: probably it was faster to use this for constraintless
@@ -39,6 +39,7 @@ class Bone
         # with the rest pose and without constraints
         @inv_rest_matrix = mat4.create()
         @deform_id = -1
+        @blength = 1.0
         @constraints = []
 
 

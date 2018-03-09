@@ -84,12 +84,16 @@ class GameObject
         # Assumes objects are evaluated in order,
         # Parents before children
         if @parent
+            # TODO: test with negative scale
+            mat4.mul wm, @matrix_parent_inverse, wm
             bi = @parent_bone_index
             if bi >= 0
                 bone = @parent._bone_list[bi]
-                mat4.mul(@world_matrix, bone.ol_matrix, @world_matrix)
-
-            mat4.mul wm, @matrix_parent_inverse, wm
+                # In Blender, matrix_parent_inverse is relative to the
+                # TIP of the bone, while bone.matrix is relative to the BASE
+                # so we need to add the bone length
+                wm.m13 += bone.blength
+                mat4.mul(@world_matrix, bone.matrix, @world_matrix)
             mat4.mul wm, @parent.world_matrix, wm
 
     set_rotation_order: (order) ->
