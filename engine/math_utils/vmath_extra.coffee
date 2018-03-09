@@ -243,4 +243,16 @@ vmath.quat.fromEulerOrder = (out, v, order) ->
             rotateZ out, out, z
     return out
 
+vmath.vec3.fixAxes = (x_axis, y_axis, z_axis, main_axis, secondary_axis)->
+    third_axis = 3 - (main_axis + secondary_axis)
+    axes = [x_axis, y_axis, z_axis]
+    main = axes[main_axis]
+    vec3.normalize main, main
+    third = axes[third_axis]
+    vec3.cross third, axes[(third_axis+1)%3], axes[(third_axis+2)%3]
+    vec3.normalize third, third
+    secondary = axes[secondary_axis]
+    vec3.cross secondary, axes[(secondary_axis+1)%3], axes[(secondary_axis+2)%3]
+    return
+
 module.exports = vmath
