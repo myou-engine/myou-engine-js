@@ -780,7 +780,7 @@ class RenderManager
                 gl.clear gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT
                 mat = lamp._shadow_material
 
-                for ob in scene.mesh_passes[0]
+                for ob in scene.mesh_passes[0] when not ob.properties.no_shadow
                     data = ob.get_lod_mesh(viewport, mesh_lod_min_length_px,
                         @render_tick).data
                     if ob.visible and data and not ob.culled_in_last_frame
