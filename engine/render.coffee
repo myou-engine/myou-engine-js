@@ -909,10 +909,12 @@ class RenderManager
                         gl.enable gl.BLEND
                     else
                         gl.disable gl.BLEND
+                    blending = is_alpha
                 @draw_quad material, scene, world2cam, cam2world,
                     cam.projection_matrix
+            if blending
+                gl.disable gl.BLEND
             gl.depthMask true
-
         scene._debug_draw?._draw gl, cam
         return
 
