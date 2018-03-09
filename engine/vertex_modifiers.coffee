@@ -79,7 +79,7 @@ class ShapeKeyModifier
 class ArmatureModifier
     constructor: (options) ->
         @type = 'ARMATURE'
-        {@armature, @data_type, @bone_count} = options
+        {@data_type, @bone_count} = options
         @attributes_needed = ['weights', 'b_indices']
         # TODO: Document this or get from code instead
         @signature = 'armature'+@bone_count
@@ -107,7 +107,7 @@ class ArmatureModifier
             gl.getUniformLocation prog, "bones[#{i}]"
 
     update_uniforms: (gl, store, mesh, submesh_index) ->
-        {deform_bones} = @armature
+        {deform_bones} = mesh.armature
         map = mesh.bone_index_maps[submesh_index]
         if map?
             for bone_idx,i in map

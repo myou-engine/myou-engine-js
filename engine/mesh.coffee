@@ -295,6 +295,8 @@ class Mesh extends GameObject
                     stride += 4
                 when 'weights'
                     @armature = @parent
+                    for {object} in @lod_objects
+                        object.armature = @parent
                     layout.push {name: 'weights', type: 'f', count: 4, \
                                 offset: stride}
                     stride += 4 * 4
@@ -323,7 +325,6 @@ class Mesh extends GameObject
             if bone_count == 0
                 bone_count = @armature.deform_bones.length
             vertex_modifiers.push new ArmatureModifier {
-                armature: @armature
                 data_type: 'f'
                 bone_count: bone_count
             }
