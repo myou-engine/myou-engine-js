@@ -26,7 +26,9 @@ class Behaviour
 
         @assignment_times = {}
         @objects = []
-        if objects
+        if objects?
+            if not Array.isArray objects
+                throw Error "A list of objects was expected."
             for ob,i in objects
                 if ob?
                     @assign ob
