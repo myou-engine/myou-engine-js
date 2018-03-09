@@ -127,7 +127,12 @@ class Scene
                 @remove_object child
         return
 
-    make_parent: (parent, child, keep_transform=true)->
+    make_parent: (parent, child, options={})->
+        if typeof options == 'boolean'
+            console.warn "Deprecated parenting call,
+                use {keep_transform: #{options}} instead of #{options}"
+            options = {keep_transform: options}
+        {keep_transform=true} = options
         if child.parent
             @clear_parent child, keep_transform
         auchildren = @auto_updated_children
@@ -159,19 +164,29 @@ class Scene
             # in update_all_matrices()
             @_children_are_ordered = false
 
-    clear_parent: (child, keep_transform=true)->
+    clear_parent: (child, options={})->
         parent = child.parent
-        if parent
+        if parent?
+            if typeof options == 'boolean'
+                console.warn "Deprecated parenting call,
+                    use {keep_transform: #{options}} instead of #{options}"
+                options = {keep_transform: options}
+            {keep_transform=true} = options
             if keep_transform
                 {rotation_order} = child
-                vec3.copy child.position, child.get_world_position()
-                quat.copy child.rotation, child.get_world_rotation()
+                {position, rotation} = child.get_world_position_rotation()
+                vec3.copy child.position, position
+                quat.copy child.rotation, rotation
                 child.rotation_order = 'Q'
                 child.set_rotation_order rotation_order
+                {scale, world_matrix} = child
+                {m00, m01, m02, m04, m05, m06, m08, m09, m10} = world_matrix
+                scale.x = Math.sqrt m00*m00 + m01*m01 + m02*m02
+                scale.y = Math.sqrt m04*m04 + m05*m05 + m06*m06
+                scale.z = Math.sqrt m08*m08 + m09*m09 + m10*m10
             if (index = parent.children.indexOf child) != -1
                 parent.children.splice index,1
-
-        child.parent = null
+            child.parent = null
 
     # Makes sure all scene children are in order for correct matrix calculations
     reorder_children: ->

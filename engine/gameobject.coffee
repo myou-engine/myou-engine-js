@@ -344,13 +344,16 @@ class GameObject
             child.body.instance()
         return n
 
-    parent_to: (parent, keep_transform=true) ->
+    parent_to: (parent, options) ->
         if @parent?
-            @scene.clear_parent this, keep_transform
-        @scene.make_parent parent, this, keep_transform
+            @scene.clear_parent this, options
+        @scene.make_parent parent, this, options
 
-    clear_parent: (keep_transform) ->
-        @scene.clear_parent this, keep_transform
+    clear_parent: (options) ->
+        @scene.clear_parent this, options
+
+    load: ->
+        return @scene?.load_objects [this]
 
     # Removes the object from the scene. It does NOT delete the object itself.
     remove: (recursive) ->
