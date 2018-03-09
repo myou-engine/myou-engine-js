@@ -64,6 +64,13 @@ class Probe
             @render()
         @clip_start = Math.max @clip_start, 0.0001
 
+    set_auto_refresh: (auto_refresh) ->
+        if @auto_refresh
+            if (index = @context.render_manager.probes.indexOf @) != -1
+                @context.render_manager.probes.splice index,1
+        if auto_refresh
+            @context.render_manager.probes.push @
+        @auto_refresh = auto_refresh
 
     set_lod_factor: ->
         {bsdf_samples} = @scene
