@@ -249,6 +249,30 @@ class GameObject
         angle *= 0.017453292519943295
         @rotate_quat(quat.rotateZ(q, q, angle), relative_object)
 
+    look_at: (target, options) ->
+        {
+            front='-Y'
+            up='+Z'
+            up_vector=vec3.new 0,0,1
+            influence=1
+        } = options ? {}
+        # It accepts both an object and a vector
+        target = target.get_world_position?() ? target
+        {position, rotation} = @get_world_position_rotation()
+        axes = [vec3.create(), vec3.create(), vec3.create()]
+        front_idx = (front.codePointAt(1)|0x20) - 120
+        up_idx = (up.codePointAt(1)|0x20) - 120
+        front_v = axes[front_idx]
+        vec3.sub front_v, target, position
+        vec3.scale front_v, front_v, +(front[0]+'1')
+        up_v = axes[up_idx]
+        vec3.copy up_v, up_vector
+        vec3.scale up_v, up_v, +(up[0]+'1')
+        vec3.fixAxes axes..., front_idx, up_idx
+        q = quat.fromAxes quat.create(), axes...
+        quat.slerp rotation, rotation, q, influence
+        @set_world_rotation rotation
+
     add_behaviour: (behaviour)->
         behaviour.assign @
 

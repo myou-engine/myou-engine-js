@@ -74,27 +74,10 @@ class Camera extends GameObject
         vec3.transformQuat out, out, @rotation
         return out
 
-    look_at: (target)->
-        # world up is Z
-        # cam up is Y
-        # Z
-        view = vec3.sub vec3.create(), @.get_world_position(), target
-        vec3.normalize view, view
-        # Y
-        up = vec3.new 0,0,1
-        # X
-        side = vec3.cross vec3.create(), up, view
-        vec3.normalize side, side
-        up = vec3.cross up, view, side
-        vec3.normalize up, up
-        m3 = mat3.fromColumns mat3.create(), side, up, view
-        @rotation_order = 'Q'
-        quat.set @rotation, 0,0,0,1
-        rot = @get_world_rotation()
-        quat.invert rot, rot
-        quat.fromMat3 @rotation, m3
-        quat.mul @rotation, rot, @rotation
-
+    look_at: (target, options) ->
+        options.front ?= '-Z'
+        options.up ?= '+Y'
+        super target, options
 
     is_vertical_fit: ->
         switch @sensor_fit
