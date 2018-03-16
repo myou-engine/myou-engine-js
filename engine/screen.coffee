@@ -67,11 +67,12 @@ class CanvasScreen extends Screen
             if not @context.vr_screen? and @auto_resize_to_canvas
                 @resize_to_canvas()
 
-    resize_to_canvas: (@pixel_ratio_x=1, @pixel_ratio_y=1) ->
+    resize_to_canvas: (pixel_ratio_x=1, pixel_ratio_y=1) ->
         {clientWidth, clientHeight} = @canvas
-        if clientWidth == @width and clientHeight == @height
-            return
-        @resize(clientWidth, clientHeight)
+        if clientWidth == @width and clientHeight == @height and
+            pixel_ratio_x == @pixel_ratio_x and pixel_ratio_y == @pixel_ratio_y
+                return
+        @resize(clientWidth, clientHeight, pixel_ratio_x, pixel_ratio_y)
 
     # Changes the resolution of the canvas and aspect ratio of viewports.
     # It doesn't handle the final size (that's done through HTML styles).
