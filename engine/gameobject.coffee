@@ -352,8 +352,8 @@ class GameObject
     clear_parent: (options) ->
         @scene.clear_parent this, options
 
-    load: ->
-        return @scene?.load_objects [this]
+    load: (options) ->
+        return @scene?.load_objects [this], options
 
     # Removes the object from the scene. It does NOT delete the object itself.
     remove: (recursive) ->
