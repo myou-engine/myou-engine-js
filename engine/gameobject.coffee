@@ -383,6 +383,8 @@ class GameObject
                         console.error "Object '#{@name}' tries to use
                             probe object '#{probe_options.object}'
                             which doesn't exist."
+                    @probe_cube =
+                        @scene.background_probe ? @scene.instance_probe()
                 else
                     ob.probe_cube ? ob.instance_probes()
                     @probe_cube = ob.probe_cube
