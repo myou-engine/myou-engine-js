@@ -50,6 +50,7 @@ class Scene
         @original_scene_name = ''
         @foreground_planes = []
         @_debug_draw = null
+        @shader_library = ''
 
     add_object: (ob, name='no_name', parent_name='', parent_bone)->
         if ob.scene?

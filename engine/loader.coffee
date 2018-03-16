@@ -182,7 +182,7 @@ load_datablock = (scene, data, context) ->
 
 
     else if data.type=='SHADER_LIB'
-        context.SHADER_LIB = data.code
+        scene.shader_library = data.code
     else if data.type=='JSCODE'
         window.eval data.code
 

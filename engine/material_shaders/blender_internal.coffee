@@ -108,7 +108,7 @@ class BlenderInternalMaterial
 
     get_code: (defines) ->
         glsl_version = 100
-        fragment = @material.context.SHADER_LIB + @material.data.fragment
+        fragment = @material.scene.shader_library + @material.data.fragment
         if @context.is_webgl2
             {glsl100to300} = require '../material'
             fragment = glsl100to300 fragment, defines

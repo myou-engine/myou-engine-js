@@ -82,7 +82,6 @@ class Myou
         @all_materials = dict()
         @mesh_datas = dict()
         @embed_meshes = dict()
-        @SHADER_LIB = ''
         @active_animations = dict()
         @all_cubemaps = []
         @all_framebuffers = []
