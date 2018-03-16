@@ -74,7 +74,7 @@ class Camera extends GameObject
         vec3.transformQuat out, out, @rotation
         return out
 
-    look_at: (target, options) ->
+    look_at: (target, options={}) ->
         options.front ?= '-Z'
         options.up ?= '+Y'
         super target, options
