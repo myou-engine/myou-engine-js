@@ -26,6 +26,7 @@ class RenderManager
         @compiled_shaders_this_frame = 0
         @use_frustum_culling = true
         @show_debug_frustum_culling = false
+        @use_sort_faces = true
         @unbind_textures_on_draw_viewport = true
         @probes = []
         # to simulate glClipPlane
@@ -872,18 +873,20 @@ class RenderManager
             v = vec3.create()
             for ob in scene.mesh_passes[1]
                 ob.get_world_position_into(v)
-                ob._sqdist = -vec3.dot(v,z) - (ob.zindex * \
+                # TODO: squared dist and zindex?
+                ob._sqdist = -vec3.dist(v,cam_pos) - (ob.zindex * \
                     (ob.dimensions.x+ob.dimensions.y+ob.dimensions.z)*0.166666)
             timsort.sort scene.mesh_passes[1], (a,b)-> a._sqdist - b._sqdist
 
-            # Sort some meshes, for now just one per frame, with more iterations
-            # for nearby meshes (TODO: Calculate which one has more divergence)
-            idx = @render_tick % ((scene.mesh_passes[1].length * 1.5)|0)
-            idx %= scene.mesh_passes[1].length
-            remaining_meshes = 1
-            cam_name = cam.name
-            ob = scene.mesh_passes[1][idx]
-            (ob.last_lod[cam_name]?.mesh ? ob).sort_faces(cam_pos)
+            if @use_sort_faces
+                # Sort some meshes, for now just one per frame, with more iterations
+                # for nearby meshes (TODO: Calculate which one has more divergence)
+                num_meshes = scene.mesh_passes[1].length
+                idx = @render_tick % ((num_meshes * 1.5)|0)
+                idx = num_meshes - (idx % num_meshes) - 1
+                cam_name = cam.name
+                ob = scene.mesh_passes[1][idx]
+                (ob.last_lod[cam_name]?.mesh ? ob).sort_faces(cam_pos)
 
             for ob in scene.mesh_passes[1]
                 if ob.visible == true
