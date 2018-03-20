@@ -75,6 +75,8 @@ class Lamp extends GameObject
         {texture_size, frustum_size, clip_start, clip_end} = @shadow_options
         # This one has no depth because we're using common_shadow_fb,
         # then applying box blur and storing here
+        texture_size = Math.min texture_size,
+            @context.render_manager.max_texture_size / 2
         size = [texture_size, texture_size]
         @shadow_fb = new Framebuffer @context, {size, use_depth: false}
         @shadow_texture = @shadow_fb.texture

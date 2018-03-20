@@ -63,13 +63,13 @@ class Texture
         @users = [] # materials
         # These hold the data for the current texture, and they
         # change after another texture is loaded
-        @texture_type = '' # One of: image, video, buffers, compressed
+        @texture_type = '' # One of: image, video, arrays, compressed
         @width = @height = 0
         @image = null
         @video = null
-        @buffers = []
-        @offset = 0
+        @arrays = []
         @gl_format = @gl_internal_format = @gl_type = 0
+        @upload_task_id = 0
 
     # Loads a texture if it's not loaded already.
     #
@@ -111,13 +111,15 @@ class Texture
                 if @width==0 or @height==0
                     reject "Texture #{name} has no width or height."
                 buffer = pixels.buffer or (new Uint8Array(pixels)).buffer
-                @texture_type = 'buffers'
+                @texture_type = 'arrays'
                 @gl_format = @gl_internal_format = gl.RGBA
                 @gl_type = gl.UNSIGNED_BYTE
                 if pixels.constructor == Float32Array
                     @gl_type = gl.FLOAT
                     @gl_internal_format = gl.RGBA32F
-                @buffers = [buffer]
+                    @arrays = [pixels]
+                else
+                    @arrays = [new Uint8Array(buffer)]
                 @upload()
                 resolve @
         else if astc? and extensions.compressed_texture_astc
@@ -131,15 +133,113 @@ class Texture
                     @context.main_loop.add_frame_callback =>
                         {@width, @height} = astc[0]
                         @texture_type = 'compressed'
-                        @offset = 16
                         @gl_internal_format = astc[0].format_enum
-                        @buffers = [buffer]
+                        @arrays = [new Uint8Array(buffer, 16)]
                         @use_mipmap = false
                         @upload()
                         resolve @
                 .catch =>
                     @promised_data = null
                     reject()
+        else if etc2? and extensions.compressed_texture_etc
+            data = @select_closest_format etc2, size_ratio
+            if @promised_data == data
+                return @promise
+            @promised_data = pdata = data
+            @promise = new Promise (resolve, reject) =>
+                fetch(base+data.file_name).then (data)->data.arrayBuffer()
+                .then (buffer) =>
+                    uints = new Uint32Array buffer
+                    # This expects the pvr format as exported by etcpak
+                    [magic, _, _, _, _, _, h, w, _, _, _, nmm] = uints
+                    {bpp} = pdata
+                    bypb = bpp * 2 # bytes per block
+                    @width = w
+                    @height = h
+                    @texture_type = 'compressed'
+                    # TODO: RGBA?
+                    @gl_format = @gl_internal_format = gl.RGB
+                    @gl_internal_format = data.format_enum
+                    @arrays = []
+                    offset = 13*4
+                    for i in [0...nmm] by 1
+                        bytesize =
+                            Math.ceil((w>>i)/4) * Math.ceil((h>>i)/4) * bypb
+                        @arrays.push new Uint8Array buffer, offset, bytesize
+                        offset += bytesize
+                    @upload()
+                    resolve @
+                .catch reject
+        else if etc1? and extensions.compressed_texture_etc1
+            data = @select_closest_format etc1, size_ratio
+            if @promised_data == data
+                return @promise
+            @promised_data = pdata = data
+            @promise = new Promise (resolve, reject) =>
+                fetch(base+data.file_name).then (data)->data.arrayBuffer()
+                .then (buffer) =>
+                    uints = new Uint32Array buffer
+                    # This expects the pvr format as exported by etcpak
+                    [magic, _, _, _, _, _, h, w, _, _, _, nmm] = uints
+                    {bpp} = pdata
+                    bypb = bpp * 2 # bytes per block
+                    @width = w
+                    @height = h
+                    @texture_type = 'compressed'
+                    @gl_format = @gl_internal_format = gl.RGB
+                    @gl_internal_format = data.format_enum
+                    @arrays = []
+                    offset = 13*4
+                    for i in [0...nmm] by 1
+                        bytesize =
+                            Math.ceil((w>>i)/4) * Math.ceil((h>>i)/4) * bypb
+                        @arrays.push new Uint8Array buffer, offset, bytesize
+                        offset += byte_size
+                    @upload()
+                    resolve @
+                .catch reject
+        else if pvrtc? and extensions.compressed_texture_pvrtc
+            data = @select_closest_format pvrtc, size_ratio
+            if @promised_data == data
+                return @promise
+            @promised_data = pdata = data
+            @promise = new Promise (resolve, reject) =>
+                fetch(base+data.file_name).then (data)->data.arrayBuffer()
+                .then (buffer) =>
+                    # TODO
+                    # I assume this part is correct but I'm unable to test it
+                    uints = new Uint32Array buffer
+                    [hlen, h, w, nmm] = uints
+                    nmm++ # unlike with etc, base level is not counted as mipmap
+                    hlen /= 4
+                    {bpp} = pdata
+                    # expected = 0
+                    # for i in [0...nmm] by 1
+                    #     size = Math.max 32, ((w>>i)*(h>>i)*bpp) >> 3
+                    #     console.log size
+                    #     expected += size/4
+                    # if expected != uints.length-hlen
+                    #     throw Error "Unexpected buffer size #{expected},
+                    #                 #{uints.length-hlen}"
+                    # console.log expected, expected<<1, uints.length-hlen
+                    @width = w
+                    @height = h
+                    @texture_type = 'compressed'
+                    # TODO: RGBA?
+                    @gl_format = @gl_internal_format = gl.RGB
+                    @gl_internal_format = data.format_enum
+                    @arrays = []
+                    offset = hlen * 4
+                    for i in [0...nmm] by 1
+                        num_pixels = (w>>i)*(h>>i)
+                        bytesize = (num_pixels*bpp) >> 3
+                        if bytesize < 32 # comply both with ext and apple spec
+                            break
+                        @arrays.push new Uint8Array buffer, offset, bytesize
+                        offset += bytesize
+                    @upload()
+                    resolve @
+                .catch reject
         else if image_list?[0] #if jpeg or png
             data = @select_closest_format image_list, size_ratio
             if @promised_data == data
@@ -175,12 +275,12 @@ class Texture
                     @context.main_loop.add_frame_callback =>
                         # If there's no width or height, assume it's square
                         {@width, @height} = data
-                        @texture_type = 'buffers'
+                        @texture_type = 'arrays'
                         @gl_format = @gl_internal_format = gl.RGB
                         @gl_type = gl.UNSIGNED_SHORT_5_6_5
                         if not @width or not @height
                             @width = @height = Math.sqrt(buffer.byteLength>>1)
-                        @buffers = [buffer]
+                        @arrays = [new Uint16Array(buffer)]
                         @upload()
                         resolve @
                 .catch reject
@@ -260,41 +360,48 @@ class Texture
         @loaded = true # bind_texture requires this
         @context.render_manager.bind_texture @
         switch @texture_type
-            when 'buffers'
-                switch @gl_type
-                    when gl.UNSIGNED_BYTE
-                        T = Uint8Array
-                    when gl.UNSIGNED_SHORT_5_6_5
-                        T = Uint16Array
-                    when gl.FLOAT
-                        T = Float32Array
-                for buffer, i in @buffers
+            when 'arrays'
+                for array, i in @arrays
                     gl.texImage2D(gl.TEXTURE_2D, i, @gl_internal_format,
                         @width>>i, @height>>i, 0, @gl_format, @gl_type,
-                        new T(buffer))
-                if @buffers.length == 1 and @use_mipmap
+                        array)
+                if @arrays.length == 1 and @use_mipmap
                     gl.generateMipmap gl.TEXTURE_2D
             when 'compressed'
-                for buffer, i in @buffers
-                    gl.compressedTexImage2D(gl.TEXTURE_2D, i,
-                        @gl_internal_format, @width>>i, @height>>i, 0,
-                        new Uint8Array(buffer, @offset))
-                if @buffers.length == 1 and @use_mipmap
+                upload_task_id = ++@upload_task_id
+                self = this
+                {context: {render_manager}, width, height} = self
+                upload_chunk = ->
+                    for array, i in self.arrays
+                        return if upload_task_id != self.upload_task_id
+                        render_manager.bind_texture self
+                        gl.compressedTexImage2D(gl.TEXTURE_2D, i,
+                            self.gl_internal_format, width>>i, height>>i, 0,
+                            array)
+                        # console.log 'uploaded something on frame',
+                        #     render_manager.render_tick
+                        # yield
+                        # TODO: Finish partial uploads with a generator
+                    return
+                @context.main_loop.add_frame_callback upload_chunk
+                if @arrays.length == 1 and @use_mipmap
                     console.error "Compressed texture #{@name}
                         doesn't have requested mipmaps."
             when 'image'
                 gl.pixelStorei gl.UNPACK_FLIP_Y_WEBGL, true
-                # TODO: Use gl.RGB when there's no alpha?
-                # Would other format be better?
                 if @use_alpha
-                    gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,
-                        gl.UNSIGNED_BYTE, @image
+                    internal = gl.RGBA
+                    format = gl.RGBA
+                    type = gl.UNSIGNED_BYTE
                 else if @context.is_webgl2
-                    gl.texImage2D gl.TEXTURE_2D, 0, gl.RGB565, gl.RGB,
-                        gl.UNSIGNED_SHORT_5_6_5, @image
+                    internal = gl.RGB565
+                    format = gl.RGB
+                    type = gl.UNSIGNED_SHORT_5_6_5
                 else
-                    gl.texImage2D gl.TEXTURE_2D, 0, gl.RGB, gl.RGB,
-                        gl.UNSIGNED_BYTE, @image
+                    internal = gl.RGB
+                    format = gl.RGB
+                    type = gl.UNSIGNED_BYTE
+                gl.texImage2D gl.TEXTURE_2D, 0, internal, format, type, @image
                 if @use_mipmap
                     gl.generateMipmap gl.TEXTURE_2D
             when 'video'
@@ -320,8 +427,7 @@ class Texture
         @texture_type = ''
         @width = @height = 0
         @image = @video = null
-        @buffers = []
-        @offset = 0
+        @arrays = []
         @gl_format = @gl_internal_format = @gl_type = 0
 
     # @private
@@ -378,11 +484,13 @@ class Texture
         if ratio == 1 or not width or not height
             return highest
         target_pixels = width*height*ratio
-        winner_delta = width*height
+        {max_texture_size} = @context.render_manager
+        winner_delta = Infinity
         winner = null
         for f in format_list
             delta = Math.abs(target_pixels - (f.width*f.height))
-            if winner_delta > delta
+            if winner_delta > delta and \
+                    Math.max(f.width, f.height) <= max_texture_size
                 winner_delta = delta
                 winner = f
         # TODO: With formats with intermediate resolutions (mipmaps),

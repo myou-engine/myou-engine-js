@@ -135,6 +135,7 @@ class RenderManager
     # (Re)initializes the GL context.
     initialize: ()->
         gl = @gl
+        @max_texture_size = gl.getParameter gl.MAX_TEXTURE_SIZE
         @max_textures = gl.getParameter gl.MAX_TEXTURE_IMAGE_UNITS
         @bound_textures = new Array @max_textures
         @active_texture = -1
@@ -152,9 +153,16 @@ class RenderManager
                 gl.getExtension 'OES_texture_half_float_linear'
             compressed_texture_s3tc:
                 gl.getExtension 'WEBGL_compressed_texture_s3tc'
+            compressed_texture_etc:
+                gl.getExtension 'WEBGL_compressed_texture_etc'
+            compressed_texture_etc1:
+                gl.getExtension 'WEBGL_compressed_texture_etc1'
+            compressed_texture_pvrtc:
+                gl.getExtension('WEBGL_compressed_texture_pvrtc') or
+                gl.getExtension('WEBKIT_WEBGL_compressed_texture_pvrtc')
             compressed_texture_astc:
-                gl.getExtension 'KHR_texture_compression_astc_ldr' or
-                'WEBGL_compressed_texture_astc'
+                # gl.getExtension('KHR_texture_compression_astc_ldr') or \
+                gl.getExtension('WEBGL_compressed_texture_astc')
             texture_filter_anisotropic:
                 gl.getExtension("EXT_texture_filter_anisotropic") or
                 gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic") or
