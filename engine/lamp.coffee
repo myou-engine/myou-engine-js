@@ -109,14 +109,14 @@ class Lamp extends GameObject
         if @context.is_webgl2
             fs = glsl100to300 fs
             fs_tex = glsl100to300 fs_tex, USE_TEXTURE: 1
-        
+
         # regular shadows
         mat = new Material @context, @name+'_shadow', {
             fragment: fs, varyings, material_type: 'PLAIN_SHADER',
         }
         mat.is_shadow_material = true
         @_shadow_material = mat
-        
+
         # clip alpha shadows with texture
         {blank_texture} = @context.render_manager
         mat = new Material @context, @name+'_alpha_shadow', {
@@ -148,6 +148,7 @@ class Lamp extends GameObject
         @shadow_fb = null
         @material?.destroy()
         @material = null
-        @shadow_texture.gl_tex = @context.render_manager.white_texture
+        @shadow_texture?.gl_tex = @context.render_manager.white_texture
+        return
 
 module.exports = {Lamp}
