@@ -372,7 +372,7 @@ class GameObject
         if include_self
             children_lists.unshift [this]
         @_fill_children_lists_recursive children_lists
-        return Array.prototype.concat children_lists
+        return Array.prototype.concat children_lists...
 
     _fill_children_lists_recursive: (children_lists) ->
         for c in @children
