@@ -300,6 +300,7 @@ class GameObject
         {
             recursive=true
             behaviours=true
+            new_parent=@parent
             scene = @scene
         } = options ? {}
         # TODO: Is it better or more efficient to instance a new object
@@ -319,6 +320,9 @@ class GameObject
         n.avg_poly_area = @avg_poly_area
         n.avg_poly_length = @avg_poly_length
         n.behaviours = []
+        if new_parent?
+            n.parent = new_parent
+            n.parent.children.push n
         @body._clone_to(n)
 
         # Warning! This only works reliably
@@ -327,7 +331,7 @@ class GameObject
         if n.materials and scene != this.scene
             for i in [0...materials.length]
                 n.materials[i] = materials[i].clone_to_scene scene
-        
+
         n.scene = null
         scene?.add_object n, @name
         if behaviours
@@ -336,13 +340,18 @@ class GameObject
         # Adding children after ensures objects don't need to be sorted
         if recursive
             for child in @children
-                child = child.clone(options)
+                child = child.clone({options, new_parent: n})
                 child.parent = n
                 children.push child
         n.body.instance()
         for child in n.children
             child.body.instance()
         return n
+
+    set_parent: (parent, options) ->
+        if @parent?
+            @scene.clear_parent this, options
+        @scene.make_parent parent, this, options
 
     parent_to: (parent, options) ->
         if @parent?
@@ -352,8 +361,28 @@ class GameObject
     clear_parent: (options) ->
         @scene.clear_parent this, options
 
+    get_top_ancestor: (top_level_parents=[]) ->
+        ob = this
+        while ob.parent? and ob.parent not in top_level_parents
+            ob = ob.parent
+        return ob
+
+    get_descendants: ->
+        children_lists = [@children]
+        @_fill_children_lists_recursive children_lists
+        return Array.concat children_lists
+
+    _fill_children_lists_recursive: (children_lists) ->
+        for c in @children
+            children_lists.push c.children
+            c._fill_children_lists_recursive children_lists
+        return
+
     load: (options) ->
         return @scene?.load_objects [this], options
+
+    load_recursive: (options) ->
+        return @scene?.load_objects @get_descendants(), options
 
     # Removes the object from the scene. It does NOT delete the object itself.
     remove: (recursive) ->
