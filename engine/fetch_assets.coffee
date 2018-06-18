@@ -23,9 +23,9 @@ fetch_mesh = (mesh_object, options={}) ->
         # Load LoD
         lod_promises = []
         lod_objects = mesh_object.lod_objects
-        last_lod = lod_objects[lod_objects.length-1]
-        if last_lod
-            max_mesh_lod = Math.max max_mesh_lod, last_lod.factor
+        smallest_lod = lod_objects[0]
+        if smallest_lod
+            max_mesh_lod = Math.max max_mesh_lod, smallest_lod.factor
         for lod_ob in lod_objects
             if lod_ob.factor <= max_mesh_lod
                 lod_promises.push fetch_mesh(lod_ob.object)
