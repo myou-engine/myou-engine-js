@@ -330,19 +330,15 @@ class Scene
                 for mat in ob.materials
                     for tex in mat.last_shader?.textures or []
                         used_textures.push tex
-        for ob in list
-            ob_data = ob.data
-            if ob_data?
-                ob_data.splice _,1 if (_ = ob_data.indexOf ob)!=-1
+        for ob in list when ob.type == 'MESH'
+            ob_data = ob.data?.remove ob
             if unload_textures
                 for mat in ob.materials
                     for tex in mat.last_shader?.textures or []
                         if tex not in used_textures
                             tex.unload()
             for lod_ob in ob.lod_objects or []
-                lod_ob_data = lod_ob.object.data
-                if lod_ob_data?
-                    lod_ob_data.splice _,1 if (_ = lod_ob_data.indexOf ob)!=-1
+                lod_ob.object.data?.remove lod_ob
                 # We're assuming lod objects have same materials
                 # NOTE: should we?
         return
