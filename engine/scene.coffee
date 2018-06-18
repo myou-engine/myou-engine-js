@@ -382,6 +382,15 @@ class Scene
             @physics_enabled = true
         return
 
+    disable: (items...) ->
+        {render, physics, all} =
+            @_ensure_items items, ['render', 'physics', 'all']
+        if render or all
+            @enabled = false
+        if physics or all
+            @physics_enabled = false
+        return
+
     instance_probe: ->
         if @background_probe
             return @background_probe
