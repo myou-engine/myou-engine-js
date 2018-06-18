@@ -340,7 +340,7 @@ class GameObject
         # Adding children after ensures objects don't need to be sorted
         if recursive
             for child in @children
-                child = child.clone({options, new_parent: n})
+                child = child.clone({options..., new_parent: n})
                 child.parent = n
                 children.push child
         n.body.instance()
