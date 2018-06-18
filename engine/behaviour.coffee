@@ -188,6 +188,8 @@ class Behaviour
         return this
 
     _add_callbacks: =>
+        if (idx = @scene.post_draw_callbacks.indexOf @_add_callbacks) != -1
+            @scene.post_draw_callbacks.splice idx, 1
         @_remove_callbacks()
         if @on_tick?
             @_frame_callback = (scene, frame_duration) =>
@@ -202,6 +204,8 @@ class Behaviour
         return
 
     _remove_callbacks: =>
+        if (idx = @scene.post_draw_callbacks.indexOf @_remove_callbacks) != -1
+            @scene.post_draw_callbacks.splice idx, 1
         pdc = @scene.pre_draw_callbacks
         if @_objects_frame_callback?
             pdc.splice pdc.indexOf(@_objects_frame_callback), 1
