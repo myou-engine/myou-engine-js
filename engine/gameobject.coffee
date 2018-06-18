@@ -367,10 +367,12 @@ class GameObject
             ob = ob.parent
         return ob
 
-    get_descendants: ->
+    get_descendants: (include_self)->
         children_lists = [@children]
+        if include_self
+            children_lists.unshift [this]
         @_fill_children_lists_recursive children_lists
-        return Array.concat children_lists
+        return Array.prototype.concat children_lists
 
     _fill_children_lists_recursive: (children_lists) ->
         for c in @children
@@ -382,7 +384,7 @@ class GameObject
         return @scene?.load_objects [this], options
 
     load_recursive: (options) ->
-        return @scene?.load_objects @get_descendants(), options
+        return @scene?.load_objects @get_descendants(true), options
 
     # Removes the object from the scene. It does NOT delete the object itself.
     remove: (recursive) ->
