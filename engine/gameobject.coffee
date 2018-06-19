@@ -339,8 +339,9 @@ class GameObject
                 b.assign n
         # Adding children after ensures objects don't need to be sorted
         if recursive
+            child_options = Object.assign {}, options, {new_parent: n}
             for child in @children
-                child = child.clone({options..., new_parent: n})
+                child = child.clone child_options
                 child.parent = n
                 children.push child
         n.body.instance()
