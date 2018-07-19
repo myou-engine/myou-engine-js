@@ -291,6 +291,7 @@ class KeyboardInputSource extends InputSource
         # Can we know if a key exists without adding the whole list here?
         return label.length > 1 \
             and not /(^(Left|Right|Up|Down))|_/i.test(label) \
+            and not /(^(Control|Alt|Shift|Meta|OS|Command)$)|_/i.test(label) \
             and not /^[^A-Z]/.test(label)
 
     has_semi_axis: (label) -> false
@@ -305,6 +306,11 @@ class KeyboardInputSource extends InputSource
         if incorrect_side?
             [_, side, rest] = incorrect_side
             return capital(rest.replace('_','') or 'Arrow') + capital(side)
+        if label == 'Command'
+            return 'OSLeft'
+        keys_that_need_side = label.match /^(Control|Alt|Shift|Meta|OS)$/i
+        if keys_that_need_side?
+            return capital label+'Left'
         under_scored = label.split '_'
         suggestion = (capital x for x in under_scored).join('')
         if suggestion != label
