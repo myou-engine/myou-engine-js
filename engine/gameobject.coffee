@@ -404,7 +404,7 @@ class GameObject
         delete @context.objects[@name]
 
     instance_probes: ->
-        if @probe_cube?
+        if @probe_cube? or @probe_planar?
             return
         {probe_options} = @properties
         if probe_options?
