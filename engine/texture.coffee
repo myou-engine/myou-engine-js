@@ -1,4 +1,6 @@
 
+parse_dds = require 'parse-dds'
+
 # Main texture class (see also {Cubemap}). It allows creating and managing
 # texture images and videos in many formats and multiple sizes.
 #
@@ -89,12 +91,12 @@ class Texture
         # delegated if possible
 
         base = @scene.data_dir + '/textures/'
-        {raw_pixels, jpeg, png, rgb565, dxt1, dxt5, etc1, etc2,
-         pvrtc, astc, mp4, ogv, ogg, webm, mov} = @formats
+        {raw_pixels, jpeg, png, rgb565, dds, etc1, etc2,
+         pvrtc, astc, mp4, ogv, ogg, webm, mov, flv} = @formats
         image_list = jpeg or png
         # TODO!! Select format depending on browser support
         # TODO!! Or add all files as <source> inside the <video>
-        video_list = mp4 or ogg or ogv or webm or mov
+        video_list = mp4 or ogg or ogv or webm or mov or flv
         # (also, if both images and videos are available,
         # should the image be shown until the video starts?)
 
@@ -240,6 +242,36 @@ class Texture
                     @upload()
                     resolve @
                 .catch reject
+        else if dds? and extensions.compressed_texture_s3tc
+            data = @select_closest_format dds, size_ratio
+            if @promised_data == data
+                return @promise
+            @promised_data = pdata = data
+            @promise = new Promise (resolve, reject) =>
+                fetch(base+data.file_name).then (data)->data.arrayBuffer()
+                .then (buffer) =>
+                    {shape, flags, format, images, cubemap} = parse_dds buffer
+                    [@width, @height] = shape
+                    @texture_type = 'compressed'
+                    switch format
+                        when 'when' then
+                        when 'dxt1'
+                            @gl_format = gl.RGB
+                            @gl_internal_format = 0x83F0
+                        when 'dxt5'
+                            @gl_format = gl.RGBA
+                            @gl_internal_format = 0x83F3
+                        else
+                            throw Error "Unsupported format"
+                    @arrays = []
+                    for {shape, offset, length} in images
+                        if shape[0] == 0 or shape[1] == 0
+                            null # TODO: Report bug
+                            break
+                        @arrays.push new Uint8Array buffer, offset, length
+                    @upload()
+                    resolve @
+                .catch reject
         else if image_list?[0] #if jpeg or png
             data = @select_closest_format image_list, size_ratio
             if @promised_data == data
@@ -261,7 +293,7 @@ class Texture
                     # TODO: Distinguish between not found,
                     # timeout and malformed?
                     @promised_data = null
-                    reject "Image not found: " + (data.file_name or @name)
+                    reject "Image error: " + (data.file_name or @name)
                 @image.src = data.data_uri or (base + data.file_name)
         else if rgb565?
             # TODO: Test this part, or remove
@@ -335,7 +367,7 @@ class Texture
                 @video.onerror = =>
                     # TODO: Distinguish between not found,
                     # timeout and malformed?
-                    reject "Video not found: " + (data.file_name or @name)
+                    reject "Video error: " + (data.file_name or @name)
         else
             @promise = Promise.reject "Texture #{@name}
                                     has no supported formats"
