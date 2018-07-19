@@ -373,12 +373,12 @@ class GamepadInputSource extends InputSource
 
     constructor: (context, id) ->
         super context
+        if not navigator.getGamepads?
+            return
         @register_source ['Joy', 'Joystick', 'Gamepad']
         @gamepads = []
         @buttons_as_semi_axes = []
-        if not navigator.getGamepads?
-            return
-        @gamepads = navigator.getGamepads()
+        # @gamepads = navigator.getGamepads()
         window.addEventListener 'gamepadconnected', =>
             console.log "A gamepad has been connected or detected"
             @gamepads = navigator.getGamepads()
@@ -473,7 +473,9 @@ class GamepadInputSource extends InputSource
 
     update_controller: ->
         # NOTE: Looks like Chrome only updates gamepad values if we call this
-        navigator.getGamepads()
+        if @gamepads.length
+            # TODO: Investigate why we had to disable this line in Daydream
+            navigator.getGamepads()
         for pad in @semi_axes
             for label, semi_axis of pad
                 {gamepad, type, index, multiplier} = semi_axis
