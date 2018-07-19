@@ -10,14 +10,12 @@ class VRScreen extends CanvasScreen
             use_room_scale_parent=true
             use_unpredict=true
             head
+            mirror_zoom=1.3
         } = options
         if use_room_scale_parent and not @scene.active_camera.parent?
             throw Error "use_room_scale_parent requires the camera to have a
                 parent. Add a parent or set use_room_scale_parent to false
                 for a seated experience controller by the original camera."
-        if use_room_scale_parent \
-            and not @HMD.stageParameters?.sittingToStandingTransform?
-                use_room_scale_parent = false
         @context.vr_screen = this
         @canvas = @context.canvas
         {@framebuffer} = @context.canvas_screen
@@ -25,25 +23,27 @@ class VRScreen extends CanvasScreen
         @head = head ? new @context.GameObject
         @head.set_rotation_order 'Q'
         @scene.add_object @head
-        @head.parent_to @scene.active_camera, false
+        # @head.parent_to @scene.active_camera, keep_transform: false
+        for ob in @scene.active_camera.children
+            ob.parent = @head
         if use_room_scale_parent
-            @head.parent_to @scene.active_camera.parent, true
+            @head.parent_to @scene.active_camera.parent, keep_transform: true
         @frame_data = new VRFrameData
         @old_pm0 = mat4.create()
         @left_orientation = quat.create()
         @right_orientation = quat.create()
         @last_time = performance.now()
         @use_unpredict = use_unpredict and @HMD.displayName == 'OpenVR HMD'
+        if not /Oculus/.test @HMD.displayName
+            @is_wmr = true # we'll set it to false when we detect velocity
         @sst = mat4.create()
         @sst_inverse = mat4.create()
         @sst3 = mat3.create()
         if use_room_scale_parent
-            mat4.copyArray @sst, @HMD.stageParameters.sittingToStandingTransform
-            mat4.invert @sst_inverse, @sst
-            mat3.fromMat4 @sst3, @sst
+            @update_room_matrix()
         # @to_Z_up = mat4.new 1,0,0,0, 0,0,1,0, 0,-1,0,0, 0,0,0,1
         # left eye viewport
-        camera = left_cam = @scene.active_camera.clone()
+        camera = left_cam = @scene.active_camera.clone recursive: false
         camera.rotation_order = 'Q'
         mat4.identity camera.matrix_parent_inverse
         quat.identity camera.rotation
@@ -53,7 +53,7 @@ class VRScreen extends CanvasScreen
         # v.set_clear false, false
         v.rect = [0, 0, 0.5, 1]
         # right eye viewport
-        camera = right_cam = @scene.active_camera.clone()
+        camera = right_cam = @scene.active_camera.clone recursive: false
         camera.rotation_order = 'Q'
         mat4.identity camera.matrix_parent_inverse
         quat.identity camera.rotation
@@ -81,8 +81,13 @@ class VRScreen extends CanvasScreen
             behaviour.on_enter_vr? left_cam, right_cam
         {position, width, height, left, top} = @canvas.style
         @old_canvas_style = {position, width, height, left, top}
-        if @canvas.style.width == '100vw' and @canvas.style.height == '100vh'
-            @set_mirror_zoom 1.3
+        if mirror_zoom and \
+            @canvas.style.width == '100vw' and @canvas.style.height == '100vh'
+                @set_mirror_zoom mirror_zoom
+        # Daydream controller hack
+        @gamepad_connected = false #gamepad_connected
+        window.addEventListener 'gamepadconnected', =>
+            @gamepad_connected = true
 
     set_mirror_zoom: (zoom) ->
         {renderWidth, renderHeight} = @HMD.getEyeParameters("left")
@@ -93,6 +98,23 @@ class VRScreen extends CanvasScreen
         @canvas.style.left = "#{-50*zoom+50}vw"
         @canvas.style.top = "calc( -#{50*zoom}vw + #{50*ratio}vh )"
 
+    update_room_matrix: ->
+        # @HMD.resetPose()
+        hmd_sst = @HMD.stageParameters?.sittingToStandingTransform
+        console.log hmd_sst
+        if hmd_sst?
+            mat4.copyArray @sst, hmd_sst
+            # Edge
+            # mat4.rotateX @sst, @sst, Math.PI/2
+        else
+            # Daydream
+            # mat4.rotateX @sst, @sst, Math.PI/2
+            @sst.m13 = 1.65 # average eye height
+            mat4.rotateY @sst, @sst, Math.PI/2
+        mat4.invert @sst_inverse, @sst
+        mat3.fromMat4 @sst3, @sst
+        return
+
     destroy: ->
         {position, width, height, left, top} = @old_canvas_style
         @canvas.style.position = position
@@ -102,8 +124,12 @@ class VRScreen extends CanvasScreen
         @canvas.style.top = top
         @context.vr_screen = null
         @context.screens.splice @context.screens.indexOf(this), 1
+        @context.canvas_screen.width = 0 # force resize
         @context.canvas_screen.resize_to_canvas()
         @context.canvas_screen.enabled = true
+        for ob in @head
+            ob.parent = @scene.active_camera.children
+        # TODO: Destroy cameras
         for behaviour in @context.enabled_behaviours
             behaviour.on_exit_vr?()
         return
@@ -119,7 +145,7 @@ class VRScreen extends CanvasScreen
         HMD.getFrameData @frame_data
         # Set position of VR cameras, etc
         {
-            pose: {position, orientation},
+            pose: {position, orientation, angularVelocity},
             leftProjectionMatrix,
             rightProjectionMatrix,
             leftViewMatrix,
@@ -137,7 +163,14 @@ class VRScreen extends CanvasScreen
         #     vec3.copyArray r0, orientation
         #     vec3.copyArray r1, orientation
 
-        if leftViewMatrix?
+        if leftViewMatrix? and angularVelocity?
+            [avx, avy, avz] = angularVelocity
+            has_av = (avx or avy or avz)
+            if has_av
+                @is_wmr = false
+            # WMR headsets seem to have zero velocity through SteamVR
+            # and shouldn't have prediction correction
+            use_unpredict = @use_unpredict and has_av
             m4 = mat4.create()
             m3 = mat3.create()
             {sst_inverse} = this
@@ -148,11 +181,12 @@ class VRScreen extends CanvasScreen
             unpredict = 1-(1/(delta_frames+1))
 
             mat4.copyArray m4, leftViewMatrix
+            # mat4.rotateX m4, m4, Math.PI/2
             mat4.mul m4, m4, sst_inverse
             mat4.invert m4, m4
             mat3.fromMat4 m3, m4
             quat.fromMat3 r0, m3
-            if @use_unpredict
+            if use_unpredict
                 quat.slerp r0, @left_orientation, r0, unpredict
             quat.copy @left_orientation, r0
             # TODO: Test with other headsets.
@@ -161,11 +195,12 @@ class VRScreen extends CanvasScreen
             vec3.set p0, m4.m12, m4.m13, m4.m14
 
             mat4.copyArray m4, rightViewMatrix
+            # mat4.rotateX m4, m4, Math.PI/2
             mat4.mul m4, m4, sst_inverse
             mat4.invert m4, m4
             mat3.fromMat4 m3, m4
             quat.fromMat3 r1, m3
-            if @use_unpredict
+            if use_unpredict
                 quat.slerp r1, @right_orientation, r1, unpredict
             quat.copy @right_orientation, r1
             vec3.set p1, m4.m12, m4.m13, m4.m14
@@ -179,6 +214,9 @@ class VRScreen extends CanvasScreen
         @viewports[1].camera._update_matrices()
         mat4.copyArray pm0, leftProjectionMatrix
         mat4.copyArray pm1, rightProjectionMatrix
+        #TODO: detect headset
+        # pm0.m09 = -pm0.m09
+        # pm1.m09 = -pm1.m09
         if not mat4.equals pm0, @old_pm0
             # culling planes need to be updated
             mat4.invert @viewports[0].camera.projection_matrix_inv, pm0
@@ -238,13 +276,14 @@ exports.init = (scene, options={}) ->
     ctx = scene.context
     if ctx.vr_screen?.HMD.isPresenting
         return Promise.resolve()
-    HMD = null
-    if not displays?
-        return Promise.reject "Call hasVR first."
-    for display in displays
-        if display instanceof VRDisplay and display.capabilities.canPresent
-            HMD = display
-            break
+    {HMD} = options
+    if not HMD?
+        if not displays?
+            return Promise.reject "Call hasVR first."
+        for display in displays
+            if display instanceof VRDisplay and display.capabilities.canPresent
+                HMD = display
+                break
     if not HMD?
         return Promise.reject "No HMDs detected. Conect an HMD,
             turn it on and try again."
@@ -253,10 +292,7 @@ exports.init = (scene, options={}) ->
     # Request present
     if HMD.capabilities.canPresent
         if not HMD.isPresenting
-            try
-                HMD.requestPresent [{source: ctx.canvas}]
-            catch e
-                throw e
+            HMD.requestPresent [{source: ctx.canvas}]
     else
         # TODO: support non-presenting VR displays?
         return Promise.reject "Non-presenting VR displays are not supported"
