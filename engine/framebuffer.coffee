@@ -45,6 +45,7 @@ class Framebuffer
         @color_type = color_type
         @use_mipmap = use_mipmap # TODO: coffee-loader bug adding @ above?
         @use_filter = use_filter
+        @filters_should_blend = false
         # We're using the existing texture if available so when we're restoring
         # the GL context, references to the texture that already exist in
         # material inputs are still valid
@@ -82,6 +83,8 @@ class Framebuffer
                     supports_half_float = supports_half_float and \
                         extensions.texture_half_float_linear
                 if supports_half_float
+                    if is_webgl2
+                        internal_format = gl.RGBA16F
                     @tex_type = component_types.HALF_FLOAT
                 else
                     @tex_type = component_types.UNSIGNED_BYTE
@@ -189,6 +192,7 @@ class Framebuffer
         Framebuffer.active_buffer = this
         @texture?.is_framebuffer_active = true
         @depth_texture?.is_framebuffer_active = true
+        Framebuffer.filters_should_blend = @filters_should_blend
         return this
 
     clear: ->
@@ -205,7 +209,7 @@ class Framebuffer
 
     draw_with_filter: (filter, inputs={}) ->
         {render_manager} = @context
-        {bg_mesh, gl, tmp_fb0} = render_manager
+        {bg_mesh, gl, render_fb} = render_manager
         material = filter.get_material()
         material.inputs.source.value = @texture
         # We're assuming offsets are always 0,0, since the final position of the
@@ -217,23 +221,24 @@ class Framebuffer
         vec2.set material.inputs.source_scale.value,
             @current_size_x/@size_x, @current_size_y/@size_y
         if (depth_sampler = material.inputs.depth_sampler)? and \
-                (depth_texture = tmp_fb0?.depth_texture)?
-            {size_x: sx, size_y: sy, \
-                current_size_x: csx, current_size_y: csy} = tmp_fb0
-            if depth_sampler? and depth_texture?
-                depth_sampler.value = depth_texture
-                vec2.set material.inputs.depth_scale.value,
-                    @current_size_x/@size_x, @current_size_y/@size_y
+                (depth_texture = render_fb.depth_texture)?
+            depth_sampler.value = depth_texture
+            vec2.set material.inputs.depth_scale.value,
+                @current_size_x/@size_x, @current_size_y/@size_y
         for name, value of inputs
             material.inputs[name].value = value
         material.inputs.projection_matrix_inverse?.value =
             @last_viewport.camera.projection_matrix_inv
         gl.depthMask false
         gl.depthFunc gl.ALWAYS
+        if Framebuffer.filters_should_blend
+            gl.enable gl.BLEND
         {use_frustum_culling} = render_manager
         render_manager.use_frustum_culling = false
         render_manager.draw_mesh(bg_mesh, unused_mat4, -1, material)
         render_manager.use_frustum_culling = use_frustum_culling
+        if Framebuffer.filters_should_blend
+            gl.disable gl.BLEND
         gl.depthFunc gl.LEQUAL
         gl.depthMask true
 
@@ -340,6 +345,16 @@ class ByteFramebuffer extends Framebuffer
         {size, use_depth} = options
         super context, {size, use_depth, color_type: 'UNSIGNED_BYTE'}
 
+class ShortFramebuffer extends Framebuffer
+    init: (context, options) ->
+        {size, use_depth} = options
+        super context, {size, use_depth, color_type: 'UNSIGNED_SHORT'}
+
+class FloatFramebuffer extends Framebuffer
+    init: (context, options) ->
+        {size, use_depth} = options
+        super context, {size, use_depth, color_type: 'FLOAT'}
+
 # Screen framebuffer target. Usually instanced as `render_manager.main_fb`.
 class MainFramebuffer extends Framebuffer
 
@@ -352,5 +367,7 @@ class MainFramebuffer extends Framebuffer
 # TODO: move to context
 Framebuffer.active_rect = new vec4.create()
 Framebuffer.active_buffer = null
+Framebuffer.filters_should_blend = false
 
-module.exports = {Framebuffer, ByteFramebuffer, MainFramebuffer}
+module.exports = {Framebuffer, ByteFramebuffer, ShortFramebuffer,
+    FloatFramebuffer, MainFramebuffer}

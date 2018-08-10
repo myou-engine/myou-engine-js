@@ -26,6 +26,7 @@ class Viewport
         @units_to_pixels = 100
         @_v = vec3.create()
         @requires_float_buffers = false
+        @last_filter_should_blend = false
         @set_clear true, true
         @recalc_aspect()
 
@@ -142,6 +143,7 @@ class Viewport
             effect.on_viewport_remove?()
         @_check_requires_float_buffers()
         @effects.splice 0
+        return this
 
     ensure_shared_effect: (effect_class, a, b, c, d) ->
         for effect in @effects
@@ -182,7 +184,7 @@ class Viewport
             @debug_camera_behaviour = null
             return true
         return false
-    
+
     store_debug_camera: (name) ->
         if not @debug_camera_behaviour?
             throw Error "There is no debug camera."
@@ -190,7 +192,7 @@ class Viewport
             throw Error "Name argument is mandatory."
         {position, rotation} = @debug_camera
         localStorage[name] = JSON.stringify {position, rotation}
-    
+
     load_debug_camera: (name) ->
         @enable_debug_camera()
         {position, rotation} = JSON.parse localStorage[name]

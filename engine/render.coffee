@@ -21,8 +21,6 @@ class RenderManager
         @context_lost_count = 0
         @camera_z = vec3.create()
         @no_s3tc = @context.MYOU_PARAMS.no_s3tc
-        ba = @context.MYOU_PARAMS.background_alpha
-        @background_alpha = if ba? then ba else 1
         @compiled_shaders_this_frame = 0
         @use_frustum_culling = true
         @show_debug_frustum_culling = false
@@ -54,6 +52,7 @@ class RenderManager
         @triangles_drawn = 0
         @meshes_drawn = 0
         @breaking_on_any_gl_error = false
+        @effect_ratio = 1
 
         @instance_gl_context @gl_flags
         @initialize()
@@ -258,7 +257,7 @@ class RenderManager
         @bg_mesh.radius = 1e999
         @bg_mesh.materials = [null]
         @bg_mesh.material_defines = {CORRECTION_NONE: 1}
-        
+
         @last_time_ms = @last_time_ns = 0
         if (ext = @extensions.disjoint_timer_query)?
             @time_queries = []
@@ -444,20 +443,26 @@ class RenderManager
                 # screen space refraction
                 use_pass2 = viewport.camera.scene.mesh_passes[2].length != 0
                 if effects.length != 0 or use_pass2
-                    @ensure_post_processing_framebuffers width, height, usefloat
+                    @ensure_render_framebuffer width, height, usefloat
                 if effects.length != 0
-                    rect = [0, 0, width, height]
-                    @draw_viewport viewport, rect, @tmp_fb0, [0, 1, 2]
-                    source = @tmp_fb0
-                    dest = @tmp_fb1
-                    source.last_viewport = dest.last_viewport = viewport
+                    @ensure_post_processing_framebuffers width, height, usefloat
+                    rect = [0, 0, width * @effect_ratio, height * @effect_ratio]
+                    @draw_viewport viewport, rect, @render_fb, [0, 1, 2]
+                    source = @render_fb
+                    dest = @tmp_fb0
+                    temp = @tmp_fb1
+                    source.last_viewport = viewport
                     for i in [0...effects.length-1] by 1
-                        result = effects[i].apply source, dest, rect
+                        result = effects[i].apply source, temp, rect
                         source = result.destination
-                        dest = result.temporary
+                        dest = temp = result.temporary
+                        source.last_viewport = viewport
                     last = effects[effects.length-1]
+                    screen.framebuffer.filters_should_blend =
+                        viewport.last_filter_should_blend
                     result =
                         last.apply source, screen.framebuffer, viewport.rect_pix
+                    screen.framebuffer.filters_should_blend = false
                     if result.destination != screen.framebuffer
                         throw Error "The last effect is not allowed to be
                             pass-through (second argument of effect.apply
@@ -465,10 +470,10 @@ class RenderManager
                 else if use_pass2
                     rect = [0, 0, width, height]
                     @draw_viewport \
-                        viewport, rect, @tmp_fb0, [0, 1, 2]
+                        viewport, rect, @render_fb, [0, 1, 2]
                     screen.framebuffer.enable viewport.rect_pix
                     # TODO: Use blitting instead (when available)
-                    @tmp_fb0.draw_with_filter @filters.copy, {}
+                    @render_fb.draw_with_filter @filters.copy, {}
                 else
                     @draw_viewport \
                         viewport, viewport.rect_pix, screen.framebuffer, [0, 1]
@@ -479,6 +484,17 @@ class RenderManager
 
         @compiled_shaders_this_frame = 0
 
+    ensure_render_framebuffer: (width, height, use_float) ->
+        # TODO: Check all viewports to avoid several resizes
+        color_type = if use_float then 'FLOAT' else 'UNSIGNED_BYTE'
+        if not @render_fb? or @render_fb.size_x < width or @render_fb.size_y < height\
+                or @tmp_fb0.color_type != color_type
+            size = [next_POT(width), next_POT(height)]
+            @render_fb?.destroy()
+            @render_fb = new @context.Framebuffer \
+                {size, color_type, use_depth: true}
+        return
+
     ensure_post_processing_framebuffers: (width, height, use_float) ->
         # TODO: Check all viewports to avoid several resizes
         color_type = if use_float then 'FLOAT' else 'UNSIGNED_BYTE'
@@ -487,10 +503,8 @@ class RenderManager
             size = [next_POT(width), next_POT(height)]
             @tmp_fb0?.destroy()
             @tmp_fb1?.destroy()
-            @tmp_fb0 = new @context.Framebuffer \
-                {size, color_type, use_depth: true}
-            @tmp_fb1 = new @context.Framebuffer \
-                {size, color_type, use_depth: true}
+            @tmp_fb0 = new @context.Framebuffer {size, color_type}
+            @tmp_fb1 = new @context.Framebuffer {size, color_type}
         return
 
     # @private
@@ -676,6 +690,7 @@ class RenderManager
     # @private
     # Draws a quad occupying the whole viewport with the specified material.
     draw_quad: (material, scene, world2cam, cam2world, projection_matrix) ->
+        @bg_mesh.scene = scene
         @draw_mesh(@bg_mesh, cam2world, -1, material, world2cam,
             projection_matrix)
 
@@ -820,13 +835,12 @@ class RenderManager
         dest_buffer.enable rect
 
         clear_bits = viewport.clear_bits
-        if scene.world_material? and @background_alpha >= 1
+        c = scene.background_color
+        if scene.world_material? and c.a >= 1
             # Don't clear color since we'll be rendering over it
-            # TODO: Shouldn't @background_alpha be in the scene?
             clear_bits &= ~gl.COLOR_BUFFER_BIT
         else if clear_bits & gl.COLOR_BUFFER_BIT
-            c = scene.background_color
-            gl.clearColor c.r,c.g,c.b,@background_alpha
+            gl.clearColor c.r,c.g,c.b,c.a
         clear_bits and gl.clear clear_bits
 
         # TODO: Think better about how to manage passes
@@ -864,7 +878,11 @@ class RenderManager
 
         # Scene background
         if scene.world_material?
+            if scene.background_color.a < 1
+                gl.enable gl.BLEND
             @draw_background(scene, world2cam, cam2world, cam.projection_matrix)
+            if scene.background_color.a < 1
+                gl.disable gl.BLEND
 
         # PASS 1  (alpha)
         if passes.indexOf(1)>=0 and scene.mesh_passes[1].length

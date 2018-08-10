@@ -14,7 +14,8 @@ vr = require './webvr'
 {Curve} = require './curve'
 effects = require './effects/index'
 filters = require './filters'
-{Framebuffer, ByteFramebuffer} = require './framebuffer'
+{Framebuffer, ByteFramebuffer, ShortFramebuffer, FloatFramebuffer} =
+    require './framebuffer'
 {Cubemap} = require './cubemap'
 {GameObject} = require './gameobject'
 {GLRay} = require './glray'
@@ -26,9 +27,9 @@ filters = require './filters'
 {Button, Axis, Axes2, InputSource, InputManager} = require './input'
 
 context_dependent_modules = {
-    Armature, Camera, Curve, Framebuffer, ByteFramebuffer,
-    Cubemap, GameObject, GLRay, Lamp, Material, Mesh, Scene,
-    DebugDraw,
+    GameObject, Mesh, Armature, Curve, Camera, Lamp,
+    Framebuffer, ByteFramebuffer, ShortFramebuffer, FloatFramebuffer,
+    Cubemap, GLRay, Material, Scene, DebugDraw,
     Button, Axis, Axes2, InputSource,
 }
 
