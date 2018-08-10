@@ -306,7 +306,7 @@ class Scene
         if visible or all
             promise = Promise.all([
                 promise
-                @world_material?.load() or Promise.resolve()
+                @world_material?.load(options) or Promise.resolve()
             ])
         return promise.then(=>this)
 
@@ -321,13 +321,14 @@ class Scene
     # @return [Promise]
     load_objects: (list, options={})->
         if not list?.length?
-            throw Error "Invalid arguments, expects (list, options). Did you
+            throw  Error "Invalid arguments, expects (list, options). Did you
                         mean 'load_all_objects()'?"
         # TODO: This may not work the second time is not called.
         # Meshes should always return data's promises
+
         return Promise.all([
             fetch_objects(list, options)
-            @world_material?.load() or Promise.resolve()
+            @world_material?.load(options) or Promise.resolve()
         ]).then(=>@)
 
     unload_invisible_objects: (options) ->
