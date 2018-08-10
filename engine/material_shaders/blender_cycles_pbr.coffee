@@ -157,6 +157,9 @@ class BlenderCyclesPBRMaterial
                 when 'BG_COLOR'
                     code.push "v=scene.background_color;
                         gl.uniform4f(locations[#{loc_idx}], v.r, v.g, v.b, v.a)"
+                when 'OB_COLOR'
+                    code.push "v=ob.color;
+                        gl.uniform4f(locations[#{loc_idx}], v.r, v.g, v.b, v.a)"
                 when 'LAMP_DIR' # lamp direction in camera space
                     code.push "v=lamps[#{current_lamp}]._dir;
                         gl.uniform3f(locations[#{loc_idx}], v.x, v.y, v.z);"
