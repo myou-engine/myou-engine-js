@@ -511,7 +511,11 @@ class RenderManager
         cam = @_cam
 
         mesh.culled_in_last_frame = false
-        if @use_frustum_culling
+        # TODO: Cull objects with armature! Possible solutions:
+        # * Special case for a single root bone
+        # * Make cull spheres in joints
+        # * Use culling of bone parent objects
+        if @use_frustum_culling and mesh.parent?.type != 'ARMATURE'
             # Cull object if it's outside camera frustum
             parented_pos = if mesh.parent then mesh.get_world_position()
             else mesh.position
@@ -741,8 +745,6 @@ class RenderManager
         p4 = vec4.create()
         n4 = vec4.create()
         for plane,i in cull_planes
-            # use this line to test with debug camera on non-debug camera
-            # plane_matrix = viewport.camera.world_matrix
             vec4.copy n4, plane
             n4.w = 0
             vec4.scale p4, n4, -plane.w

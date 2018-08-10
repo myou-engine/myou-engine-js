@@ -255,4 +255,51 @@ vmath.vec3.fixAxes = (x_axis, y_axis, z_axis, main_axis, secondary_axis)->
     vec3.cross secondary, axes[(secondary_axis+1)%3], axes[(secondary_axis+2)%3]
     return
 
+vmath.quat.fromMat4 = (out, m) ->
+    m00 = m.m00; m01 = m.m04; m02 = m.m08
+    m10 = m.m01; m11 = m.m05; m12 = m.m09
+    m20 = m.m02; m21 = m.m06; m22 = m.m10
+
+    trace = m00 + m11 + m22
+
+    if trace > 0
+        s = 0.5 / Math.sqrt(trace + 1.0)
+
+        out.w = 0.25 / s
+        out.x = (m21 - m12) * s
+        out.y = (m02 - m20) * s
+        out.z = (m10 - m01) * s
+
+    else if (m00 > m11) && (m00 > m22)
+        s = 2.0 * Math.sqrt(1.0 + m00 - m11 - m22)
+
+        out.w = (m21 - m12) / s
+        out.x = 0.25 * s
+        out.y = (m01 + m10) / s
+        out.z = (m02 + m20) / s
+
+    else if (m11 > m22)
+        s = 2.0 * Math.sqrt(1.0 + m11 - m00 - m22)
+
+        out.w = (m02 - m20) / s
+        out.x = (m01 + m10) / s
+        out.y = 0.25 * s
+        out.z = (m12 + m21) / s
+
+    else
+        s = 2.0 * Math.sqrt(1.0 + m22 - m00 - m11)
+
+        out.w = (m10 - m01) / s
+        out.x = (m02 + m20) / s
+        out.y = (m12 + m21) / s
+        out.z = 0.25 * s
+
+    return out
+
+vmath.mat4.toRT = (rotation, translation, m) ->
+    vmath.quat.fromMat4 rotation, m
+    translation.x = m.m12
+    translation.y = m.m13
+    translation.z = m.m14
+
 module.exports = vmath

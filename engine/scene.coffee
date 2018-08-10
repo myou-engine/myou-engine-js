@@ -81,7 +81,10 @@ class Scene
             ob.parent = p
             p.children.push ob
             if p.type=='ARMATURE' and parent_bone
-                ob.parent_bone_index = p._bone_list.indexOf p.bones[parent_bone]
+                bone = p.bones[parent_bone]
+                if bone?
+                    ob.parent_bone_index = p._bone_list.indexOf bone
+                    bone.object_children.push ob
 
         if ob.type=='MESH'
             for p in [0..2]  # TODO: not having number of passes hardcoded
@@ -115,6 +118,9 @@ class Scene
             @lamps.splice _,1 if (_ = @lamps.indexOf ob)!=-1
         if ob.type=='ARMATURE'
             @armatures.splice _,1 if (_ = @armatures.indexOf ob)!=-1
+            if ob.parent_bone_index != -1
+                oc = ob.parent._bone_list[ob.parent_bone_index].object_children
+                oc.splice _,1 if (_ = oc.indexOf ob)!=-1
 
         ob.body.destroy()
 
@@ -148,16 +154,23 @@ class Scene
             throw Error "Object '#{parent.name}' is not part of scene
                 '#{@name}'. Both parent and child must belong to it."
         if keep_transform
+            wm = child.get_world_matrix()
+            {position, rotation} = parent.get_world_position_rotation()
             {rotation_order} = child
             child.set_rotation_order 'Q'
-            pos = child.position
             rot = child.rotation
-            vec3.sub pos, pos, parent.get_world_position()
-            p_rot = quat.invert quat.create(), parent.get_world_rotation()
-            vec3.transformQuat pos, pos, p_rot
+            p_rot = quat.invert quat.create(), rotation
             quat.mul rot, p_rot, rot
             child.set_rotation_order rotation_order
-            mat4.identity child.matrix_parent_inverse
+            {scale} = child
+            {m00, m01, m02, m04, m05, m06, m08, m09, m10} = parent.world_matrix
+            scale.x /= Math.sqrt m00*m00 + m01*m01 + m02*m02
+            scale.y /= Math.sqrt m04*m04 + m05*m05 + m06*m06
+            scale.z /= Math.sqrt m08*m08 + m09*m09 + m10*m10
+            parent_inv = mat4.invert mat4.create(), parent.world_matrix
+            mat4.mul wm, parent_inv, wm
+            vec3.set child.position, wm.m12, wm.m13, wm.m14
+        mat4.identity child.matrix_parent_inverse
         child.parent = parent
         parent.children.push child
         if parent_index > child_index
@@ -188,6 +201,7 @@ class Scene
             if (index = parent.children.indexOf child) != -1
                 parent.children.splice index,1
             child.parent = null
+            child.parent_bone_index = -1
 
     # Makes sure all scene children are in order for correct matrix calculations
     reorder_children: ->
@@ -211,10 +225,13 @@ class Scene
         # TODO: do this only for visible and modified objects
         #       (also, this is used in LookAt and other nodes)
         for ob in @armatures
-            for c in ob.children
-                if c.visible
-                    ob.recalculate_bone_matrices()
-                    break
+            # TODO: Be smarter about when this is needed
+            # (and) when to draw meshes with armatures too
+            ob.recalculate_bone_matrices()
+            # for c in ob.children
+            #     if c.visible
+            #         ob.recalculate_bone_matrices()
+            #         break
         for ob in @auto_updated_children
             ob._update_matrices()
         return

@@ -31,6 +31,8 @@ class Bone
         @matrix = mat4.create()
         # Object local matrix (relative to rest pose)
         @ol_matrix = mat4.create()
+        @parent = null
+        @index = 0
         # TODO: probably it was faster to use this for constraintless
         #       armatures (test)
         #@parent_matrix = UNIT_MAT4 # pointer to parent's
@@ -41,7 +43,34 @@ class Bone
         @deform_id = -1
         @blength = 1.0
         @constraints = []
+        @object_children = []
+        # This is the inverse of bone parenting and since Blender doesn't have
+        # an equivalent, we use bone parent and invert it with
+        # ob.convert_bone_child_to_bone_parent()
+        @parent_object = null
 
+    clone_to: (new_armature)->
+        n = new Bone @context
+        vec3.copy n.base_position, @base_position
+        quat.copy n.base_rotation, @base_rotation
+        vec3.copy n.position, @position
+        quat.copy n.rotation, @rotation
+        vec3.copy n.scale, @scale
+        vec3.copy n.final_position, @final_position
+        quat.copy n.final_rotation, @final_rotation
+        vec3.copy n.final_scale, @final_scale
+        mat4.copy n.matrix, @matrix
+        mat4.copy n.ol_matrix, @ol_matrix
+        mat4.copy n.inv_rest_matrix, @inv_rest_matrix
+        if @parent?
+            n.parent = new_armature._bone_list[@parent.index]
+        n.index = @index
+        n.deform_id = @deform_id
+        n.blength = @blength
+        n.constraints = @constraints # TODO: clone array?
+        n.parent_object = @parent_object?.clone()
+        # object_children will be assigned by armature
+        return n
 
 class Armature extends GameObject
 
@@ -54,9 +83,10 @@ class Armature extends GameObject
         @deform_bones = []
         @unfc = 0  # uniform count
         @_m = mat4.create()
+        @pose = {}
 
     add_bones: (bones)->
-        for b in bones
+        for b,i in bones
             bone = new Bone @context
             vec3.copyArray bone.base_position, b['position']
             quat.copyArray bone.base_rotation, b['rotation']
@@ -70,6 +100,7 @@ class Armature extends GameObject
                 #bone.parent_matrix = bone.parent.matrix
             # TODO: only for debug
             bone.blength = b.blength
+            bone.index = i
             #bone.name = b.name
             @_bone_list.push bone
             @bones[b.name] = bone
@@ -91,8 +122,10 @@ class Armature extends GameObject
             @bones[b.name].constraints = b['constraints']
         return
 
-    recalculate_bone_matrices: ->
-        for bone in @_bone_list
+    recalculate_bone_matrices: (use_constraints=true) ->
+        inv = mat4.clone @world_matrix
+        mat4.invert inv, inv
+        for bone in @_bone_list when not bone.parent_object?
             pos = bone.final_position
             rot = quat.copy bone.final_rotation, bone.rotation
             scl = vec3.copy bone.final_scale, bone.scale
@@ -108,29 +141,126 @@ class Armature extends GameObject
                 vec3.transformQuat pos, pos, parent.final_rotation
                 vec3.add pos, pos, parent.final_position
 
-            for con in bone.constraints
-                con[0](con[1], con[2], con[3], con[4])
+            if use_constraints
+                for con in bone.constraints
+                    con[0](con[1], con[2], con[3], con[4])
 
         for bone in @_bone_list
             m = bone.matrix
-            pos = bone.final_position
-            rot = bone.final_rotation
-            scl = bone.final_scale
-            # TODO: scale is not calculated correctly
-            #       when parent's scale X!=Y!=Z
-            mat4.fromRTS m, rot, pos, scl
+            ob = bone.parent_object
+            if not ob?
+                pos = bone.final_position
+                rot = bone.final_rotation
+                scl = bone.final_scale
+                # TODO: scale is not calculated correctly
+                #       when parent's scale X!=Y!=Z
+                mat4.fromRTS m, rot, pos, scl
+            else
+                mat4.mul m, ob.world_matrix, ob.properties.inv_bone_matrix
+                mat4.mul m, inv, m
+                # TODO: scale?
+                mat4.toRT bone.final_rotation, bone.final_position, m
             mat4.mul bone.ol_matrix, m, bone.inv_rest_matrix, m
 
-        return
+        return this
 
-    apply_pose_arrays: (pose)->
+    apply_pose_arrays: (pose=@pose)->
+        @pose = pose
         for bname of pose
             p = pose[bname]
             b = @bones[bname]
             vec3.copyArray b.position, p.position
             quat.copyArray b.rotation, p.rotation
             vec3.copyArray b.scale, p.scale
-        return
+        return this
+
+    apply_rigid_body_constraints: ->
+        # set the pose of all bones to the middle of their limits,
+        # to use them as base rotation of the cone constraint
+        # (since the cone must be symmetrical and limits can be asymmetrical)
+        for bname,bone of @bones
+            pose = @pose[bname]
+            {rotation} = bone
+            quat.identity rotation
+            {use_ik_limit_x, ik_min_x, ik_max_x,
+            use_ik_limit_y, ik_min_y, ik_max_y,
+            use_ik_limit_z, ik_min_z, ik_max_z} = pose
+            if use_ik_limit_x
+                quat.rotateX rotation, rotation, (ik_min_x+ik_max_x) * .5
+            if use_ik_limit_y
+                quat.rotateY rotation, rotation, (ik_min_y+ik_max_y) * .5
+            if use_ik_limit_z
+                quat.rotateZ rotation, rotation, (ik_min_z+ik_max_z) * .5
+        @recalculate_bone_matrices(false)
+        # invert parental relationship,
+        # i.e. make the bone move with the object
+        for bone in @_bone_list
+            for c in bone.object_children by -1
+                if c.body.type != 'NO_COLLISION'
+                    c.convert_bone_child_to_bone_parent()
+                    c.body.instance()
+        rotation = @get_world_rotation()
+        {world_matrix} = this
+        rotZ90 = quat.create()
+        quat.rotateZ rotZ90, rotZ90, Math.PI*.5
+        for bname,bone of @bones
+            # put bone in world space
+            {final_position, final_rotation} = bone
+            vec3.transformMat4 final_position, final_position, world_matrix
+            quat.mul final_rotation, rotation, final_rotation
+            # rotate bone 90 degrees in local Z axis, because cone twist
+            # goes around Y axis on the bone and X axis on bullet
+            quat.mul final_rotation, final_rotation, rotZ90
+            for ob in bone.object_children when ob.body.type != 'NO_COLLISION'
+                # if bone parent has no physics, it will be attached to
+                # armature's parent body (if it has one)
+                parent = @parent
+                if bone.parent?
+                    for c in bone.parent.object_children
+                        if c.body.type != 'NO_COLLISION'
+                            parent = c
+                            break
+                # if it has physical parent,
+                # attach ob with parent with a rigid body constraint
+                if parent? and parent.body.type != 'NO_COLLISION'
+                    # determine cone twist angles
+                    pose = @pose[bname]
+                    {ik_stiffness_x, use_ik_limit_x, ik_min_x, ik_max_x,
+                    ik_stiffness_y, use_ik_limit_y, ik_min_y, ik_max_y,
+                    ik_stiffness_z, use_ik_limit_z, ik_min_z, ik_max_z} = pose
+                    angle_x = angle_y = angle_z = Math.PI
+                    if use_ik_limit_x
+                        angle_x = (ik_max_x-ik_min_x) * .5
+                    if use_ik_limit_y
+                        angle_y = (ik_max_y-ik_min_y) * .5
+                    if use_ik_limit_z
+                        angle_z = (ik_max_z-ik_min_z) * .5
+                    ob.body.add_conetwist_constraint parent.body, final_position,
+                        final_rotation, angle_x, angle_y, angle_z
+                break
+        return this
+
+    clone: (options, options2) ->
+        n = super options, options2
+        n.bones = bones = {}
+        n._bone_list = list = []
+        n.deform_bones = deform_bones = []
+        # NOTE: Assuming JS objects are always ordered!
+        for bname,bone of @bones
+            b = bone.clone_to n
+            b.object_children = []
+            if b.deform_id != -1
+                deform_bones[b.deform_id] = b
+            list.push bones[bname] = b
+        for c in n.children
+            if c.parent_bone_index != -1
+                list[c.parent_bone_index].object_children.push c
+            if c.armature == this
+                c.armature = n
+                for {object} in c.lod_objects
+                    object.armature = n
+        n.pose = @pose
+        return n
 
 rotation_to = (out, p1, p2, maxang)->
     angle =
@@ -147,8 +277,9 @@ class BoneConstraints
     copy_location: (owner, target)->
         quat.copy owner.final_position, target.final_position
 
-    copy_rotation: (owner, target)->
-        quat.copy owner.final_rotation, target.final_rotation
+    copy_rotation: (owner, target, influence=1)->
+        rot = owner.final_rotation
+        quat.slerp rot, rot, target.final_rotation, influence
 
     copy_scale: (owner, target)->
         quat.copy owner.final_scale, target.final_scale

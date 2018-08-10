@@ -434,4 +434,19 @@ class GameObject
             @probe_cube = @scene.background_probe ? @scene.instance_probe()
         return
 
+    convert_bone_child_to_bone_parent: ->
+        if @parent and (bi = @parent_bone_index) >= 0
+            bone = @parent._bone_list[bi]
+        else
+            return
+        {parent} = this
+        @parent = null
+        m = @properties.inv_bone_matrix = mat4.clone @get_world_matrix()
+        mat4.mul m, @matrix_parent_inverse, m
+        m.m13 += bone.blength
+        mat4.invert m, m
+        @parent = parent
+        @clear_parent()
+        bone.parent_object = this
+
 module.exports = {GameObject}

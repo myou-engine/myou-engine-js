@@ -16,17 +16,18 @@ class World
         # read only, set gravity with set_gravity()
         @gravity = vec3.new 0, 0, 9.8
         @physics_fps = 60
+        @time_ratio = 1
         # Set to 0 to disable extrapolation
         @max_substeps = 5
         # private vars
         @btworld = @solver = @ghost_pair_callback = \
         @broadphase = @dispatcher = @configuration = null
         @tmp_Vector3 = @tmp_Vector3b = @tmp_Vector3c = @tmp_Quaternion = \
-        @tmp_Transform = @tmp_ClosestRayResultCallback = null
+        @tmp_Transform = @tmp_Transform2 = @tmp_ClosestRayResultCallback = null
         @pointer_to_body = {}
+        @auto_update_sensors = []
         @auto_update_bodies = []
         @character_bodies = []
-        @static_ghosts = []
 
     instance: ->
         return if @btworld?
@@ -44,6 +45,7 @@ class World
         @tmp_Vector3c = new Ammo.btVector3 0, 0, 0
         @tmp_Quaternion = new Ammo.btQuaternion 0, 0, 0, 0
         @tmp_Transform = new Ammo.btTransform
+        @tmp_Transform2 = new Ammo.btTransform
         @tmp_ClosestRayResultCallback = new Ammo.ClosestRayResultCallback \
             new Ammo.btVector3(0, 0, 0), new Ammo.btVector3(0, 0, 0)
         @set_gravity @gravity
@@ -78,12 +80,14 @@ class World
         return
 
     step: (frame_duration) ->
-        return if not @btworld?
+        return if not @btworld? or not @scene.physics_enabled
         # Getting body velocity of characters (TODO is there another way?)
         for {btbody, last_position} in @character_bodies
             origin = btbody.getWorldTransform().getOrigin()
             vec3.set last_position, origin.x(), origin.y(), origin.z()
-        @btworld.stepSimulation frame_duration * 0.001,
+        for body in @auto_update_sensors # TODO: skip static objects?
+            body.update_transform()
+        @btworld.stepSimulation frame_duration * 0.001 * @time_ratio,
             @max_substeps, 1/@physics_fps
         # Copy physics back to objects
         {tmp_Transform} = this
@@ -158,6 +162,8 @@ class Body
         @slope = Math.PI / 4 # 45 degrees
         @last_position = vec3.create()
 
+        @constraints = []
+
     set_shape: (shape, is_compound=@is_compound) ->
         if @btshape? and shape == @shape and !is_compound == !@is_compound
             return
@@ -180,7 +186,11 @@ class Body
 
         if @type == 'NO_COLLISION' or not @btworld?
             return
-        
+
+        if @owner.parent?.type == 'ARMATURE'
+            # this is likely to be part of a ragdoll that needs to be applied
+            return
+
         if @owner.bound_box?
             [a,b] = @owner.bound_box
             he = vec3.sub @half_extents, b, a
@@ -227,7 +237,7 @@ class Body
                     return
 
                 @_use_visual_mesh = use_visual_mesh
-                
+
                 # Get "global" scale
                 # @half_extents is used as scale for debug objects, so we
                 # assign it here as regular scale instead of half-extents
@@ -310,6 +320,7 @@ class Body
                     @elasticity, 0
             when 'SENSOR'
                 @btbody = @_sensor_body actual_shape, pos, rot
+                @world.auto_update_sensors.push @
             when 'CHARACTER'
                 @owner.rotation_order = 'Q'
                 quat.copy @owner.rotation, rot
@@ -334,7 +345,7 @@ class Body
             @btworld.addAction(@btchar)
         else
             @btworld.addRigidBody(@btbody, @group, @mask)
-        if @no_sleeping
+        if @no_sleeping or @type == 'SENSOR'
             @disallow_sleeping()
         if @is_ghost or @type == 'SENSOR'
             @make_ghost()
@@ -421,6 +432,21 @@ class Body
         transform.setRotation(tmp_Quaternion)
         @btbody.setWorldTransform(tmp_Transform)
 
+    update_scale: ->
+        if @btshape.setLocalScaling?
+            {tmp_Vector3} = @world
+            if @owner.parent
+                # TODO: Avoid multiple calls to get_world_matrix()
+                scale = vec3.fromMat4Scale @half_extents, @owner.get_world_matrix()
+            else
+                scale = vec3.copy @half_extents, @owner.scale
+            tmp_Vector3.setValue scale.x, scale.y, scale.z
+            @btshape.setLocalScaling tmp_Vector3
+        else
+            @_destroy_shape()
+            @instance()
+        return this
+
     get_linear_velocity: (local=false)->
         v = @btbody.getLinearVelocity()
         new_v = vec3.new v.x(), v.y(), v.z()
@@ -503,20 +529,18 @@ class Body
         @btchar.setFallSpeed(f)
 
     set_angular_velocity: (v)->
-        if not @btchar?
-            throw Error "Object '#{@owner.name}' is not a character body"
         {tmp_Vector3} = @world
         tmp_Vector3.setValue(v.x, v.y, v.z)
         @btbody.setAngularVelocity(tmp_Vector3)
 
-    colliding_points: (margin=0)->
+    colliding_points: (margin=0, use_ghost=true)->
         ret = []
         {btbody, btworld} = this
         if not btbody?
             return ret
         {pointer_to_body} = @world
         p = btbody.ptr
-        if btbody.getOverlappingPairCache?
+        if btbody.getOverlappingPairCache? and use_ghost
             # TODO: Should we move this code to C++?
             manifoldArray = new Ammo.btManifoldArray
             pairArray = btbody.getOverlappingPairCache()
@@ -589,6 +613,62 @@ class Body
                                     ret.push {point_on_body: a, \
                                         point_on_other: b, normal, other}
         return ret
+
+    add_point_constraint: (other, point, linked_collision=true) ->
+        {tmp_Vector3, tmp_Vector3b, btworld} = @world
+        point_in_a = vec3.clone point
+        {position, rotation} = @owner.get_world_position_rotation()
+        vec3.sub point_in_a, point_in_a, position
+        quat.invert rotation, rotation
+        vec3.transformQuat point_in_a, point_in_a, rotation
+        tmp_Vector3.setValue point_in_a.x, point_in_a.y, point_in_a.z
+        if other?
+            point_in_b = vec3.clone point
+            {position, rotation} = other.owner.get_world_position_rotation()
+            vec3.sub point_in_b, point_in_b, position
+            quat.invert rotation, rotation
+            vec3.transformQuat point_in_b, point_in_b, rotation
+            tmp_Vector3b.setValue point_in_b.x, point_in_b.y, point_in_b.z
+            c = new Ammo.btPoint2PointConstraint @btbody, other.btbody,
+                tmp_Vector3, tmp_Vector3b
+        else
+            c = new Ammo.btPoint2PointConstraint @btbody, tmp_Vector3
+        btworld.addConstraint c, linked_collision
+        @constraints.push c
+        return new Constraint this, btworld, c
+
+    add_conetwist_constraint: (other, point, rot, limit_twist, limit_y, limit_z,
+            linked_collision=true) ->
+        {tmp_Vector3, tmp_Transform, tmp_Transform2, tmp_Quaternion} = @world
+        point_in_a = vec3.clone point
+        {position, rotation} = @owner.get_world_position_rotation()
+        vec3.sub point_in_a, point_in_a, position
+        quat.invert rotation, rotation
+        vec3.transformQuat point_in_a, point_in_a, rotation
+        quat.mul rotation, rotation, rot
+        tmp_Vector3.setValue point_in_a.x, point_in_a.y, point_in_a.z
+        tmp_Quaternion.setValue rotation.x, rotation.y, rotation.z, rotation.w
+        tmp_Transform.setOrigin tmp_Vector3
+        tmp_Transform.setRotation tmp_Quaternion
+        if other?
+            point_in_b = vec3.clone point
+            {position, rotation} = other.owner.get_world_position_rotation()
+            vec3.sub point_in_b, point_in_b, position
+            quat.invert rotation, rotation
+            vec3.transformQuat point_in_b, point_in_b, rotation
+            quat.mul rotation, rotation, rot
+            tmp_Vector3.setValue point_in_b.x, point_in_b.y, point_in_b.z
+            tmp_Quaternion.setValue rotation.x, rotation.y, rotation.z, rotation.w
+            tmp_Transform2.setOrigin tmp_Vector3
+            tmp_Transform2.setRotation tmp_Quaternion
+            c = new Ammo.btConeTwistConstraint @btbody, other.btbody,
+                tmp_Transform, tmp_Transform2
+        else
+            c = new Ammo.btConeTwistConstraint @btbody, tmp_Transform
+        c.setLimit limit_z, limit_y, limit_twist, 1, .3, 1
+        @world.btworld.addConstraint c, linked_collision
+        @constraints.push c
+        return new Constraint this, @world.btworld, c
 
     _clone_to: (owner) ->
         owner.body = n = new Body owner
@@ -742,7 +822,7 @@ class Body
         body.setWorldTransform startTransform
         body.pointers = [startTransform]
         return body
-    
+
     _sensor_body: (shape, position, rotation, is_ghost) ->
         {tmp_Vector3, tmp_Quaternion} = @world
         body = new Ammo.btPairCachingGhostObject
@@ -772,9 +852,20 @@ class Body
                 Ammo.destroy p
             if (index = @world.auto_update_bodies.indexOf @) != -1
                 @world.auto_update_bodies.splice index,1
-            if (index = @world.static_ghosts.indexOf @) != -1
-                @world.static_ghosts.splice index,1
+            if (index = @world.auto_update_sensors.indexOf @) != -1
+                @world.auto_update_sensors.splice index,1
             @btbody = @btchar = null
+
+class Constraint
+    constructor: (@body, @btworld, @btconstraint) ->
+
+    destroy: ->
+        if @btconstraint?
+            @btworld.removeConstraint @btconstraint
+            Ammo.destroy @btconstraint
+            @btconstraint = null
+            if (index = @body.constraints.indexOf @) != -1
+                @body.constraints.splice index,1
 
 
 load_physics_engine = ->
@@ -791,7 +882,9 @@ load_physics_engine = ->
                         else
                             setTimeout(check_ammo_is_loaded, 150)
                     else
-                        window.Ammo().then (ammo) ->
+                        window.Ammo({
+                            locateFile: (f) -> physics_engine_url + f
+                        }).then (ammo) ->
                             Ammo = ammo
                             resolve()
                 setTimeout(check_ammo_is_loaded, 150)
@@ -801,12 +894,17 @@ load_physics_engine = ->
             script.async = true
 
             if is_browser
-                physics_engine_url = current_script_path + "/libs/ammo.asm.js"
+                physics_engine_url = current_script_path + "/libs/"
             else
                 dirname =  __dirname.replace(/\\/g, '/')   #/)
-                physics_engine_url = 'file://' + dirname + "/libs/ammo.asm.js"
+                physics_engine_url = 'file://' + dirname + "/libs/"
+            if window.WebAssembly?
+                # window.Ammo = window.Ammo ? {}
+                # window.Ammo.locateFile = (f) -> physics_engine_url + f
+                script.src = physics_engine_url + "ammo.wasm.js"
+            else
+                script.src = physics_engine_url + "ammo.asm.js"
 
-            script.src = physics_engine_url
             document.body.appendChild script
 
     return window.global_ammo_promise
