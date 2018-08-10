@@ -449,4 +449,31 @@ class GameObject
         @clear_parent()
         bone.parent_object = this
 
+    get_world_X_vector: ->
+        wm = @get_world_matrix()
+        return vec3.new wm.m00, wm.m01, wm.m02
+
+    get_world_Y_vector: ->
+        wm = @get_world_matrix()
+        return vec3.new wm.m04, wm.m05, wm.m06
+
+    get_world_Z_vector: ->
+        wm = @get_world_matrix()
+        return vec3.new wm.m08, wm.m09, wm.m10
+
+    get_dimensions: ->
+        dimensions = vec3.clone @bound_box[1]
+        vec3.sub dimensions, dimensions, @bound_box[0]
+        vec3.mul dimensions, dimensions, @scale
+        return dimensions
+
+    get_size: ->
+        d = @get_dimensions()
+        return Math.max(d.x,d.y,d.z)
+
+    set_size: (size)->
+        vec3.scale @scale, @scale, size/@get_size()
+
+
+
 module.exports = {GameObject}
