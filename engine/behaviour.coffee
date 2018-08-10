@@ -421,7 +421,7 @@ class Behaviour
                 addListener root, 'mouseout', @_on_pointer_move, options
             if @on_pointer_down?
                 removeListener root, 'pointerdown', @_on_pointer_down, options
-                addListener root, 'mouserdown', @_on_pointer_down, options
+                addListener root, 'mousedown', @_on_pointer_down, options
             if @on_pointer_up?
                 removeListener window, 'pointerup', @_on_pointer_up, options
                 addListener window, 'mouseup', @_on_pointer_up, options
@@ -434,7 +434,7 @@ class Behaviour
                 addListener window, 'pointermove', @_on_pointer_move, options
                 addListener window, 'pointerout', @_on_pointer_move, options
             if @on_pointer_down?
-                removeListener root, 'mouserdown', @_on_pointer_down, options
+                removeListener root, 'mousedown', @_on_pointer_down, options
                 addListener root, 'pointerdown', @_on_pointer_down, options
             if @on_pointer_up?
                 removeListener window, 'mouseup', @_on_pointer_up, options
