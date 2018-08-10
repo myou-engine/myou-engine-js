@@ -6,6 +6,7 @@ uniform mat4 projection_matrix;
 uniform vec2 source_size_inverse, source_scale;
 varying vec2 source_coord;
 uniform float radius, iradius4, strength, zrange;
+uniform vec2 fade;
 
 #define PI    3.14159265
 /*library goes here*/
@@ -14,6 +15,10 @@ void main(void)
 {
     // NOTE: Assuming source_scale and depth_scale are the same!
     float depth = get_depth_no_scale(source_coord);
+    if(depth > fade.y){
+        gl_FragColor = vec4(1, depth, 1, depth);
+        return;
+    }
 
     vec2 noise_co = gl_FragCoord.xy * NOISE_ISIZE;
     vec4 n = texture2D(noise_texture, noise_co) - .5;
@@ -34,8 +39,12 @@ void main(void)
         t = texture2D(disk_texture, vec2(i, .5));
         p = rot * (t.xy - .5);
         // t = normalize(t); // use this to test radius
-        // TODO: When texture can be NPOT, don't clamp
+        // TODO: define this
+        #ifdef NPOT_TEXTURES
+        d = get_depth_no_scale(     (source_coord + p*ratio, vec2(0.), limit));
+        #else
         d = get_depth_no_scale(clamp(source_coord + p*ratio, vec2(0.), limit));
+        #endif
         dif = (depth-d) * iradius4;
         infl = clamp(2.-dif * zrange, 0., 1.);
         ao += clamp(dif, -1.,1.) * infl;
@@ -43,9 +52,15 @@ void main(void)
     }
 
     ao /= samples;
-    ao = 1.0-max(0., ao * strength);
+    float fade = min((fade.y - depth)/(fade.y - fade.x), 1.);
+    ao = 1.0-max(0., ao * strength * fade);
 
-    gl_FragColor = vec4(ao, ao, ao, 1.);
+    // NOTE: For some reason, RGB of float textures are multiplied by sqrt(a)
+    // So we're packing both AO in one float...
+    // ao =
+    // gl_FragColor = vec4(ao, depth, depth, 1.0);
+    gl_FragColor = vec4(ao, depth, ao, depth);
+
     // gl_FragColor = vec4(n.xyz+.5, 1.);
     // gl_FragColor = vec4(vec3(depth*0.001), 1.0);
     // vec4 tt;

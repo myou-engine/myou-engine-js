@@ -14,7 +14,8 @@ class BloomEffect
         @blur = new @context.DirectionalBlurFilter
         # expression is "screen" mix function * emission
         @screen_mix = new @context.ExprFilter 2,
-            "1.0 - (1.0-a)*(1.0-b*#{@intensity.toFixed 7})"
+            "vec4(1.0 - (1.0-a.rgb)*(1.0-b.rgb*#{@intensity.toFixed 7}), a.a)"
+            use_vec4: true
         @buffer = null
 
     on_viewport_update: (@viewport) ->

@@ -3,7 +3,7 @@ class BaseEffect
     constructor: (@context) ->
         @requires_float_source = false
         @requires_float_destination = false
-    
+
     on_viewport_update: (@viewport) ->
         # Called after it's added and when viewport changes size.
         # All buffers should be created here
@@ -24,5 +24,8 @@ class FilterEffect extends BaseEffect
         @filter.apply source, destination, rect
         return {destination, temporary: source}
 
+class CopyEffect extends FilterEffect
+    constructor: (context) ->
+        super context, new context.CopyFilter
 
-module.exports = {BaseEffect, FilterEffect}
+module.exports = {BaseEffect, FilterEffect, CopyEffect}
