@@ -4,9 +4,8 @@ loader = require './loader'
 vr = require './webvr'
 {MeshFactory} = require './mesh_factory'
 {fetch_objects} = require './fetch_assets'
-{
-    Action, Animation, LoopedAnimation, FiniteAnimation, PingPongAnimation,
-} = require './animation'
+{Action, Animation, LoopedAnimation, FiniteAnimation, PingPongAnimation} =
+    require './animation'
 {Viewport} = require './viewport'
 {Texture} = require './texture'
 {Armature} = require './armature'
@@ -120,10 +119,13 @@ class Myou
 
         @update_root_rect = =>
             rect = @root.getClientRects()[0]
-            @root_rect = {
-                top: rect.top + pageYOffset
-                left: rect.left + pageXOffset
-            }
+            if rect
+                @root_rect = {
+                    top: rect.top + pageYOffset
+                    left: rect.left + pageXOffset
+                }
+            else
+                @root_rect = {top: 0, left: 0}
 
         window.addEventListener 'resize', @update_root_rect
         @update_root_rect()
