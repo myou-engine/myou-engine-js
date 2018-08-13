@@ -12,6 +12,7 @@
     "cubemap-sh": "^0.2.1",
     "fs-extra": "^4.0.2",
     "mersennetwister": "^0.2.3",
+    "parse-dds": "^1.2.1",
     "quickhull3d": "^2.0.1",
     "spur-events": "^0.1.8",
     "vmath": "^1.4.7",
