@@ -68,6 +68,7 @@ class CanvasScreen extends Screen
                 @resize_to_canvas()
 
     resize_to_canvas: (ratio_x=@pixel_ratio_x, ratio_y=@pixel_ratio_y) ->
+        return if not @canvas?
         {clientWidth, clientHeight} = @canvas
         if clientWidth == @width and clientHeight == @height and
             ratio_x == @pixel_ratio_x and ratio_y == @pixel_ratio_y
