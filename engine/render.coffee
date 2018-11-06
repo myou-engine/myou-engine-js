@@ -59,7 +59,7 @@ class RenderManager
 
     recreate_gl_canvas: ->
         new_canvas = @canvas.cloneNode()
-        @canvas.parentNode.replaceChild new_canvas, @canvas
+        @canvas.parentNode?.replaceChild new_canvas, @canvas
         @_set_canvas new_canvas
         return
 
@@ -70,7 +70,8 @@ class RenderManager
     _set_canvas: (new_canvas) ->
         if new_canvas != @canvas
             # recreate events of root element if it's the canvas
-            if @context.root == @canvas
+            @context.canvas = new_canvas
+            if @context.root == @canvas or not @context.root
                 @context.root = new_canvas
                 for b in @context.behaviours
                     b._destroy_events()
@@ -88,7 +89,7 @@ class RenderManager
         } = options
         if clear or reinstance_all
             @clear_context()
-        if restore or reinstance_all
+        if reinstance_all
             @recreate_gl_canvas()
         else if @gl?
             console.warn "There's already a GL context. Set reinstance_all
@@ -271,6 +272,7 @@ class RenderManager
     # Unloads all GPU stored objects
     clear_context: ->
         {gl} = @
+        return if not gl?
         # materials, 2D textures
         for _,m of @context.all_materials
             m.delete_all_shaders(true)
@@ -295,6 +297,8 @@ class RenderManager
     # @private
     # Restores GL context after a re-created context or a "lost context" event.
     restore_context: ->
+        # TODO: check if loseContext was called
+        # @extensions.lose_context?.restoreContext()
         @initialize()
         # materials, 2D textures
         for _,m of @context.all_materials
