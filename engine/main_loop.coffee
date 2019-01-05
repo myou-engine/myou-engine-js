@@ -62,6 +62,9 @@ class MainLoop
     add_frame_callback: (callback)->
         # Uncomment next line to debug trackebacks involving frame callbacks
         # return callback()
+        if callback.next?
+            # it's a generator instance
+            callback = callback.next.bind callback
         @_frame_callbacks.push callback
 
     timeout: (time)->
@@ -102,7 +105,10 @@ class MainLoop
         task_time = time
         max_task_time = MAX_TASK_DURATION + time
         while (task_time < max_task_time) and (@_frame_callbacks.length != 0)
-            @_frame_callbacks.shift()()
+            f = @_frame_callbacks.shift()
+            ret = f()
+            if ret?.done? and ret.done == false
+                @_frame_callbacks.push f
             task_time = performance.now()
 
         if not @enabled
