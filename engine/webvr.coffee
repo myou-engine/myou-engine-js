@@ -8,9 +8,8 @@ class VRScreen extends CanvasScreen
             throw Error "There's a VR screen already"
         {
             use_room_scale_parent=true
-            use_unpredict=true
-            head
             mirror_zoom=1.3
+            head0
         } = options
         if use_room_scale_parent and not @scene.active_camera.parent?
             throw Error "use_room_scale_parent requires the camera to have a
@@ -33,7 +32,7 @@ class VRScreen extends CanvasScreen
         @left_orientation = quat.create()
         @right_orientation = quat.create()
         @last_time = performance.now()
-        @use_unpredict = use_unpredict and @HMD.displayName == 'OpenVR HMD'
+        console.log 'HMD is', @HMD.displayName
         if not /Oculus/.test @HMD.displayName
             @is_wmr = true # we'll set it to false when we detect velocity
         @sst = mat4.create()
@@ -168,17 +167,11 @@ class VRScreen extends CanvasScreen
             has_av = (avx or avy or avz)
             if has_av
                 @is_wmr = false
-            # WMR headsets seem to have zero velocity through SteamVR
-            # and shouldn't have prediction correction
-            use_unpredict = @use_unpredict and has_av
             m4 = mat4.create()
             m3 = mat3.create()
             {sst_inverse} = this
             time = performance.now()
             delta_frames = Math.min 10, (time - @last_time)/11.11111111
-            # it tries to predict one frame ahead using the difference between
-            # the last two frames, so we substract the prediction
-            unpredict = 1-(1/(delta_frames+1))
 
             mat4.copyArray m4, leftViewMatrix
             # mat4.rotateX m4, m4, Math.PI/2
@@ -186,8 +179,6 @@ class VRScreen extends CanvasScreen
             mat4.invert m4, m4
             mat3.fromMat4 m3, m4
             quat.fromMat3 r0, m3
-            if use_unpredict
-                quat.slerp r0, @left_orientation, r0, unpredict
             quat.copy @left_orientation, r0
             # TODO: Test with other headsets.
             @head_is_tracking =
@@ -200,8 +191,6 @@ class VRScreen extends CanvasScreen
             mat4.invert m4, m4
             mat3.fromMat4 m3, m4
             quat.fromMat3 r1, m3
-            if use_unpredict
-                quat.slerp r1, @right_orientation, r1, unpredict
             quat.copy @right_orientation, r1
             vec3.set p1, m4.m12, m4.m13, m4.m14
 
