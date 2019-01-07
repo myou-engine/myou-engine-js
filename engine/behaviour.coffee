@@ -68,9 +68,9 @@ class Behaviour
                         but object picking is disabled."
                     console.warn 'Add "this.enable_object_picking()"
                         to on_init()'
-        if @on_enter_vr? and @context.vr_screen?
-            [vp1, vp2] = @context.vr_screen.viewports
-            @on_enter_vr vp1.camera, vp2.camera
+            if @on_enter_vr? and @context.vr_screen?
+                [vp1, vp2] = @context.vr_screen.viewports
+                @on_enter_vr vp1.camera, vp2.camera
 
     enable: ->
         if not @_enabled
