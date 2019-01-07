@@ -89,7 +89,8 @@ module.exports.handle_myou_config = function(webpack, config, flags, env){
             join(config.output.path, 'libs', name)
         );
     }
-    if(flags.include_bullet){
+    if(flags.copy_bullet == null) flags.copy_bullet = true;
+    if(flags.include_bullet && flags.copy_bullet){
         copy_lib('ammo.asm.js');
     }
     config.plugins = config.plugins || [];
