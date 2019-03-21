@@ -206,9 +206,9 @@ class BlenderCyclesPBRMaterial
         for i in [0..8]
             unf = 'unfsh'+i
             loc = gl.getUniformLocation program, unf
-                coeff_code.push "gl.uniform3fv(locations[#{locations.length}],
-                    coefs[#{i}]);"
             if loc? and loc != -1
+                coeff_code.push "v=coefs[#{i}];
+                    gl.uniform3f(locations[#{locations.length}],v[0],v[1],v[2]);"
                 locations.push loc
 
         if coeff_code.length != 0

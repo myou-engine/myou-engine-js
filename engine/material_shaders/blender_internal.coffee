@@ -251,8 +251,13 @@ class BlenderInternalMaterial
                     # TODO: Optimize by having four value_codes
                     # and putting them depending on type
                     code.push if vlen
-                        "gl.uniform#{vlen}fv(locations[#{loc_idx}],
-                            #{value_code}.toJSON());"
+                        if value.x?
+                            value_args = ['v.x','v.y','v.z','v.w'][...vlen].join(',')
+                        else
+                            value_args = ['v.r','v.g','v.b','v.a'][...vlen].join(',')
+                        "v=#{value_code};
+                        gl.uniform#{vlen}f(locations[#{loc_idx}],
+                            #{value_args});"
                     else if type == 1
                         "gl.uniform1f(locations[#{loc_idx}], #{value_code});"
                     else
