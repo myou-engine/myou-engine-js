@@ -19,6 +19,8 @@ material_types =
     BLENDER_CYCLES_PBR: BlenderCyclesPBRMaterial
     PLAIN_SHADER: PlainShaderMaterial
 
+NULL_SHADER = {_program: null}
+
 class Material
     constructor: (@context, @name, @data, @scene) ->
         @shaders = {}
@@ -41,12 +43,15 @@ class Material
         if not mesh._signature
             mesh.ensure_layout_and_modifiers()
         shader = @shaders[mesh._signature]
-        if not shader? and @generator?
-            @get_texture_list()
-            shader = @shaders[mesh._signature] = new Shader(@context, @data, @,
-                mesh.layout, mesh.vertex_modifiers, mesh.material_defines)
-            shader.material = this
-            @last_shader = shader
+        if not shader?
+            if @generator?
+                @get_texture_list()
+                shader = @shaders[mesh._signature] = new Shader(@context, @data, @,
+                    mesh.layout, mesh.vertex_modifiers, mesh.material_defines)
+                shader.material = this
+                @last_shader = shader
+            else
+                shader = @shaders[mesh._signature] = NULL_SHADER
         return shader
 
     set_data: (@data) ->
@@ -68,7 +73,7 @@ class Material
     # Ensures the texture list is correctly filled and returns it.
     # Only valid after the scene has finished loading.
     get_texture_list: ->
-        if not @_has_texture_list_checked
+        if not @_has_texture_list_checked and @generator?
             @generator.assign_textures()
             for tex in @_texture_list when not tex.skip_load
                 @alpha_texture = tex.value
