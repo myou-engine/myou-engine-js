@@ -1,4 +1,5 @@
 
+fetch = window.myou_fetch ? window.fetch
 parse_dds = require 'parse-dds'
 
 # Main texture class (see also {Cubemap}). It allows creating and managing

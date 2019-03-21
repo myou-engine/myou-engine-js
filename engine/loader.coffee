@@ -12,6 +12,7 @@
 {Material} = require './material'
 {nearest_POT} = require './math_utils/math_extra'
 {load_physics_engine} = require './physics/bullet'
+fetch = window.myou_fetch ? window.fetch
 
 load_scene = (name, filter, options, context) ->
     scene = context.scenes[name]

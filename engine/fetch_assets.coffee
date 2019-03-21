@@ -1,4 +1,6 @@
 
+fetch = window.myou_fetch ? window.fetch
+
 fetch_promises = {}  # {file_name: promise}
 
 ## Uncomment this to find out why a politician lies
