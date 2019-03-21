@@ -264,7 +264,7 @@ load_object = (data, scene) ->
 
         if data.lod_levels
             ob.lod_objects = []
-            for lod_data in data.lod_levels
+            for lod_data,i in data.lod_levels
                 # Add properties that weren't exported because
                 # the base level already have them
                 lod_data.elements = data.elements
@@ -272,6 +272,7 @@ load_object = (data, scene) ->
                 # workaround (TODO: still necessary?)
                 lod_data.materials = lod_data.materials or data.materials
                 lod_ob = new Mesh context
+                lod_ob.name = ob.name + '_lod' + i
                 lod_ob.scene = ob.scene
                 lod_ob.parent = ob.parent # for armature in configure_materials
                 load_mesh_properties lod_ob, lod_data
