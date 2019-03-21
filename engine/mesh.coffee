@@ -159,8 +159,12 @@ class Mesh extends GameObject
         vlen = @offsets[@offsets.length-2] # 4 byte units
         ilen = @offsets[@offsets.length-1] # 2 byte units
         offset = (@pack_offset or 0) + buffer_offset
-        va = new Float32Array data, offset, vlen
-        ia = new Uint16Array data, offset + vlen * 4, ilen
+        try
+            va = new Float32Array data, offset, vlen
+            ia = new Uint16Array data, offset + vlen * 4, ilen
+        catch e
+            e = Error "Mesh #{@name} is corrupt"
+            throw e
         @context.main_loop.add_frame_callback =>
             @load_from_va_ia va, ia
 
