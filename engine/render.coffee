@@ -210,6 +210,7 @@ class RenderManager
             shadow_box_blur: new @context.BoxBlurFilter
 
         @common_shadow_fb = null
+        @common_shadow_fb2 = null
         @tmp_fb0 = null
         @tmp_fb1 = null
 
@@ -721,6 +722,7 @@ class RenderManager
                     if lamp.shadow_fb?
                         lamp.destroy_shadow()
                 @common_shadow_fb?.destroy()
+                @common_shadow_fb2?.destroy()
             @_shadows_were_enabled = @enable_shadows
 
         cam2world = @_cam2world
@@ -804,6 +806,10 @@ class RenderManager
                 if not @common_shadow_fb?
                     @common_shadow_fb = new Framebuffer @context,
                         {size: [size,size], use_depth: true}
+                    @common_shadow_fb2 = new Framebuffer @context,
+                        {size: [size*.5,size*.5], use_depth: false}
+                    @common_shadow_fb3 = new Framebuffer @context,
+                        {size: [size*.25,size*.25], use_depth: false}
 
                 @common_shadow_fb.enable [0, 0, size, size]
                 gl.clearColor 1,1,1,1  # TODO: which color should we use?
@@ -829,8 +835,12 @@ class RenderManager
                             @draw_mesh ob, ob.world_matrix, 1, mat, world2light,
                                 lamp._projection_matrix
 
-                lamp.shadow_fb.enable()
+                @common_shadow_fb2.enable()
                 @common_shadow_fb.draw_with_filter @filters.shadow_box_blur
+                @common_shadow_fb3.enable()
+                @common_shadow_fb2.draw_with_filter @filters.shadow_box_blur
+                lamp.shadow_fb.enable()
+                @common_shadow_fb3.draw_with_filter @filters.shadow_box_blur
 
             # Update lamp view pos and direction
             lamp.recalculate_render_data(world2cam, cam2world, world2light)

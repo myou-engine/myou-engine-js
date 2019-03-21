@@ -76,7 +76,7 @@ class Lamp extends GameObject
         # This one has no depth because we're using common_shadow_fb,
         # then applying box blur and storing here
         texture_size = Math.min texture_size,
-            @context.render_manager.max_texture_size / 2
+            @context.render_manager.max_texture_size / 4
         size = [texture_size, texture_size]
         @shadow_fb = new Framebuffer @context, {size, use_depth: false}
         @shadow_texture = @shadow_fb.texture
@@ -86,6 +86,9 @@ class Lamp extends GameObject
         if @shadow_fb.tex_type == 0x8D61 # HALF_FLOAT_OES
             # TODO: make configurable? or calculate depending on scene size?
             extra_bias = '-0.0007'
+        # else
+        #     # TODO: Why is this needed for android? is it messing with other things?
+        #     extra_bias = '+0.0007'
 
         varyings = [{type: 'PROJ_POSITION', varname: 'proj_position'}]
         fs = fs_tex = """#extension GL_OES_standard_derivatives : enable
