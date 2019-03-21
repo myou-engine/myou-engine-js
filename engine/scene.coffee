@@ -236,6 +236,18 @@ class Scene
             ob._update_matrices()
         return
 
+    set_objects_auto_update_matrix: (objects, auto_update) ->
+        static_ = not auto_update
+        for ob in objects
+            ob.static = static_
+        # TODO for performance: do this only once? push and pop objects?
+        count = 0
+        for ob in @children when not ob.static
+            count++
+        @auto_updated_children.length = count
+        @_children_are_ordered = false
+        return
+
     destroy: ->
         for ob in @children[...]
             @remove_object ob, false
@@ -278,21 +290,26 @@ class Scene
         options = {}
         if typeof items[items.length-1] == 'object'
             options = items.pop()
+
         {visible, physics, all} =
             @_ensure_items items, ['visible', 'physics', 'all']
 
         objects = []
+
         for ob in @children
             ob_being_loaded = null
             if all or (visible and ob.visible)
                 ob_being_loaded = ob
                 objects.push ob
+
             if physics
                 phy_mesh = ob.body.get_physics_mesh()
                 if phy_mesh? and phy_mesh != ob_being_loaded \
                         and not phy_mesh.data?
                     objects.push phy_mesh
+
         promise = fetch_objects(objects, options).then(=>@)
+
         if physics
             # TODO: Handle case without webpack
             if @context.webpack_flags?.include_bullet
