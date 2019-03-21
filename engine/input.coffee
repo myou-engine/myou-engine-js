@@ -137,6 +137,7 @@ class InputManager
     constructor: (@context) ->
         @context.input_manager = this
         @input_sources = {}
+        @input_source_list = []
         @pending_reset = []
         @all_axis = []
         @all_axes2 = []
@@ -144,7 +145,7 @@ class InputManager
         new GamepadInputSource @context
 
     update_axes: ->
-        for sname, source of @input_sources
+        for source in @input_source_list
             source.update_controller()
         for axis in @all_axis
             axis._update()
@@ -202,6 +203,7 @@ class InputSource
         for alias in aliases
             @source_names.push alias
             @context.input_manager.input_sources[alias] = this
+            @context.input_manager.input_source_list.push this
         return
 
     add_button: (button, source_name, pad_index, label) ->
