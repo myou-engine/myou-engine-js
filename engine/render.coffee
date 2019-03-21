@@ -25,6 +25,7 @@ class RenderManager
         @use_frustum_culling = true
         @show_debug_frustum_culling = false
         @use_sort_faces = true
+        @use_sort_faces_opaque = false
         @unbind_textures_on_draw_viewport = true
         @probes = []
         # to simulate glClipPlane
@@ -886,7 +887,19 @@ class RenderManager
                 ob._sqdist = -vec3.dot(v,z) - (ob.zindex * \
                     (ob.dimensions.x+ob.dimensions.y+ob.dimensions.z)*0.166666)
             timsort.sort scene.mesh_passes[0], (a,b)-> b._sqdist - a._sqdist
-            for ob in scene.mesh_passes[0]
+
+            if @use_sort_faces_opaque
+                # Sort some meshes, for now just one per frame, with more iterations
+                # for nearby meshes (TODO: Calculate which one has more divergence)
+                # TODO!! Mixed meshes!
+                num_meshes = scene.mesh_passes[0].length
+                idx = @render_tick % ((num_meshes * 1.5)|0)
+                idx = num_meshes - (idx % num_meshes) - 1
+                cam_name = cam.name
+                ob = scene.mesh_passes[0][idx]
+                ob.sort_sign = 1
+                (ob.last_lod[cam_name]?.mesh ? ob).sort_faces(cam_pos)
+            for ob,i in scene.mesh_passes[0]
                 if ob.visible == true and not ob.bg and not ob.fg
                     @draw_mesh(ob, ob.world_matrix, 0)
 

@@ -149,6 +149,7 @@ class Mesh extends GameObject
         @mesh_id = 0
         @all_f = false
         @bone_index_maps = []
+        @sort_sign = -1 # 1 is front to back, -1 is back to front
 
         @mesh_name = '' # only for debug purposes
 
@@ -452,6 +453,7 @@ class Mesh extends GameObject
         cp3x = camera_position3.x
         cp3y = camera_position3.y
         cp3z = camera_position3.z
+        sign = @sort_sign
         # # Find out the furthest possible distance we can find, so that's 2**16
         # vec3
         for i in [0...num_submeshes]
@@ -484,7 +486,7 @@ class Mesh extends GameObject
                 y += va[v2+1] - cp3y
                 z += va[v2+2] - cp3z
                 sqr_dist = x*x + y*y + z*z
-                face_sort_array[j] = -sqr_dist
+                face_sort_array[j] = sqr_dist * sign
                 face_sort_array32[j2+BIG_ENDIAN] = j
                 j2 += 2
                 j3 += 3
