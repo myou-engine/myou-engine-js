@@ -416,6 +416,19 @@ class RenderManager
             texture.last_used_material = null
         return
 
+    unbind_all_textures: ->
+        {gl, bound_textures} = this
+        for tex, i in bound_textures when tex?
+            tex.bound_unit = -1
+            tex.last_used_material = null
+            gl.activeTexture gl.TEXTURE0 + i
+            gl.bindTexture tex.gl_target, null
+            bound_textures[i] = null
+        gl.activeTexture gl.TEXTURE0
+        @active_texture = -1
+        @next_texture = 0
+        return
+
     # Draws all enabled scenes of all the viewports of all screens
     # Usually called from {MainLoop}
     draw_all: ->
@@ -782,16 +795,7 @@ class RenderManager
 
         # TODO: Is this necessary?
         if @unbind_textures_on_draw_viewport
-            # unbind all textures
-            for tex, i in @bound_textures when tex?
-                tex.bound_unit = -1
-                tex.last_used_material = null
-                gl.activeTexture gl.TEXTURE0 + i
-                gl.bindTexture tex.gl_target, null
-                @bound_textures[i] = null
-            gl.activeTexture gl.TEXTURE0
-            @active_texture = -1
-            @next_texture = 0
+            @unbind_all_textures()
 
         {mesh_lod_min_length_px} = @context
 
