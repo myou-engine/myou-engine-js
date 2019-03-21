@@ -908,7 +908,7 @@ class RenderManager
                     @draw_mesh(ob, ob.world_matrix, 0)
 
         # Scene background
-        if scene.world_material?
+        if scene.world_material? and scene.background_color.a > 0.001
             if scene.background_color.a < 1
                 gl.enable gl.BLEND
             @draw_background(scene, world2cam, cam2world, cam.projection_matrix)
