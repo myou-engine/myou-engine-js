@@ -376,11 +376,15 @@ class Shader
         @u_model_view_matrix = gl.getUniformLocation prog, var_model_view_matrix
         @u_projection_matrix = gl.getUniformLocation prog, var_projection_matrix
         @u_normal_matrix = gl.getUniformLocation prog, "normal_matrix"
+        if @u_normal_matrix == -1 then @u_normal_matrix = null
         @u_uv_rect = gl.getUniformLocation prog, "uv_rect"
+        if @u_uv_rect? and @u_uv_rect != -1
+            gl.uniform4f @u_uv_rect, 0, 0, 1, 1
         @u_group_id = gl.getUniformLocation prog, "group_id"
-        @u_uv_rect? and gl.uniform4f @u_uv_rect, 0, 0, 1, 1
+        if @u_group_id == -1 then @u_group_id = null
 
         @u_mesh_center = gl.getUniformLocation prog, "mesh_center"
+        if @u_mesh_center == -1 then @u_mesh_center = null
         @u_mesh_inv_dimensions = \
             gl.getUniformLocation prog, "mesh_inv_dimensions"
         @u_fb_size = gl.getUniformLocation prog, "fb_size"

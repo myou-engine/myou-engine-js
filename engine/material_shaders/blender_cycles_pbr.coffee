@@ -206,9 +206,9 @@ class BlenderCyclesPBRMaterial
         for i in [0..8]
             unf = 'unfsh'+i
             loc = gl.getUniformLocation program, unf
-            if loc?
                 coeff_code.push "gl.uniform3fv(locations[#{locations.length}],
                     coefs[#{i}]);"
+            if loc? and loc != -1
                 locations.push loc
 
         if coeff_code.length != 0
@@ -220,45 +220,45 @@ class BlenderCyclesPBRMaterial
                 coeff_code...,
                 '}'
 
-        if (loc = gl.getUniformLocation program, 'unfbsdfsamples')?
+        if (loc = gl.getUniformLocation program, 'unfbsdfsamples')? and loc != -1
             code.push "var samples = scene.bsdf_samples;"
             code.push "gl.uniform2f(locations[#{locations.length}],
                 samples, 1/samples);"
             locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unflodfactor')?
+        if (loc = gl.getUniformLocation program, 'unflodfactor')? and loc != -1
             probe_code.push "gl.uniform1f(locations[#{locations.length}],
                 probe&&probe.lodfactor);"
             locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unfjitter')?
+        if (loc = gl.getUniformLocation program, 'unfjitter')? and loc != -1
             code.push "gl.uniform1i(locations[#{locations.length}],
                 tex_list[#{@unfjitter_index}].value.bound_unit);"
             locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unflutsamples')?
+        if (loc = gl.getUniformLocation program, 'unflutsamples')? and loc != -1
             code.push "gl.uniform1i(locations[#{locations.length}],
                 tex_list[#{@unflutsamples_index}].value.bound_unit);"
             locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unfprobe')?
+        if (loc = gl.getUniformLocation program, 'unfprobe')? and loc != -1
             code.push "gl.uniform1i(locations[#{locations.length}],
                 tex_list[#{@unfprobe_index}].value.bound_unit);"
             locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unfreflect')?
+        if (loc = gl.getUniformLocation program, 'unfreflect')? and loc != -1
             code.push "gl.uniform1i(locations[#{locations.length}],
                 tex_list[#{@unfreflect_index}].value.bound_unit);"
             locations.push loc
 
         planar_probe_code = []
-        if (loc = gl.getUniformLocation program, 'unfplanarvec')?
+        if (loc = gl.getUniformLocation program, 'unfplanarvec')? and loc != -1
             planar_probe_code.push """
                 v=ob.probe_planar.normal;
                 gl.uniform3f(locations[#{locations.length}], v.x, v.y, v.z);"""
             locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unfplanarreflectmat')?
+        if (loc = gl.getUniformLocation program, 'unfplanarreflectmat')? and loc != -1
             planar_probe_code.push """
                 gl.uniformMatrix4fv(locations[#{locations.length}], false,
                 ob.probe_planar.planarreflectmat.toJSON());"""
@@ -268,13 +268,13 @@ class BlenderCyclesPBRMaterial
             probe_code.push "if(ob.probe_planar){"+planar_probe_code.join('\n')+'}'
 
         ## TODO: update/store these two in probe even when not auto rendering
-        if (loc = gl.getUniformLocation program, 'unfprobepos')?
+        if (loc = gl.getUniformLocation program, 'unfprobepos')? and loc != -1
             probe_code.push """
                 v = probe.target_object.position;
                 gl.uniform3f(locations[#{locations.length}], v.x, v.y, v.z);"""
             locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unfprobecorrectionmat')?
+        if (loc = gl.getUniformLocation program, 'unfprobecorrectionmat')? and loc != -1
             probe_code.push """
                 m4 = mat4.invert(render._m4,
                     probe.parallax_object.world_matrix);
@@ -282,26 +282,26 @@ class BlenderCyclesPBRMaterial
                 m4.toJSON());"""
             locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unf_clipping_plane')?
+        if (loc = gl.getUniformLocation program, 'unf_clipping_plane')? and loc != -1
             code.push "v=render.clipping_plane;
                 gl.uniform4f(locations[#{locations.length}],
                 v.x, v.y, v.z, v.w);"
             locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unfrefract')?
+        if (loc = gl.getUniformLocation program, 'unfrefract')? and loc != -1
             code.push "gl.uniform1i(locations[#{locations.length}],
                 tex_list[#{@unfrefract_index}].value.bound_unit);"
             locations.push loc
 
         # TODO: Force use of post processing buffers when using refraction
-        if (loc = gl.getUniformLocation program, 'unfrefract_size_px')?
             code.push "b = render.tmp_fb1;
+        if (loc = gl.getUniformLocation program, 'unfrefract_size_px')? and loc != -1
                 gl.uniform2f(locations[#{locations.length}],
                     b.current_size_x, b.current_size_y);"
             locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unfrefract_px_size')?
             code.push "b = render.tmp_fb1;
+        if (loc = gl.getUniformLocation program, 'unfrefract_px_size')? and loc != -1
                 gl.uniform2f(locations[#{locations.length}],
                     1/b.size_x, 1/b.size_y);"
             locations.push loc
@@ -318,7 +318,8 @@ class BlenderCyclesPBRMaterial
         for unf in 'unfltcmat unfltcmag unfscenebuf unfdepthbuf
                 unfbackfacebuf unfssrparam unfssaoparam unfclip
                 unfpixelprojmat'.split ' '
-            if gl.getUniformLocation(program, unf)?
+            loc = gl.getUniformLocation(program, unf)
+            if loc? and loc != -1
                 console.warn "Unhandled uniform:", unf
 
         preamble = 'var v, m4, b, locations=shader.uniform_locations,
