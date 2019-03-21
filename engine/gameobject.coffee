@@ -342,8 +342,6 @@ class GameObject
             child_options = Object.assign {}, options, {new_parent: n}
             for child in @children
                 child = child.clone child_options
-                child.parent = n
-                children.push child
         n.body.instance()
         for child in n.children
             child.body.instance()
