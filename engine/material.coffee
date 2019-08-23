@@ -199,6 +199,7 @@ class Shader
 
             varyings_decl = []
             varyings_assign = []
+            first_uv = true
             for v in varyings or []
                 {varname} = v
                 switch v.type
@@ -228,10 +229,20 @@ class Shader
                             for aname in attribute_names when /^uv_/.test aname
                                 uv_name = aname
                                 break
-                        varyings_decl.push "varying vec2 #{varname};"
-                        varyings_assign.push "#{varname} = #{uv_name};"
-                        # varyings_assign.push "#{varname} =
-                        #             #{uv_name} * uv_rect.zw + uv_rect.xy;"
+                        gltype = 'vec2'
+                        # # HACK for cycles image nodes in blender internal
+                        # # TODO: make it not so hacky
+                        # if this.data.fragment.indexOf(' vec3 '+varname+';') != -1
+                        #     gltype = 'vec3'
+                        #     uv_name = 'vec3('+uv_name+',1.)'
+                        if first_uv and @data.force_uv_varname?
+                            varname = @data.force_uv_varname
+                        varyings_decl.push "varying #{gltype} #{varname};"
+                        # varyings_assign.push "#{varname} = #{uv_name};"
+                        # TODO: move to vertex modifier
+                        varyings_assign.push "#{varname} =
+                                    #{uv_name} * uv_rect.zw + uv_rect.xy;"
+                        first_uv = false
                     when 'VCOL' # Vertex color
                         vc_name = 'vc_' + v.attname
                         if vc_name not in attribute_names
@@ -352,7 +363,9 @@ class Shader
             if /ERROR: 0:/.test error_msg
                 # Show context for first error
                 line = error_msg.split(':')[2]|0
-                for i in [Math.max(1,line-30)...Math.min(line+4, lines.length)]
+                # TODO: show only 4 lines of context but also the previous
+                # line without indent to know which function it is
+                for i in [Math.max(1,line-100)...Math.min(line+4, lines.length)]
                     console.log "#{i} #{lines[i-1]}"
             console.error error_msg
             @context.MYOU_PARAMS.on_shader_failed?()
@@ -390,15 +403,11 @@ class Shader
         @u_model_view_matrix = gl.getUniformLocation prog, var_model_view_matrix
         @u_projection_matrix = gl.getUniformLocation prog, var_projection_matrix
         @u_normal_matrix = gl.getUniformLocation prog, "normal_matrix"
-        if @u_normal_matrix == -1 then @u_normal_matrix = null
         @u_uv_rect = gl.getUniformLocation prog, "uv_rect"
-        if @u_uv_rect? and @u_uv_rect != -1
-            gl.uniform4f @u_uv_rect, 0, 0, 1, 1
         @u_group_id = gl.getUniformLocation prog, "group_id"
-        if @u_group_id == -1 then @u_group_id = null
+        @u_uv_rect? and gl.uniform4f @u_uv_rect, 0, 0, 1, 1
 
         @u_mesh_center = gl.getUniformLocation prog, "mesh_center"
-        if @u_mesh_center == -1 then @u_mesh_center = null
         @u_mesh_inv_dimensions = \
             gl.getUniformLocation prog, "mesh_inv_dimensions"
         @u_fb_size = gl.getUniformLocation prog, "fb_size"
