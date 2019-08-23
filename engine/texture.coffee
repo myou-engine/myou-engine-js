@@ -114,12 +114,16 @@ class Texture
                 return @promise
             @promised_data = raw_pixels
             @promise = new Promise (resolve, reject) =>
-                {@width=0, @height=0, pixels} = raw_pixels
+                {@width=0, @height=0, pixels, format, internal_format} = raw_pixels
                 if @width==0 or @height==0
                     reject "Texture #{name} has no width or height."
                 buffer = pixels.buffer or (new Uint8Array(pixels)).buffer
                 @texture_type = 'arrays'
                 @gl_format = @gl_internal_format = gl.RGBA
+                if format
+                    @gl_format = gl[format]
+                if internal_format
+                    @gl_internal_format = gl[internal_format]
                 @gl_type = gl.UNSIGNED_BYTE
                 if pixels.constructor == Float32Array
                     @gl_type = gl.FLOAT
@@ -378,6 +382,11 @@ class Texture
                                     has no supported formats"
         return @promise
 
+    bind: ->
+        if @bound_unit == -1
+            @context.render_manager.bind_texture @
+        return this
+
     # @private
     # Recreates, uploads and configures texture in GPU
     upload: ->
@@ -399,11 +408,11 @@ class Texture
         switch @texture_type
             when 'arrays'
                 for array, i in @arrays
-                    gl.texImage2D(gl.TEXTURE_2D, i, @gl_internal_format,
+                    gl.texImage2D(@gl_target, i, @gl_internal_format,
                         @width>>i, @height>>i, 0, @gl_format, @gl_type,
                         array)
                 if @arrays.length == 1 and @use_mipmap
-                    gl.generateMipmap gl.TEXTURE_2D
+                    gl.generateMipmap @gl_target
             when 'compressed'
                 upload_task_id = ++@upload_task_id
                 self = this
@@ -412,7 +421,7 @@ class Texture
                     for array, i in self.arrays
                         return if upload_task_id != self.upload_task_id
                         render_manager.bind_texture self
-                        gl.compressedTexImage2D(gl.TEXTURE_2D, i,
+                        gl.compressedTexImage2D(self.gl_target, i,
                             self.gl_internal_format, width>>i, height>>i, 0,
                             array)
                         # console.log 'uploaded something on frame',
@@ -425,31 +434,36 @@ class Texture
                     console.error "Compressed texture #{@name}
                         doesn't have requested mipmaps."
             when 'image'
-                gl.pixelStorei gl.UNPACK_FLIP_Y_WEBGL, true
-                if @use_alpha
-                    internal = gl.RGBA
-                    format = gl.RGBA
-                    type = gl.UNSIGNED_BYTE
-                else if @context.is_webgl2
-                    internal = gl.RGB565
-                    format = gl.RGB
-                    type = gl.UNSIGNED_SHORT_5_6_5
+                if @image.pixels
+                    gl.texImage2D(@gl_target, i, gl.RGBA,
+                        @width, @height, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+                        @image.pixels)
                 else
-                    internal = gl.RGB
-                    format = gl.RGB
-                    type = gl.UNSIGNED_BYTE
-                gl.texImage2D gl.TEXTURE_2D, 0, internal, format, type, @image
+                    gl.pixelStorei gl.UNPACK_FLIP_Y_WEBGL, true
+                    if @use_alpha
+                        internal = gl.RGBA
+                        format = gl.RGBA
+                        type = gl.UNSIGNED_BYTE
+                    else if @context.is_webgl2
+                        internal = gl.RGB565
+                        format = gl.RGB
+                        type = gl.UNSIGNED_SHORT_5_6_5
+                    else
+                        internal = gl.RGB
+                        format = gl.RGB
+                        type = gl.UNSIGNED_BYTE
+                    gl.texImage2D @gl_target, 0, internal, format, type, @image
                 if @use_mipmap
-                    gl.generateMipmap gl.TEXTURE_2D
+                    gl.generateMipmap @gl_target
             when 'video'
                 # TODO: Is this inefficient to do every frame?
                 # Should UVs be inverted instead?
                 gl.pixelStorei gl.UNPACK_FLIP_Y_WEBGL, true
                 # TODO: Use gl.RGB?
-                gl.texImage2D gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,
+                gl.texImage2D @gl_target, 0, gl.RGBA, gl.RGBA,
                     gl.UNSIGNED_BYTE, @video
                 if @use_mipmap
-                    gl.generateMipmap gl.TEXTURE_2D
+                    gl.generateMipmap @gl_target
         return
 
     # Unloads all texture data that has been generated with load()
@@ -476,15 +490,15 @@ class Texture
         @loaded = true # bind_texture requires this
         @context.render_manager.bind_texture @
         gl_linear_nearest = if @filter then gl.LINEAR else gl.NEAREST
-        gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl_linear_nearest
+        gl.texParameteri @gl_target, gl.TEXTURE_MAG_FILTER, gl_linear_nearest
         # TODO: add mipmap options to the GUI
         if @use_mipmap
             gl_linear_nearest_mipmap = if @filter then gl.LINEAR_MIPMAP_LINEAR
             else gl.NEAREST_MIPMAP_NEAREST
-            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER,
+            gl.texParameteri @gl_target, gl.TEXTURE_MIN_FILTER,
                 gl_linear_nearest_mipmap
         else
-            gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER,
+            gl.texParameteri @gl_target, gl.TEXTURE_MIN_FILTER,
                 gl_linear_nearest
         # TODO: detect which textures need this (mostly walls, floors...)
         # and add a global switch
@@ -492,14 +506,14 @@ class Texture
         if @context.MYOU_PARAMS.anisotropic_filter and ext
             # TODO: detect max anisotropy, make configurable
             # ext.TEXTURE_MAX_ANISOTROPY_EXT == 0x84FE
-            gl.texParameterf gl.TEXTURE_2D, 0x84FE, 4
+            gl.texParameterf @gl_target, 0x84FE, 4
         wrap_const = switch @wrap
             when 'C' then gl.CLAMP_TO_EDGE
             when 'R' then gl.REPEAT
             when 'M' then gl.MIRRORED_REPEAT
             else gl.REPEAT
-        gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap_const
-        gl.texParameteri gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap_const
+        gl.texParameteri @gl_target, gl.TEXTURE_WRAP_S, wrap_const
+        gl.texParameteri @gl_target, gl.TEXTURE_WRAP_T, wrap_const
         return @
 
     destroy: ->
