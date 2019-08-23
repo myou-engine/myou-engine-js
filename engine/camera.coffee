@@ -8,7 +8,7 @@ VECTOR_Y = vec3.new 0,1,0
 class Camera extends GameObject
 
 
-    constructor: (context, options) ->
+    constructor: (context, options={}) ->
         super context
         @type = 'CAMERA'
         {
