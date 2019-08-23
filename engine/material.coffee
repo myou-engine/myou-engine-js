@@ -29,6 +29,7 @@ class Material
         # Materials can be used in other scenes when cloning
         @render_scene = @scene
         @_has_texture_list_checked = false
+        @shader_library = ''
         @set_data @data
         # TODO: workaround for short term compatibility problems; remove
         @last_shader = null
@@ -91,7 +92,7 @@ class Material
     load: (options={}) ->
         {
             fetch_textures=true
-            texture_size_ratio=1
+            texture_size_ratio=null
         } = options
         # TODO: Have a material promise:
         # * Implement Material::ensure_upload(mesh) which generates a
