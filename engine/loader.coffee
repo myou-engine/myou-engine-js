@@ -168,6 +168,7 @@ load_datablock = (scene, data, context, options={}) ->
             mat.set_data data
         else
             mat = new Material(context, data.name, data, scene)
+        mat.shader_library = scene.shader_library
 
         if data.material_type == 'BLENDER_INTERNAL'
             # Assuming old format of textures
@@ -208,6 +209,9 @@ load_datablock = (scene, data, context, options={}) ->
 
     else if data.type=='SHADER_LIB'
         scene.shader_library = data.code
+        if not scene.world_material?.shader_library
+            scene.world_material?.shader_library = data.code
+
     else if data.type=='JSCODE'
         window.eval data.code
 

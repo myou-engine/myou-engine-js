@@ -82,7 +82,8 @@ class BlenderCyclesPBRMaterial
             head.push "#define #{def} #{val}"
         head.push "#define CLIPPING_PLANE"
         fragment = @material.data.fragment
-        fragment = head.join('\n') + @material.scene.shader_library + fragment
+        fragment = head.join('\n') + '\n' + @material.shader_library + fragment
+        fragment = fragment.replace(/\bbuffer\b/g, 'boofer')
         return {fragment, glsl_version}
 
     get_uniform_assign: (gl, program) ->
