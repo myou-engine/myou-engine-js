@@ -183,10 +183,19 @@ class Shader
 
             modifiers_uniforms = []
             modifiers_bodies = []
+            modifiers_post_bodies = []
+            required_extensions = {}
             for m in @vertex_modifiers
-                {uniform_lines, body_lines} = m.get_code()
+                {uniform_lines, body_lines, post_transform_lines, extensions} = m.get_code()
                 modifiers_uniforms = modifiers_uniforms.concat uniform_lines
                 modifiers_bodies = modifiers_bodies.concat body_lines
+                modifiers_post_bodies = modifiers_post_bodies.concat post_transform_lines if post_transform_lines?
+                for e in extensions ? []
+                    required_extensions[e] = 1
+
+            extension_lines = []
+            for e of required_extensions
+                extension_lines.push "#extension #{e} : require"
 
             varyings_decl = []
             varyings_assign = []
@@ -285,12 +294,13 @@ class Shader
                     "vec4 view_co = #{var_model_view_matrix} * co;"
                     "vec4 proj_co = #{var_projection_matrix} * view_co;"
                 ])...
+                modifiers_post_bodies...
                 varyings_assign...
                 "gl_Position = proj_co;\n}"
             ].join('\n  ')
 
-            vs = vs_head.concat(
-                attribute_lines, modifiers_uniforms, varyings_decl, vs_body
+            vs = extension_lines.concat(
+                vs_head, attribute_lines, modifiers_uniforms, varyings_decl, vs_body
             ).join '\n'
 
         if is_webgl2 and glsl_version == 300
