@@ -63,6 +63,7 @@ class Texture
         # If it tries to load the same data as @promised_data,
         # it won't load it again but instead return the existing promise
         @promised_data = null
+        @promised_ratio = null
         @users = [] # materials
         # These hold the data for the current texture, and they
         # change after another texture is loaded
@@ -86,10 +87,13 @@ class Texture
     load: (options={}) ->
         {gl, extensions} = @context.render_manager
         {
-            size_ratio = 1
+            size_ratio
+            force=false
         } = options
+        if force then @promised_data = @promised_ratio = null
         # TODO: If there's a pending promise, it should be rejected or
         # delegated if possible
+        @promised_ratio = size_ratio = size_ratio or @promised_ratio or 1
 
         base = @scene.data_dir + '/textures/'
         {raw_pixels, jpeg, png, rgb565, dds, etc1, etc2,
@@ -455,6 +459,8 @@ class Texture
         if @gl_tex?
             @context.render_manager.gl.deleteTexture @gl_tex
         @image?.src = @video?.src = ''
+        @promised_data = null
+        @promised_ratio = null
         @gl_tex = null
         @loaded = false
         @texture_type = ''
