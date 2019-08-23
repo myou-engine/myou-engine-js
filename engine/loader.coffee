@@ -1,4 +1,4 @@
-{mat4, vec3, quat, color3, color4} = require 'vmath'
+{mat4, vec3, quat, color3, color4, lerp, clamp} = require 'vmath'
 {Action} = require './animation'
 {CanvasScreen} = require './screen'
 {Camera} = require './camera'
@@ -22,7 +22,7 @@ load_scene = (name, filter, options, context) ->
         data_dir=context.MYOU_PARAMS.data_dir
         original_scene_name=name
     } = options
-    scene = new Scene context, name
+    scene = new Scene context, name, add_to_loaded_scenes: false
     scene.data_dir = data_dir
     scene.original_scene_name = original_scene_name
     url = "#{scene.data_dir}/scenes/#{original_scene_name}/all.json"
@@ -40,6 +40,14 @@ load_scene = (name, filter, options, context) ->
             load_datablock scene, d, context
 
         context.loaded_scenes.push name
+        for group_name,group of scene.groups
+            for ob_name,i in group by -1
+                ob = scene.parents[ob_name]
+                if not ob
+                    group.splice i,1
+                    continue
+                group[i] = ob
+                ob.groups.push group_name
         Promise.resolve(scene)
 
 blender_attr_types =
@@ -49,10 +57,20 @@ blender_attr_types =
     18: 'TANGENT'
     14: 'ORCO'
 
-load_datablock = (scene, data, context) ->
+load_datablock = (scene, data, context, options={}) ->
+    {skip_scene=false, skip_if_already_exists=false, original_scene_name=scene.name} = options
     # TODO: This has grown a little too much
     # We should use switch
+
+    already_exists_warn = (data)->
+        console.warn "Trying to load #{data.type} #{data.name}
+         but it already exists and it wont be loaded.\n
+         To force loading it, disable skip_if_already_exists option."
     if data.type=='SCENE'
+        if skip_scene then return
+        if skip_if_already_exists and context.scenes[data.name]?
+            already_exists_warn data
+            return
         [gx,gy,gz] = data.gravity
         scene.world.set_gravity vec3.new gx,gy,gz
         [r,g,b,a=1] = data.background_color
@@ -60,7 +78,7 @@ load_datablock = (scene, data, context) ->
         if data.ambient_color
             [r,g,b,a=1] = data.ambient_color
             color4.set scene.ambient_color, r, g, b, a
-        scene.active_camera_name = data.active_camera
+        scene._active_camera_name = data.active_camera
         if data.world_material?
             scene.world_material = new Material(context, \
                 data.world_material.name, data.world_material, scene)
@@ -82,9 +100,15 @@ load_datablock = (scene, data, context) ->
         scene.extra_data = data.extra_data
 
     else if data.type=='TEXTURE'
+        if skip_if_already_exists and scene.textures[data.name]?
+            already_exists_warn data
+            return
         scene.textures[data.name] = new Texture(scene, data)
 
     else if data.type=='MATERIAL'
+        if skip_if_already_exists and scene.materials[data.name]?.data?
+            already_exists_warn data
+            return
         # Converting blender attributes into myou's definition of varyings
         if not data.varyings?
             data.varyings = for a in data.attributes when a.type < 77
@@ -188,20 +212,26 @@ load_datablock = (scene, data, context) ->
         window.eval data.code
 
     else if data.type=='ACTION'
+        if skip_if_already_exists and context.actions[data.name]?
+            already_exists_warn data
+            return
         context.actions[data.name] =
             new Action data.name, data.channels, (data.markers or [])
 
     else if data.type=='EMBED_MESH'
         context.embed_meshes[data.hash] = data
     else if data.type=='GROUP'
-        # TODO
+        scene.groups[data.name] = data.objects
     else
-        load_object data, scene
+        if skip_if_already_exists and scene.objects[data.name]?
+            already_exists_warn data
+            return
+        load_object data, scene, original_scene_name
 
     return
 
 
-load_object = (data, scene) ->
+load_object = (data, scene, original_scene_name) ->
     context = scene.context
     addme = false
     ob = scene.objects[data.name]
@@ -214,6 +244,8 @@ load_object = (data, scene) ->
             ob.name = data.name
             ob.static = data.static or false
             ob.passes = data.passes # TODO: allow pass changes
+            ob.source_scene_name = original_scene_name
+            ob.properties = data.properties or {} # TODO: a bit hacky doing it twice, for fg/bg pass flag
             scene.add_object ob, data.name, data.parent, data.parent_bone
 
         color4.copyArray ob.color, data.color
@@ -291,6 +323,7 @@ load_object = (data, scene) ->
             ob = new Curve context
             ob.name = data.name
             ob.static = data.static or false
+            ob.source_scene_name = original_scene_name
             scene.add_object ob, data.name, data.parent, data.parent_bone
 
         ob.set_curves data.curves, data.resolution, data.nodes
@@ -308,8 +341,9 @@ load_object = (data, scene) ->
             ob = new Camera context, options
             ob.name = data.name
             ob.static = data.static or false
+            ob.source_scene_name = original_scene_name
             scene.add_object ob, data.name, data.parent, data.parent_bone
-            if data.name == scene.active_camera_name
+            if data.name == scene._active_camera_name
                 scene.active_camera = ob
                 if not context.canvas_screen?
                     screen = new CanvasScreen(context)
@@ -339,6 +373,7 @@ load_object = (data, scene) ->
                 if context.render_manager.enable_shadows
                     ob.init_shadow()
 
+            ob.source_scene_name = original_scene_name
             scene.add_object ob, data.name, data.parent, data.parent_bone
         ob.lamp_type = data.lamp_type
         color3.copyArray ob.color, data.color
@@ -353,6 +388,7 @@ load_object = (data, scene) ->
             ob = new Armature context
             ob.name = data.name
             ob.static = data.static or false
+            ob.source_scene_name = original_scene_name
             scene.add_object ob, data.name, data.parent, data.parent_bone
         if data.bones
             ob.bones = {}
@@ -366,6 +402,7 @@ load_object = (data, scene) ->
             ob.name = data.name
             ob.static = data.static or false
             color4.copyArray ob.color, data.color
+            ob.source_scene_name = original_scene_name
             scene.add_object ob, data.name, data.parent, data.parent_bone
     else
         console.log "Warning: unsupported type",data.type
@@ -413,7 +450,8 @@ load_object = (data, scene) ->
     ob._update_matrices()
 
     ob.dupli_group = data.dupli_group
+    return
 
 module.exports = {
-    load_scene
+    load_scene, load_datablock
 }

@@ -21,7 +21,7 @@ class GameObject
         @alpha = 1
         @matrix_parent_inverse = mat4.create()
         @scene = null
-        @original_scene = null
+        @source_scene_name = ''
         @dupli_group = null
         @visible = true
         @_sqdist = 0  # Squared distance to camera
@@ -45,6 +45,7 @@ class GameObject
         @avg_poly_area = 0
         @avg_poly_length = 0
         @zindex = 1
+        @groups = []
 
         @pending_bodies = [] # physics bodies that depend on this object
 
@@ -471,6 +472,15 @@ class GameObject
 
     set_size: (size)->
         vec3.scale @scale, @scale, size/@get_size()
+
+    add_to_group: (group_name)->
+        if (not group_name) or typeof(group_name) != 'string'
+            throw 'Group name ' + group_name + ' is not a string.'
+        else
+            if group_name in @groups
+                return
+            @groups.push group_name
+            @scene.groups[group_name].push @
 
 
 

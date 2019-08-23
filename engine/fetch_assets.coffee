@@ -46,9 +46,8 @@ fetch_mesh = (mesh_object, options={}) ->
                 console.log 'loaded as int list'
                 Promise.resolve(buffer)
             else
-                scene = mesh_object.original_scene or mesh_object.scene
-                base = scene.data_dir + '/scenes/'
-                uri = base + scene.original_scene_name + "/#{file_name}.mesh"
+                base = mesh_object.scene.data_dir + '/scenes/'
+                uri = base + mesh_object.source_scene_name + "/#{file_name}.mesh"
                 fetch(uri).then (response)->
                     if not response.ok
                         return Promise.reject "Mesh '#{mesh_object.name}'

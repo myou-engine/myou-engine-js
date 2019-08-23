@@ -1,22 +1,28 @@
 {mat4, vec3, quat, color4} = require 'vmath'
 {fetch_objects} = require './fetch_assets'
+loader = null
 {Probe} = require './probe'
 {World, load_physics_engine} = require './physics/bullet'
+{CanvasScreen} = require './screen'
 
 _collision_seq = 0
 
 class Scene
     type: 'SCENE'
-    constructor: (context, name)->
+    constructor: (context, name, options={})->
         existing = context.scenes[name]
         return existing if existing
         @context = context
         @name = name
+        if context.scenes[name]?
+            throw Error "Scene #{name} already exists"
         context.scenes[name] = @
         @enabled = false
         @children = []
         @auto_updated_children = []
         @mesh_passes = [[], [], []]
+        @bg_pass = []
+        @fg_pass = []
         @lamps = []
         @armatures = []
         @objects = dict()
@@ -46,11 +52,16 @@ class Scene
         @markers = []
         @markers_by_name = dict()
         @extra_data = null
-        @data_dir = ''
+        @data_dir = context.options.data_dir
         @original_scene_name = ''
         @foreground_planes = []
         @_debug_draw = null
         @shader_library = ''
+        @groups = {}
+        @_active_camera_name = ''
+        {add_to_loaded_scenes=true} = options
+        if add_to_loaded_scenes
+            context.loaded_scenes.push name
 
     add_object: (ob, name='no_name', parent_name='', parent_bone)->
         if ob.scene?
@@ -58,7 +69,6 @@ class Scene
                 return
             else
                 ob.scene.remove_object ob
-        ob.original_scene = ob.original_scene or ob.scene or @
         ob.scene = @
 
         @children.push ob
@@ -89,7 +99,12 @@ class Scene
         if ob.type=='MESH'
             for p in [0..2]  # TODO: not having number of passes hardcoded
                 if p in ob.passes
-                    @mesh_passes[p].push ob
+                    if ob.properties.foreground_pass
+                        @fg_pass.push ob
+                    else if p == 0 and ob.properties.background_pass
+                        @bg_pass.push ob
+                    else
+                        @mesh_passes[p].push ob
         if ob.type=='LAMP'
             @lamps.push ob
         if ob.type=='ARMATURE'
@@ -124,7 +139,7 @@ class Scene
 
         ob.body.destroy()
 
-        @probe?.destroy()
+        # TODO: Remove probes if they have no users
 
         for b in ob.behaviours
             b.unassign ob
@@ -381,6 +396,48 @@ class Scene
     unload_all: ->
         @unload_objects @children
 
+    merge_scene: (other_scene, options) ->
+        for ob in other_scene.children
+            if ob.name of @objects
+                console.warn "Moving object #{ob.name} from #{other_scene.name}
+                    which already exists in #{@name}"
+                # TODO: parents are not managed but it should work as it is now
+                # ideally their children should be orphaned in add_object
+                # except when called from here
+                @add_object ob
+        return
+
+    extend: (name, options={})->
+        loader ?= require './loader'
+        {
+            data_dir=@context.MYOU_PARAMS.data_dir
+            original_scene_name=name
+            skip_if_already_exists=true
+        } = options
+
+        scene = @
+
+        url = "#{data_dir}/scenes/#{original_scene_name}/all.json"
+        return fetch(url).then (response) ->
+            if not response.ok
+                return Promise.reject "Scene '#{name}' could not be loaded from URL
+                    '#{url}' with error '#{response.status} #{response.statusText}'"
+            return response.json()
+        .then (data) ->
+            for d in data
+                loader.load_datablock scene, d, scene.context, {
+                    skip_scene:true, skip_if_already_exists, original_scene_name,
+                }
+            return scene
+
+    add_object_to_group: (ob, group_name)->
+        if (not group_name) or typeof(group_name) != 'string'
+            throw 'Group name ' + group_name + ' is not a string.'
+        else
+            group = @groups[group_name] = @groups[group_name] or {}
+            ob.add_to_group group_name
+
+
     # Enables features of the scene. The things that can be enabled are:
     #
     # * render: Enables rendering of visual elements (meshes, background, etc).
@@ -422,10 +479,28 @@ class Scene
             @physics_enabled = false
         return
 
+    # Sets the active camera of the scene, adds it if necessary, and if there's
+    # no screen it creates a screen and a viewport filling the screen.
+    # @param camera [Camera] The camera object
+    set_active_camera: (camera) ->
+        @active_camera = camera
+        if camera.scene != this
+            @add_object camera, camera.name or 'Camera'
+        if not @context.canvas_screen?
+            screen = new CanvasScreen @context
+            screen.add_viewport camera
+        return
+
     instance_probe: ->
         if @background_probe
             return @background_probe
         if @background_probe_data?
+            if not @background_probe_data.size
+                console.error "Background probe of scene #{@name} has size 0"
+                return null
+            if @background_probe_data.compute_sh and not @background_probe_data.sh_quality
+                console.error "Background probe of scene #{@name} has sh_quality 0"
+                return null
             @background_probe = new Probe @, @background_probe_data
             if @enabled and not @background_probe.auto_refresh
                 @background_probe.render()
