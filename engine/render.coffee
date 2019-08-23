@@ -708,6 +708,9 @@ class RenderManager
     # Draws the scene background in a quad,
     # usually after opaque pass and before transparent pass
     draw_background: (scene, world2cam, cam2world, projection_matrix) ->
+        # workaround
+        # TODO: only needed where uniforms are not removed when unused
+        @bg_mesh.scene = scene
         @draw_mesh(@bg_mesh, cam2world, -1, scene.world_material,
             world2cam, projection_matrix)
 
@@ -877,7 +880,7 @@ class RenderManager
         gl.depthMask true
 
         # PASS -1  (background)
-        if scene.bg_pass and scene.bg_pass.length
+        if scene.bg_pass.length
             for ob in scene.bg_pass
                 if ob.visible == true
                     @draw_mesh(ob, ob.world_matrix, 0)
