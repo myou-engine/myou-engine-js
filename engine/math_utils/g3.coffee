@@ -40,7 +40,7 @@ plane_from_norm_point = (out, n, p)->
 
 rect_from_dir_point = (out1, out2, d, p)-> # UNTESTED
     # p is a point of the rect
-    # d is the director vector of the rect
+    # d is the director vector of the rect, NORMALIZED
     # the result will be 2 planes which define the rect, in a
     # 4x2 row-major matrix (or first half of 4x4)
     vec3.set v1, 1,0,0
@@ -52,6 +52,16 @@ rect_from_dir_point = (out1, out2, d, p)-> # UNTESTED
     plane_from_norm_point out2, v1, p
     return
 
+tmp4a = vec4.create()
+tmp4b = vec4.create()
+intersect_vector_plane = (out, origin, vector, plane) ->
+    # out is vec3
+    # origin is vec3
+    # vector is vec3 NORMALIZED
+    # plane is vec4
+    rect_from_dir_point tmp4a, tmp4b, vector, origin
+    planes_intersection out, tmp4a, tmp4b, plane
+
 v_dist_point_to_rect = (out, p, rp, dir)->
     # p is a point
     # rp is a point of the rect
@@ -59,7 +69,22 @@ v_dist_point_to_rect = (out, p, rp, dir)->
     vec3.cross out, vec3.sub(v2,p,rp), vec3.normalize v1, dir
     return out
 
+project_vector_to_plane = (out, v, n)->
+    #it requires normalized normal vector (n)
+    l = - vec3.dot v, n
+    v_proj_n = vec3.scale v1, n, l
+    vec3.add out, v_proj_n, v
+    return out
+
+reflect_vector = (out, v, n)->
+    l = -2*vec3.dot v, n
+    v_proj_n = vec3.scale v1, n, l
+    vec3.add out, v_proj_n, v
+    return out
+
 module.exports = {
     planes_intersection, plane_from_norm_point,
-    rect_from_dir_point, v_dist_point_to_rect
+    rect_from_dir_point, intersect_vector_plane,
+    v_dist_point_to_rect,
+    project_vector_to_plane, reflect_vector
 }
