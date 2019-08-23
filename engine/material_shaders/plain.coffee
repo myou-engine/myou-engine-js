@@ -3,7 +3,7 @@
 class PlainShaderMaterial
     constructor: (@material) ->
         {data, _input_list, inputs, _texture_list} = @material
-        for u in data.uniforms or []
+        for u in data.uniforms or [] when u?
             {varname, value} = u
             _input_list.push inputs[varname] = u
             if value.type == 'TEXTURE'
@@ -22,13 +22,24 @@ class PlainShaderMaterial
 
     get_code: ->
         {fragment} = @material.data
-        glsl_version = if fragment[...15] == '#version 300 es' then 300 else 100
-        {fragment, glsl_version}
+        glsl_version = 100
+        head = ''
+        if fragment[...15] == '#version 300 es'
+            glsl_version = 300
+            head = '#version 300 es\n'
+            fragment = fragment[16...]
+        if @material.context.is_webgl2
+            if @material.data.use_egl_image_external and glsl_version == 100
+                fragment = '#extension GL_OES_EGL_image_external_essl3 : require\n'+fragment
+        else
+            if @material.data.use_egl_image_external and glsl_version == 100
+                fragment = '#extension GL_OES_EGL_image_external : require\n'+fragment
+        {fragment: head+fragment, glsl_version}
 
     get_uniform_assign: (gl, program) ->
         code = []
         locations = []
-        for u,i in @material.data.uniforms or []
+        for u,i in @material.data.uniforms or [] when u?
             {varname, value} = u
             uloc = gl.getUniformLocation(program, u.varname)
             if not uloc? or uloc == -1

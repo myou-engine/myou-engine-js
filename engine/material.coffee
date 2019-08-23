@@ -293,9 +293,12 @@ class Shader
             ).join '\n'
 
         if is_webgl2 and glsl_version == 300
-            vs = '#version 300 es\n'+vs\
+            vs = '#version 300 es
+                \n#define texture2D texture\n
+                '+vs\
                 .replace(/\battribute\b/g, 'in')\
-                .replace(/\bvarying\b/g, 'out')
+                .replace(/\bvarying\b/g, 'out')\
+                .replace('GL_OES_EGL_image_external', 'GL_OES_EGL_image_external_essl3')
         @vs_code = vs
 
         vertex_shader = gl.createShader gl.VERTEX_SHADER

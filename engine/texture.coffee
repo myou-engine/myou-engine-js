@@ -97,11 +97,11 @@ class Texture
 
         base = @scene.data_dir + '/textures/'
         {raw_pixels, jpeg, png, rgb565, dds, etc1, etc2,
-         pvrtc, astc, mp4, ogv, ogg, webm, mov, flv} = @formats
+         pvrtc, astc, mp4, m4v, ogv, ogg, webm, mov, flv} = @formats
         image_list = jpeg or png
         # TODO!! Select format depending on browser support
         # TODO!! Or add all files as <source> inside the <video>
-        video_list = mp4 or ogg or ogv or webm or mov or flv
+        video_list = mp4 or m4v or ogg or ogv or webm or mov or flv
         # (also, if both images and videos are available,
         # should the image be shown until the video starts?)
 
@@ -346,6 +346,8 @@ class Texture
                     # The video has width and height, but they're 0
                     # since it was not added to the document.
                     # So if you need that information, add it to the data
+                    if @texture_type == 'video_native'
+                        return resolve this
                     {@width, @height} = data
                     @texture_type = 'video'
                     if not @is_power_of_two() and (@use_mipmap or @wrap != 'C')
@@ -377,6 +379,7 @@ class Texture
                     # TODO: Distinguish between not found,
                     # timeout and malformed?
                     reject "Video error: " + (data.file_name or @name)
+                @video.initialize_native?(this)
         else
             @promise = Promise.reject "Texture #{@name}
                                     has no supported formats"
@@ -464,10 +467,13 @@ class Texture
                     gl.UNSIGNED_BYTE, @video
                 if @use_mipmap
                     gl.generateMipmap @gl_target
+            # when 'video_native'
+            #     @video.update_native()
         return
 
     # Unloads all texture data that has been generated with load()
     unload: ->
+        @video?.unload_native?()
         if @bound_unit != -1
             @context.render_manager.unbind_texture @
         if @gl_tex?

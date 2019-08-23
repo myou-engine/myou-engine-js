@@ -29,6 +29,7 @@ class MainLoop
         @last_time = 0
         @enabled = false
         @stopped = true
+        @use_raf = true
         @context = context
         @_bound_tick = @tick.bind @
         @_bound_run = @run.bind @
@@ -90,11 +91,12 @@ class MainLoop
             @req_tick = null
 
     tick: ->
-        HMD = @context.vr_screen?.HMD
-        if HMD?
-            @req_tick = HMD.requestAnimationFrame @_bound_tick
-        else
-            @req_tick = requestAnimationFrame @_bound_tick
+        if @use_raf
+            HMD = @context.vr_screen?.HMD
+            if HMD?
+                @req_tick = HMD.requestAnimationFrame @_bound_tick
+            else
+                @req_tick = requestAnimationFrame @_bound_tick
         if set_immediate_pending.length != 0
             for f in set_immediate_pending.splice 0
                 f()

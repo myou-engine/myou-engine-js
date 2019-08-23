@@ -2,6 +2,7 @@
 
 # TODO: Should jitter be generated with a different random distrubition?
 {vec3} = require 'vmath'
+material_module = null
 
 class BlenderCyclesPBRMaterial
     constructor: (@material) ->
@@ -78,11 +79,23 @@ class BlenderCyclesPBRMaterial
         if @context.is_webgl2
             head.push '#version 300 es'
             glsl_version = 300
+            if @material.data.use_egl_image_external
+                head.push '#extension GL_OES_EGL_image_external_essl3 : require'
+        else
+            if @material.data.use_egl_image_external
+                head.push '#extension GL_OES_EGL_image_external : require'
         for def,val of defines
             head.push "#define #{def} #{val}"
-        head.push "#define CLIPPING_PLANE"
+        # TODO: do this when using planar reflections:
+        # head.push "#define CLIPPING_PLANE"
         fragment = @material.data.fragment
+        # workaround for pbr background in blender game mode
+        if @material.data.uniforms.length == 0 and glsl_version == 300
+            head.shift()
+            material_module ?= require '../material'
         fragment = head.join('\n') + '\n' + @material.shader_library + fragment
+        if @material.data.uniforms.length == 0 and glsl_version == 300
+            fragment = material_module.glsl100to300 fragment
         fragment = fragment.replace(/\bbuffer\b/g, 'boofer')
         return {fragment, glsl_version}
 
@@ -221,45 +234,45 @@ class BlenderCyclesPBRMaterial
                 coeff_code...,
                 '}'
 
-        if (loc = gl.getUniformLocation program, 'unfbsdfsamples')? and loc != -1
+        if (loc = gl.getUniformLocation program, 'unfbsdfsamples')?
             code.push "var samples = scene.bsdf_samples;"
             code.push "gl.uniform2f(locations[#{locations.length}],
                 samples, 1/samples);"
             locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unflodfactor')? and loc != -1
+        if (loc = gl.getUniformLocation program, 'unflodfactor')?
             probe_code.push "gl.uniform1f(locations[#{locations.length}],
                 probe&&probe.lodfactor);"
             locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unfjitter')? and loc != -1
+        if (loc = gl.getUniformLocation program, 'unfjitter')?
             code.push "gl.uniform1i(locations[#{locations.length}],
                 tex_list[#{@unfjitter_index}].value.bound_unit);"
             locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unflutsamples')? and loc != -1
+        if (loc = gl.getUniformLocation program, 'unflutsamples')?
             code.push "gl.uniform1i(locations[#{locations.length}],
                 tex_list[#{@unflutsamples_index}].value.bound_unit);"
             locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unfprobe')? and loc != -1
+        if (loc = gl.getUniformLocation program, 'unfprobe')?
             code.push "gl.uniform1i(locations[#{locations.length}],
                 tex_list[#{@unfprobe_index}].value.bound_unit);"
             locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unfreflect')? and loc != -1
+        if (loc = gl.getUniformLocation program, 'unfreflect')?
             code.push "gl.uniform1i(locations[#{locations.length}],
                 tex_list[#{@unfreflect_index}].value.bound_unit);"
             locations.push loc
 
         planar_probe_code = []
-        if (loc = gl.getUniformLocation program, 'unfplanarvec')? and loc != -1
+        if (loc = gl.getUniformLocation program, 'unfplanarvec')?
             planar_probe_code.push """
                 v=ob.probe_planar.normal;
                 gl.uniform3f(locations[#{locations.length}], v.x, v.y, v.z);"""
             locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unfplanarreflectmat')? and loc != -1
+        if (loc = gl.getUniformLocation program, 'unfplanarreflectmat')?
             planar_probe_code.push """
                 gl.uniformMatrix4fv(locations[#{locations.length}], false,
                 ob.probe_planar.planarreflectmat.toJSON());"""
@@ -269,13 +282,13 @@ class BlenderCyclesPBRMaterial
             probe_code.push "if(ob.probe_planar){"+planar_probe_code.join('\n')+'}'
 
         ## TODO: update/store these two in probe even when not auto rendering
-        if (loc = gl.getUniformLocation program, 'unfprobepos')? and loc != -1
+        if (loc = gl.getUniformLocation program, 'unfprobepos')?
             probe_code.push """
                 v = probe.target_object.position;
                 gl.uniform3f(locations[#{locations.length}], v.x, v.y, v.z);"""
             locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unfprobecorrectionmat')? and loc != -1
+        if (loc = gl.getUniformLocation program, 'unfprobecorrectionmat')?
             probe_code.push """
                 m4 = mat4.invert(render._m4,
                     probe.parallax_object.world_matrix);
@@ -283,26 +296,26 @@ class BlenderCyclesPBRMaterial
                 m4.toJSON());"""
             locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unf_clipping_plane')? and loc != -1
+        if (loc = gl.getUniformLocation program, 'unf_clipping_plane')?
             code.push "v=render.clipping_plane;
                 gl.uniform4f(locations[#{locations.length}],
                 v.x, v.y, v.z, v.w);"
             locations.push loc
 
-        if (loc = gl.getUniformLocation program, 'unfrefract')? and loc != -1
+        if (loc = gl.getUniformLocation program, 'unfrefract')?
             code.push "gl.uniform1i(locations[#{locations.length}],
                 tex_list[#{@unfrefract_index}].value.bound_unit);"
             locations.push loc
 
         # TODO: Force use of post processing buffers when using refraction
-            code.push "b = render.tmp_fb1;
         if (loc = gl.getUniformLocation program, 'unfrefract_size_px')? and loc != -1
+            code.push "(b = render.tmp_fb1) &&
                 gl.uniform2f(locations[#{locations.length}],
                     b.current_size_x, b.current_size_y);"
             locations.push loc
 
-            code.push "b = render.tmp_fb1;
         if (loc = gl.getUniformLocation program, 'unfrefract_px_size')? and loc != -1
+            code.push "(b = render.tmp_fb1) &&
                 gl.uniform2f(locations[#{locations.length}],
                     1/b.size_x, 1/b.size_y);"
             locations.push loc
@@ -319,8 +332,7 @@ class BlenderCyclesPBRMaterial
         for unf in 'unfltcmat unfltcmag unfscenebuf unfdepthbuf
                 unfbackfacebuf unfssrparam unfssaoparam unfclip
                 unfpixelprojmat'.split ' '
-            loc = gl.getUniformLocation(program, unf)
-            if loc? and loc != -1
+            if gl.getUniformLocation(program, unf)?
                 console.warn "Unhandled uniform:", unf
 
         preamble = 'var v, m4, b, locations=shader.uniform_locations,

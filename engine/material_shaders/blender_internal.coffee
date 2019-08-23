@@ -58,6 +58,8 @@ GPU_DYNAMIC_MAT_AMB              = 7  | GPU_DYNAMIC_GROUP_MAT
 GPU_DYNAMIC_MAT_ALPHA            = 8  | GPU_DYNAMIC_GROUP_MAT
 GPU_DYNAMIC_MAT_MIR              = 9  | GPU_DYNAMIC_GROUP_MAT
 
+material_module = null
+
 # TODO: export constant names instead of numbers?
 
 class BlenderInternalMaterial
@@ -110,9 +112,14 @@ class BlenderInternalMaterial
         glsl_version = 100
         fragment = @material.shader_library + @material.data.fragment
         if @context.is_webgl2
-            {glsl100to300} = require '../material'
-            fragment = glsl100to300 fragment, defines
+            if @material.data.use_egl_image_external
+                fragment = '#extension GL_OES_EGL_image_external_essl3 : require\n' + fragment
+            material_module ?= require '../material'
+            fragment = material_module.glsl100to300 fragment, defines
             glsl_version = 300
+        else
+            if @material.data.use_egl_image_external
+                fragment = '#extension GL_OES_EGL_image_external : require\n' + fragment
         return {fragment, glsl_version}
 
     get_uniform_assign: (gl, program) ->

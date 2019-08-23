@@ -182,6 +182,8 @@ class Mesh extends GameObject
     load_from_va_ia: (va, ia)->
         @data?.remove @
         data = @data = @context.mesh_datas[@hash] = new MeshData @context
+        if @properties.mesh_draw_method?
+            data.draw_method = @properties.mesh_draw_method
         data.hash = @hash
         data.users.push @
         data.varray = va

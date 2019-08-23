@@ -174,6 +174,8 @@ class RenderManager
             shader_texture_lod:
                 webgl2_ext or gl.getExtension "EXT_shader_texture_lod"
             disjoint_timer_query: gl.getExtension "EXT_disjoint_timer_query"
+            image_external: gl.getExtension "GL_OES_EGL_image_external"
+
         if @no_s3tc
             @extensions['compressed_texture_s3tc'] = null
 
@@ -247,6 +249,9 @@ class RenderManager
         @blank_textures = []
         @blank_textures[gl.TEXTURE_2D] = @blank_texture
         @blank_textures[gl.TEXTURE_CUBE_MAP] = @blank_cube_texture
+        if @extensions.image_external
+            # GL_TEXTURE_EXTERNAL_OES
+            @blank_textures[0x8D65] = {gl_tex: null}
 
         @quad = gl.createBuffer()
         gl.bindBuffer gl.ARRAY_BUFFER, @quad
