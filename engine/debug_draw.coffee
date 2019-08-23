@@ -227,6 +227,7 @@ class Vector extends DebugShape
         # TODO: draw something else when it's too small (a different arrow?)
         #       and a circle when it's 0
         dob = shapes.arrow
+        dob.radius = vec3.len vector
         color4.copy shapes.color, color
         vec2.set shapes.discontinuity, 1, 1
         vec3.copy dob.position, position
@@ -253,12 +254,14 @@ class Line extends DebugShape
             @segment_count=10
             @segment_ratio=.75
             @ttl_frames=0
+            @use_wide=false
         } = options
 
     _draw: (shapes, render_manager, camera_position) ->
         {positions: [p1, p2], color, segment_count, segment_ratio} = this
         # TODO: draw a circle when it's 0
-        dob = shapes.line
+        dob = if @use_wide then shapes.wide_line else shapes.line
+        dob.radius = vec3.dist p1, p2
         color4.copy shapes.color, color
         vec2.set shapes.discontinuity, segment_count, segment_ratio
         vec3.copy dob.position, p1
@@ -283,6 +286,7 @@ class Point extends DebugShape
     _draw: (shapes, render_manager, camera_position) ->
         {position, color, size} = this
         dob = shapes.cross3d
+        dob.radius = size
         color4.copy shapes.color, color
         vec3.set dob.scale, size, size, size
         vec3.copy dob.position, position
@@ -407,6 +411,16 @@ class DebugShapeMeshes
         d = [0,0,0,  0,0,1]
         @line.load_from_lists d, [0,1]
 
+        @wide_line = new @context.Mesh
+        d = [
+            0,0,0,  0,0,1,
+            1,0,0,  1,0,1,
+            0,1,0,  0,1,1,
+            -1,0,0,  -1,0,1,
+            0,-1,0,  0,-1,1,
+        ]
+        @wide_line.load_from_lists d, [0,1,2,3,4,5,6,7,8,9]
+
         @cross3d = new @context.Mesh
         d = [-1,0,0,  1,0,0, 0,-1,0,  0,1,0, 0,0,-1,  0,0,1, ]
         @cross3d.load_from_lists d, [0,1,2,3,4,5]
@@ -457,6 +471,43 @@ class DebugShapeMeshes
                 {varname: 'discontinuity', value: @discontinuity}
             ]
         }
+        @px_size = vec2.create()
+        @material_wide_line = new @context.Material '_debug_wl', {
+            material_type: 'PLAIN_SHADER'
+            vertex: """
+                precision highp float;
+                precision highp int;
+                uniform mat4 model_view_matrix;
+                uniform mat4 projection_matrix;
+                attribute vec3 vertex;
+                uniform vec2 discontinuity;
+                uniform vec2 px_size;
+                varying vec2 vardiscont;
+                void main()
+                {
+                    vec4 pos = projection_matrix * model_view_matrix * vec4(0., 0., vertex.z, 1.0);
+                    vardiscont = vec2(
+                        vertex.z * discontinuity.x - vertex.z * (1.-discontinuity.y),
+                        discontinuity.y
+                    );
+                    pos.xy += vertex.xy * px_size;
+                    pos.z -= 0.0005;
+                    gl_Position = pos;
+                }"""
+            fragment: """
+                precision mediump float;
+                uniform vec4 color;
+                varying vec2 vardiscont;
+                void main(){
+                    if(vardiscont.x-floor(vardiscont.x) > vardiscont.y) discard;
+                    gl_FragColor = color;
+                }"""
+            uniforms: [
+                {varname: 'color', value: @color}
+                {varname: 'discontinuity', value: @discontinuity}
+                {varname: 'px_size', value: @px_size}
+            ]
+        }
 
         for k,ob of this when ob.type == 'MESH'
             ob.elements = []
@@ -465,6 +516,7 @@ class DebugShapeMeshes
             ob.data.draw_method = @context.render_manager.gl.LINES
             ob.rotation_order = 'Q'
             ob._update_matrices()
+        @wide_line.materials = [@material_wide_line]
 
         @grids = {}
         @capsules = {}
@@ -494,6 +546,7 @@ class DebugShapeMeshes
             ob.materials = [@material]
             ob.data.draw_method = @context.render_manager.gl.LINES
             ob.rotation_order = 'Q'
+            ob.radius = cell_size * divisions * 0.5 * 1.5
             ob._update_matrices()
         return ob
 
@@ -501,7 +554,7 @@ class DebugShapeMeshes
     get_capsule: (params) ->
         key = JSON.stringify params
         ob = @capsules[key]
-        if not grid?
+        if not ob?
             {sin, cos} = Math
             ob = @capsules[key] = new @context.Mesh
             {radius, height} = params
@@ -536,6 +589,7 @@ class DebugShapeMeshes
             ob.data.draw_method = @context.render_manager.gl.LINES
             ob.rotation_order = 'Q'
             ob._update_matrices()
+            ob.radius = height * 0.5
         return ob
 
     # @nodoc
