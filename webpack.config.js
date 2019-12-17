@@ -93,6 +93,7 @@ module.exports.handle_myou_config = function(webpack, config, flags, env){
     if(flags.include_bullet && flags.copy_bullet){
         copy_lib('ammo.asm.js');
         copy_lib('ammo.wasm.js');
+        copy_lib('ammo.wasm.wasm');
     }
     config.plugins = config.plugins || [];
     config.plugins.push(new webpack.DefinePlugin({
