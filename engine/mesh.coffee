@@ -250,7 +250,8 @@ class Mesh extends GameObject
         if @_signature
             return
 
-        layout = [{name: 'vertex', type: 'f', count: 3, offset: 0}]
+        location = 0
+        layout = [{name: 'vertex', type: 'f', count: 3, offset: 0, location: location++}]
         stride = 3 * 4  # 4 floats * 4 bytes per float
 
         @_shape_names = []
@@ -260,55 +261,55 @@ class Mesh extends GameObject
             switch etype
                 when 'normal'
                     layout.push {name: 'vnormal', type: 'b', count: 3, \
-                                offset: stride}
+                                offset: stride, location: location++}
                     stride += 4
                 when 'shape'
                     num = @_shape_names.length
                     layout.push {name: 'shape'+num, type: 'f', count: 3, \
-                                offset: stride}
+                                offset: stride, location: location++}
                     layout.push {name: 'shapenor'+num, type: 'b', count: 3, \
-                                offset: stride + 12}
+                                offset: stride + 12, location: location++}
                     @_shape_names.push e[1]
                     shape_type = 'f'
                     stride += 4 * 4
                 when 'shape_b'
                     num = @_shape_names.length
                     layout.push {name: 'shape'+num, type: 'b', count: 3, \
-                                offset: stride}
+                                offset: stride, location: location++}
                     layout.push {name: 'shapenor'+num, type: 'b', count: 3, \
-                                offset: stride + 4}
+                                offset: stride + 4, location: location++}
                     @_shape_names.push e[1]
                     shape_type = 'b'
                     stride += 2 * 4
                 when 'tangent'
                     layout.push {name: 'tangent', type: 'b', count: 4, \
-                                offset: stride}
+                                offset: stride, location: location++}
                     stride += 4
                 when 'uv'
                     # NOTE: invalid characters will be replaced when
                     # this is implemented on export.
                     # The only allowed characters are [_A-Za-z0-9]
                     name = 'uv_'+e[1].replace(/[^_A-Za-z0-9]/g, '')
-                    layout.push {name, type: 'f', count: 2, offset: stride}
+                    layout.push {name, type: 'f', count: 2, offset: stride, location: location++}
                     stride += 2 * 4
                 when 'uv_s'
                     layout.push {name: 'uv_'+e[1], type: 'H', count: 2, \
-                                offset: stride}
+                                offset: stride, location: location++}
                     #o_uvs_s.push [e[1], stride]
                     stride += 2 * 2
                 when 'color'
                     name = 'vc_'+e[1].replace(/[^_A-Za-z0-9]/g, '')
-                    layout.push {name, type: 'B', count: 4, offset: stride}
+                    layout.push {name, type: 'B', count: 4, offset: stride, location: location++}
                     stride += 4
                 when 'weights'
                     @armature = @parent
                     for {object} in @lod_objects
                         object.armature = @parent
                     layout.push {name: 'weights', type: 'f', count: 4, \
-                                offset: stride}
+                                offset: stride, location: location++}
                     stride += 4 * 4
                     layout.push {name: 'b_indices', type: 'B', count: 4, \
-                                offset: stride}
+                                offset: stride, location: location++}
                     stride += 4  # 4 byte indices
                 else
                     console.log "Unknown element" + etype
@@ -438,7 +439,7 @@ class Mesh extends GameObject
         return clone
 
     sort_faces: (camera_position)->
-        return if not @data
+        return if @data?.draw_method != GL_TRIANGLES
         BIG_ENDIAN = 0
         offsets = @offsets
         num_submeshes = (offsets.length/2) - 1

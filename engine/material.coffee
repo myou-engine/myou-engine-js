@@ -376,7 +376,8 @@ class Shader
         prog = gl.createProgram()
         gl.attachShader prog, vertex_shader
         gl.attachShader prog, fragment_shader
-        gl.bindAttribLocation prog, 0, 'vertex'  # Ensure vertex is attrib 0
+        for {name, location} in @layout
+            gl.bindAttribLocation prog, location, name
         gl.linkProgram prog
         failed = not gl.getProgramParameter(prog, gl.LINK_STATUS)
         if failed and not gl.isContextLost()
@@ -429,9 +430,11 @@ class Shader
         # [location, number of components, GL type, offset]
         @attrib_pointers = attrib_pointers = []
         attrib_bitmask = 0
-        for {name, count, type, offset} in @layout
+        for {name, count, type, offset, location} in @layout
             loc = gl.getAttribLocation(prog, name)|0
             if loc != -1
+                if loc != location
+                    console.log "#{@material.name}: #{name} HAS DIFFERENT LOCATIONS #{loc} #{location}"
                 attrib_pointers.push [loc, count, attr_types[type], offset]
                 attrib_bitmask |= 1<<loc
         @attrib_bitmask = attrib_bitmask

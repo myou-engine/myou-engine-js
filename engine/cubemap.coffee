@@ -230,7 +230,7 @@ get_resize_material = (context, any_cubemap) ->
     }
     fake_mesh = {
         _signature:'shader'
-        layout: [{"name":"vertex","type":"f","count":3,"offset":0}]
+        layout: [{"name":"vertex","type":"f","count":3,"offset":0,"location":0}]
         vertex_modifiers: []
         material_defines: {}
     }
