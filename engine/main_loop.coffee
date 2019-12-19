@@ -30,6 +30,7 @@ class MainLoop
         @enabled = false
         @stopped = true
         @use_raf = true
+        @use_frame_callbacks = true
         @context = context
         @_bound_tick = @tick.bind @
         @_bound_run = @run.bind @
@@ -61,8 +62,8 @@ class MainLoop
         @sleep_timeout_id = setTimeout(@_bound_run, time)
 
     add_frame_callback: (callback)->
-        # Uncomment next line to debug trackebacks involving frame callbacks
-        # return callback()
+        if not @use_frame_callbacks
+            return callback()
         if callback.next?
             # it's a generator instance
             callback = callback.next.bind callback
