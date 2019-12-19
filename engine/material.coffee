@@ -295,11 +295,12 @@ class Shader
                     # final position in screen, then the view coord from that
                     projection_matrix_inverse =
                         generator.get_projection_matrix_inverse_name()
-                    modifiers_uniforms.push \
-                        "uniform mat4 #{projection_matrix_inverse};"
+                    modifiers_uniforms.push """
+                        uniform mat4 #{projection_matrix_inverse};
+                        uniform float fixed_z;
+                    """
                     [
-                        "vec4 proj_co = vec4(co.xy,
-                                    #{@data.fixed_z.toFixed(7)}, 1.0);"
+                        "vec4 proj_co = vec4(co.xy, fixed_z, 1.0);"
                         "vec4 view_co = #{projection_matrix_inverse} * proj_co;"
                     ]
                 else [
@@ -408,6 +409,9 @@ class Shader
         @u_uv_rect = gl.getUniformLocation prog, "uv_rect"
         @u_group_id = gl.getUniformLocation prog, "group_id"
         @u_uv_rect? and gl.uniform4f @u_uv_rect, 0, 0, 1, 1
+        if @data.fixed_z?
+            u_fixed_z = gl.getUniformLocation prog, "fixed_z"
+            u_fixed_z? and gl.uniform1f u_fixed_z, @data.fixed_z
 
         @u_mesh_center = gl.getUniformLocation prog, "mesh_center"
         @u_mesh_inv_dimensions = \
