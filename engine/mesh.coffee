@@ -45,6 +45,14 @@
 
 # Safari 9 doesn't have the constants in WebGLRenderingContext
 GL_TRIANGLES = 4
+BYTE = 0x1400
+UNSIGNED_BYTE = 0x1401
+SHORT = 0x1402
+UNSIGNED_SHORT = 0x1403
+INT = 0x1404
+UNSIGNED_INT = 0x1405
+FLOAT = 0x1406
+attr_types = {'f': FLOAT, 'b': BYTE, 'B': UNSIGNED_BYTE, 'H': UNSIGNED_SHORT,}
 
 face_sort_array = new Float64Array 4
 face_sort_array32 = new Uint32Array face_sort_array.buffer
@@ -60,26 +68,19 @@ class MeshData
         @varray = null  # Vertex array with all submeshes
         @iarray = null  # Submesh-based indices
         @varray_byte = null
+        @loaded = false
         # One of each per material
         @vertex_buffers = []
         @index_buffers = []
         @num_indices = []
+        @vaos = []
+
+        @layout = []
         @stride = 0
-        @offsets = [] # only used in tri mesh physics for now
+        @offsets = []
         @draw_method = GL_TRIANGLES
         @phy_convex_hull = null
         @phy_mesh = null
-
-    # @private
-    # Restores GPU data after context is lost.
-    reupload: (delete_buffers) ->
-        if (user0 = @users[0])?
-            @remove user0, delete_buffers
-            new_data = user0.load_from_va_ia @varray, @iarray
-            for u in @users
-                u.data.remove u, delete_buffers
-                u.data = new_data
-        return
 
     # Removes the data from an object, and deletes itself
     # if there are no other objects using it.
@@ -97,6 +98,63 @@ class MeshData
                     gl.deleteBuffer buf
             delete @context.mesh_datas[@hash]
         ob.data = null
+
+    # @private
+    gpu_buffers_upload: ->
+        {gl, vao_ext} = @context.render_manager
+        {offsets, varray: va, iarray: ia, stride} = this
+        num_submeshes = (offsets.length/2) - 1
+        for i in [0...num_submeshes]
+            i2 = i*2
+            vao = null
+            vb = gl.createBuffer()
+            gl.bindBuffer gl.ARRAY_BUFFER, vb
+            gl.bufferData gl.ARRAY_BUFFER,
+                va.subarray(offsets[i2], offsets[i2+2]), gl.STATIC_DRAW
+            gl.bindBuffer gl.ARRAY_BUFFER, null
+            @vertex_buffers.push vb
+            ib = gl.createBuffer()
+            if offsets[i2+1] != offsets[i2+3]
+                gl.bindBuffer gl.ELEMENT_ARRAY_BUFFER, ib
+                gl.bufferData gl.ELEMENT_ARRAY_BUFFER,
+                    ia.subarray(offsets[i2+1], offsets[i2+3]), gl.STATIC_DRAW
+                gl.bindBuffer gl.ELEMENT_ARRAY_BUFFER, null
+            # else
+                # If it's empty it means it will assigned from the parent mesh
+                # pass #TODO
+            @index_buffers.push ib
+            @num_indices.push offsets[i2+3] - offsets[i2+1]
+            if vao_ext?
+                vao = vao_ext.createVertexArray()
+                vao_ext.bindVertexArray vao
+                gl.bindBuffer gl.ARRAY_BUFFER, vb
+                for {name, count, type, offset, location} in @layout
+                    gl.enableVertexAttribArray location
+                    gl.vertexAttribPointer location, count, attr_types[type], false, stride, offset
+                gl.bindBuffer gl.ARRAY_BUFFER, null
+                gl.bindBuffer gl.ELEMENT_ARRAY_BUFFER, ib
+                vao_ext.bindVertexArray null
+            @vaos.push vao
+
+        @context.main_loop?.reset_timeout()
+        # This forces the mesh to be uploaded
+        # ZERO_MATRIX = mat4.new 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,1
+        # @context.render_manager.draw_mesh(@, ZERO_MATRIX, -1, false)
+        @loaded = true
+
+    # @private
+    gpu_buffers_delete: ->
+        gl = @context.render_manager.gl
+        if gl?
+            for buf in @vertex_buffers
+                gl.deleteBuffer buf
+            for buf in @index_buffers
+                gl.deleteBuffer buf
+        @vertex_buffers = []
+        @index_buffers = []
+        @loaded = false
+        if @users.length == 0
+            delete @context.mesh_datas[@hash]
 
     clone: ->
         d = Object.create this
@@ -166,8 +224,7 @@ class Mesh extends GameObject
         catch e
             e = Error "Mesh #{@name} is corrupt"
             throw e
-        @context.main_loop.add_frame_callback =>
-            @load_from_va_ia va, ia
+        @load_from_va_ia va, ia
 
     # Loads mesh data from arrays or arraybuffers containing
     # vertices and indices. Automatically sets submesh offsets.
@@ -181,15 +238,25 @@ class Mesh extends GameObject
     # Loads mesh from appropately typed arrays and already set offsets.
     load_from_va_ia: (va, ia)->
         @data?.remove @
+        # if @hash and (@data = @context.mesh_datas[@hash])?
+        #     @data.users.push @
+        #     @context.main_loop?.reset_timeout()
+        #     return
         data = @data = @context.mesh_datas[@hash] = new MeshData @context
+        data.users.push this
         if @properties.mesh_draw_method?
             data.draw_method = @properties.mesh_draw_method
         data.hash = @hash
-        data.users.push @
         data.varray = va
         data.iarray = ia
         data.varray_byte = bytes =
             new Uint8Array va.buffer, va.byteOffset, va.byteLength
+        data.stride = @stride
+        data.offsets = @offsets
+        if not @layout.length
+            @ensure_layout_and_modifiers()
+        # TODO: Will there be meshes with same hash but different layout?
+        data.layout = @layout
         # If mesh has a mesh_id, we'll assign it to the 4th byte of the normal
         # (usually both mesh_id and that byte are 0)
         if @mesh_id
@@ -200,33 +267,8 @@ class Mesh extends GameObject
                     bytes[i] = mesh_id
                     i+=@stride
         # Upload mesh
-        offsets = data.offsets = @offsets
-        num_submeshes = (offsets.length/2) - 1
-        gl = @context.render_manager.gl
-        for i in [0...num_submeshes]
-            i2 = i*2
-            vb = gl.createBuffer()
-            gl.bindBuffer gl.ARRAY_BUFFER, vb
-            gl.bufferData gl.ARRAY_BUFFER,
-                va.subarray(offsets[i2], offsets[i2+2]), gl.STATIC_DRAW
-            data.vertex_buffers.push vb
-            ib = gl.createBuffer()
-            if offsets[i2+1] != offsets[i2+3]
-                gl.bindBuffer gl.ELEMENT_ARRAY_BUFFER, ib
-                gl.bufferData gl.ELEMENT_ARRAY_BUFFER,
-                    ia.subarray(offsets[i2+1], offsets[i2+3]), gl.STATIC_DRAW
-            # else
-                # If it's empty it means it will assigned from the parent mesh
-                # pass #TODO
-            data.index_buffers.push ib
-            data.num_indices.push offsets[i2+3] - offsets[i2+1]
-        data.stride = @stride
-
-        @context.main_loop?.reset_timeout()
-        # This forces the mesh to be uploaded
-        # ZERO_MATRIX = mat4.new 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,1
-        # @context.render_manager.draw_mesh(@, ZERO_MATRIX, -1, false)
-        return data
+        @context.main_loop.add_frame_callback =>
+            data.gpu_buffers_upload()
 
     # Updates index arrays. Usually used after faces are sorted.
     update_iarray: ->

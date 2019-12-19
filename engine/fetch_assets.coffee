@@ -60,32 +60,22 @@ fetch_mesh = (mesh_object, options={}) ->
 
         fetch_promise.then (data) ->
             mesh_data = context.mesh_datas[mesh_object.hash]
-            if mesh_data
-                # It was loaded before, replace if not the same
-                if mesh_object.data != mesh_data
-                    mesh_object.data?.remove mesh_object
-                    mesh_object.data = mesh_data
-                    mesh_object.data.users.push mesh_object
-                resolve(mesh_object)
-            else
-                # If there was no mesh_data, actually load it
-                # (load_from_arraybuffer will populate mesh_datas)
+
+            offset = 0
+            if data.buffer? and data.byteOffset?
+                # this is a node Buffer or a Uint8Array,
+                # only in node or electron
+                offset = data.byteOffset
+                data = data.buffer
+            mesh_object.load_from_arraybuffer data, offset
+            if mesh_object.pending_bodies.length != 0
                 context.main_loop.add_frame_callback ->
-                    offset = 0
-                    if data.buffer? and data.byteOffset?
-                        # this is a node Buffer or a Uint8Array,
-                        # only in node or electron
-                        offset = data.byteOffset
-                        data = data.buffer
-                    mesh_object.load_from_arraybuffer data, offset
-                    if mesh_object.pending_bodies.length != 0
-                        context.main_loop.add_frame_callback ->
-                            for body in mesh_object.pending_bodies
-                                body.instance()
-                            mesh_object.pending_bodies.splice 0
-                            resolve(mesh_object)
-                    else
-                        resolve(mesh_object)
+                    for body in mesh_object.pending_bodies
+                        body.instance()
+                    mesh_object.pending_bodies.splice 0
+                    resolve(mesh_object)
+            else
+                resolve(mesh_object)
             return
         .catch (e) ->
             reject e

@@ -147,7 +147,10 @@ class RenderManager
         @extensions =
             standard_derivatives:
                 webgl2_ext or gl.getExtension 'OES_standard_derivatives'
-            color_buffer_float: gl.getExtension 'EXT_color_buffer_float'
+            color_buffer_float: gl.getExtension('WEBGL_color_buffer_float') or
+                gl.getExtension('EXT_color_buffer_float')
+            color_buffer_half_float: gl.getExtension('EXT_color_buffer_half_float')
+            vertex_array_object: gl.getExtension 'OES_vertex_array_object'
             texture_float: gl.getExtension 'OES_texture_float'
             texture_float_linear: gl.getExtension 'OES_texture_float_linear'
             texture_half_float: gl.getExtension 'OES_texture_half_float'
@@ -175,6 +178,14 @@ class RenderManager
                 webgl2_ext or gl.getExtension "EXT_shader_texture_lod"
             disjoint_timer_query: gl.getExtension "EXT_disjoint_timer_query"
             image_external: gl.getExtension "GL_OES_EGL_image_external"
+
+        if @is_webgl2
+            @vao_ext = gl
+        else if (ext = @extensions.vertex_array_object)?
+            @vao_ext = ext
+            @vao_ext.createVertexArray = ext.createVertexArrayOES
+            @vao_ext.bindVertexArray = ext.bindVertexArrayOES
+            @vao_ext.deleteVertexArray = ext.deleteVertexArrayOES
 
         if @no_s3tc
             @extensions['compressed_texture_s3tc'] = null
@@ -297,7 +308,7 @@ class RenderManager
             framebuffer.destroy(false)
         # meshes
         for _,m of @context.mesh_datas
-            m.reupload(false)
+            m.gpu_buffers_delete()
         @gl = null
         return
 
@@ -323,7 +334,7 @@ class RenderManager
             framebuffer.recreate()
         # meshes
         for _,m of @context.mesh_datas
-            m.reupload(false)
+            m.gpu_buffers_upload()
         # render probes
         for _,scene of @context.scenes
             # for lamp in scene.lamps when lamp.shadow_fb?
@@ -569,12 +580,11 @@ class RenderManager
         if @_vp?.camera?
             amesh = mesh.get_lod_mesh(@_vp,
                 @context.mesh_lod_min_length_px, @render_tick)
-            if not amesh.data
-                return
         else
             amesh = mesh
-            if not amesh.data
-                return
+
+        if not amesh.data?.loaded
+            return
 
         flip_normals = mesh._flip
         if @flip_normals
@@ -674,18 +684,24 @@ class RenderManager
             array_buffer = data.vertex_buffers[submesh_idx]
             if not array_buffer?
                 continue
-            gl.bindBuffer gl.ARRAY_BUFFER, array_buffer
-            @change_enabled_attributes shader.attrib_bitmask
-            for attr in shader.attrib_pointers
-                # [location, number of components, type, offset]
-                gl.vertexAttribPointer \
-                    attr[0], attr[1], attr[2], false, stride, attr[3]
+            vao = data.vaos[submesh_idx]
+            if vao?
+                @vao_ext.bindVertexArray vao
+            else
+                gl.bindBuffer gl.ARRAY_BUFFER, array_buffer
+                @change_enabled_attributes shader.attrib_bitmask
+                for attr in shader.attrib_pointers
+                    # [location, number of components, type, offset]
+                    gl.vertexAttribPointer \
+                        attr[0], attr[1], attr[2], false, stride, attr[3]
 
-            # Bind index buffer, draw
-            # ELEMENT_ARRAY_BUFFER = 0x8893
-            gl.bindBuffer 0x8893, data.index_buffers[submesh_idx]
-            num_indices = data.num_indices[submesh_idx] # * @_polygon_ratio)|0
+                # Bind index buffer, draw
+                # ELEMENT_ARRAY_BUFFER = 0x8893
+                gl.bindBuffer 0x8893, data.index_buffers[submesh_idx]
+            num_indices = (data.num_indices[submesh_idx] * @_polygon_ratio)|0
             gl.drawElements data.draw_method, num_indices, gl.UNSIGNED_SHORT, 0
+            if vao?
+                @vao_ext.bindVertexArray null
 
             ## TODO: Enable in debug mode, silence after n errors
             # error = gl.getError()
