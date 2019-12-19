@@ -89,6 +89,7 @@ class Texture
         {
             size_ratio
             force=false
+            load_videos=true
         } = options
         if force then @promised_data = @promised_ratio = null
         # TODO: If there's a pending promise, it should be rejected or
@@ -102,6 +103,8 @@ class Texture
         # TODO!! Select format depending on browser support
         # TODO!! Or add all files as <source> inside the <video>
         video_list = mp4 or m4v or ogg or ogv or webm or mov or flv
+        if video_list?[0] and not load_videos
+            return Promise.resolve this
         # (also, if both images and videos are available,
         # should the image be shown until the video starts?)
 
@@ -205,7 +208,7 @@ class Texture
                         bytesize =
                             Math.ceil((w>>i)/4) * Math.ceil((h>>i)/4) * bypb
                         @arrays.push new Uint8Array buffer, offset, bytesize
-                        offset += byte_size
+                        offset += bytesize
                     @upload()
                     resolve @
                 .catch reject
@@ -290,7 +293,7 @@ class Texture
                 @image = new Image
                 @image.onload = =>
                     @context.main_loop.add_frame_callback =>
-                        {@width, @height} = @image
+                        {@width=data.width, @height=data.height} = @image
                         if not @is_power_of_two()
                             @loaded = false
                             reject "Texture #{@name} has non-power-of-two size
@@ -325,7 +328,7 @@ class Texture
                         @upload()
                         resolve @
                 .catch reject
-        else if video_list?[0]
+        else if load_videos and video_list?[0]
             data = @select_closest_format video_list, size_ratio
             if @promised_data == data
                 return @promise
@@ -388,6 +391,11 @@ class Texture
     bind: ->
         if @bound_unit == -1
             @context.render_manager.bind_texture @
+        return this
+
+    unbind: ->
+        if @bound_unit != -1
+            @context.render_manager.unbind_texture @
         return this
 
     # @private

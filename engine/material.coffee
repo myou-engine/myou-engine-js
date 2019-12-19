@@ -93,6 +93,7 @@ class Material
         {
             fetch_textures=true
             texture_size_ratio=null
+            load_videos
         } = options
         # TODO: Have a material promise:
         # * Implement Material::ensure_upload(mesh) which generates a
@@ -104,7 +105,7 @@ class Material
         if fetch_textures
             for {value, skip_load} in @get_texture_list()
                 if not skip_load
-                    promises.push value.load {size_ratio: texture_size_ratio}
+                    promises.push value.load {size_ratio: texture_size_ratio, load_videos}
         return Promise.all(promises)
 
     clone_to_scene: (scene) ->

@@ -298,6 +298,8 @@ class Scene
     #       Whether to fetch textures when they're not loaded already.
     # @option options [number] texture_size_ratio
     #       Quality of textures specified in ratio of number of pixels.
+    # @option options [boolean] load_videos
+    #       Whether to load video textures.
     # @option options [number] max_mesh_lod
     #       Quality of meshes specified in LoD polycount ratio.
     # @return [Promise]
