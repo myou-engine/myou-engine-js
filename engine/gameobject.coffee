@@ -250,6 +250,39 @@ class GameObject
         angle *= 0.017453292519943295
         @rotate_quat(quat.rotateZ(q, q, angle), relative_object)
 
+    # Sets the world position of object without altering
+    # its parent relationship.
+    # @param position [vec3] Global position to set.
+    set_world_position: (position) ->
+        @set_world_position_rotation position, @get_world_rotation()
+
+    # Sets the world rotation of object without altering
+    # its parent relationship.
+    # @param rotation [quat] Global rotation to set. Must be a quaterion.
+    set_world_rotation: (rotation) ->
+        @set_world_position_rotation @get_world_position(), rotation
+
+    # Sets the world position and rotation of object without altering
+    # its parent relationship.
+    # @param position [vec3] Global position to set.
+    # @param rotation [quat] Global rotation to set. Must be a quaterion.
+    set_world_position_rotation: (position, rotation) ->
+        if @parent?
+            # TODO: optimize and use less memory?
+            # TODO: does it work well with parents?
+            wm = mat4.clone @parent.get_world_matrix()
+            mat4.mul wm, wm, @matrix_parent_inverse
+            mat4.invert wm, wm
+            vec3.transformMat4 @position, position, wm
+            rot_matrix = mat3.rotationFromMat4 mat3.create(), wm
+            quat.fromMat3 @rotation, rot_matrix
+            quat.mul @rotation, @rotation, rotation
+        else
+            vec3.copy @position, position
+            quat.copy @rotation, rotation
+        @rotation_order = 'Q'
+        return this
+
     look_at: (target, options) ->
         {
             front='-Y'
