@@ -145,7 +145,8 @@ class Framebuffer
 
         @context.render_manager.unbind_texture @texture
         @context.render_manager.unbind_texture @depth_texture if @depth_texture?
-        gl.bindRenderbuffer gl.RENDERBUFFER, null
+        if rb?
+            gl.bindRenderbuffer gl.RENDERBUFFER, null
         gl.bindFramebuffer gl.FRAMEBUFFER, null
         Framebuffer.active_buffer = null
         @context.all_framebuffers.push this
@@ -284,7 +285,8 @@ class Framebuffer
             # can't resize
             {current_size_x, current_size_y} = this
             @enable src_rect
-            gl.readBuffer gl.COLOR_ATTACHMENT0
+            if is_webgl2
+                gl.readBuffer gl.COLOR_ATTACHMENT0
             @context.render_manager.bind_texture dest.texture
             gl.copyTexSubImage2D gl.TEXTURE_2D, 0, dstX, dstY, srcX, srcY,
                 srcW, srcH
