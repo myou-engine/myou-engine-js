@@ -37,8 +37,6 @@ class RenderManager
         @_cam2world3 = mat3.create()
         @_world2cam = mat4.create()
         @_world2cam3 = mat3.create()
-        @_world2cam_mx = mat4.create()
-        @_world2cam3_mx = mat3.create()
         @_world2light = mat4.create()
         @projection_matrix_inverse = mat4.create()
         @_model_view_matrix = mat4.create()
@@ -766,8 +764,6 @@ class RenderManager
         cam2world = @_cam2world
         world2cam = @_world2cam
         world2cam3 = @_world2cam3
-        world2cam_mx = @_world2cam_mx
-        world2cam3_mx = @_world2cam3_mx
         world2light = @_world2light
         # Create cam2world from camera world matrix but ignoring scale/skew
         # NOTE: How am I ignoring scale/skew?
@@ -788,11 +784,6 @@ class RenderManager
         mat4.invert world2cam, cam2world
         mat3.fromMat4 world2cam3, world2cam
 
-        mat4.copy world2cam_mx, world2cam
-        world2cam_mx.x = -world2cam_mx.x
-        world2cam_mx.y = -world2cam_mx.y
-        world2cam_mx.z = -world2cam_mx.z
-        mat3.fromMat4 world2cam3_mx, world2cam_mx
         vec3.transformMat3 @camera_z, VECTOR_MINUS_Z, cam_rm
         # Set plane vectors that will be used for culling objects
         plane_matrix = cam2world

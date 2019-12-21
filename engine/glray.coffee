@@ -83,7 +83,6 @@ class GLRay
              {"name":"vnormal","type":"b","count":4,"offset":12}],[],{})
         @m4 = mat4.create()
         @world2cam = mat4.create()
-        @world2cam_mx = mat4.create()
         @cam2world = mat4.create()
         @last_cam2world = mat4.create()
         @meshes = []
@@ -176,7 +175,7 @@ class GLRay
 
     do_step: ->
         gl = @context.render_manager.gl
-        {scene, camera, m4, mat, world2cam, world2cam_mx} = @
+        {scene, camera, m4, mat, world2cam} = @
         mat.use()
         attr_loc_vertex = mat.attrib_pointers[0][0]
         attr_loc_normal = mat.attrib_pointers[1][0]
@@ -197,7 +196,6 @@ class GLRay
             gl.clearColor(1, 1, 1, 1)
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
             mat4.copy(world2cam, @context.render_manager._world2cam)
-            mat4.copy(world2cam_mx, @context.render_manager._world2cam_mx)
             mat4.copy(@cam2world, camera.world_matrix)
             # Assuming perspective projection and no shifting
             @inv_proj_x = camera.projection_matrix_inv.m00
