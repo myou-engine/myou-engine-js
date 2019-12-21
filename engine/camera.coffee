@@ -95,6 +95,20 @@ class Camera extends GameObject
                 throw Error "Camera.sensor_fit must be
                     AUTO, HORIZONTAL, VERTICAL, COVER or CONTAIN."
 
+    set_projection_matrix: (matrix, adjust_aspect_ratio=false) ->
+        pm = mat4.copy @projection_matrix, matrix
+        if adjust_aspect_ratio
+            m_ratio = matrix.m00 / matrix.m05
+            # TODO: Use sensor_fit, we'll assume 'cover' for now
+            # TODO: it's expecting an inverse aspect ratio, probably
+            ratio_factor = m_ratio/@aspect_ratio
+            if ratio_factor > 1
+                mat4.scale pm, pm, vec3.new 1, ratio_factor, 1
+            else
+                mat4.scale pm, pm, vec3.new 1/ratio_factor, 1, 1
+        mat4.invert @projection_matrix_inv, @projection_matrix
+        @_calculate_culling_planes()
+
     update_projection: ->
         @_calculate_projection()
         @_calculate_culling_planes()
