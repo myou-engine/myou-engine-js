@@ -191,11 +191,12 @@ class Body
             # this is likely to be part of a ragdoll that needs to be applied
             return
 
+        he = vec3.set @half_extents, 0, 0, 0
         if @owner.bound_box?
             [a,b] = @owner.bound_box
-            he = vec3.sub @half_extents, b, a
+            vec3.sub he, b, a
             vec3.scale he, he, .5
-        else
+        if vec3.sqrLen(he) < 0.00001
             he = vec3.set he, @radius, @radius, @radius
         if @owner.parent?
             # TODO: Avoid multiple calls to get_world_matrix()
