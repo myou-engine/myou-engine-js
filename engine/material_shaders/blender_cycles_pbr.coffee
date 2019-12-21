@@ -89,13 +89,7 @@ class BlenderCyclesPBRMaterial
         # TODO: do this when using planar reflections:
         # head.push "#define CLIPPING_PLANE"
         fragment = @material.data.fragment
-        # workaround for pbr background in blender game mode
-        if @material.data.uniforms.length == 0 and glsl_version == 300
-            head.shift()
-            material_module ?= require '../material'
         fragment = head.join('\n') + '\n' + @material.shader_library + fragment
-        if @material.data.uniforms.length == 0 and glsl_version == 300
-            fragment = material_module.glsl100to300 fragment
         fragment = fragment.replace(/\bbuffer\b/g, 'boofer')
         return {fragment, glsl_version}
 
