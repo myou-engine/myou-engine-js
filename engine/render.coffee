@@ -36,7 +36,6 @@ class RenderManager
         @_cam2world = mat4.create()
         @_cam2world3 = mat3.create()
         @_world2cam = mat4.create()
-        @_world2cam3 = mat3.create()
         @_world2light = mat4.create()
         @projection_matrix_inverse = mat4.create()
         @_model_view_matrix = mat4.create()
@@ -545,7 +544,7 @@ class RenderManager
     draw_mesh: (mesh, mesh2world, pass_=-1, material_override,
         world2cam_override, projection_override)->
         # TODO: Put all camera matrices into a single argument:
-        # world2cam, cam2world, world2cam3, cam2world3
+        # world2cam, cam2world, cam2world3
         # projection, projection inverse
         # TODO: check epsilon, probably better to check sum of absolutes
         # instead of sqrLen
@@ -763,7 +762,6 @@ class RenderManager
 
         cam2world = @_cam2world
         world2cam = @_world2cam
-        world2cam3 = @_world2cam3
         world2light = @_world2light
         # Create cam2world from camera world matrix but ignoring scale/skew
         # NOTE: How am I ignoring scale/skew?
@@ -782,7 +780,6 @@ class RenderManager
         mat4.setTranslation cam2world, cam_pos
 
         mat4.invert world2cam, cam2world
-        mat3.fromMat4 world2cam3, world2cam
 
         vec3.transformMat3 @camera_z, VECTOR_MINUS_Z, cam_rm
         # Set plane vectors that will be used for culling objects
@@ -1027,7 +1024,6 @@ class RenderManager
             mat4.lookAt world2cam, position, dir, up
             mat4.invert @_cam2world, world2cam
             mat3.fromMat4 @_cam2world3, @_cam2world
-            mat3.fromMat4 @_world2cam3, world2cam
             {r,g,b} = scene.background_color
             gl.clearColor r,g,b,1
             gl.clear gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT
