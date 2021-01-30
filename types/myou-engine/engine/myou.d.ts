@@ -1,3 +1,6 @@
+import { GameObject } from "./gameobject";
+import { Behaviour, Behavior } from "./behaviour";
+import { MainLoop } from "./main_loop";
 /**
 * This is the main engine class.
 * You need to instance it to start using the engine.
