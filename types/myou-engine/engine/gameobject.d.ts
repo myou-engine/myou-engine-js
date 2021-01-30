@@ -125,11 +125,11 @@ export class GameObject {
     add_to_group(group_name: string): void;
 }
 
-declare interface CloneOptions {
+export interface CloneOptions {
     recursive?: boolean,
     behaviours?: boolean,
     new_parent?: GameObject,
     scene?: Scene
 }
 
-export type ObjectType = "SCENE"|"LAMP"|"ARMATURE"
+export type ObjectType = "CAMERA"|"SCENE"|"LAMP"|"ARMATURE"

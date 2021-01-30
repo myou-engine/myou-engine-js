@@ -1,6 +1,12 @@
 import { GameObject } from "./gameobject";
 import { Behaviour, Behavior } from "./behaviour";
+import { RenderManager } from "./render";
 import { MainLoop } from "./main_loop";
+import { Viewport } from "./viewport";
+import { Screen, CanvasScreen } from "./screen";
+import { Camera } from "./camera";
+import { Framebuffer, ByteFramebuffer, ShortFramebuffer, FloatFramebuffer } from "./framebuffer";
+
 /**
 * This is the main engine class.
 * You need to instance it to start using the engine.
@@ -54,7 +60,7 @@ export class Myou {
     screens: Screen[];
     behaviours: Behaviour[];
     behaviors: Behavior[];
-    canvas_screen: Screen;
+    canvas_screen: CanvasScreen;
     vr_screen: Screen;
     scenes: Record<string, Scene>;
     loaded_scenes: Scene[];
