@@ -1,6 +1,7 @@
 import { GameObject } from "./gameobject";
 import { Behaviour, Behavior } from "./behaviour";
 import { RenderManager } from "./render";
+import { Scene } from "./scene";
 import { Lamp } from "./lamp";
 import { MainLoop } from "./main_loop";
 import { Viewport } from "./viewport";
