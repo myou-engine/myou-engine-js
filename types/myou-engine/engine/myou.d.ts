@@ -8,6 +8,8 @@ import { Viewport } from "./viewport";
 import { Screen, CanvasScreen } from "./screen";
 import { Camera } from "./camera";
 import { Framebuffer, ByteFramebuffer, ShortFramebuffer, FloatFramebuffer } from "./framebuffer";
+import { Material } from "./material";
+import { Texture } from "./texture";
 
 /**
 * This is the main engine class.

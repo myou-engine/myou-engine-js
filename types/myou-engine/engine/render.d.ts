@@ -1,7 +1,10 @@
 import { vec3, vec4, mat4 } from "vmath";
 import { Myou } from "./myou";
+import { Scene } from "./scene";
 import { Framebuffer } from "./framebuffer";
 import { Camera } from "./camera";
+import { Texture } from "./texture";
+import { Material } from "./material";
 
 /** Render manager singleton. Performs all operations related to rendering to
 * screen or to a buffer.

@@ -5,6 +5,8 @@ import { Marker } from "./animation";
 import { Camera } from "./camera";
 import { Lamp } from "./lamp";
 import { World } from "./physics";
+import { Material } from "./material";
+import { Texture } from "./texture";
 
 export class Scene {
     type: "SCENE";
