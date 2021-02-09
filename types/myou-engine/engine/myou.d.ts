@@ -10,6 +10,7 @@ import { Camera } from "./camera";
 import { Framebuffer, ByteFramebuffer, ShortFramebuffer, FloatFramebuffer } from "./framebuffer";
 import { Material } from "./material";
 import { Texture } from "./texture";
+import { Mesh } from "./mesh";
 
 /**
 * This is the main engine class.

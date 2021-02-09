@@ -132,4 +132,4 @@ export interface CloneOptions {
     scene?: Scene
 }
 
-export type ObjectType = "CAMERA"|"SCENE"|"LAMP"|"ARMATURE"
+export type ObjectType = "CAMERA"|"SCENE"|"LAMP"|"ARMATURE"|"MESH"
