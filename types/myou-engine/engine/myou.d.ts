@@ -18,6 +18,7 @@ import { MeshFactory } from "./meshfactory";
 import { Curve } from "./curve";
 import { InputManager, Button, Axis, Axes2 } from "./input";
 import { GLRay } from "./glray";
+import { DebugDraw } from "./debug_render";
 
 /**
 * This is the main engine class.
@@ -73,12 +74,11 @@ export class Myou {
     behaviours: Behaviour[];
     behaviors: Behavior[];
     canvas_screen: CanvasScreen;
-    vr_screen: Screen;
     scenes: Record<string, Scene>;
     loaded_scenes: Scene[];
     actions: Record<string, Action>;
     video_textures: Record<string, Texture>;
-    debug_loader: DebugLoader; //??
+    //debug_loader: DebugLoader; Unused?
     canvas: HTMLCanvasElement;
     all_materials: Record<string, Material>;
     mesh_datas: Record<string, MeshData>;
@@ -109,10 +109,6 @@ export class Myou {
         data_dir?: string,
         original_scene_name?: string
     }): Promise<Scene>;
-
-    hasVR: boolean;
-    initVR: unknown // Function
-    exitVR: unknown // Function
 
     screenshot_as_blob: RenderManager["screenshot_as_blob"];
 
