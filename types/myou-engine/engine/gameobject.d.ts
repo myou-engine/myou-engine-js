@@ -20,7 +20,7 @@ export class GameObject {
     matrix_parent_inverse: mat4;
     scene: Scene;
     source_scene_name: string;
-    dupli_group: unknown //?
+    dupli_group: unknown //??
     visible: boolean;
     parent: GameObject;
     children: GameObject[];
@@ -32,7 +32,7 @@ export class GameObject {
     animation_strips: NLAStrip[];
     animations: Record<string, Animation>;
     name: string;
-    type?: ObjectType;
+    readonly type?: ObjectType;
     original_name: string;
     lod_objects: GameObject[];
     parent_bone_index: number;
@@ -41,7 +41,7 @@ export class GameObject {
     avg_poly_area: number;
     avg_poly_length: number;
     zindex: number;
-    groups: unknown[]; //??
+    groups: string[];
 
     pending_bodies: unknown; //??
 

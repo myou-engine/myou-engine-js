@@ -2,6 +2,7 @@ import { Myou } from "./myou";
 import { Viewport } from "./viewport";
 import { Texture, TextureBase } from "./texture";
 import { Uniform } from "./material";
+import { BaseFilter } from "./filter";
 
 /** Framebuffer class. Use it for off-screen rendering, by creating a {Viewport}
 * with a framebuffer as `dest_buffer`.
@@ -31,7 +32,7 @@ export class Framebuffer {
     enable(rect?: number[]): this;
     clear(): void;
     disable(): void;
-    draw_with_filter(filter: unknown, inputs?: Record<string, Uniform>): void;
+    draw_with_filter(filter: BaseFilter, inputs?: Record<string, Uniform>): void;
     blit_to(dest: Framebuffer, src_rect: number[], dst_rect: number[], options?:{ components?: string[], use_filter?: boolean }): void;
     bind_to_cubemap_side(cubemap: Cubemap, side: string): void; //??
     unbind_cubemap(cubemap: Cubemap): void;
@@ -58,7 +59,7 @@ declare interface FramebufferOptions {
 }
 
 declare class FbTexture implements TextureBase {
-    type: "TEXTURE";
+    readonly type: "TEXTURE";
     gl_tex?: WebGLTexture;
     gl_target: number;
     loaded: boolean;

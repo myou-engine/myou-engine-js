@@ -3,14 +3,14 @@ import { Material } from "./material"
 import { Myou } from "./myou";
 
 export interface TextureBase {
-    type: "TEXTURE",
+    readonly type: "TEXTURE",
     gl_tex?: WebGLTexture;
     gl_target?: number,
     loaded: boolean,
     bound_unit: number,
     is_framebuffer_active: boolean,
-    bind(): this,
-    unbind(): this
+    bind(): void,
+    unbind(): void
 }
 
 /** Main texture class (see also {Cubemap}). It allows creating and managing
@@ -51,7 +51,7 @@ export interface TextureBase {
  *   mipmaps, they will be generated.
  * */
 export class Texture implements TextureBase {
-    type: "TEXTURE";
+    readonly type: "TEXTURE";
     context: Myou;
     scene: Scene;
     constructor(scene: Scene, options:{
