@@ -44,7 +44,7 @@ export namespace Myou {
     export { World, Body, Constraint as PhysicsConstraint, CollisionShape, CollisionType } from "./physics"
     export { Probe, ProbeData, ProbeType } from "./probe"
     export { RenderManager } from "./render"
-    export { Screen, CanvasScreen, ViewportCloneOptions } from "./screen"
+    export { Screen, CanvasScreen } from "./screen"
     export { BaseEffect, FilterEffect, CopyEffect, BloomEffect } from "./effect"
     export { MainLoop } from "./main_loop"
     export { RotationOrder } from "./util"
