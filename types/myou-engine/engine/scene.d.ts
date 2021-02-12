@@ -7,16 +7,17 @@ import { Lamp } from "./lamp";
 import { World } from "./physics";
 import { Material } from "./material";
 import { Texture } from "./texture";
+import { Armature } from "./armature"
+import { Mesh } from "./mesh";
 
 export class Scene {
     type: "SCENE";
     context: Myou;
     enabled: boolean;
-    children: unknown[];
-    auto_updated_children: unknown[];
-    mesh_passes: Array<unknown[]>;
-    bg_pass: unknown[];
-    fg_pass: unknown[];
+    children: GameObject[];
+    mesh_passes: Array<Mesh[]>;
+    bg_pass: Mesh[];
+    fg_pass: Mesh[];
     lamps: Lamp[];
     armatures: Armature[];
     objects: Record<string, GameObject>;
@@ -46,9 +47,9 @@ export class Scene {
     extra_data: unknown; //TODO: What is this?
     data_dir: string;
     original_scene_name: string;
-    foreground_planes: unknown[];
+    foreground_planes: Mesh[]; //??
     shader_libary: string;
-    groups: Record<string,unknown>;
+    groups: Record<string, GameObject[]>;
     constructor(name: string, options?:{add_to_loaded_scenes?:boolean});
 
     add_object(ob: GameObject, name?: string, parent_name?: string, parent_bone?: string): void;

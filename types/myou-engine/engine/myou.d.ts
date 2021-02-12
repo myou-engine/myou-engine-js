@@ -12,7 +12,8 @@ import { Camera } from "./camera";
 import { Framebuffer, ByteFramebuffer, ShortFramebuffer, FloatFramebuffer } from "./framebuffer";
 import { Material } from "./material";
 import { Texture } from "./texture";
-import { Mesh } from "./mesh";
+import { Mesh, MeshData } from "./mesh";
+import { MeshFactory } from "./meshfactory";
 
 /**
 * This is the main engine class.
@@ -76,7 +77,7 @@ export class Myou {
     debug_loader: DebugLoader; //??
     canvas: HTMLCanvasElement;
     all_materials: Record<string, Material>;
-    mesh_datas: Record<string, Mesh>; // MeshData?
+    mesh_datas: Record<string, MeshData>;
     embed_meshes: Record<string, Mesh>;
     active_animations: Record<string, Animation>;
     all_cubemaps: Cubemap[];

@@ -45,7 +45,9 @@ export class GameObject {
 
     pending_bodies: unknown; //??
 
-    constructor();
+    constructor(options?: {
+        add_to_loaded_scenes?: boolean
+    });
 
     set_rotation_order(order: RotationOrder): void;
     get_world_matrix(): mat4;
@@ -106,14 +108,24 @@ export class GameObject {
     * */
     clone(options?: CloneOptions, options2?: CloneOptions): GameObject;
 
-    set_parent(parent: GameObject, options: unknown): unknown;
-    parent_to(parent: GameObject, options: unknown): unknown;
-    clear_parent(options: unknown): unknown;
+    set_parent(parent: GameObject, options?: {
+        keep_transform?: boolean
+    }): void;
+    parent_to(parent: GameObject, options?: {
+        keep_transform?: boolean
+    }): void;
+    clear_parent(options: {
+        keep_transform: boolean
+    }): void;
     get_top_ancestor(top_level_parents: GameObject[]): GameObject;
     get_descendants(include_self: boolean): GameObject[];
-    load(options: unknown): unknown;
-    remove(recursive: boolean): unknown;
-    destroy(recursive?: boolean): unknown;
+    load(options?: {
+        fetch_textures?: boolean,
+        texture_size_ratio?: number,
+        max_mesh_lod?: number
+    }): ReturnType<Scene["load_objects"]>;
+    remove(recursive?: boolean): ReturnType<Scene["remove_object"]>;
+    destroy(recursive?: boolean): void;
     instance_probes(): void;
     convert_bone_child_to_bone_parent(): void;
     get_world_X_vector(): vec3;
