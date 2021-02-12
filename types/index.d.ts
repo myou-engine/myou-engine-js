@@ -7,7 +7,9 @@
 import * as g2 from "./math_utils/g2";
 import * as g3 from "./math_utils/g3";
 import * as math from "./math_utils/math";
-import * as vmath from "./math_utils/vmath";
+import * as vmath from "vmath";
+import "./math_utils/vmath";
+
 import { Behaviour, Behavior } from "./engine/behaviour";
 import { Myou, create_canvas, create_full_window_canvas } from "./engine/myou";
 
