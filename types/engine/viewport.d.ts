@@ -2,6 +2,7 @@ import { Screen } from "./screen";
 import { Camera } from "./camera";
 import { vec2, vec3 } from "vmath";
 import { BaseEffect, BloomEffect } from "./effect";
+import { DebugCamera } from "./debug_render";
 
 export class Viewport {
     screen: Screen;

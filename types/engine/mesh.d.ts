@@ -1,6 +1,6 @@
 import { vec3 } from "vmath";
 
-import { Myou } from "myou-engine";
+import { Myou } from "./myou";
 import { Armature } from "./armature";
 import { GameObject } from "./gameobject";
 import { Material } from "./material";

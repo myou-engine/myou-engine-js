@@ -1,4 +1,4 @@
-import { Myou } from "myou-engine";
+import { Myou } from "./myou";
 import { GameObject } from "./gameobject";
 import { Scene } from "./scene";
 import { vec3 } from "vmath";

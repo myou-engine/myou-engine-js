@@ -1,4 +1,4 @@
-import { Myou } from "myou-engine";
+import { Myou } from "./myou";
 import { Camera } from "./camera";
 import { Viewport } from "./viewport";
 import { Framebuffer, MainFramebuffer } from "./framebuffer";

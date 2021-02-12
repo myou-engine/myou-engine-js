@@ -1,4 +1,4 @@
-import { Myou } from "myou-engine";
+import { Myou } from "./myou";
 
 export class MainLoop {
     constructor();

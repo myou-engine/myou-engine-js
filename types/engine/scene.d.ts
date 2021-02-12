@@ -10,6 +10,7 @@ import { Texture } from "./texture";
 import { Probe, ProbeData } from "./probe";
 import { Armature } from "./armature"
 import { Mesh } from "./mesh";
+import { DebugDraw } from "./debug_render";
 
 export class Scene {
     type: "SCENE";
@@ -38,8 +39,8 @@ export class Scene {
     probes: Probe[];
     last_shadow_render_tick: number;
     last_update_matrices_tick: number;
-    pre_draw_callbacks: Array<(frame_duration?: number) => void>
-    post_draw_callbacks: Array<(frame_duration?: number) => void>
+    pre_draw_callbacks: Array<(scene: Scene, frame_duration: number) => void>
+    post_draw_callbacks: Array<(scene: Scene, frame_duration: number) => void>
     frame_start: number;
     frame_end: number;
     anim_fps: number;
@@ -51,6 +52,7 @@ export class Scene {
     foreground_planes: Mesh[]; //??
     shader_libary: string;
     groups: Record<string, GameObject[]>;
+    global_vars: Record<string, any>;
     constructor(name: string, options?:{add_to_loaded_scenes?:boolean});
 
     add_object(ob: GameObject, name?: string, parent_name?: string, parent_bone?: string): void;
@@ -70,7 +72,7 @@ export class Scene {
     * @param items... [Array<String>] List of elements to load. Each one must be
     * one of: 'visible', 'physics', 'all'
     */
-    load(...items:SceneFeature[]): Promise<Scene>;
+    load(...items:SceneData[]): Promise<Scene>;
 
     /** Loads a list of objects, returns a promise
     * @param list [array] List of objects to load.
@@ -133,5 +135,6 @@ export class Scene {
 
     remove_debug_draw(): void;
 }
-
-declare type SceneFeature = "visible"|"physics"|"all";
+    
+declare type SceneData = "visible"|"physics"|"all";
+declare type SceneFeature = "render"|"physics"|"all";

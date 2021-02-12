@@ -1,5 +1,6 @@
 import { Myou } from "./myou";
 import { Viewport } from "./viewport";
+import { BaseFilter } from "./filter"
 
 export class BaseEffect {
     context: Myou
@@ -14,8 +15,8 @@ export class BaseEffect {
 }
 
 export class FilterEffect extends BaseEffect {
-    filter: unknown;
-    constructor(context: Myou, filter: unknown)
+    filter: BaseFilter;
+    constructor(context: Myou, filter: BaseFilter)
 }
 
 export class CopyEffect extends FilterEffect {}
