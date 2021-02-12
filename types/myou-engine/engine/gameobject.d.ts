@@ -4,6 +4,7 @@ import { RotationOrder } from "./util";
 import { Behaviour, Behavior } from "./behaviour";
 import { Scene } from "./scene";
 import { NLAStrip } from "./animation"
+import { Probe } from "./probe";
 
 export class GameObject {
     context: Myou;

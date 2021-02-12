@@ -4,7 +4,9 @@ import { Scene } from "./scene";
 import { Framebuffer } from "./framebuffer";
 import { Camera } from "./camera";
 import { Texture } from "./texture";
+import { Cubemap } from "./cubemap";
 import { Material } from "./material";
+import { Probe } from "./probe";
 
 /** Render manager singleton. Performs all operations related to rendering to
 * screen or to a buffer.

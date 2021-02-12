@@ -3,6 +3,7 @@ import { Viewport } from "./viewport";
 import { Texture, TextureBase } from "./texture";
 import { Uniform } from "./material";
 import { BaseFilter } from "./filter";
+import { Cubemap } from "./cubemap";
 
 /** Framebuffer class. Use it for off-screen rendering, by creating a {Viewport}
 * with a framebuffer as `dest_buffer`.

@@ -12,8 +12,7 @@ export class Material {
     data: MaterialData;
     scene: Scene;
     render_scene: Scene;
-    shader_library: string
-    last_shader?: Shader //should we remove this since it's a workaround?
+    shader_library: string;
     inputs: Record<string,InputValue>;
     animation_strips?: NLAStrip[]
     double_sided?: boolean;
@@ -66,8 +65,4 @@ declare interface MaterialData {
         attname?: string,
         multiplier?: number
     }[]
-}
-
-declare class Shader {
-
 }

@@ -7,6 +7,7 @@ import { Lamp } from "./lamp";
 import { World } from "./physics";
 import { Material } from "./material";
 import { Texture } from "./texture";
+import { Probe, ProbeData } from "./probe";
 import { Armature } from "./armature"
 import { Mesh } from "./mesh";
 
