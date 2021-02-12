@@ -4,6 +4,8 @@ import { RenderManager } from "./render";
 import { Scene } from "./scene";
 import { Lamp } from "./lamp";
 import { MainLoop } from "./main_loop";
+import { Action, Animation, LoopedAnimation, FiniteAnimation, PingPongAnimation} from "./animation"
+import { Armature } from "./armature";
 import { Viewport } from "./viewport";
 import { Screen, CanvasScreen } from "./screen";
 import { Camera } from "./camera";
