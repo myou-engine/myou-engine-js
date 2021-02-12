@@ -20,6 +20,5 @@
     "files": [
         "index.d.ts",
         "./lib/vmath.d.ts",
-        "myou-engine-tests.ts"
     ]
 }
