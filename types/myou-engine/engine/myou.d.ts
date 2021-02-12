@@ -14,6 +14,8 @@ import { Material } from "./material";
 import { Texture } from "./texture";
 import { Mesh, MeshData } from "./mesh";
 import { MeshFactory } from "./meshfactory";
+import { Curve } from "./curve";
+import { InputManager, Button, Axis, Axes2 } from "./input";
 
 /**
 * This is the main engine class.
