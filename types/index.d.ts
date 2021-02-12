@@ -2,6 +2,8 @@
 // Project: https://github.com/myou-engine/myou-engine
 // Definitions by: Mario Martínez <https://github.com/YonicDev>
 
+///<reference path="./lib/vmath.d.ts" />
+
 import * as g2 from "./math_utils/g2";
 import * as g3 from "./math_utils/g3";
 import * as math from "./math_utils/math";
