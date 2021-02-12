@@ -20,13 +20,43 @@ import { InputManager, Button, Axis, Axes2 } from "./input";
 import { GLRay } from "./glray";
 import { DebugDraw } from "./debug_render";
 
+// TSLint will probably complain that these are not permitted, but these are prefectly fine!
+export namespace Myou {
+    export { Marker, Action, Animation, LoopedAnimation, FiniteAnimation, PingPongAnimation } from "./animation"
+    export { Viewport, ViewportCloneOptions } from "./viewport"
+    export { TextureBase, Texture } from "./texture"
+    export { Scene, SceneData, SceneFeature } from "./scene"
+    export { Behaviour, Behavior, BehaviourOptions } from "./behaviour"
+    export { GameObject, ObjectType, CloneOptions as GameObjectCloneOptions } from "./gameobject"
+    export { Mesh, MeshData, MeshDataLayout } from "./mesh"
+    export { MeshFactory } from "./meshfactory"
+    export { Armature, Bone, BoneConstraints, Pose } from "./armature"
+    export { Curve } from "./curve"
+    export { Camera } from "./camera"
+    export { Lamp } from "./lamp"
+    export { Framebuffer, ByteFramebuffer, ShortFramebuffer, FloatFramebuffer, BufferComponentType, FbTexture, MainFramebuffer, FramebufferOptions } from "./framebuffer"
+    export { Cubemap } from "./cubemap"
+    export { GLRay } from "./glray"
+    export { Material, Uniform, InputValue as UniformInputValue, MaterialData } from "./material"
+    export { DebugDraw, DebugCamera, DebugShape } from "./debug_render"
+    export { Button, Axis, Axes2, InputManager, InputSource, GamepadInputSource, KeyboardInputSource } from "./input"
+    export { BaseFilter, CopyFilter, FlipFilter, BoxBlurFilter, Block2x2BlurFilter, MipmapBiasFilter, DirectionalBlurFilter, ExprFilter, FunctionFilter } from "./filter"
+    export { World, Body, Constraint as PhysicsConstraint, CollisionShape, CollisionType } from "./physics"
+    export { Probe, ProbeData, ProbeType } from "./probe"
+    export { RenderManager } from "./render"
+    export { Screen, CanvasScreen, ViewportCloneOptions } from "./screen"
+    export { BaseEffect, FilterEffect, CopyEffect, BloomEffect } from "./effect"
+    export { MainLoop } from "./main_loop"
+    export { RotationOrder } from "./util"
+}
+
 /**
 * This is the main engine class.
 * You need to instance it to start using the engine.
 * The engine instance is frequently referred internally as `context`.
 *
 * It instances and contains several singletons like `render_manager` and
-* `main_loop`.
+* `main_loop`. The namespace `Myou` contains the *types* for these singletons.
 */
 export class Myou {
     constructor(root: HTMLCanvasElement, options: MyouParameters);
