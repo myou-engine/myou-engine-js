@@ -5,6 +5,8 @@ import { Behaviour, Behavior } from "./behaviour";
 import { Scene } from "./scene";
 import { NLAStrip } from "./animation"
 import { Probe } from "./probe";
+import { Material } from "./material";
+import { MeshData } from "./mesh";
 
 export class GameObject {
     context: Myou;
@@ -43,6 +45,8 @@ export class GameObject {
     avg_poly_length: number;
     zindex: number;
     groups: string[];
+    materials?: Material[];
+    data?: MeshData;
 
     pending_bodies: unknown; //??
 
@@ -90,7 +94,7 @@ export class GameObject {
     * */
     set_world_position_rotation(position: vec3, rotation: quat): this;
 
-    look_at(target: GameObject, options?: {
+    look_at(target: GameObject | vec3, options?: {
         front?: string,
         up?: string,
         up_vector?: vec3,

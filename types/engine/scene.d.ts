@@ -126,7 +126,11 @@ export class Scene {
     /** Returns a DebugDraw instance for this scene, creating it if necessary.
     * @return [DebugDraw]
     * */
-    get_debug_draw(options:unknown): DebugDraw;
+    get_debug_draw(options:{
+        draw_physics: boolean,
+        draw_invisibles: boolean,
+        hidden_alpha: boolean
+    }): DebugDraw;
     
     /** Returns whether it has a DebugDraw instance
     * @return [boolean]

@@ -31,7 +31,7 @@ export class Behaviour {
     enable_context_menu(): this;
     enable_prevent_pointer_defaults(): this;
     disable_prevent_pointer_defaults(): this;
-    enable_object_picking(options:{
+    enable_object_picking(options?:{
         method:"physics"
     }): void;
     disable_object_picking(): void;

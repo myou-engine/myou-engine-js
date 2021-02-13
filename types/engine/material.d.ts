@@ -13,7 +13,7 @@ export class Material {
     scene: Scene;
     render_scene: Scene;
     shader_library: string;
-    inputs: Record<string,InputValue>;
+    inputs: Record<string,Uniform>;
     animation_strips?: NLAStrip[]
     double_sided?: boolean;
     alpha_texture?: Texture;

@@ -16,6 +16,7 @@ export class Button {
         pad_index: number,
         label: string //??
     }[]);
+    constructor(...sources:string[]);
 }
 
 export class Axis {
