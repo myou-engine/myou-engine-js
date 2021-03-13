@@ -41,6 +41,7 @@
   ],
   "author": "Alberto Torres Ruiz <kungfoobar@gmail.com> and Julio Manuel López <julio@pixelements.net> (http://pixelements.net)",
   "license": "MIT",
+  "types": "./types/index.d.ts",
   "coffeelintConfig": {
     "indentation": {
       "value": 4
